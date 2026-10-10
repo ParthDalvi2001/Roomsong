@@ -19,7 +19,7 @@ rest your hands and the room performs in spatial audio. The garden is saved loca
 ## 2. Current reality (read before anything else)
 - **No Quest headset on the team as of 2026-10-10.** Build emulator-first (IWER + Playwright). Anything device-dependent
   (fps, hand feel, real rooms) is `done-pending-device`. Getting a headset is **T-000**, the top priority. Gates: H1 Oct 20 / Emergency mode Oct 27.
-- **No GitHub for now** (D-014): local `git` only; share by zip/drive. Hosting chosen by Oct 22.
+- **GitHub:** `https://github.com/ParthDalvi2001/Roomsong`, branch `main` (D-018, 2026-10-10; supersedes the "no GitHub" part of D-014; zip sync retired). Hosting chosen by Oct 22 (GitHub Pages is the default, ADR-004).
 - **Two humans:** Parth (developer, plan owner; this machine, macOS) and Chinmay (PM, Devpost Representative; Windows).
   Chinmay's Claude works on a copy and may only **propose** via `specs/08-status/PM_PROPOSALS.md`. Only this Claude edits specs.
 

@@ -72,6 +72,8 @@ Add scripts to `package.json`:
 (`deploy:*` scripts are placeholders until hosting is chosen — §7.)
 
 ### 2.1 No GitHub yet — local git + zip sync (REPLAN §1)
+
+> **Superseded 2026-10-10 (D-018):** the repo is now on GitHub — `origin` = `https://github.com/ParthDalvi2001/Roomsong`, branch `main`. Zip sync is retired; the PM clones the repo (`git clone https://github.com/ParthDalvi2001/Roomsong.git`) and pulls before proposing. The notes below are kept for history.
 - There is **no remote** for now. `git init` locally (above), **commit often** (at least per task; the first empty commit is the competition-window start proof), tag phase gates locally (`git tag g0`, `g1`, …).
 - **The developer's copy (Parth's machine) is the master.** The PM works on a *working copy*; PM changes are proposals in `specs/08-status/PM_PROPOSALS.md` or a pasted note, never direct edits to the master.
 - Share by zip or drive: `git archive --format=zip -o roomsong-$(git rev-parse --short HEAD).zip HEAD` (PowerShell: same command; `$(git rev-parse --short HEAD)` works there too). Unzip into a fresh folder; never merge zips back by hand — the master applies approved changes.

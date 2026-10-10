@@ -22,6 +22,7 @@ One line per decision: ID · Date · Decision · Why · Who · Reversible? Bigge
 | D-015 | 2026-10-10 | **Developer's copy is the master**; PM's Claude proposes via `PM_PROPOSALS.md`; only the developer's Claude edits specs | Two Claudes editing two copies caused divergence (rename + rewrites on the PM's copy) | Parth | Yes |
 | D-016 | 2026-10-10 | Name: **Roomsong** chosen by Parth on 2026-10-10 (was "Bloomtone"); global replace done the same day | "Bloomtone" possibly taken (unverified) and close to Eno's Bloom / Blooming Conductor; Roomsong names the differentiator and a quick search found no conflict | Parth | Yes |
 | D-017 | 2026-10-10 | Max **3** concurrent agents; code review stays; one security pass + `npm audit` | Process overhead cut per PM review | Parth | Yes |
+| D-018 | 2026-10-10 | **GitHub adopted:** remote `origin` = `https://github.com/ParthDalvi2001/Roomsong`, branch `main`; supersedes the "no GitHub" part of D-014 (zip sync retired; the PM clones instead). Hosting choice (T-108) still open, GitHub Pages now the default | Parth asked to push the project; the 2026 rules name a "GitHub page" for WebXR links and the research report (§9.4) recommends GitHub Pages plus a mirror; public history from ≥ 2026-09-24 is New Experience evidence | Parth | Yes |
 
 ## Retro notes
 *(appended at each sprint end: 3 keep / 3 change)*

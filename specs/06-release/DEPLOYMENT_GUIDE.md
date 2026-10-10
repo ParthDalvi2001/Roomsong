@@ -6,7 +6,7 @@ Environments: Local → Staging (`develop` → `/staging/` or preview URL) → P
 ---
 
 ## 1. Hosting decision (deferred to Phase 1, by Oct 22)
-No GitHub remote exists yet (REPLAN §1): the repo is local-only and synced by zip/drive. The judges need a **public HTTPS URL** (WebXR requires HTTPS), so hosting must be live before G1. All three options are free static hosting with HTTPS; none needs secrets or a server.
+The repo's remote is GitHub (`ParthDalvi2001/Roomsong`, set 2026-10-10, D-018); hosting is still to be chosen (T-108), with GitHub Pages as the default. The judges need a **public HTTPS URL** (WebXR requires HTTPS), so hosting must be live before G1. All three options are free static hosting with HTTPS; none needs secrets or a server.
 | Option | Needs | Staging | Prod | Lock after submission |
 |---|---|---|---|---|
 | **A. GitHub Pages** (default if chosen; ADR-004) | GitHub repo created + history pushed; `gh` optional; the two workflows in §2; `scripts/deploy.mjs` | `develop` → `/staging/` sub-path | `v*` tag → root | Branch/environment protection on `gh-pages`; disable tag trigger |

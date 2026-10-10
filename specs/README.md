@@ -55,11 +55,14 @@ specs/
 │   ├── SPRINT_PLAN.md                calendar + full task backlog (IDs, owners, acceptance)
 │   ├── AUTOPILOT.md                  the self-driving work loop protocol
 │   └── SKILLS_SETUP.md               install every skill/MCP + which skill each stage uses
-└── 08-status/
+├── 08-status/
     ├── PROGRESS.md                   live state (Claude updates after every task)
     ├── DECISIONS_LOG.md              running log of decisions
     ├── REPLAN_2026-10-10.md          approved re-plan v2 (geometry fix, room signature, scope cuts, gates, headset reality)
     └── PM_PROPOSALS.md               the only channel for the PM's proposed changes (this folder is the master copy)
+└── 09-research/
+    ├── reports/                      product discovery research report (2026-10-10; findings not yet applied to the plan)
+    └── research_notes/               the eight evidence notes behind the report
 ```
 
 ## Conventions
