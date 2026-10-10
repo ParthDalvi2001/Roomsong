@@ -15,9 +15,9 @@
 | **T-000 Get a Quest 3/3S by Oct 20** | Parth + Chinmay | **todo (critical)** | no headset on the team; everything device-side waits on this |
 | T-100 Local git init + GitHub remote | devops-engineer | **done (push pending)** | 2 commits on `main`, `origin` = `github.com/ParthDalvi2001/Roomsong`; **Parth runs the push** (item 7 below) (D-018) |
 | T-101 Scaffold IWSDK + tooling | devops-engineer | **done** | merged to `develop` (541235b); verify green ≈19 s; follow-up T-111 (strip starter content) |
-| T-102 Desktop sound prototype | backend-dev | **doing** | agent in worktree (lane C), started 2026-10-10 |
-| T-106 `core/` module | software-architect | **doing** | agent in worktree (lane D), started 2026-10-10 |
-| T-107 Emulator/e2e pipeline | qa-engineer | **doing** | agent in worktree (lane D), started 2026-10-10 |
+| T-102 Desktop sound prototype | backend-dev | **doing (interrupted)** | theory/scheduler/presets/voice pool committed + engine/voices/page WIP-committed in worktree `agent-ad6ef1e3d6893596d`; agent was cut off by the weekly usage limit; resume (SendMessage to the same agent or re-dispatch on top of the WIP) after Oct 13 13:30 IST |
+| T-106 `core/` module | software-architect | todo | cut off before any output; re-dispatch on resume |
+| T-107 Emulator/e2e pipeline | qa-engineer | todo | cut off before any output; re-dispatch on resume |
 | T-108 Hosting + name decision | Parth | **blocked on human** | see below |
 
 ## Blocked on human (answer in one message; Claude files the results)
@@ -30,14 +30,15 @@
 7. **Push to GitHub (T-100):** run `git push -u origin main` from the repo root. SSH for the ParthDalvi2001 account is set up and tested (key `~/.ssh/id_ed25519_2001`, repo-local `core.sshCommand`, `gh` logged in); no password will be asked. Claude's session safety layer blocks it from pushing `main` itself.
 8. **One-time Mac fix:** run `sudo chown -R $(id -u):$(id -g) ~/.npm` — root-owned npm cache files make `npm install` fail unless a `--cache` workaround is used (seen in T-101).
 9. **Tooling decisions from T-101:** (a) if you want Claude to use the IWSDK MCP servers (browser snapshots, emulated XR input), add `mcp__iwsdk-runtime__*` and `mcp__iwsdk-reference__*` to the allow list and `enabledMcpjsonServers` in `.claude/settings.json` — `npx @iwsdk/cli adapter sync` tried to do this and the agent reverted it; Claude does not edit that file. (b) `@meta-quest/metavr` was left out of devDependencies (Meta SDK licence + telemetry); say if you want it back.
+10. **Usage limit (schedule risk):** Claude's weekly limit is exhausted until **Oct 13 13:30 IST**; no agent work is possible before then. Decide: keep G0 on Oct 15 (tight: T-102 finish + T-103 listening review + T-104/105/106/107 in two days) or move G0 to **Oct 17** and shift Phase 1 by two days (G1 Oct 24, H1 headset date unchanged). Say "continue" after the reset and the loop resumes from this file.
 
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
 | T-000 | todo (critical) | T-104 | todo | T-108 | blocked (human) |
 | T-100 | done (push pending) | T-105 | todo | T-109 | todo |
-| T-101 | done | T-106 | doing | T-110 | todo |
-| T-102 | doing | T-107 | doing | | |
+| T-101 | done | T-106 | todo | T-110 | todo |
+| T-102 | doing (interrupted) | T-107 | todo | | |
 | T-103 | blocked (needs T-102) | | | | |
 
 ## Gates
@@ -67,6 +68,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.9 MB,
 ## Stand-ups
 ### 2026-10-10
 - Done: PM review verified (grid + reach bugs confirmed by math; prior art confirmed); REPLAN v2 approved by Parth; specs being updated by 3 agents; SPRINT_PLAN v2 written; product discovery research delivered (`specs/09-research/`, not yet applied to the plan); repo initialised with `origin` set; push to GitHub pending Parth (T-100, D-018); T-101 IWSDK scaffold merged to `develop`, verify green.
+- **Interruption 2026-10-10 ≈15:30 IST:** the Claude account hit its weekly usage limit; all three running agents (T-102, T-106, T-107) stopped mid-task. Resets **Oct 13 13:30 IST**. Phase 0 loses ≈3 working days; G0 (Oct 15) is at risk.
 - Today: finish spec propagation; then T-100/T-101/T-102 on "continue".
 - Blockers: headset (T-000), name, hosting.
 - Risk: **no headset** = device criteria unverifiable; rule check (T-186) done Oct 9, no changes.
