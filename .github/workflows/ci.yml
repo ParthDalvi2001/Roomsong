@@ -1,0 +1,45 @@
+# CI (T-108): every push and pull request to develop or main runs the gates of `npm run verify`, then the
+# emulator e2e suite, then the dependency audit. No secrets.
+name: ci
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+env:
+  # onnxruntime-node (a dev tool behind the IWSDK reference search) would otherwise download its GPU build,
+  # several hundred MB, from GitHub releases on every Linux install. Nothing in CI uses it.
+  ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # typecheck, lint, unit tests, build, check-dist (page policy, remote URL strings), check-size (4 MB)
+      - run: npm run verify
+      # Emulator e2e (tests/e2e/README.md): Playwright's headless Chromium, WebGL on SwiftShader (software).
+      # --with-deps also installs the system libraries the browser needs on Linux.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            tests/e2e/__artifacts__/
+          retention-days: 7
+      # Production dependencies, high severity and above. The only step that needs the npm registry at run time.
+      - run: npm run audit

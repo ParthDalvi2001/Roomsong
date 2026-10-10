@@ -1,0 +1,54 @@
+# Deploy (T-108): builds the checked-out commit and publishes dist/ to GitHub Pages. Runs on every push to main,
+# and by hand (Actions > deploy > Run workflow) to publish a chosen branch or tag again. No secrets.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Same reason as in ci.yml: skip the GPU download that onnxruntime-node starts on every Linux install.
+  ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+
+# One deploy at a time, and a running one finishes: the site is never left half published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # verify is the build plus every gate, so nothing is published that ci.yml would have stopped
+      - run: npm run verify
+      - run: node scripts/write-version.mjs
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The least actions/deploy-pages needs: write the Pages site, and an identity token that proves to Pages
+    # which workflow is asking. The build job, which runs third-party install scripts, has neither.
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
