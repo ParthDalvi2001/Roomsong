@@ -91,7 +91,7 @@ Lanes: **A** fullstack (room/access/onboarding/integration/garden window) · **B
 ### Phase 3 — Polish (Nov 4–11) → v0.4 / v0.5
 | ID | Task | Owner | Deps | Lane | Acceptance | Status |
 |---|---|---|---|---|---|---|
-| T-160 | Accessibility set: one-hand mode + orb; gaze-dwell select + Listen (600/900/1200 ms, progress ring, spatial hysteresis); high contrast; reduced motion; beat ring; captions | fullstack-dev | T-148, T-151 | A | TC-E2E-07/08; TC-DEV-06 (pending) | todo |
+| T-160 | Accessibility set: one-hand mode + orb (**from T-124:** a seed resting on the palm cannot be pinched by that same hand, so one-hand mode needs its own way to take a seed; UX decides before this task starts); gaze-dwell select + Listen (600/900/1200 ms, progress ring, spatial hysteresis); high contrast; reduced motion; beat ring; captions | fullstack-dev | T-148, T-151 | A | TC-E2E-07/08; TC-DEV-06 (pending) | todo |
 | T-161 | Daily seed + growth stages (0/1/3/7 d, non-punitive) + `applyVisit` + bloom-in animation + `fakeDay`; seed ids are never reused for the life of a garden (a plant takes its seed's id, API_SPEC v1.2.2) | backend-dev + frontend-dev | T-122 | C | TC-GAR-04/05; TC-E2E-06 | todo |
 | T-163 | Art pass: palette tint by paletteSeed, glow balance, idle sway, silhouettes polish; `impeccable` critique | ux-designer + frontend-dev | T-147 | B | visual review ≥4/5 (Parth + Chinmay) | todo |
 | T-164 | Sound pass: mix levels, UI sounds from the room chord, Listen sweep, limiter; Shimmer voice if time | ux-designer + backend-dev | T-145 | C | listening review #2 ≥4/5; TC-AUD-05 | todo |
