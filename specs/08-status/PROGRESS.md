@@ -13,7 +13,7 @@
 | Task | Owner | Status | Note |
 |---|---|---|---|
 | **T-000 Get a Quest 3/3S by Oct 20** | Parth + Chinmay | **todo (critical)** | no headset on the team; everything device-side waits on this |
-| T-100 Local git init + GitHub remote | devops-engineer | **done (push pending)** | 2 commits on `main`, `origin` = `github.com/ParthDalvi2001/Roomsong`; **Parth runs the push** (item 7 below) (D-018) |
+| T-100 Local git init + GitHub remote | devops-engineer | **done** | pushed by Parth 2026-10-10 18:05 IST: `main` (115b9c1) and `develop` (41d5438) on github.com/ParthDalvi2001/Roomsong (D-018) |
 | T-101 Scaffold IWSDK + tooling | devops-engineer | **done** | merged to `develop` (541235b); verify green ≈19 s; follow-up T-111 (strip starter content) |
 | T-102 Desktop sound prototype | backend-dev | **doing (interrupted)** | theory/scheduler/presets/voice pool committed + engine/voices/page WIP-committed in worktree `agent-ad6ef1e3d6893596d`; agent was cut off by the weekly usage limit; resume (SendMessage to the same agent or re-dispatch on top of the WIP) after Oct 13 13:30 IST |
 | T-106 `core/` module | software-architect | todo | cut off before any output; re-dispatch on resume |
@@ -27,7 +27,7 @@
 4. **Listening review #0 (T-103):** when T-102 is ready, open the link in Chrome, rate 1–5 with one sentence; ask Chinmay + 2 others to do the same.
 5. Confirm Chinmay is registered on Devpost and in the Meta VR Start Program (he submits as Representative).
 6. ~~Research → plan~~ — **applied as plan v2.1** on your "refactor the plan" instruction (PLAN_AMENDMENT_2026-10-10.md, D-019–D-023). Reversible row by row: name any row to revert. Propagation into the other spec files is T-113 (after the reset).
-7. **Push to GitHub (T-100):** run `git push -u origin main` from the repo root. SSH for the ParthDalvi2001 account is set up and tested (key `~/.ssh/id_ed25519_2001`, repo-local `core.sshCommand`, `gh` logged in); no password will be asked. Claude's session safety layer blocks it from pushing `main` itself.
+7. ~~Push to GitHub~~ — done 2026-10-10 (`main` + `develop` on GitHub). Note: GitHub picked **`develop` as the default branch**; if you want visitors and the Pages link to see `main`, change it in Settings → General → Default branch (optional).
 8. **One-time Mac fix:** run `sudo chown -R $(id -u):$(id -g) ~/.npm` — root-owned npm cache files make `npm install` fail unless a `--cache` workaround is used (seen in T-101).
 9. **Tooling decisions from T-101:** (a) if you want Claude to use the IWSDK MCP servers (browser snapshots, emulated XR input), add `mcp__iwsdk-runtime__*` and `mcp__iwsdk-reference__*` to the allow list and `enabledMcpjsonServers` in `.claude/settings.json` — `npx @iwsdk/cli adapter sync` tried to do this and the agent reverted it; Claude does not edit that file. (b) `@meta-quest/metavr` was left out of devDependencies (Meta SDK licence + telemetry); say if you want it back.
 10. ~~G0 decision~~ — done in v2.1: **G0 Oct 17, G1 Oct 24, G2 Nov 3** (D-023); freezes unchanged. Claude's weekly limit resets **Oct 13 13:30 IST**; say "continue" after it and the loop resumes from this file (T-102 from its WIP, then T-106/T-107, T-113, T-104/T-105).
@@ -36,7 +36,7 @@
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
 | T-000 | todo (critical) | T-104 | todo | T-108 | blocked (human) |
-| T-100 | done (push pending) | T-105 | todo | T-109 | todo |
+| T-100 | done | T-105 | todo | T-109 | todo |
 | T-101 | done | T-106 | todo | T-110 | todo |
 | T-102 | doing (interrupted) | T-107 | todo | | |
 | T-103 | blocked (needs T-102) | | | | |
