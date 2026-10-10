@@ -47,7 +47,7 @@
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
-| T-000 | todo (critical) | T-104 | todo | T-108 | blocked (human) |
+| T-000 | todo (critical) | T-104 | doing | T-108 | doing (prep) |
 | T-100 | done | T-105 | doing | T-109 | doing |
 | T-101 | done | T-106 | doing | T-110 | todo |
 | T-102 | done | T-107 | done | T-111 | done |
