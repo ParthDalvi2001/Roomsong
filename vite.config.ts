@@ -5,8 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { existsSync } from 'node:fs';
+
 import { iwsdkDev } from '@iwsdk/vite-plugin-dev';
 import { defineConfig } from 'vite';
+
+// Device test pages (T-104 capability spike, T-105 pinch accuracy). Each one that exists is built to
+// dist/<same path>, so a headset opens it at <site>/proto/spike/ or <site>/proto/pinch/.
+const PROTO_PAGES = ['proto/spike/index.html', 'proto/pinch/index.html'].filter((page) => existsSync(page));
 
 export default defineConfig({
   plugins: [iwsdkDev()],
@@ -15,7 +21,7 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: process.env.NODE_ENV !== 'production',
     target: 'esnext',
-    rollupOptions: { input: './index.html' },
+    rollupOptions: { input: ['./index.html', ...PROTO_PAGES] },
   },
   esbuild: { target: 'esnext' },
   // @drawcall/uikitml otherwise pulls a second three/@pmndrs/uikit graph

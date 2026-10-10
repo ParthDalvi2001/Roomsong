@@ -169,8 +169,9 @@ function roomCapture(room: Room) {
  * planes and meshes, which is always before a session can start. Nothing leaves localhost: the emulator's
  * room request is answered from the fixture; every other HTTP(S) request is aborted, every WebSocket to
  * another host is closed unconnected, and their URLs are returned (the array keeps filling while the page lives).
+ * `path` opens another page of the same site, for example '/proto/spike/'.
  */
-export async function openApp(page: Page, room: Room): Promise<string[]> {
+export async function openApp(page: Page, room: Room, path = '/'): Promise<string[]> {
   const offHost: string[] = [];
   const leavesLocalhost = (url: URL) => url.hostname !== 'localhost';
   // page.route does not see WebSockets. A routed socket is never connected to its server.
@@ -186,7 +187,7 @@ export async function openApp(page: Page, room: Room): Promise<string[]> {
     offHost.push(url);
     return route.abort();
   });
-  await page.goto('/');
+  await page.goto(path);
   const want = [
     ...room.planes.map((plane) => `plane:${plane.label}`),
     ...(room.meshes ?? []).map((mesh) => `mesh:${mesh.label}`),
