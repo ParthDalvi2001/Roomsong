@@ -21,8 +21,8 @@
 | T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
 | T-111 Strip starter content | frontend-dev | **done** | develop 28ddf1e; no runtime network; SDK input models off (D-027) |
 | T-107 Emulator/e2e pipeline | qa-engineer | **done** | develop 28ddf1e; `npm run test:e2e` 6 tests ≈33 s; TC-E2E-01 ×3 green |
-| T-113 Spec propagation v2.1 | UX / devops | **doing** | all writing parts committed (develop 0a3800a). The independent consistency check found 1 blocker, 13 major and 11 small points; the blocker (two different rules for the hand hint) is settled by D-030. One fix pass is running on all 25; then a final check |
-| T-120 Garden model and rules | backend-dev | **doing** | Phase 1, started early. Built: `src/garden/` (types, bed snap, plant, move, height, remove, undo, anchor), 70 new unit tests, verify green on its branch. Independent review running; then fix and merge |
+| T-113 Spec propagation v2.1 | UX / devops | **done** | all writing parts committed (develop 0a3800a). The independent consistency check found 1 blocker, 13 major and 11 small points; the blocker (two different rules for the hand hint) is settled by D-030. One fix pass is running on all 25; then a final check |
+| T-120 Garden model and rules | backend-dev | **doing** | Phase 1, started early. Built: `src/garden/` (types, bed snap, plant, move, height, remove, undo, anchor), 70 new unit tests, verify green on its branch. Independent review: approve after fixes (no geometry or rule bug; 70 of 79 deliberate code breaks caught by the tests). Fix pass running (contract wording, D-031), then merge |
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
 | T-104 Capability spike page | software-architect | **done-pending-device** | develop 31bc96a after independent review and fix; every step has a timeout and partial results are saved; the device run (TC-DEV-0A) waits for a headset |
 | T-105 Pinch-accuracy page | frontend-dev | **done-pending-device** | develop 47bd268 after independent review and fix; emulator-verified; the device run (TC-DEV-00) waits for a headset |
@@ -56,7 +56,7 @@
 | T-100 | done | T-105 | done-pending-device | T-109 | done |
 | T-101 | done | T-106 | done | T-110 | todo |
 | T-102 | done | T-107 | done | T-111 | done |
-| T-113 | doing (fix pass) | T-115 | todo (Chinmay) | | |
+| T-113 | done | T-115 | todo (Chinmay) | | |
 | T-103 | ready; needs Parth's rating | | | | |
 
 ## Gates
@@ -85,6 +85,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **01:40 IST (Oct 11) — T-113 done** (25 findings fixed, develop 52f7b59; verify green). T-120 review back: approve after fixes; fix pass running (D-031). T-124 hands module started in its own worktree. Tracking page rebuilt in its own folder `tracker/` with Mac alerts (develop a6c5f4f). A session restart at 01:22 stopped two agents; both resumed.
 - **01:15 IST (Oct 11) — T-120 garden model built** (branch only, 5 commits, 148 unit tests in total, verify green); independent review started. D-029 is now written into the contract on that branch. Open from the builder: `removePlant` should return a result that can say "no such plant" (contract change), and the 5 s life of an undo stays with the system that owns the clock (T-128). Tracking page: new "Day by day" card with the daily target and the tasks done (develop 6cf145a).
 - **00:50 IST (Oct 11) — consistency check done:** 25 findings (1 blocker, 13 major, 11 small); numbers, ids and the security policy string were found consistent everywhere. Blocker: the specs gave two rules for the "hands out of view" hint; settled as D-030 (only after an interrupted gesture, at most 5 s; Parth to confirm, item 17a). Other main points: D-029 was missing from the contract (T-120 is writing it), the deploy guide misdescribed the publish guard, old staging and tag wording, a flash cap written twice as loose in four places, and the 80 % coverage gate was never set up (new task T-117). Fix pass running.
 - **00:10 IST (Oct 11) — UX wireframes committed** (develop 0a3800a): T-113 writing is complete (4 of 4 parts, no id lost). An independent consistency check across all spec files is running, with the writers' reported inconsistencies as input; a fix pass and a final check follow, then the G0 review (T-110). T-120 (garden model) is building in its own worktree. Three UX calls added for Parth (item 17).
