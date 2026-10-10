@@ -19,9 +19,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-dist.mjs && node scripts/check-size.mjs",
-    "audit": "npm audit --omit=dev --audit-level=high",
-    "deploy:staging": "node scripts/deploy.mjs staging",
-    "deploy:prod": "node scripts/deploy.mjs prod"
+    "audit": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "@iwsdk/core": "1.0.1",

@@ -1,5 +1,5 @@
 # Deploy (T-108): builds the checked-out commit and publishes dist/ to GitHub Pages. Runs on every push to main,
-# and by hand (Actions > deploy > Run workflow) to publish a chosen branch or tag again. No secrets.
+# and by hand (Actions > deploy > Run workflow) to publish main again. No secrets.
 name: deploy
 
 on:
