@@ -6,6 +6,7 @@
 
 > **Read first this session:** `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions), `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) and `specs/07-workflow/SPRINT_PLAN.md` v2.1.
 > **ONE DRIVER (Parth, 20:38 IST: "here only"):** the session started at 20:25 (Claude process 67171) is the only driver. The 12:53 copy (61611) stood down and the 20:19 copy is gone; their agents stopped with nothing written, and their worktrees are removed. Ultracode is off: 2 agents at once (D-023). Running now: T-106 (core) and T-113 (requirements docs). Queue: T-109, T-105, T-104, T-108 prep, then the UX, test and release docs of T-113.
+> **Live tracking page (Parth, 21:00 IST):** http://127.0.0.1:4180/ shows phases, every task, agents, decisions and what needs Parth. Start it with `python3 scripts/dashboard.py` if it is down. It reads this file, SPRINT_PLAN, DECISIONS_LOG, BUG_LOG, git and the agent logs, so keeping those current keeps the page current.
 > **Push hold (Parth, 2026-10-10 19:15 IST):** no pushes to GitHub, `develop` included, until Phase 0 is finished **and** Parth has been told and says go. Commit and merge locally only. Last pushed commit: `118657b`.
 > **This folder is the master copy.** The PM (Chinmay) works on a copy; his proposals go to `PM_PROPOSALS.md`, never into spec files.
 

@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+"""Roomsong live dashboard. Read-only: it reads the sprint plan, the status files, git and the agent logs.
+
+Run:   python3 scripts/dashboard.py        then open http://127.0.0.1:4180/
+The page refreshes itself every 10 seconds. It costs no tokens.
+"""
+import datetime
+import json
+import os
+import pathlib
+import re
+import subprocess
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+PORT = int(os.environ.get('DASHBOARD_PORT', '4180'))
+YEAR = 2026
+# name, goal, first day, last day (SPRINT_PLAN calendar, v2.1)
+PHASES = [
+    ('Phase 0', 'Prove', (10, 10), (10, 17)),
+    ('Phase 1', 'One path', (10, 18), (10, 24)),
+    ('Phase 2', 'Differentiator & payoff', (10, 25), (11, 3)),
+    ('Phase 3', 'Polish', (11, 4), (11, 11)),
+    ('Phase 4', 'Release', (11, 12), (11, 17)),
+]
+GATES = [('G0', (10, 17)), ('Headset due', (10, 20)), ('G1', (10, 24)), ('G2', (11, 3)),
+         ('Feature freeze', (11, 12)), ('Code freeze', (11, 15)), ('Submit', (11, 17))]
+AGENT_QUIET_S = 600  # an agent silent this long without handing back was stopped with its session
+
+
+def git(*args):
+    try:
+        return subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True, timeout=10).stdout.strip()
+    except Exception:
+        return ''
+
+
+def plain(text):
+    """Markdown to plain text, enough for table cells and list items."""
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    return ' '.join(re.sub(r'[*`~]', '', text).split())
+
+
+def read(path):
+    try:
+        return (ROOT / path).read_text(encoding='utf-8')
+    except OSError:
+        return ''
+
+
+def row_cells(line):
+    return [c.strip() for c in line.strip().strip('|').split('|')]
+
+
+def section(text, heading):
+    """The body of a '## heading' section."""
+    if heading not in text:
+        return ''
+    return text.split(heading, 1)[1].split('\n## ', 1)[0]
+
+
+def day(month_day):
+    return datetime.date(YEAR, *month_day)
+
+
+# ---------- sprint plan ----------
+def load_plan():
+    phases, current = [], None
+    for line in read('specs/07-workflow/SPRINT_PLAN.md').split('\n'):
+        m = re.match(r'^### (Phase \d) — ([^(]+)', line)
+        if m:
+            current = {'name': m.group(1), 'goal': m.group(2).strip(), 'tasks': []}
+            phases.append(current)
+            continue
+        if line.startswith('## '):
+            current = None
+        m = re.match(r'^\| \*{0,2}(T-\d+)\*{0,2} \|', line)
+        if not (m and current):
+            continue
+        cells = row_cells(line)
+        status = plain(cells[-1])
+        low = status.lower()
+        state = 'done' if low.startswith('done') else 'running' if low.startswith('doing') else 'maybe' if low.startswith('could') else 'todo'
+        detail = plain('|'.join(cells[1:-5]))
+        title = re.split(r' \(|:|;| — |\. ', detail, maxsplit=1)[0]
+        current['tasks'].append({
+            'id': m.group(1), 'title': title, 'detail': detail, 'owner': plain(cells[-5]), 'depsText': plain(cells[-4]),
+            'acceptance': plain(cells[-2]), 'status': status, 'state': state, 'human': 'human' in cells[-3],
+        })
+    done = {t['id'] for p in phases for t in p['tasks'] if t['state'] == 'done'}
+    for phase in phases:
+        ids = [t['id'] for t in phase['tasks']]
+        for task in phase['tasks']:
+            deps = set(re.findall(r'T-\d+', task['depsText']))
+            for lo, hi in re.findall(r'T-(\d+)\.\.T-(\d+)', task['depsText']):
+                deps |= {f'T-{n}' for n in range(int(lo), int(hi) + 1)} & set(ids)
+            if task['depsText'].lower().startswith('all'):
+                deps |= set(ids) - {task['id']}
+            task['waitingFor'] = sorted(deps - done)
+            if task['human'] and task['state'] != 'done':
+                task['state'] = 'you'
+            task['ready'] = task['state'] == 'todo' and not task['waitingFor']
+    return phases
+
+
+# ---------- status files ----------
+def load_status():
+    text = read('specs/08-status/PROGRESS.md')
+    needs, resolved = [], []
+    for line in section(text, '## Blocked on human').split('\n'):
+        m = re.match(r'^(\d+)\. (.*)', line)
+        if not m:
+            continue
+        number, body = int(m.group(1)), m.group(2)
+        title = re.search(r'\*\*(.+?)\*\*', body) or re.search(r'~~(.+?)~~', body)
+        item = {'n': number, 'title': plain(title.group(1)).rstrip(':') if title else ' '.join(plain(body).split()[:5]),
+                'text': plain(body)}
+        (resolved if body.startswith('~~') else needs).append(item)
+    gates = {}
+    for line in section(text, '## Gates').split('\n'):
+        cells = row_cells(line)
+        if len(cells) >= 3 and re.match(r'^(G\d|H1)', cells[0]):
+            gates[cells[0].split()[0]] = plain(cells[2])
+    tests = [dict(zip(('suite', 'when', 'result'), map(plain, row_cells(line)[:3])))
+             for line in section(text, '## Test status').split('\n')
+             if line.startswith('|') and not line.startswith('|---') and 'Suite' not in line]
+    perf = plain(next((l for l in section(text, '## Perf').split('\n') if l.strip() and not l.startswith('#')), ''))
+    banner = [plain(l.lstrip('> ')) for l in text.split('\n') if l.startswith('> **ONE DRIVER') or l.startswith('> **Push hold')]
+    standup = []
+    for line in section(text, '## Stand-ups').split('\n'):
+        if line.startswith('### ') and standup:
+            break
+        if line.startswith('- '):
+            standup.append(plain(line[2:]))
+    return {'needs': needs, 'resolved': resolved, 'gateResults': gates, 'tests': tests, 'perf': perf,
+            'banner': banner, 'standup': standup[:8]}
+
+
+def load_decisions():
+    out = []
+    for line in read('specs/08-status/DECISIONS_LOG.md').split('\n'):
+        if re.match(r'^\| D-\d+ \|', line):
+            c = row_cells(line)
+            out.append({'id': c[0], 'date': c[1], 'decision': plain(c[2]), 'why': plain(c[3]) if len(c) > 3 else '',
+                        'who': plain(c[4]) if len(c) > 4 else ''})
+    return out[::-1]
+
+
+def load_bugs():
+    out = []
+    for line in read('specs/05-testing/BUG_LOG.md').split('\n'):
+        if re.match(r'^\| BUG-\d+ \|', line):
+            c = row_cells(line)
+            if len(c) >= 9 and 'template' not in line:
+                out.append({'id': c[0], 'sev': c[2], 'title': plain(c[4]), 'status': plain(c[8])})
+    return out
+
+
+# ---------- agents (Agent-tool agents: one log + meta file each under <session>/subagents/) ----------
+def stamp(text):
+    try:
+        return datetime.datetime.fromisoformat(text.replace('Z', '+00:00')).timestamp()
+    except Exception:
+        return None
+
+
+def load_agents():
+    project = pathlib.Path.home() / '.claude/projects' / re.sub(r'[^A-Za-z0-9]', '-', str(ROOT))
+    agents = []
+    for meta in project.glob('*/subagents/agent-*.meta.json'):
+        log = meta.with_name(meta.name.replace('.meta.json', '.jsonl'))
+        if not log.exists() or time.time() - log.stat().st_mtime > 8 * 3600:
+            continue
+        try:
+            info = json.loads(meta.read_text(encoding='utf-8'))
+        except ValueError:
+            info = {}
+        agent = {'label': info.get('description') or '?', 'role': (info.get('agentType') or '').split(':')[-1],
+                 'first': None, 'last': None, 'steps': 0, 'doing': ''}
+        with log.open(encoding='utf-8') as handle:
+            for raw in handle:
+                try:
+                    record = json.loads(raw)
+                except ValueError:
+                    continue
+                when = stamp(record.get('timestamp') or '')
+                if when:
+                    agent['first'] = agent['first'] or when
+                    agent['last'] = when
+                message = record.get('message')
+                content = message.get('content') if isinstance(message, dict) else None
+                for block in content if isinstance(content, list) else []:
+                    if isinstance(block, dict) and block.get('type') == 'tool_use':
+                        agent['steps'] += 1
+                        args = block.get('input') or {}
+                        tool = block.get('name') or ''
+                        agent['doing'] = (args.get('description') or
+                                          (f'{tool} {os.path.basename(args["file_path"])}' if args.get('file_path') else tool))
+        handed_back = agent['doing'] in ('SubagentHandback', 'StructuredOutput')
+        quiet = time.time() - (agent['last'] or 0)
+        agent['state'] = 'done' if handed_back else 'running' if quiet < AGENT_QUIET_S else 'stopped'
+        if handed_back:
+            agent['doing'] = 'finished and reported back'
+        agent['minutes'] = round(((agent['last'] or 0) - (agent['first'] or 0)) / 60) if agent['state'] != 'running' else round((time.time() - (agent['first'] or time.time())) / 60)
+        agent['quietSeconds'] = round(quiet)
+        agents.append(agent)
+    return sorted(agents, key=lambda a: -(a['last'] or 0))
+
+
+def task_stage(task_id, agents):
+    """Build / review / fix progress of one task, read off the labels of the agents that worked on it."""
+    stages = {'build': 'none', 'review': 'none', 'fix': 'none'}
+    for agent in reversed(agents):  # oldest first, so the latest attempt wins
+        if not re.search(rf'\b{task_id}\b', agent['label']):
+            continue
+        key = 'review' if agent['label'].lower().startswith('review') else 'fix' if agent['label'].lower().startswith('fix') else 'build'
+        stages[key] = agent['state']
+    return stages
+
+
+# ---------- everything ----------
+def collect():
+    today = datetime.date.today()
+    plan = load_plan()
+    agents = load_agents()
+    for phase in plan:
+        for task in phase['tasks']:
+            task['stage'] = task_stage(task['id'], agents) if task['state'] == 'running' else None
+    tasks = [t for p in plan for t in p['tasks']]
+    calendar = []
+    for (name, goal, first, last), phase in zip(PHASES, plan):
+        calendar.append({'name': name, 'goal': goal, 'start': day(first).isoformat(), 'end': day(last).isoformat(),
+                         'days': (day(last) - day(first)).days + 1,
+                         'daysUsed': min((day(last) - day(first)).days + 1, max(0, (today - day(first)).days + 1)),
+                         'current': day(first) <= today <= day(last),
+                         'counts': {s: sum(1 for t in phase['tasks'] if t['state'] == s) for s in ('done', 'running', 'you', 'todo', 'maybe')}})
+    total_days = (day((11, 17)) - day((10, 10))).days + 1
+    lanes = []
+    for branch in git('branch', '--format=%(refname:short)').split('\n'):
+        if branch.startswith('worktree-'):
+            lanes.append({'branch': branch, 'ahead': int(git('rev-list', '--count', f'develop..{branch}') or 0),
+                          'last': git('log', '-1', '--format=%cr|%s', branch)})
+    commits = [dict(zip(('when', 'subject'), line.split('|', 1))) for line in git('log', '-14', '--format=%cr|%s', 'develop').split('\n') if '|' in line]
+    return {
+        'generatedAt': datetime.datetime.now().strftime('%a %d %b %H:%M:%S'),
+        'today': today.isoformat(),
+        'dayNumber': (today - day((10, 10))).days + 1, 'totalDays': total_days,
+        'daysToSubmit': (day((11, 17)) - today).days,
+        'gates': [{'name': n, 'date': day(d).isoformat(), 'daysLeft': (day(d) - today).days} for n, d in GATES],
+        'phases': plan, 'calendar': calendar,
+        'totals': {s: sum(1 for t in tasks if t['state'] == s) for s in ('done', 'running', 'you', 'todo', 'maybe')},
+        'ready': [{'id': t['id'], 'title': t['title'], 'owner': t['owner']} for t in tasks if t['ready']],
+        'agents': agents, 'status': load_status(), 'decisions': load_decisions(), 'bugs': load_bugs(),
+        'git': {'head': git('rev-parse', '--short', 'develop'), 'unpushed': int(git('rev-list', '--count', 'origin/develop..develop') or 0),
+                'editing': len([l for l in git('status', '--porcelain').split('\n') if l.strip()]), 'lanes': lanes, 'commits': commits},
+    }
+
+
+CACHE = {'at': 0.0, 'body': b''}
+
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):  # noqa: N802 (name fixed by http.server)
+        if self.path.split('?')[0] == '/data':
+            if time.time() - CACHE['at'] > 3:
+                try:
+                    CACHE['body'] = json.dumps(collect()).encode('utf-8')
+                except Exception as error:  # never take the page down because one file is mid-edit
+                    CACHE['body'] = json.dumps({'error': f'{type(error).__name__}: {error}'}).encode('utf-8')
+                CACHE['at'] = time.time()
+            self.reply(CACHE['body'], 'application/json')
+        elif self.path.split('?')[0] == '/':
+            self.reply((ROOT / 'scripts/dashboard.html').read_bytes(), 'text/html; charset=utf-8')
+        else:
+            self.send_error(404)
+
+    def reply(self, body, kind):
+        self.send_response(200)
+        self.send_header('Content-Type', kind)
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+if __name__ == '__main__':
+    print(f'Roomsong dashboard: http://127.0.0.1:{PORT}/   (Ctrl+C to stop)')
+    ThreadingHTTPServer(('127.0.0.1', PORT), Handler).serve_forever()

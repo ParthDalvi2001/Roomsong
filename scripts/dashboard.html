@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roomsong tracker</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f4f3f0; --surface: #fcfcfb; --line: #e2e0da; --track: #e9e7e1;
+    --text: #0b0b0b; --text-2: #52514e; --text-3: #7c7a74;
+    --done: #1baf7a; --working: #2a78d6; --you: #eb6834; --todo: #c9c6bd;
+    --alert-bg: #fdf0e9; --alert-line: #eb6834;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #111110; --surface: #1a1a19; --line: #2f2f2c; --track: #2a2a27;
+      --text: #ffffff; --text-2: #c3c2b7; --text-3: #8f8e85;
+      --done: #199e70; --working: #3987e5; --you: #d95926; --todo: #4a4a45;
+      --alert-bg: #2a1d15; --alert-line: #d95926;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1280px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; }
+  h1 { font-size: 22px; margin: 0; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  .muted { color: var(--text-2); } .small { font-size: 12px; color: var(--text-3); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+  .grid { display: grid; gap: 16px; }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .two { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+  .kpi b { display: block; font-size: 28px; line-height: 1.1; }
+  .kpi span { color: var(--text-2); }
+  button { font: inherit; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; }
+  /* bars: thin marks, 2px surface gap between segments, rounded ends */
+  .bar { display: flex; gap: 2px; height: 12px; border-radius: 4px; overflow: hidden; background: var(--track); }
+  .bar i { display: block; height: 100%; }
+  .seg-done { background: var(--done); } .seg-running { background: var(--working); } .seg-you { background: var(--you); } .seg-todo, .seg-maybe { background: var(--todo); }
+  .row { display: grid; grid-template-columns: 190px 1fr 190px; gap: 10px; align-items: center; margin: 7px 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 8px; color: var(--text-2); font-size: 12px; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: baseline; }
+  /* calendar strip */
+  .cal { position: relative; display: flex; gap: 2px; margin: 26px 0 30px; }
+  .cal .ph { position: relative; height: 34px; background: var(--track); border-radius: 4px; overflow: hidden; }
+  .cal .ph .used { position: absolute; inset: 0 auto 0 0; background: var(--todo); }
+  .cal .ph span { position: absolute; left: 6px; top: 8px; font-size: 12px; white-space: nowrap; }
+  .cal .now { position: absolute; top: -8px; bottom: -8px; width: 2px; background: var(--text); }
+  .cal .now::after { content: "today"; position: absolute; top: -16px; left: -16px; font-size: 11px; color: var(--text-2); }
+  .cal .gate.low { bottom: -38px; } .cal .gate.low::before { top: -24px; height: 23px; }
+  .cal { margin-bottom: 46px !important; }
+  .cal .gate { position: absolute; bottom: -22px; font-size: 11px; color: var(--text-2); transform: translateX(-50%); white-space: nowrap; }
+  .cal .gate::before { content: ""; position: absolute; left: 50%; top: -8px; height: 7px; border-left: 1px solid var(--text-3); }
+  /* needs you */
+  .alert { background: var(--alert-bg); border-color: var(--alert-line); }
+  .need { border-top: 1px solid var(--line); padding: 8px 0; }
+  .need:first-of-type { border-top: 0; }
+  .new { font-size: 11px; font-weight: 600; border: 1px solid var(--alert-line); border-radius: 4px; padding: 0 5px; margin-left: 6px; }
+  /* tasks */
+  details { border-top: 1px solid var(--line); padding: 8px 0; }
+  details:first-of-type { border-top: 0; }
+  summary { cursor: pointer; display: grid; grid-template-columns: 190px 1fr 190px; gap: 10px; align-items: center; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  td, th { text-align: left; padding: 5px 8px 5px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--text-2); font-size: 12px; border-top: 0; }
+  .chip { white-space: nowrap; font-size: 12px; }
+  .steps { display: inline-flex; gap: 2px; vertical-align: middle; }
+  .steps i { width: 14px; height: 6px; border-radius: 2px; background: var(--track); }
+  .steps i.on { background: var(--done); } .steps i.live { background: var(--working); } .steps i.off { background: var(--you); }
+  ul { margin: 0; padding-left: 18px; } li { margin: 3px 0; }
+  .clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; cursor: pointer; }
+  .clamp.open { display: block; }
+  .scroll { overflow-x: auto; }
+  td:first-child { white-space: nowrap; }
+  .agent { border-top: 1px solid var(--line); padding: 7px 0; } .agent:first-of-type { border-top: 0; }
+  @media (max-width: 720px) { .row, summary { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Roomsong tracker</h1>
+    <span class="muted" id="sub">loading…</span>
+    <span style="flex:1"></span>
+    <button id="alerts" title="Show a desktop notification when something needs you or a task finishes">Turn on alerts</button>
+    <span class="small" id="stamp"></span>
+  </header>
+  <div id="app" class="grid"></div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const STATES = { done: ['✓', 'Done'], running: ['●', 'Working'], you: ['✋', 'Needs you'], todo: ['○', 'To do'], maybe: ['◇', 'Maybe'] };
+const chip = (state) => `<span class="chip">${STATES[state][0]} ${STATES[state][1]}</span>`;
+const pct = (a, b) => (b ? Math.round((100 * a) / b) : 0);
+const seen = new Set(JSON.parse(localStorage.getItem('roomsong-seen') || '[]'));
+const open = new Set(JSON.parse(localStorage.getItem('roomsong-open') || '["Phase 0"]'));
+let last = null;
+
+function bar(counts) {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+  return `<div class="bar">${['done', 'running', 'you', 'todo', 'maybe'].filter((s) => counts[s])
+    .map((s) => `<i class="seg-${s}" style="flex:${counts[s]}" title="${STATES[s][1]}: ${counts[s]} of ${total}"></i>`).join('')}</div>`;
+}
+const simple = (done, total, cls = 'seg-done') => `<div class="bar" title="${done} of ${total}"><i class="${cls}" style="flex:${done}"></i><i style="flex:${Math.max(total - done, 0)}"></i></div>`;
+
+function stageMeter(task) {
+  if (task.state === 'done') return '<span class="steps" title="built, reviewed, fixed, merged"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>';
+  if (!task.stage) return '<span class="steps"><i></i><i></i><i></i><i></i></span>';
+  const cls = { done: 'on', running: 'live', stopped: 'off', none: '' };
+  const names = { build: 'Build', review: 'Review', fix: 'Fix' };
+  const words = { done: 'done', running: 'in progress', stopped: 'stopped', none: 'not started' };
+  return `<span class="steps">${['build', 'review', 'fix'].map((k) => `<i class="${cls[task.stage[k]]}" title="${names[k]}: ${words[task.stage[k]]}"></i>`).join('')}<i title="Merge: not yet"></i></span>
+    <span class="small">${['build', 'review', 'fix'].filter((k) => task.stage[k] !== 'none').map((k) => `${names[k]} ${words[task.stage[k]]}`).join(' · ')}</span>`;
+}
+
+function render(d) {
+  const t = d.totals, all = t.done + t.running + t.you + t.todo + t.maybe;
+  const current = d.calendar.find((c) => c.current) || d.calendar[0];
+  const cur = current.counts, curAll = Object.values(cur).reduce((a, b) => a + b, 0);
+  const working = d.agents.filter((a) => a.state === 'running');
+  const needs = d.status.needs;
+  const nextGate = d.gates.find((g) => g.daysLeft >= 0);
+  $('sub').textContent = `Day ${d.dayNumber} of ${d.totalDays} · ${d.daysToSubmit} days to submit · ${d.git.unpushed} local commits not on GitHub`;
+  $('stamp').textContent = `updated ${d.generatedAt}`;
+  document.title = `${needs.length ? `(${needs.length}) ` : ''}Roomsong tracker`;
+
+  const newNeeds = needs.filter((n) => !seen.has(n.n));
+  const html = [];
+
+  html.push(`<div class="grid kpis">
+    <div class="card kpi"><b>${t.done} / ${all}</b><span>tasks done (${pct(t.done, all)}%)</span></div>
+    <div class="card kpi"><b>${pct(cur.done, curAll)}%</b><span>${esc(current.name)} · ${esc(current.goal)}</span></div>
+    <div class="card kpi"><b>${working.length}</b><span>agent${working.length === 1 ? '' : 's'} working now</span></div>
+    <div class="card kpi"><b>${needs.length}</b><span>item${needs.length === 1 ? '' : 's'} waiting on you</span></div>
+    <div class="card kpi"><b>${nextGate ? nextGate.daysLeft : 0} d</b><span>to ${esc(nextGate ? nextGate.name : 'submit')}</span></div>
+  </div>`);
+
+  html.push(`<div class="grid two">
+    <div class="card alert"><h2>✋ Needs you (${needs.length}) ${newNeeds.length ? `<button id="markseen">Mark ${newNeeds.length} new as seen</button>` : ''}</h2>
+      ${needs.length ? needs.map((n) => `<div class="need"><b>${n.n}. ${esc(n.title)}</b>${seen.has(n.n) ? '' : '<span class="new">NEW</span>'}<div class="muted clamp" title="Click to read all">${esc(n.text)}</div></div>`).join('') : '<span class="muted">Nothing is waiting on you.</span>'}
+      ${d.status.resolved.length ? `<details><summary style="display:block" class="small">Already settled (${d.status.resolved.length})</summary><ul>${d.status.resolved.map((n) => `<li class="small">${esc(n.text)}</li>`).join('')}</ul></details>` : ''}
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h2>● Working now (${working.length})</h2>
+        ${working.length ? working.map((a) => `<div class="agent"><b>${esc(a.label)}</b> <span class="small">${esc(a.role)} · ${a.minutes} min · ${a.steps} steps · last step ${a.quietSeconds}s ago</span><div class="muted">now: ${esc(a.doing || 'thinking')}</div></div>`).join('') : '<span class="muted">No agent has taken a step in the last 10 minutes.</span>'}
+        <details><summary style="display:block" class="small">Earlier agents today (${d.agents.length - working.length})</summary>
+          ${d.agents.filter((a) => a.state !== 'running').slice(0, 14).map((a) => `<div class="small">${a.state === 'done' ? '✓ reported back' : '✕ stopped'} · ${esc(a.label)} · ${a.minutes} min · ${a.steps} steps</div>`).join('')}</details>
+      </div>
+      <div class="card"><h2>○ Up next (ready to start: ${d.ready.length})</h2>
+        ${d.ready.length ? `<ul>${d.ready.map((r) => `<li><b>${r.id}</b> ${esc(r.title)} <span class="small">${esc(r.owner)}</span></li>`).join('')}</ul>` : '<span class="muted">Nothing is ready: every open task waits on another task or on you.</span>'}
+      </div>
+    </div>
+  </div>`);
+
+  const span = d.totalDays, offset = (iso) => (100 * (new Date(iso) - new Date(d.calendar[0].start)) / 864e5 + 50) / span;
+  html.push(`<div class="card"><h2>Calendar and gates</h2>
+    <div class="row"><span>Time used</span>${simple(d.dayNumber, d.totalDays, 'seg-todo')}<span class="muted">day ${d.dayNumber} of ${d.totalDays} (${pct(d.dayNumber, d.totalDays)}%)</span></div>
+    <div class="row"><span>Work done</span>${simple(t.done, all)}<span class="muted">${t.done} of ${all} tasks (${pct(t.done, all)}%)</span></div>
+    <div class="cal">${d.calendar.map((c) => `<div class="ph" style="flex:${c.days}" title="${esc(c.name)} ${esc(c.goal)}: ${c.start} to ${c.end}, ${c.daysUsed} of ${c.days} days used"><div class="used" style="width:${pct(c.daysUsed, c.days)}%"></div><span>${esc(c.name)} · ${esc(c.goal)}</span></div>`).join('')}
+      <div class="now" style="left:${Math.min(offset(d.today), 100)}%"></div>
+      ${d.gates.map((g, i) => `<div class="gate${i % 2 ? ' low' : ''}" style="left:${Math.min(offset(g.date) + 50 / span, 99)}%" title="${g.date}">${esc(g.name)} ${g.daysLeft}d</div>`).join('')}
+    </div>
+  </div>`);
+
+  html.push(`<div class="card"><h2>Phases and tasks</h2>
+    <div class="legend">${['done', 'running', 'you', 'todo'].map((s) => `<span><i class="dot seg-${s}"></i>${STATES[s][1]}</span>`).join('')}<span>bar steps on a task: build · review · fix · merge</span></div>
+    ${d.phases.map((p, i) => { const c = d.calendar[i].counts, n = p.tasks.length; return `<details data-key="${esc(p.name)}" ${open.has(p.name) ? 'open' : ''}>
+      <summary><b>${esc(p.name)} · ${esc(p.goal)}</b>${bar(c)}<span class="muted">${c.done} of ${n} done (${pct(c.done, n)}%)${c.running ? ` · ${c.running} working` : ''}${c.you ? ` · ${c.you} need you` : ''}</span></summary>
+      <div class="scroll"><table><tr><th>Task</th><th>What</th><th>Owner</th><th>State</th><th>Progress</th><th>Waiting for</th></tr>
+      ${p.tasks.map((k) => `<tr><td><b>${k.id}</b></td><td title="${esc(k.detail)}">${esc(k.title)}<div class="small">${esc(k.status)}</div></td><td class="muted">${esc(k.owner)}</td><td>${chip(k.state)}</td><td>${stageMeter(k)}</td><td class="small">${k.state === 'done' ? '' : esc(k.waitingFor.join(', ') || (k.state === 'you' ? 'you' : k.state === 'todo' ? 'a free agent' : ''))}</td></tr>`).join('')}
+      </table></div></details>`; }).join('')}
+  </div>`);
+
+  const owners = {};
+  d.phases.forEach((p) => p.tasks.forEach((k) => { const o = k.owner.split(/ \+ | \/ /)[0]; owners[o] = owners[o] || { done: 0, open: 0 }; owners[o][k.state === 'done' ? 'done' : 'open'] += 1; }));
+  const most = Math.max(...Object.values(owners).map((o) => o.done + o.open));
+  html.push(`<div class="card"><h2>Who holds the work</h2>
+    <div class="legend"><span><i class="dot seg-done"></i>Done</span><span><i class="dot seg-todo"></i>Still open</span></div>
+    ${Object.entries(owners).sort((a, b) => b[1].open - a[1].open).map(([name, o]) => `<div class="row"><span>${esc(name)}</span>
+      <div class="bar" style="background:none" title="${esc(name)}: ${o.done} done, ${o.open} open"><i class="seg-done" style="flex:${o.done}"></i><i class="seg-todo" style="flex:${o.open}"></i><i style="flex:${most - o.done - o.open}"></i></div>
+      <span class="muted">${o.done} done · ${o.open} open</span></div>`).join('')}
+  </div>`);
+
+  html.push(`<div class="grid two">
+    <div class="card"><h2>Decisions (${d.decisions.length})</h2>
+      ${d.decisions.slice(0, 6).map((x) => `<div class="need"><b>${x.id}</b> <span class="small">${esc(x.date)} · ${esc(x.who)}</span><div class="clamp" title="Click to read all">${esc(x.decision)}</div></div>`).join('')}
+      <details><summary style="display:block" class="small">Older decisions (${Math.max(d.decisions.length - 6, 0)})</summary>${d.decisions.slice(6).map((x) => `<div class="small"><b>${x.id}</b> ${esc(x.decision)}</div>`).join('')}</details>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h2>Latest work on develop <span class="small">head ${esc(d.git.head)}</span></h2>
+        <ul>${d.git.commits.slice(0, 9).map((c) => `<li>${esc(c.subject)} <span class="small">${esc(c.when)}</span></li>`).join('')}</ul>
+        ${d.git.lanes.length ? `<div class="small" style="margin-top:8px">Not merged yet: ${d.git.lanes.map((l) => `${l.ahead} commits (${esc(l.last.split('|')[1] || '')})`).join(' · ')}</div>` : ''}
+      </div>
+      <div class="card"><h2>Quality</h2>
+        ${d.status.tests.map((x) => `<div><b>${esc(x.suite)}</b> <span class="muted">${esc(x.result)}</span></div>`).join('')}
+        <div class="small" style="margin-top:6px">${esc(d.status.perf)}</div>
+        <div style="margin-top:6px"><b>Bugs</b> ${d.bugs.length ? d.bugs.map((b) => `<div class="small">${b.id} (${esc(b.sev)}) ${esc(b.status)}: ${esc(b.title)}</div>`).join('') : '<span class="muted">none logged</span>'}</div>
+      </div>
+      <div class="card"><h2>Today's log</h2><ul>${d.status.standup.map((s) => `<li class="small clamp" title="Click to read all">${esc(s)}</li>`).join('')}</ul>
+        ${d.status.banner.map((b) => `<div class="small clamp" style="margin-top:6px" title="Click to read all">${esc(b)}</div>`).join('')}</div>
+    </div>
+  </div>`);
+
+  $('app').innerHTML = html.join('');
+  document.querySelectorAll('details[data-key]').forEach((el) => el.addEventListener('toggle', () => {
+    el.open ? open.add(el.dataset.key) : open.delete(el.dataset.key);
+    localStorage.setItem('roomsong-open', JSON.stringify([...open]));
+  }));
+  document.querySelectorAll('.clamp').forEach((el) => { el.onclick = () => el.classList.toggle('open'); });
+  const mark = $('markseen');
+  if (mark) mark.onclick = () => { needs.forEach((n) => seen.add(n.n)); localStorage.setItem('roomsong-seen', JSON.stringify([...seen])); render(d); };
+
+  // desktop alerts: a new item for you, or a task finished, since the last refresh
+  if (last && window.Notification && Notification.permission === 'granted') {
+    const fresh = needs.filter((n) => !last.needs.includes(n.n));
+    if (fresh.length) new Notification('Roomsong needs you', { body: fresh.map((n) => n.title).join(' · ') });
+    if (t.done > last.done) new Notification('Roomsong: task finished', { body: `${t.done} of ${all} tasks done` });
+  }
+  last = { needs: needs.map((n) => n.n), done: t.done };
+}
+
+async function tick() {
+  try {
+    const d = await (await fetch('/data')).json();
+    if (d.error) throw new Error(d.error);
+    render(d);
+  } catch (e) {
+    $('stamp').textContent = `cannot refresh: ${e.message}. Is "python3 scripts/dashboard.py" still running?`;
+  }
+}
+const alerts = $('alerts');
+const showAlertState = () => { if (!window.Notification) alerts.hidden = true; else if (Notification.permission === 'granted') alerts.textContent = 'Alerts are on'; };
+alerts.onclick = () => Notification.requestPermission().then(showAlertState);
+showAlertState();
+tick();
+setInterval(tick, 10000);
+</script>
+</body>
+</html>
