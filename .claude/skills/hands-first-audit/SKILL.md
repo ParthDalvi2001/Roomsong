@@ -13,7 +13,7 @@ Run this checklist on the changed feature. Every item must be ✅ or have a BUG 
 | 2 | Works with **one hand** (one-hand mode) | FR-UI-09 | |
 | 3 | Works with **gaze dwell only** (no pinch) or has a documented dwell equivalent | FR-HND-12 | |
 | 4 | Every target has hit radius ≥ 4 cm; nearest-wins; no overlapping ambiguous targets | FR-HND-04 | |
-| 5 | Pinch uses hysteresis (1.5 cm start / 3.0 cm end); positions are 1€-filtered | FR-HND-02/03 | |
+| 5 | Pinch uses hysteresis (2.0 cm start / 3.2 cm end, API_SPEC §1.4); positions are 1€-filtered | FR-HND-02/03 | |
 | 6 | All targets within 0.35–0.75 m of the head; nothing requires standing, leaning > 2 ft, or turning > 90° | Seated guideline | |
 | 7 | Essential UI/targets inside ±25°H / ±20°V (checked with `?flags=fovGuide`) | NFR-FOV-01 | |
 | 8 | Tracking loss mid-gesture reverts cleanly; no stuck states | NFR-REL-02 | |

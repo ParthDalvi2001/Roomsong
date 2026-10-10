@@ -29,7 +29,8 @@ export function cellAt(ring: number, step: number): Cell | null {
 
 /** Zone of a bed-local point: inner below 0.09 m, outer above 0.35 m (FR-HND-10, FR-HND-11). */
 export function bedZone(bedLocal: Vec2): BedZone {
-  const len = Math.hypot(bedLocal.x, bedLocal.y);
+  // Math.sqrt, not Math.hypot: hypot costs about 16 bytes a call in V8 (measured in the T-124 review).
+  const len = Math.sqrt(bedLocal.x * bedLocal.x + bedLocal.y * bedLocal.y);
   // A point that is not finite (a tracking glitch) is 'inner': the one zone where a release commits nothing.
   if (!Number.isFinite(len) || len < BED_INNER - ZONE_INNER_MARGIN_M) return 'inner';
   return len > BED_OUTER + ZONE_OUTER_MARGIN_M ? 'outer' : 'bed';
@@ -38,7 +39,7 @@ export function bedZone(bedLocal: Vec2): BedZone {
 /** The nearest cell to a bed-local point (FR-MUS-01); null when bedZone is not 'bed'. It has no memory. */
 export function snapToCell(bedLocal: Vec2): Cell | null {
   if (bedZone(bedLocal) !== 'bed') return null;
-  const t = (Math.hypot(bedLocal.x, bedLocal.y) - BED_INNER) / (BED_OUTER - BED_INNER);
+  const t = (Math.sqrt(bedLocal.x * bedLocal.x + bedLocal.y * bedLocal.y) - BED_INNER) / (BED_OUTER - BED_INNER);
   const ring = Math.round(Math.min(1, Math.max(0, t)) * (RINGS - 1));
   const turn = Math.round(Math.atan2(bedLocal.y, bedLocal.x) / STEP_RAD); // -8..8
   return cellAt(ring, (turn + STEPS) % STEPS);
