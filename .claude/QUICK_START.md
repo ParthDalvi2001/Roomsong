@@ -3,7 +3,7 @@
 ```bash
 npm install --cache "${TMPDIR:-/tmp}/roomsong-npm-cache" --no-audit --no-fund   # the --cache flag is needed until `sudo chown -R $(id -u):$(id -g) ~/.npm` has been run once
 npm run dev        # IWSDK dev server + IWER emulator at https://localhost:8081 (stop: npm run dev:down)
-npm run verify     # typecheck + lint + unit tests + build; must be green before every commit
+npm run verify     # typecheck + lint + unit tests + build + bundle URL sweep + size gate; green before every commit
 npm run test:e2e   # Playwright + IWER emulated XR
 npm run build      # production build → dist/
 python3 scripts/dashboard.py   # live tracking page at http://127.0.0.1:4180/ (read-only, refreshes itself, costs no tokens)

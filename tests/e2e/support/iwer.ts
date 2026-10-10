@@ -121,7 +121,7 @@ export const ROOMS = ['table', 'counter', 'none', 'tiny', 'large', 'no-walls'] a
 
 /**
  * Emulator limit for load to an active session; enterXR also waits this long. The product limit is 5 s on a
- * Quest (FR-SYS-01, checked on device by TC-DEV-01). Here software rendering measures the host: 2.6 s when
+ * Quest (FR-SYS-06, checked on device by TC-DEV-01). Here software rendering measures the host: 2.6 s when
  * quiet, 5.3 s with other jobs running (BUG-003), so the emulator only guards against a gross regression.
  */
 export const SESSION_ENTRY_LIMIT_MS = 10_000;

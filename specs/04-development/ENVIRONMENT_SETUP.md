@@ -69,30 +69,36 @@ Add scripts to `package.json`:
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "deploy:staging": "node scripts/deploy.mjs staging",
-    "deploy:prod": "node scripts/deploy.mjs prod"
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-dist.mjs && node scripts/check-size.mjs",
+    "audit": "npm audit --omit=dev --audit-level=high"
   }
 }
 ```
-(`deploy:*` scripts are placeholders until hosting is chosen — §7. `--foreground` keeps `npm run dev` attached; without it `iwsdk dev up` detaches and you stop it with `npm run dev:down`. The scaffold's own extras are kept: `dev:runtime` (plain `vite`, no managed browser), `dev:down`, `dev:status`, `reference:status`, `reference:warmup`.)
+(As in `package.json` on 2026-10-11. `verify` gained the two `dist/` gates and `audit` was added by T-109 (SECURITY_PLAN §5); CI runs `audit`, verify does not. *Superseded (T-108):* `deploy:staging` / `deploy:prod` and `scripts/deploy.mjs` are deleted: a deploy is a push to `main` (§7). `--foreground` keeps `npm run dev` attached; without it `iwsdk dev up` detaches and you stop it with `npm run dev:down`. The scaffold's own extras are kept: `dev:runtime` (plain `vite`, no managed browser), `dev:down`, `dev:status`, `reference:status`, `reference:warmup`.)
 
-### 2.1 No GitHub yet — local git + zip sync (REPLAN §1)
+### 2.1 Repository on GitHub (was "No GitHub yet — local git + zip sync", REPLAN §1; superseded by D-018)
 
-> **Superseded 2026-10-10 (D-018):** the repo is now on GitHub — `origin` = `https://github.com/ParthDalvi2001/Roomsong`, branch `main`. Zip sync is retired; the PM clones the repo (`git clone https://github.com/ParthDalvi2001/Roomsong.git`) and pulls before proposing. The notes below are kept for history.
-- There is **no remote** for now. `git init` locally (above), **commit often** (at least per task; the first empty commit is the competition-window start proof), tag phase gates locally (`git tag g0`, `g1`, …).
-- **The developer's copy (Parth's machine) is the master.** The PM works on a *working copy*; PM changes are proposals in `specs/08-status/PM_PROPOSALS.md` or a pasted note, never direct edits to the master.
-- Share by zip or drive: `git archive --format=zip -o roomsong-$(git rev-parse --short HEAD).zip HEAD` (PowerShell: same command; `$(git rev-parse --short HEAD)` works there too). Unzip into a fresh folder; never merge zips back by hand — the master applies approved changes.
-- Keep a dated backup zip of the whole repo (incl. `.git/`) off-machine at every gate; it doubles as the "retain a copy of your entry" evidence.
-- When hosting is chosen (§7) the remote is added with `git remote add origin …` and the full local history is pushed, so nothing is lost.
+- `origin` = `github.com/ParthDalvi2001/Roomsong` (D-018, 2026-10-10). The PM clones it (`git clone https://github.com/ParthDalvi2001/Roomsong.git`) and pulls before proposing.
+- Branches: `main` = release, pushed only by Parth; every push to it publishes the site (§7). `develop` = work, and GitHub's default branch. Agents work on `develop` through worktrees or feature branches and never push `main`.
+- Hosting is decided: GitHub Pages plus a mirror (D-022, §7).
+- **The developer's copy (Parth's machine) is the master** (D-015). The PM's changes are proposals in `specs/08-status/PM_PROPOSALS.md` or a pasted note, never direct edits to the master.
+- **Commit often** (at least per task). Keep a dated backup zip of the whole repo (incl. `.git/`) off-machine at every gate; it doubles as the "retain a copy of your entry" evidence.
+- *Superseded (D-018), kept for history:* "There is no remote for now"; gate tags kept only locally; sharing by `git archive` zip; "when hosting is chosen the remote is added and the full local history is pushed" (done 2026-10-10).
 
 ## 3. Running locally
 ```bash
-npm run dev            # IWSDK dev server (HTTPS). Note the LAN URL it prints, e.g. https://192.168.1.20:5173
+npm run dev            # IWSDK dev server + emulator, HTTPS: https://localhost:8081 (it prints the LAN URL, e.g. https://192.168.1.20:8081)
+npm run dev:runtime    # the same page from plain vite, no managed browser; another port: npm run dev:runtime -- --port 8082
+npm run verify         # typecheck, lint, unit tests, build, dist gates; green before every commit
+npm run test:e2e       # emulator suite (§6); E2E_PORT=8091 npm run test:e2e when 8081 is taken
+npm run build && npm run preview    # the production build on the LAN, HTTPS, port 4173 or the next free one
+python3 scripts/dashboard.py        # team tracking page, http://127.0.0.1:4180/ (read-only; DASHBOARD_PORT changes the port)
 ```
 - **In the emulator (IWER):** the dev server opens a browser with the IWER panel; toggle hands, planes, etc. This is the default way to run the app until a headset exists (§6).
-- **On the headset (when available):** open Meta Quest Browser → the LAN URL → accept the self-signed cert once → Enter.
-- Dev flags: append `?flags=perfHud,fovGuide` (API_SPEC §3); `forceLevel=N`, `forceSignature=wanderer`, `pinchTest`, `capSpike` for the test pages.
+- **The dev emulator downloads its room** (`living_room`, from unpkg.com) on every dev page load (`dev.emulator.environment` in `iwsdk.config.json`). Offline that is an uncaught "Failed to fetch" and no emulated room. It is dev tooling, not in `dist/` (BUG-002, won't fix).
+- **On the headset (when available):** open Meta Quest Browser → the LAN URL → accept the self-signed cert once → Enter. Not yet tried: no headset.
+- **Device test pages:** `/proto/pinch/` and `/proto/spike/` on the dev server, on the preview and on the hosted site (§5 step 6).
+- Dev flags: append `?flags=perfHud,fovGuide` (API_SPEC §3); `forceLevel=N`, `forceSignature=wanderer`, `window` (the garden window, FR-SYS-07, arrives with T-114). A built page ignores flags unless the URL also has `dev=1`: `?dev=1&flags=perfHud`. *Superseded (T-104, T-105):* `pinchTest`, `capSpike` "for the test pages": they are pages now.
 
 ## 4. Agent tooling (one-time; also listed in 07-workflow/SKILLS_SETUP.md)
 ```bash
@@ -116,31 +122,33 @@ No headset exists on the team as of 2026-10-10. The day one arrives:
 3. Run **Space Setup** once in your main test room (for L1 placement); also test a room *without* Space Setup (L3/L4).
 4. Quest Browser → Settings → allow WebXR features when prompted.
 5. Optional: `metavr device list` to confirm the dev machine sees the headset (Wi-Fi ADB: `metavr device connect <ip>`).
-6. Run the two Phase-0 pages first and record results in §9: `?flags=capSpike` (TC-DEV-0A device capability spike → gates the room signature) and `?flags=pinchTest` (TC-DEV-00 pinch accuracy → sets the cell size). Then the device script for G1 (TEST_PLAN §4.6).
+6. Run the two Phase-0 pages first and record results in §9: `<site>/proto/spike/` (TC-DEV-0A device capability spike → gates the room signature; script `proto/spike/README.md`, four runs: allow, reload, browser restart, decline) and `<site>/proto/pinch/` (TC-DEV-00 pinch accuracy → sets the cell size and the outer radius, D-020; script `proto/pinch/README.md`, a second run with `?beta=10` is required). `<site>` is `https://parthdalvi2001.github.io/Roomsong` once Pages is live, and the `npm run preview` LAN address before that. *Superseded (T-104, T-105):* `?flags=capSpike` and `?flags=pinchTest`. Then the device script for G1 (TEST_PLAN §4.6).
 
 ## 6. Emulator-first workflow (default until a headset exists)
 | Tool | What it emulates | When to use |
 |---|---|---|
-| **IWSDK dev server + IWER panel** (`npm run dev`) | Hands (joint poses, pinch), head pose, planes (incl. labelled table/wall/floor sets), hit-test, anchors (session-scoped), visibility change | Daily development; manual checks of flows and Listen mode; `perf:sample` for draw/tri budgets |
-| **Immersive Web Emulator** (Chrome extension by Meta) | Same device profiles as IWER inside Chrome DevTools: hands/controllers, room planes, hit-test, headset movement | Reviewing a built site (`npm run preview` or staging) without the dev server; PM's reviews on Windows |
-| **Playwright agent mode** (`iwsdk dev up --mode agent`, `npm run test:e2e`) | Headless IWER driven by scripts and the `iwsdk-runtime` MCP: emulated hand paths from `tests/fixtures/handPaths`, plane fixtures from `tests/fixtures/rooms`, forced levels via `?flags=forceLevel=N`, fake clock | e2e suite (TEST_PLAN §4.5), agents' unattended checks, CI |
-Config in `playwright.config.ts`; scenarios in `tests/e2e/`; screenshots on failure → `tests/e2e/__artifacts__/`.
-What the emulator **cannot** tell you: real fps / JS ms on the Quest, hand-tracking feel and first-try success, real room-detection quality (plane/label availability, persistent anchors), spatial-audio feel. Those stay *unverified* until §5 happens (TEST_PLAN §1.1). Meta XR Simulator (`hz-xr-simulator-*` skills) targets OpenXR apps, not WebXR; it is not used for this project.
+| **IWSDK dev server + IWER panel** (`npm run dev`) | Hands (joint poses, pinch), head pose, planes (incl. labelled table/wall/floor sets), meshes, hit-test, anchors and persistent handles (*was "session-scoped"*: IWER keeps them in `localStorage` and always restores them), visibility change | Daily development; manual checks of flows and Listen mode; `perf:sample` for draw/tri budgets |
+| **Immersive Web Emulator** (Chrome extension by Meta) | Same device profiles as IWER inside Chrome DevTools: hands/controllers, room planes, hit-test, headset movement | Reviewing a built site (`npm run preview` or the Pages site; *staging: superseded, T-108*) without the dev server; PM's reviews on Windows |
+| **Playwright e2e** (`npm run test:e2e`; *was "agent mode"*) | Playwright's headless Chromium (WebGL2 on SwiftShader, software) against plain `vite` with `IWSDK_DEV_OPEN=false` on `E2E_PORT` (default 8081), and the production build under `vite preview` on `E2E_PORT` + 1000. `tests/e2e/support/iwer.ts` loads the room fixtures (`tests/fixtures/rooms`: `table`, `counter`, `none`, `tiny`, `large`, `no-walls`) and plays the hand paths (`tests/fixtures/handPaths`: `pinch`, `palm-up`) through IWER's remote control | e2e suite (TEST_PLAN §4.5), agents' unattended checks, CI. Stop `npm run dev` in the same worktree first. *Superseded (T-107):* `iwsdk dev up --mode agent` and the `iwsdk-runtime` MCP as the e2e driver (no port option, a second managed browser) |
 
-## 7. Environments & hosting (decision deferred to Phase 1, by 2026-10-22)
+Config in `playwright.config.ts`; scenarios, helper and fixture formats in `tests/e2e/README.md`; screenshots and traces of failures → `tests/e2e/__artifacts__/`, HTML report → `playwright-report/`. On 2026-10-11: 20 tests, about 2.8 min.
+- **The suite never leaves localhost and never reuses a running server.** The helper blocks and records every request to another host. One is answered locally: the dev emulator's room download (BUG-002, §3) gets the room fixture, so runs are the same online and offline.
+- **Emulator time limit: a session within 10 s of load** (`SESSION_ENTRY_LIMIT_MS`, BUG-003). On software rendering that time measures the host. The 5 s product limit (FR-SYS-06) is a device check, TC-DEV-01.
+
+What the emulator **cannot** tell you: real fps / JS ms on the Quest, hand-tracking feel and first-try success, real room-detection quality (plane/label availability, persistent anchors), spatial-audio feel; also the order of `select` events, which way a plane's normal points, joint jitter and the loss of single joints (`tests/e2e/README.md`, E0). Those stay *unverified* until §5 happens (TEST_PLAN §1.1). Meta XR Simulator (`hz-xr-simulator-*` skills) targets OpenXR apps, not WebXR; it is not used for this project.
+
+## 7. Environments & hosting (decided 2026-10-10, D-022; was "decision deferred to Phase 1")
 | Env | How | URL |
 |---|---|---|
-| Local | `npm run dev` | `https://<lan-ip>:5173` |
-| Staging | *once hosting is chosen* (branch `develop` → auto-deploy) | `<host>/staging/` or a preview URL |
-| Prod | *once hosting is chosen* (tag `vX.Y.Z` on `main`) | public HTTPS URL for the judges |
-Secrets: none needed with any option below.
-Hosting options (all free, static, HTTPS — WebXR requires HTTPS):
-| Option | Needs | Pros | Cons |
-|---|---|---|---|
-| **GitHub Pages** (ADR-004, default if chosen) | GitHub repo (public recommended), `gh` optional, the workflows in DEPLOYMENT_GUIDE §2 | History + Actions + Pages in one place; originality evidence; custom `scripts/deploy.mjs` keeps prod + `/staging/` together | Needs the GitHub repo first; sub-path `base` handling; single site per repo |
-| **Vercel** | Vercel account, repo on GitHub/GitLab or `vercel` CLI deploys from the local repo | Zero-config static deploy, preview URL per branch/deploy, `vercel --prod` promotes; no sub-path base issues | Project URL on `vercel.app`; branch previews are the "staging" |
-| **Netlify** | Netlify account, `netlify` CLI or Git integration, `netlify deploy --prod` | Drag-and-drop or CLI deploy of `dist/`; deploy previews; simple redirects/headers file | Same as Vercel; separate dashboard to lock after submission |
-Decision at Phase 1 (G1, Oct 22) — record in DECISIONS_LOG; then fill the Staging/Prod rows above and DEPLOYMENT_GUIDE §1.
+| Local | `npm run dev` | `https://localhost:8081` (LAN: `https://<lan-ip>:8081`; *was 5173*) |
+| Local, built | `npm run build && npm run preview` | `https://<lan-ip>:4173`, or the next free port |
+| Staging | *none (T-108):* a push to `develop` runs CI and publishes nothing | — |
+| Prod | push to `main` (Parth) → `.github/workflows/deploy.yml` | `https://parthdalvi2001.github.io/Roomsong/` (case-sensitive; live once Parth enables Pages, T-108) |
+| Mirror | the same `dist/` uploaded to Vercel or Netlify (host not chosen yet) | _tbd_ |
+
+Secrets: none. Every row also serves the device test pages at `…/proto/pinch/` and `…/proto/spike/`.
+Hosting = **GitHub Pages as the submitted URL, plus a mirror of the same build** (D-022, ADR-004). `version.json` on both links proves the same build. Procedure, workflows, freeze and uptime: DEPLOYMENT_GUIDE §1–§6.
+*Superseded (D-022):* the comparison of GitHub Pages, Vercel and Netlify that stood here, and "Decision at Phase 1 (G1, Oct 22)". *Superseded (T-108):* staging from `develop`, prod from a `vX.Y.Z` tag, `scripts/deploy.mjs`.
 
 ## 8. Troubleshooting
 | Symptom | Fix |
@@ -150,16 +158,21 @@ Decision at Phase 1 (G1, Oct 22) — record in DECISIONS_LOG; then fill the Stag
 | No planes detected | Space Setup not run → expect L3/L4; test via `?flags=forceLevel=3` |
 | Audio silent | AudioContext not resumed: Enter must be a real tap; check `E_AUDIO_CONTEXT` in overlay |
 | Low fps | Open `?flags=perfHud`; compare against HLD §7 budgets; run `xr-perf-budget` skill |
-| Anchor never restores | `?flags=noAnchors` to confirm fallback works; file BUG with browser version (anchors are Should S4; re-place by chain is the fallback) |
-| Staging and prod assets 404 (GitHub Pages option) | Vite `base` must match the deploy path: `npm run build -- --base=/roomsong/staging/` for staging (no service worker — *Cut (D-011)* — so no scope issue) |
+| Anchor never restores | `?flags=noAnchors` to confirm fallback works; file BUG with browser version (anchors are Must M5 since D-021, *was Should S4*; re-placing by the fallback chain is the fallback) |
+| The Pages site or its assets 404 | The path is case-sensitive: `/Roomsong/`, capital R. The build uses a relative base (`base: './'`), so no `--base` flag is needed. *Superseded (T-108):* `--base=/roomsong/staging/` |
 | IWER panel shows no planes | Pick a room profile with planes in the IWER panel, or load a `tests/fixtures/rooms/*.json` set via the `iwsdk-runtime` MCP; `?flags=forceLevel=1` for L1 |
 | Windows: `npm run dev` blocked / no LAN URL | Allow Node through Windows Firewall (private networks); check `ipconfig` for the adapter IP |
 | Windows: `metavr` not found after install | Reopen PowerShell; confirm `%LOCALAPPDATA%\metavr\bin` is on PATH |
-| `npm install` fails with `EACCES` on `~/.npm/_cacache` (seen on the dev Mac 2026-10-10) | Root-owned cache files from an old npm: one-time `sudo chown -R $(id -u):$(id -g) ~/.npm`; or work around with `npm install --cache /tmp/npm-cache` |
+| `npm install` fails with `EACCES` on `~/.npm/_cacache` (seen on the dev Mac 2026-10-10) | Root-owned cache files from an old npm. Work around (the command in `.claude/QUICK_START.md`): `npm install --cache "${TMPDIR:-/tmp}/roomsong-npm-cache" --no-audit --no-fund`. Agents never use `sudo`; Parth can fix it for good once with `sudo chown -R $(id -u):$(id -g) ~/.npm` |
 | `npm run test:e2e` says the browser is missing | `npx playwright install chromium` (Playwright 1.64 needs chromium build 1248) |
+| An agent's new worktree lacks the latest work | Agent worktrees start from `main`, not `develop`. First command in a new worktree: `git merge --ff-only develop` |
+| After a VSCode reload, agents' file edits come back "declined" although nobody declined | The reload left the old Claude process running with no window (parent pid 1); it declines its agents' permission prompts. Find it with `ps -axo pid,ppid,lstart,command \| grep native-binary/claude` and stop it (`kill <pid>`) once its agents have handed back. Only the newest session drives |
+| The page shows an old build | A preview server from an earlier build is still running, perhaps from another worktree. Find it (`lsof -nP -iTCP:4173 -sTCP:LISTEN`), stop it, then `npm run build && npm run preview` and read the port it prints |
+| `Port 8081 is already in use`, or e2e cannot start its server | Two dev servers on one port. e2e: `E2E_PORT=8091 npm run test:e2e` (it also takes `E2E_PORT` + 1000 for the built page). Dev: stop the other server (`npm run dev:down`) or `npm run dev:runtime -- --port 8082`. One IWSDK dev server per worktree |
+| `npm run dev` offline: uncaught "Failed to fetch" | The dev emulator's room download (BUG-002, dev only, won't fix). e2e is not affected: it answers that request locally |
 
 ## 9. Pinned versions (filled by T-101 on 2026-10-10) and device results (filled by T-104 / T-105 once a headset exists)
-All versions in `package.json` are exact (no `^`/`~`); `package-lock.json` is committed. Verified with Node 24.14.0 / npm 11.9.0 (`.nvmrc` says 22.12.0, the scaffold's recommended LTS; both work).
+All versions in `package.json` are exact (no `^`/`~`); `package-lock.json` is committed. Verified with Node 24.14.0 / npm 11.9.0 (`.nvmrc` says `24` since T-108, *was 22.12.0*; CI takes its Node from it; the build was reproduced on Node 22 and 24).
 | Package | Version | Notes |
 |---|---|---|
 | @iwsdk/core · @iwsdk/cli · @iwsdk/vite-plugin-dev · @iwsdk/reference | 1.0.1 | scaffolder `@iwsdk/create` 1.0.1; `reference` is optional (local API MCP; `npm run reference:warmup` downloads its model) |

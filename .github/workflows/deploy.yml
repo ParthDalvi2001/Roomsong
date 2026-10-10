@@ -38,6 +38,8 @@ jobs:
           path: dist
 
   deploy:
+    # A manual run started from another branch builds but never publishes.
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10

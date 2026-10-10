@@ -30,11 +30,30 @@ No telemetry, analytics, cookies, fingerprinting or third-party embeds. Privacy 
 - GitHub Actions use pinned major versions; the deploy job has `contents: write` only to `gh-pages`.
 
 ## 5. Web hardening
-- HTTPS only (GitHub Pages). Service worker scope limited to the app path.
-- `Content-Security-Policy` via `<meta http-equiv>`: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; media-src 'self'`.
-  (`unsafe-inline` for styles only if UIKit requires; otherwise removed in T-014.)
-- `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff` via meta where applicable.
-- No `eval`, no `innerHTML` with dynamic content. User-controlled text: none (no text input anywhere).
+As built by T-109 (merged 2026-10-10, `develop` f3ac045). Checked on the built pages in headless Chromium and in the emulator; nothing here has run on a headset or on the hosted site yet.
+- HTTPS only (GitHub Pages, and the mirror). *Superseded (D-011):* "Service worker scope limited to the app path": there is no service worker.
+- `Content-Security-Policy` via `<meta http-equiv>` on every built page (the app and the two device test pages under `proto/`), added by `vite.config.ts` at build time only:
+  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' data:; style-src-attr 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'`
+  - No remote host is allowed anywhere. Blocked: `eval`, inline scripts and event handlers, `<style>` elements, every other host, all `blob:` URLs.
+  - Four relaxations, each there because the built page reports a violation without it: `'wasm-unsafe-eval'` (UIKit's layout engine is WebAssembly), `connect-src data:` (that binary is read from a `data:` URL in the bundle), `style-src-attr 'unsafe-inline'` (the `style` attribute on `<body>`), `img-src data:` (the empty favicon).
+  - The SDK has `blob:` paths the app does not use yet (font worker, glTF textures, Draco and KTX2 workers). The first feature that needs one needs a reasoned change in two places: `vite.config.ts` and `scripts/check-dist.mjs`, which holds its own copy of the string.
+  - The dev server carries no policy, on purpose: its emulator needs inline scripts and a WebSocket.
+  - *Superseded (T-109):* the draft policy that stood here (`style-src 'self' 'unsafe-inline'`, `worker-src 'self'`, `media-src 'self'`, "removed in T-014").
+- Not set: `Referrer-Policy` and `X-Content-Type-Options`. *Superseded (T-109):* "via meta where applicable". `X-Content-Type-Options` cannot be set from a meta tag and GitHub Pages lets a site set no response headers; no referrer meta tag is in the pages.
+- No `eval`: the policy blocks it, and `vite.config.ts` switches zod (inside IWSDK) to `jitless` so that it does not probe for it. No `innerHTML` with dynamic content: none in `src/` or the test pages today, kept by review, not by a gate. User-controlled text: none (no text input anywhere).
+
+Gates (NFR-SEC-01, Golden Rule 9). `npm run verify` runs the first four; CI runs all seven (DEPLOYMENT_GUIDE §2).
+| Gate | Runs in | Fails when |
+|---|---|---|
+| `scripts/check-dist.mjs` | verify | a built page does not carry exactly the policy above, or holds an inline script, event handler or `<style>` element; a file in `dist/` holds a remote URL string that is not in `scripts/check-dist.allowlist.json` with the reason it is never requested; a listed string is no longer in `dist/` |
+| TC-PER-03, `tests/unit/policy/no-network.test.ts` | verify (unit) | code in `src/` names `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `sendBeacon`, `RTCPeerConnection` or `WebTransport`, or holds a URL literal |
+| `tests/unit/policy/todo.test.ts` | verify (unit) | a `TODO` or `FIXME` has no task or bug id on its line |
+| TC-PERF-05, `scripts/check-size.mjs` | verify | the first load of `index.html` is over 4000 kB gzip (FR-SYS-06; about 1970 kB on 2026-10-10) |
+| `tests/e2e/04-built-page-policy.spec.ts`, `02-spike.spec.ts` | `npm run test:e2e` | a built page (app, pinch page, capability page) reports a policy violation |
+| TC-E2E-01 network guard | `npm run test:e2e` | an HTTP(S) request or a WebSocket leaves localhost in an emulated session, with hands or with controllers (dev page; BUG-001, D-027) |
+| `npm run audit` | CI only | a production dependency has an advisory of high severity or above (0 on 2026-10-10) |
+
+Known limits, stated in the files: the URL sweep sees a host that SDK code joins from pieces only as its fixed head, and the `src/` check does not see a name split inside a word. In both cases the policy still blocks the request in the browser.
 
 ## 6. Integrity during judging
 - `main` and `gh-pages` protected; deploys only via CI from tagged commits after 2026-11-15.
