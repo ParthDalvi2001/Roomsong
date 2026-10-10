@@ -1,0 +1,18 @@
+node_modules/
+dist/
+out/
+.iwsdk/
+.vite/
+coverage/
+playwright-report/
+test-results/
+tests/e2e/__artifacts__/
+package-lock.json
+# Owned by the IWSDK editor / Meta starter content
+public/
+iwsdk.config.json
+pnpm-workspace.yaml
+# Docs are owned by the main session (CLAUDE.md); scaffold AGENTS.md files are Meta text
+*.md
+specs/
+.claude/

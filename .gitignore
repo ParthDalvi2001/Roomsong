@@ -16,3 +16,27 @@ specs/06-release/evidence/**/*.mp4
 
 # stale pre-GitHub sync snapshot
 /specs.zip
+
+# IWSDK scaffold additions (T-101)
+*.tsbuildinfo
+.pnpm-debug.log*
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+Thumbs.db
+pids/
+*.pid
+*.seed
+*.pid.lock
+.tmp/
+.temp/
+# MCP configs generated per machine by `npx @iwsdk/cli adapter sync`
+.mcp.json
+.cursor/mcp.json
+.vscode/mcp.json
+.codex/config.toml
+# non-Claude adapter files that `adapter sync` regenerates (we only use Claude Code)
+/.cursor/
+/opencode.json

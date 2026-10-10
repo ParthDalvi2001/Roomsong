@@ -1,0 +1,11 @@
+# Keep LF everywhere (macOS + Windows 11 team; ENVIRONMENT_SETUP §1.1)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.glb binary
+*.mp4 binary
+*.zip binary

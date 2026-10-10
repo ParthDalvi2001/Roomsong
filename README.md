@@ -8,4 +8,17 @@ Entry for the Meta VR Start Developer Competition 2026 (Entertainment track, New
 - Current status: [specs/08-status/PROGRESS.md](specs/08-status/PROGRESS.md)
 - How Claude Code works in this repo: [CLAUDE.md](CLAUDE.md)
 
-Code (`src/`, `tests/`) arrives with the scaffold task T-101. All code is written after 2026-09-24.
+## Run it
+
+```bash
+npm install
+npm run dev        # IWSDK dev server + managed browser with the IWER emulator (Runtime / Editor toggle)
+npm run verify     # typecheck + lint + unit tests + build (must be green before every commit)
+npm run test:e2e   # Playwright + IWER (placeholder until T-107)
+```
+
+Scene, asset and XR-feature configuration is declarative in `iwsdk.config.json`; systems are registered in
+`src/index.ts`. The robot / welcome-panel starter content is Meta's IWSDK example and is replaced by the Phase-0
+tasks. IWER controls: https://iwsdk.dev/guides/02-testing-experience.html#iwer-controls
+
+Code lives in `src/` and `tests/` (scaffolded in T-101 with `npm create @iwsdk@latest`). All code is written after 2026-09-24.

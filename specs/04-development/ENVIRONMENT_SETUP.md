@@ -43,18 +43,24 @@ metavr mcp install claude-code
 ```bash
 cd <repo root>
 git init -b main && git commit --allow-empty -m "chore: repo init (competition window start proof)"
-# Scaffold IWSDK app into ./app then hoist, or scaffold in place:
-npm create @iwsdk@latest -- roomsong   # choose: TypeScript, Augmented Reality, hand-tracking=required,
-                                         # anchors=optional, hit-test=optional, plane-detection=optional,
-                                         # mesh-detection=optional, layers=optional, locomotion=NO,
-                                         # scene-understanding=YES, grabbing=YES, physics=NO, git=NO, install=YES
+# Scaffold IWSDK app into a scratch folder then hoist (done 2026-10-10, T-101; @iwsdk/create 1.0.1 is fully non-interactive):
+npm create @iwsdk@latest roomsong -- --yes --target ar --language ts --grabbing --no-physics \
+  --scene-understanding --environment-raycast --no-git --no-install --skip-reference-warmup
+# = TypeScript, Mixed reality (AR), grabbing=YES, physics=NO, scene-understanding=YES (anchors + planes + meshes),
+#   environment-raycast=YES (hit-test), locomotion is not offered for AR, git=NO, install later at the repo root.
+# The CLI has no per-feature required/optional flags: XR feature states live in iwsdk.config.json → world.xr.features
+# (schema: boolean = optional, { "required": true } = required). Set there: handTracking {required:true};
+# anchors, planeDetection, meshDetection, hitTest, layers = true (optional).
+# Hoist everything except CLAUDE.md, README.md, .gitignore, .claude/settings.json (merge by hand); drop the
+# Cursor/Codex/Copilot/OpenCode guidance folders. The scaffold also adds `@meta-quest/metavr` as a devDependency —
+# removed in T-101 (metavr is installed system-wide by a human, §4; re-add only by decision).
 ```
 Then add: `vitest`, `@playwright/test`, `eslint` + `@typescript-eslint`, `prettier`, `eslint-plugin-import`, `typescript` (if not present).
 Add scripts to `package.json`:
 ```json
 {
   "scripts": {
-    "dev": "iwsdk dev up",
+    "dev": "iwsdk dev up --foreground",
     "build": "vite build",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
@@ -69,7 +75,7 @@ Add scripts to `package.json`:
   }
 }
 ```
-(`deploy:*` scripts are placeholders until hosting is chosen — §7.)
+(`deploy:*` scripts are placeholders until hosting is chosen — §7. `--foreground` keeps `npm run dev` attached; without it `iwsdk dev up` detaches and you stop it with `npm run dev:down`. The scaffold's own extras are kept: `dev:runtime` (plain `vite`, no managed browser), `dev:down`, `dev:status`, `reference:status`, `reference:warmup`.)
 
 ### 2.1 No GitHub yet — local git + zip sync (REPLAN §1)
 
@@ -149,15 +155,25 @@ Decision at Phase 1 (G1, Oct 22) — record in DECISIONS_LOG; then fill the Stag
 | IWER panel shows no planes | Pick a room profile with planes in the IWER panel, or load a `tests/fixtures/rooms/*.json` set via the `iwsdk-runtime` MCP; `?flags=forceLevel=1` for L1 |
 | Windows: `npm run dev` blocked / no LAN URL | Allow Node through Windows Firewall (private networks); check `ipconfig` for the adapter IP |
 | Windows: `metavr` not found after install | Reopen PowerShell; confirm `%LOCALAPPDATA%\metavr\bin` is on PATH |
+| `npm install` fails with `EACCES` on `~/.npm/_cacache` (seen on the dev Mac 2026-10-10) | Root-owned cache files from an old npm: one-time `sudo chown -R $(id -u):$(id -g) ~/.npm`; or work around with `npm install --cache /tmp/npm-cache` |
+| `npm run test:e2e` says the browser is missing | `npx playwright install chromium` (Playwright 1.64 needs chromium build 1248) |
 
-## 9. Pinned versions (filled by T-004) and device results (filled by T-104 / T-105 once a headset exists)
+## 9. Pinned versions (filled by T-101 on 2026-10-10) and device results (filled by T-104 / T-105 once a headset exists)
+All versions in `package.json` are exact (no `^`/`~`); `package-lock.json` is committed. Verified with Node 24.14.0 / npm 11.9.0 (`.nvmrc` says 22.12.0, the scaffold's recommended LTS; both work).
 | Package | Version | Notes |
 |---|---|---|
-| @iwsdk/* | _tbd_ | |
-| three | _tbd_ | bundled by IWSDK |
-| vite | _tbd_ | |
-| vitest / @playwright/test | _tbd_ | |
-| typescript / eslint / prettier | _tbd_ | |
+| @iwsdk/core · @iwsdk/cli · @iwsdk/vite-plugin-dev · @iwsdk/reference | 1.0.1 | scaffolder `@iwsdk/create` 1.0.1; `reference` is optional (local API MCP; `npm run reference:warmup` downloads its model) |
+| three | 0.181.0 | installed as the `super-three` fork via npm alias `npm:super-three@0.181.0` + `overrides` (IWSDK requirement); `@types/three` 0.181.0 |
+| @pmndrs/uikit · uikit-horizon · uikit-lucide | 1.0.76 | declared by the scaffold so Vite `dedupe` resolves one copy; spatial UI |
+| vite | 7.3.7 | scaffold line (`^7.1.4`); Vite 8 exists but the IWSDK plugin targets 7 |
+| vitest | 5.0.3 | `vitest.config.ts`, node environment, `tests/unit/**/*.test.ts` |
+| @playwright/test | 1.64.0 | chromium build 1248 (`npx playwright install chromium`); `playwright.config.ts` boots `vite` on 8081 |
+| typescript | 5.9.3 | **not 7.x**: typescript-eslint 8.71 supports `<6.1` only |
+| eslint | 9.39.5 | **not 10.x**: eslint-plugin-import 2.32 peers with `^9` only; flat config `eslint.config.mjs` |
+| @eslint/js 9.39.5 · typescript-eslint 8.71.1 · eslint-plugin-import 2.32.0 · eslint-import-resolver-typescript 4.4.5 · eslint-config-prettier 10.1.8 · globals 17.13.0 | — | lint stack |
+| prettier | 3.9.10 | `.prettierrc`: 110 cols, single quotes, semis, trailing commas |
+| @types/node | 24.19.2 | matches Node 24; used by config files and scripts |
+`npm run verify` on the scaffold: typecheck ≈2 s · lint ≈6 s · unit ≈1 s · build ≈9 s (dist 7.9 MB, main chunk 6.6 MB / 1.7 MB gzip, before any app code).
 Browser: Meta Quest Browser version _tbd_ (record from `navigator.userAgent` on the device in TC-DEV-0A).
 
 ### 9.1 Device capability spike results (TC-DEV-0A, T-104) — *requires headset — none on the team as of 2026-10-10*
