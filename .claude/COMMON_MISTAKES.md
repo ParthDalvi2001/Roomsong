@@ -9,4 +9,5 @@
 7. **Never report device behaviour as verified.** There is no headset; say "emulator" every time.
 8. **`rm -rf` is denied** by project settings. Use a fresh directory name or `git worktree remove`.
 9. **Do not read huge files whole** (`package-lock.json`, the 257 KB research report). Grep, or read the section you need.
-10. **The IWSDK entry file is `src/index.ts`**, not `main.ts`; `npm run dev` is `iwsdk dev up --foreground`.
+10. **Agent worktrees start from `main`, not `develop`.** First command in a fresh worktree: `git merge --ff-only develop`. Stop any dev or preview server you start; a leftover one served a stale build for hours.
+11. **The IWSDK entry file is `src/index.ts`**, not `main.ts`; `npm run dev` is `iwsdk dev up --foreground`.

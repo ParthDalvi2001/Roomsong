@@ -16,7 +16,7 @@
 | **T-000 Get a Quest 3/3S by Oct 20** | Parth + Chinmay | **todo (critical)** | no headset on the team; everything device-side waits on this |
 | T-100 Local git init + GitHub remote | devops-engineer | **done** | pushed by Parth 2026-10-10 18:05 IST: `main` (115b9c1) and `develop` (41d5438) on github.com/ParthDalvi2001/Roomsong (D-018) |
 | T-101 Scaffold IWSDK + tooling | devops-engineer | **done** | merged to `develop` (541235b); verify green ≈19 s; follow-up T-111 (strip starter content) |
-| T-102 Desktop sound prototype | backend-dev | **doing** | resumed 18:30 IST on top of the WIP branch; modes switched to the D-025 pentatonic sets; review + fix in the same workflow |
+| T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
 | T-111 Strip starter content | frontend-dev | **doing** | pulled into Phase 0 (D-024); network-free empty scene |
 | T-107 Emulator/e2e pipeline | qa-engineer | **doing** | follows T-111 in the same branch |
 | T-113 Spec propagation v2.1 | software-architect first, then PO/UX/QA/devops | **doing** | contract stage (API_SPEC v1.2 + LLD) running; propagation next (PLAN_AMENDMENT §6) |
@@ -27,7 +27,7 @@
 1. **Headset plan (T-000):** which option and by when? (a) buy Quest 3S, (b) borrow, (c) rent. Write the expected date.
 2. ~~Name~~ — done: **Roomsong** (D-016, renamed 2026-10-10).
 3. **Hosting (T-108, D-022):** on github.com/ParthDalvi2001/Roomsong open Settings → Pages → Source: **GitHub Actions**; then say whether the mirror is **Vercel** or **Netlify** (free account in your name). Devops does the rest (PoC D1).
-4. **Listening review #0 (T-103):** when T-102 is ready, open the link in Chrome, rate 1–5 with one sentence; ask Chinmay + 2 others to do the same.
+4. **Listening review #0 (T-103) — READY NOW:** open **http://127.0.0.1:4173/** in desktop Chrome with headphones (Claude is serving it; if it is down: `cd proto/sound && npm run build && npm run preview`). Press Play, listen ≥30 s, press **Next room** twice, try the three tempos. Then rate 1–5: "If a garden you planted yourself sounded like this, would you keep listening and add more plants?" plus one sentence on what to change first. Also say whether Next room feels like a new room or like a dropout (it is a 20 ms cut, not a crossfade). Ask Chinmay + 2 others the same. Gate G0: Parth ≥4, outsiders ≥3.
 5. Confirm Chinmay is registered on Devpost and in the Meta VR Start Program (he submits as Representative).
 6. ~~Research → plan~~ — **applied as plan v2.1** on your "refactor the plan" instruction (PLAN_AMENDMENT_2026-10-10.md, D-019–D-023). Reversible row by row: name any row to revert. Propagation into the other spec files is T-113 (after the reset).
 7. ~~Push to GitHub~~ — done 2026-10-10 (`main` + `develop` on GitHub). Note: GitHub picked **`develop` as the default branch**; if you want visitors and the Pages link to see `main`, change it in Settings → General → Default branch (optional).
@@ -43,7 +43,7 @@
 | T-000 | todo (critical) | T-104 | todo | T-108 | blocked (human) |
 | T-100 | done | T-105 | todo | T-109 | todo |
 | T-101 | done | T-106 | todo | T-110 | todo |
-| T-102 | doing | T-107 | doing | T-111 | doing |
+| T-102 | done | T-107 | doing | T-111 | doing |
 | T-113 | doing (contract) | T-115 | todo (Chinmay) | | |
 | T-103 | blocked (needs T-102) | | | | |
 
@@ -75,6 +75,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.9 MB,
 ### 2026-10-10
 - Done: PM review verified (grid + reach bugs confirmed by math; prior art confirmed); REPLAN v2 approved by Parth; specs being updated by 3 agents; SPRINT_PLAN v2 written; product discovery research delivered (`specs/09-research/`, not yet applied to the plan); repo initialised with `origin` set; push to GitHub pending Parth (T-100, D-018); T-101 IWSDK scaffold merged to `develop`, verify green.
 - **Interruption 2026-10-10 ≈15:30 IST:** the Claude account hit its weekly usage limit; all three running agents (T-102, T-106, T-107) stopped mid-task. Resets **Oct 13 13:30 IST**. Phase 0 loses ≈3 working days; G0 (Oct 15) is at risk.
+- **20:00 IST — T-102 merged** (develop 1d32497). Review found 3 major + 6 minor; all majors fixed (root lint with a built prototype, a limiter test that could not fail, magic numbers). Deferred to T-121: pooled voices/panners per NFR-PERF-10. Measured: peaks ≤ −1.30 dBFS under a 24-bell overload, RT60 0.400/0.904/1.808 s for the three presets, scheduler tick 0.01–0.03 ms. A stale preview server from the interrupted agent (pid 79559, port 4173) was stopped.
 - **19:10 IST — token tools (Parth's request):** `claude-token-optimizer` 2.3.20 run read-only (measure, audit, compress): CLAUDE.md slimmed 1,931 → 1,380 tokens; nothing else to compress. Ponytail plugin and optimizer hooks not installed (safety layer refuses third-party code in the harness); lean-code and lean-context rules added to CLAUDE.md instead (D-026).
 - **18:30 IST — implementation restarted** ("Start implementation", ultracode on, Opus 5.5; D-024): workflow 1 = T-102 resume + T-111 → T-107; workflow 0 = T-113 contract stage. D-025 modes.
 - **Plan amended to v2.1** on Parth's instruction ("start refactor the plan"): research applied, GitHub adopted, gates shifted (G0 Oct 17 / G1 Oct 24 / G2 Nov 3), agent cap 2 — `PLAN_AMENDMENT_2026-10-10.md`, D-019–D-023. Spec propagation = T-113.
