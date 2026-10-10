@@ -1,6 +1,6 @@
 # User Acceptance Testing (UAT) Plan — Roomsong
 
-**Status:** Approved · **Owner:** qa-engineer · **Sign-off:** the human (Representative) and product-owner · **Version:** 1.2 (2026-10-10, plan v2.1 propagated by T-113: `08-status/PLAN_AMENDMENT_2026-10-10.md` §6, D-019–D-028)
+**Status:** Approved · **Owner:** qa-engineer · **Sign-off:** the human (Representative) and product-owner · **Version:** 1.2 (2026-10-10, plan v2.1 propagated by T-113: `08-status/PLAN_AMENDMENT_2026-10-10.md` §6, D-019–D-029)
 UAT mirrors **how judges will test**: an unknown room, a clean headset, ≤10 minutes, hands only, then the video and the Devpost page.
 
 > **No headset on the team as of 2026-10-10** (REPLAN §1; acquisition = T-000, H1 = Oct 20, Emergency mode if none by Oct 27). Every scenario below that says "headset", "room", "fps" or "feel" is **unverified until a human runs it on a real Quest**. The emulator can rehearse the flows and events but cannot sign off a device criterion; see TEST_PLAN §1.1 and the Emergency-mode variant in §2.1 below. Plan v2.1 adds two stranger tests (UAT-16, UAT-17; §3.1): they need a headset and people from outside the team, and nothing about them is verified today.
@@ -65,7 +65,7 @@ Everything else (flows, timings with emulated input, save/restore, accessibility
 **Threshold: ≥ 4 of 5 pass.** Fewer: a bug in BUG_LOG with the stopping points (S1 if a participant never reached a loop, else S2); fix, then re-test with new first-time users before G3. With fewer than five participants the result is reported as n of N, "below sample", never as a pass.
 
 **UAT-17 (H13): is the change heard as the room's doing?** Run only if the room signature is built (S1); a Wanderer-only build records "not run (S1 not built)".
-1. Two rooms per listener that give different results: the tester checks beforehand, on the same build, that the two signatures differ in at least one of key, scale and echo (the event log with `?dev=1&flags=eventLog`, read over USB remote debugging, or the Garden line of the Settings panel). Equal signatures: choose another room. Alternate which room comes first.
+1. Two rooms per listener that give different results: the tester checks beforehand, on the same build, that the two signatures differ in at least one of key, scale and echo (the event log with `?dev=1&flags=eventLog`, read over USB remote debugging, or the "Tuned by" read-out on the Sound tab of the Settings panel). Equal signatures: choose another room. Alternate which room comes first.
 2. Room 1: the listener plants at least three seeds and listens for two bars or more. Rooms, tuning and the captions are not mentioned.
 3. Room 2: the same headset and the same garden (site data not cleared). Enter; the bed is placed again and the garden re-tunes; the listener listens for two bars or more.
 4. Ask one open question and nothing else: "Did anything change? If so, why do you think it changed?" Write the answer down word for word.

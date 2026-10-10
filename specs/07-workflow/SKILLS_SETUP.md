@@ -31,7 +31,7 @@ This installs the `hz-*` and `metavr-cli` skills (full list: https://github.com/
 npx @iwsdk/cli adapter sync             # writes .mcp.json with iwsdk-runtime (+ metavr, + iwsdk-reference if installed)
 npm i -D @iwsdk/reference && npx @iwsdk/cli reference warmup   # optional: local IWSDK API reference MCP
 ```
-Enable AI in `vite.config.ts` per https://iwsdk.dev/ai/. Start with `npm run dev` (collaborate mode) or `iwsdk dev up --mode agent` (headless for CI/e2e).
+Enable AI in `vite.config.ts` per https://iwsdk.dev/ai/. Start with `npm run dev` (collaborate mode) or `iwsdk dev up --mode agent` (*superseded (T-107): e2e is `npm run test:e2e`*).
 
 ### 1.4 GitHub CLI (**optional** — only once hosting is chosen, and only if GitHub Pages wins; DEPLOYMENT_GUIDE §1)
 ```bash

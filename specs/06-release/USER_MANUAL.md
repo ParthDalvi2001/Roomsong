@@ -36,7 +36,7 @@ A tiny glowing garden that lives on your table. Every plant sings. Where you pla
 
 **The glow shows what you're about to touch.** Before you pinch, the plant or the spot nearest your fingertips lights up. Nothing changes until you let go, so you can always move away first.
 
-**If your hand leaves the headset's view** while you're holding something, the garden waits a moment for you. Bring your hand back quickly and you carry on. If not, the plant slides back to where it was (a seed goes back to wait for you) and a small hint shows until the headset can see your hand again. Nothing is lost.
+**If your hand leaves the headset's view** while you're holding something, the garden waits a moment for you. Bring your hand back quickly and you carry on. If not, the plant slides back to where it was (a seed goes back to wait for you) and a small hint shows until the headset can see your hand again (at most 5 s). Nothing is lost.
 
 ## Your room tunes the garden
 When the garden appears, it reads the shape of your room. Three things in the song come from it:
@@ -52,7 +52,7 @@ Your garden is saved on your headset and comes back to the same spot on your tab
 ## Settings (pinch the small orb near your wrist)
 - **Sound:** speed (yours to set; the room doesn't change it), volume, room echo (auto, small or off), and "Tuned by" (what your room set).
 - **Access:** one-hand mode, eyes-only mode (look and hold to select and to listen; pick a short, medium or long hold), high contrast, reduce motion, beat ring, bed height, left/right hand.
-- **Garden:** move the bed, re-tune to this room, or start a new garden.
+- **Garden:** move the bed or start a new garden.
 
 ## Try it in a browser (no headset) *[if built]*
 Open the same link in a normal browser on a computer and you get the garden window: the same garden on a drawn table. Click an empty spot to plant, drag a plant to move it, drag it off the ring to remove it, click the petal to undo, click the orb in the middle to listen. Two things need a headset: you can't make a plant taller or shorter with a mouse, and there is no settings panel (use the switches on the start page). Your room doesn't tune this garden; it plays in the "wanderer" key.
@@ -72,4 +72,4 @@ Everything stays on your headset. Roomsong never connects to the internet after 
 - **No garden appears:** look at your table for a few seconds, or pinch where you want it. If nothing works, it will float in front of you.
 - **No sound:** check the headset volume; tap Enter again.
 - **A plant jumped back while I was moving it:** your hand left the headset's view. Bring it back in front of you and try again.
-- **The song sounds different today:** you are probably in a different room. That's the room re-tuning the garden. In the same room only the echo can shift a little. Use **Garden → Re-tune** to redo it.
+- **The song sounds different today:** you are probably in a different room. That's the room re-tuning the garden. In the same room only the echo can shift a little. It re-tunes by itself each time you enter.

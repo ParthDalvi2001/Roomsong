@@ -9,7 +9,7 @@ Environments: Local → Production (`main` → GitHub Pages) plus a mirror of th
 ## 1. Hosting decision (D-022, 2026-10-10; ADR-004)
 - **Submitted URL: GitHub Pages**, `https://parthdalvi2001.github.io/Roomsong/`. It is a sub-path, and Pages paths are case-sensitive: capital `R`. The rule text names a "GitHub page" for WebXR links, and WebXR needs HTTPS, which Pages gives.
 - **Mirror: Vercel or Netlify** (Parth picks; not chosen yet), serving **the same build**, as insurance against an outage or a wrong link. It is named in the Devpost description, not in the build-link field (SUBMISSION_CHECKLIST §2).
-- **Branches:** `main` is release, `develop` is work. Every deploy is a push to `main`, published by GitHub Actions (§2). Agents never push `main`.
+- **Branches** (repository on GitHub, D-018): `main` is release, `develop` is work. Every deploy is a push to `main`, published by GitHub Actions (§2). Agents never push `main`.
 - **Same-build proof:** every published build carries `version.json` = `{ version, commit, builtAt }` (`scripts/write-version.mjs`). The same `commit` and `builtAt` on both links prove one build; `commit` equal to `git rev-parse main` proves which one.
 - **No secrets, no server.** Assets use a relative base (`base: './'` in `vite.config.ts`), so one `dist/` works under `/Roomsong/` and at a mirror's root with no per-host setting. There is no service worker (*Cut (D-011)*).
 - **PoC D1 (pending go-live):** the build from `main` loads at the Pages URL with no 404 and without `SharedArrayBuffer` (Pages cannot send the COOP/COEP headers that it needs).
@@ -38,7 +38,7 @@ Read the files: they are short and commented. This section says what they do, no
 | File | Runs on | Does |
 |---|---|---|
 | `.github/workflows/ci.yml` | push and pull request to `develop` or `main` | `npm ci` → `npm run verify` → `npx playwright install --with-deps chromium` → `npm run test:e2e` → `npm run audit`. A failed run keeps the Playwright report as an artifact for 7 days |
-| `.github/workflows/deploy.yml` | push to `main`; by hand (Actions → deploy → Run workflow) | job `build`: `npm ci` → `npm run verify` → `node scripts/write-version.mjs` → upload `dist/` as the Pages artifact. Job `deploy`: publishes that artifact to the `github-pages` environment |
+| `.github/workflows/deploy.yml` | push to `main`; by hand (Actions → deploy → Run workflow) | job `build`: `npm ci` → `npm run verify` → `node scripts/write-version.mjs` → upload `dist/` as the Pages artifact. Job `deploy`: publishes that artifact to the `github-pages` environment, only when the run is on `main` |
 | `scripts/write-version.mjs` | inside `deploy`, after the build | writes `dist/version.json` = `{ version (from package.json), commit (git rev-parse HEAD), builtAt (ISO time) }`; fails if `dist/index.html` is missing |
 
 - `npm run verify` = typecheck, lint, unit tests, build, `scripts/check-dist.mjs` (page policy and remote URL strings, SECURITY_PLAN §5) and `scripts/check-size.mjs` (first load ≤ 4000 kB gzip, FR-SYS-06). `npm run audit` = `npm audit --omit=dev --audit-level=high`; CI runs it, verify does not.
@@ -46,7 +46,7 @@ Read the files: they are short and commented. This section says what they do, no
 - Permissions: `contents: read` everywhere; only the `deploy` job has `pages: write` and `id-token: write`. No secrets: Pages uses the built-in token.
 - One deploy at a time; a running one is never cancelled, so the site is not left half published.
 - **`deploy` does not wait for `ci`.** It runs verify itself, but not the e2e suite and not the audit. Merge into `main` only a `develop` commit whose `ci` run is green.
-- **A manual run builds the branch chosen in the Run workflow box,** and that box opens on GitHub's default branch, which is `develop` here. The workflow has no check of its own: the `github-pages` environment's branch rule is the only guard (§1.1 step 6). Always choose `main`.
+- **A manual run builds the branch chosen in the Run workflow box,** which opens on the default branch, `main`. The `deploy` job publishes only when the run is on `main` (`if: github.ref == 'refs/heads/main'`); a run from another branch builds and publishes nothing. The `github-pages` environment's branch rule is a second guard (§1.1 step 6).
 - A manual run is a **rebuild** of that commit: the same `commit`, a new `builtAt`.
 - The Pages upload drops dotfiles, so a `.well-known/` folder would not ship.
 - Published with the app, from the same build: the device test pages `/Roomsong/proto/pinch/` (TC-DEV-00) and `/Roomsong/proto/spike/` (TC-DEV-0A). Their device scripts are `proto/pinch/README.md` and `proto/spike/README.md`.
@@ -80,12 +80,12 @@ Tags mark commits on `main`; none of them triggers a deploy (§2).
   3. Mirror: no upload after this point.
 
   Both settings live on github.com, not in the repository, and have not been tried; whether they are free depends on the repository's visibility and plan. Check at go-live.
-- From 2026-11-18 12:00 PT until 2026-12-12: **no production deploys** on either link, no content changes, no "quick fixes". Work may continue on `develop`: it publishes nothing.
+- From 2026-11-18 12:00 PT through 2026-12-11: **no production deploys** on either link, no content changes, no "quick fixes". Work may continue on `develop`: it publishes nothing.
 - *Superseded (T-108):* protecting `gh-pages`, disabling a tag trigger, and post-contest staging under `/staging/`.
 
 ## 6. Uptime during judging (2026-11-18 → 2026-12-11; T-187)
 - **Both links, daily:** `curl -fsS https://parthdalvi2001.github.io/Roomsong/version.json` and `curl -fsS <mirror>/version.json`. Both answer, and both show the submitted `commit`.
-- `.github/workflows/uptime.yml` (a scheduled run of those two checks that opens an issue on failure) is **not built yet**; until it is, the check is by hand. GitHub runs schedules from the default branch only, which is `develop` today, so the file can land on `develop` without touching `main`. If the default branch is ever changed to `main`, the file must be on `main` before the submission tag.
+- `.github/workflows/uptime.yml` (a scheduled run of those two checks that opens an issue on failure) is **not built yet**; until it is, the check is by hand. GitHub runs schedules from the default branch only, which is `main`: `uptime.yml` must be on `main` before the submission lock.
 - Human also opens the Pages URL on the headset twice a week (when one exists).
 - If the Pages link is down:
   1. Check the mirror. If it is up, the entry is still reachable through the link in the Devpost description; point the README link at it.
@@ -94,7 +94,7 @@ Tags mark commits on `main`; none of them triggers a deploy (§2).
 - **Open (plan owner):** the workflow cannot publish the identical artefact again after one day, because the `github-pages` artifact has expired (§1.2). The mirror holds the identical `dist/`; the Pages route is a rebuild.
 
 ## 7. Rollback
-`deploy.yml` publishes the head of the branch it runs on and has no `ref` input. *Superseded (T-108):* "redeploy the previous tag via `workflow_dispatch` with a `ref` input, added in T-006".
+`deploy.yml` builds the head of the branch it runs on, publishes only from `main`, and has no `ref` input. *Superseded (T-108):* "redeploy the previous tag via `workflow_dispatch` with a `ref` input, added in T-006".
 - **Before the deadline:** `git revert` the bad commit on `develop`, wait for a green `ci`, then §4 steps 3–5. `main` only moves forward: no force-push, no moved tag.
 - **After the deadline:** no rollback. Only §6.
 

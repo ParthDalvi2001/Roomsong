@@ -1,4 +1,4 @@
-# ADR-004 — GitHub Pages hosting with a staging path
+# ADR-004 — GitHub Pages hosting with a mirror (no staging path)
 
 **Status:** Accepted · **Date:** 2026-10-09 · **Confirmed 2026-10-10 by D-022** (GitHub Pages + mirror) and amended by T-108 (as built: no staging path)
 

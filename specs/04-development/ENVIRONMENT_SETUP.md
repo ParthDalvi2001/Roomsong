@@ -1,7 +1,7 @@
 # Environment & Setup Guide — Roomsong
 
 **Status:** Living · **Owner:** devops-engineer
-Covers: local dev (macOS **and Windows 11**), emulator-first workflow, headset setup (when available), agent tooling (metavr + iwsdk MCP), hosting options, troubleshooting.
+Covers: local dev (macOS **and Windows 11**), emulator-first workflow, headset setup (when available), agent tooling (metavr + iwsdk MCP), hosting, troubleshooting.
 Exact dependency versions are recorded in §9 by task T-004 after scaffolding. Device capability results (T-104 / TC-DEV-0A) and the pinch-accuracy result (T-105 / TC-DEV-00) are also recorded in §9 once a headset exists.
 
 ---
@@ -9,10 +9,10 @@ Exact dependency versions are recorded in §9 by task T-004 after scaffolding. D
 ## 1. Prerequisites (macOS; verified on the developer's machine 2026-10-09)
 | Tool | Required | Found |
 |---|---|---|
-| Node.js | ≥ 20.19.0 (22 LTS recommended) | v24.14.0 ✅ |
+| Node.js | ≥ 20.19.0 (24 recommended: `.nvmrc`) | v24.14.0 ✅ |
 | npm | ≥ 10 | 11.9.0 ✅ |
 | Git | any recent | 2.50.1 ✅ |
-| GitHub CLI `gh` | **optional** — only once hosting is chosen (Phase 1, by Oct 22) and only if GitHub Pages wins | ❌ not installed; `brew install gh && gh auth login` *if* needed |
+| GitHub CLI `gh` | optional: handy for watching Actions runs; nothing in the repository needs it | ✅ installed and signed in (2026-10-10) |
 | Chrome | for emulator/e2e | assumed ✅ |
 | `metavr` CLI | docs search now; device tooling once a headset exists | install in §4 |
 
@@ -22,12 +22,12 @@ Hardware: **no Quest headset on the team as of 2026-10-10** (acquisition = T-000
 Open **PowerShell** (not cmd) as a normal user. Either package manager works:
 ```powershell
 # winget (built into Windows 11)
-winget install OpenJS.NodeJS.LTS          # Node 22 LTS + npm
+winget install OpenJS.NodeJS.LTS          # Node LTS + npm (24.x expected; any ≥ 20.19 works)
 winget install Git.Git
 # — or — Chocolatey (if already installed)
 choco install nodejs-lts git -y
 ```
-Close and reopen PowerShell, then check `node -v` (≥ 20.19, expect 22.x), `npm -v` (≥ 10), `git --version`.
+Close and reopen PowerShell, then check `node -v` (≥ 20.19, expect 24.x), `npm -v` (≥ 10), `git --version`.
 ```powershell
 # metavr CLI (PowerShell installer)
 iwr -useb https://developers.meta.com/horizon/install-cli/windows/ | iex
@@ -37,7 +37,7 @@ metavr mcp install claude-code
 - Paths: metavr installs under `%LOCALAPPDATA%\metavr\bin` (added to the user PATH by the installer; reopen the terminal). The repo can live anywhere without spaces, e.g. `C:\dev\roomsong`. Use forward slashes or quoted paths in npm scripts; never hard-code a drive letter in the repo.
 - Git on Windows: `git config --global core.autocrlf input` so files stay LF (the repo's `.gitattributes`/Prettier enforce LF).
 - Everything else is identical: `npm install`, `npm run dev`, `npm run verify`, `npm run test:e2e`. The IWSDK dev server prints a LAN URL exactly as on macOS; Windows Firewall will ask once to allow Node on private networks — allow it.
-- Chrome + the Immersive Web Emulator extension (§6) work the same on Windows. `gh` is optional here too (`winget install GitHub.cli` only if GitHub Pages is chosen).
+- Chrome + the Immersive Web Emulator extension (§6) work the same on Windows. `gh` is optional here too (`winget install GitHub.cli`).
 
 ## 2. Repository bootstrap (T-004, devops-engineer)
 ```bash
@@ -79,7 +79,7 @@ Add scripts to `package.json`:
 ### 2.1 Repository on GitHub (was "No GitHub yet — local git + zip sync", REPLAN §1; superseded by D-018)
 
 - `origin` = `github.com/ParthDalvi2001/Roomsong` (D-018, 2026-10-10). The PM clones it (`git clone https://github.com/ParthDalvi2001/Roomsong.git`) and pulls before proposing.
-- Branches: `main` = release, pushed only by Parth; every push to it publishes the site (§7). `develop` = work, and GitHub's default branch. Agents work on `develop` through worktrees or feature branches and never push `main`.
+- Branches: `main` = release, pushed only by Parth; every push to it publishes the site (§7). `develop` = work. GitHub's default branch is `main` (set 2026-10-10). Agents work on `develop` through worktrees or feature branches and never push `main`.
 - Hosting is decided: GitHub Pages plus a mirror (D-022, §7).
 - **The developer's copy (Parth's machine) is the master** (D-015). The PM's changes are proposals in `specs/08-status/PM_PROPOSALS.md` or a pasted note, never direct edits to the master.
 - **Commit often** (at least per task). Keep a dated backup zip of the whole repo (incl. `.git/`) off-machine at every gate; it doubles as the "retain a copy of your entry" evidence.
@@ -113,7 +113,7 @@ metavr mcp install claude-code            # registers the metavr MCP server for 
 npx @iwsdk/cli adapter sync               # writes .mcp.json for Claude with iwsdk-runtime (+ metavr if installed)
 npx @iwsdk/cli reference warmup           # optional: local IWSDK API reference server
 ```
-Enable AI in `vite.config.ts` per https://iwsdk.dev/ai/ (T-005). Agent mode: `iwsdk dev up --mode agent` (headless) for unattended e2e.
+Enable AI in `vite.config.ts` per https://iwsdk.dev/ai/ (T-005). *Superseded (T-107):* agent mode for e2e; the suite is `npm run test:e2e` (§6).
 
 ## 5. When a headset is available (human, once; T-000 first)
 No headset exists on the team as of 2026-10-10. The day one arrives:
@@ -159,7 +159,7 @@ Hosting = **GitHub Pages as the submitted URL, plus a mirror of the same build**
 | Audio silent | AudioContext not resumed: Enter must be a real tap; check `E_AUDIO_CONTEXT` in overlay |
 | Low fps | Open `?flags=perfHud`; compare against HLD §7 budgets; run `xr-perf-budget` skill |
 | Anchor never restores | `?flags=noAnchors` to confirm fallback works; file BUG with browser version (anchors are Must M5 since D-021, *was Should S4*; re-placing by the fallback chain is the fallback) |
-| The Pages site or its assets 404 | The path is case-sensitive: `/Roomsong/`, capital R. The build uses a relative base (`base: './'`), so no `--base` flag is needed. *Superseded (T-108):* `--base=/roomsong/staging/` |
+| The Pages site or its assets 404 | The path is case-sensitive: `/Roomsong/`, capital R. The build uses a relative base (`base: './'`), so no `--base` flag is needed. There is no service worker (*Cut (D-011)*), so no scope issue. *Superseded (T-108):* `--base=/roomsong/staging/` |
 | IWER panel shows no planes | Pick a room profile with planes in the IWER panel, or load a `tests/fixtures/rooms/*.json` set via the `iwsdk-runtime` MCP; `?flags=forceLevel=1` for L1 |
 | Windows: `npm run dev` blocked / no LAN URL | Allow Node through Windows Firewall (private networks); check `ipconfig` for the adapter IP |
 | Windows: `metavr` not found after install | Reopen PowerShell; confirm `%LOCALAPPDATA%\metavr\bin` is on PATH |
@@ -194,16 +194,22 @@ Browser: Meta Quest Browser version _tbd_ (record from `navigator.userAgent` on 
 |---|---|---|---|
 | `navigator.userAgent` | _tbd_ | _tbd_ | |
 | Hands (joint count) | _tbd_ | _tbd_ | |
+| Order of `select` / `selectstart` / `selectend` on one pinch | _tbd_ | _tbd_ | `hands.pinchEvents` (FR-HND-02) |
 | Planes + semantic labels (labels seen) | _tbd_ | _tbd_ | **gates room signature (S1)** |
 | Mesh detection | _tbd_ | _tbd_ | |
 | Hit-test | _tbd_ | _tbd_ | |
 | Anchors + persistent handles (restore after re-enter) | _tbd_ | _tbd_ | |
 | Layers | _tbd_ | _tbd_ | |
+| Permission decline: what `detectedPlanes` and `detectedMeshes` return | _tbd_ | _tbd_ | `permission`, run 4 |
+| Frame rates offered, current rate; fixed foveation and whether a write sticks; fps of an empty loop over 5 s | _tbd_ | _tbd_ | `frameRate` |
+| Audio: context state, base and output latency, pinch-to-sound (software path), underruns per step, crackle step | _tbd_ | _tbd_ | `audio`, `human` |
 
 ### 9.2 Pinch-accuracy result (TC-DEV-00, T-105) — *requires headset — none on the team as of 2026-10-10*
-| Grid spacing | First-try success (n/20) | Pinch-to-sound latency median / max (ms) |
-|---|---|---|
-| 3 cm | _tbd_ | _tbd_ |
-| 4 cm | _tbd_ | _tbd_ |
-| 5 cm | _tbd_ | _tbd_ |
+| Round | First try, default run (filtered / unfiltered) | First try, `?beta=10` run (filtered / unfiltered) | Pinch-to-sound latency median / max (ms) |
+|---|---|---|---|
+| 3 cm grid (n/20) | _tbd_ | _tbd_ | _tbd_ |
+| 4 cm grid (n/20) | _tbd_ | _tbd_ | _tbd_ |
+| 5 cm grid (n/20) | _tbd_ | _tbd_ | _tbd_ |
+| Bed outer ring (n/10) | _tbd_ | _tbd_ | _tbd_ |
+| Bed inner ring (n/10) | _tbd_ | _tbd_ | _tbd_ |
 Chosen cell size / hit radius: _tbd_ (smallest spacing with ≥90%; provisional 4 cm until then). Decision logged in DECISIONS_LOG.

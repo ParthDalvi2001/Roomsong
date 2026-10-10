@@ -1,6 +1,6 @@
 # Product Requirements Document (PRD) — Roomsong
 
-**Status:** Approved · **Owner:** product-owner · **Version:** 2.1 (2026-10-10, plan v2.1 propagated by T-113: D-019–D-028; v2.0 2026-10-10; v1 2026-10-09)
+**Status:** Approved · **Owner:** product-owner · **Version:** 2.1 (2026-10-10, plan v2.1 propagated by T-113: D-019–D-029; v2.0 2026-10-10; v1 2026-10-09)
 **Related:** BRD.md · SRS.md · USER_STORIES.md · 03-design/UX_WIREFRAMES.md · 08-status/REPLAN_2026-10-10.md (v2 change sheet, D-010/D-011) · 08-status/PLAN_AMENDMENT_2026-10-10.md (v2.1 sheet, §6)
 
 ---
@@ -49,7 +49,7 @@ and offers a new seed every day.
 4. **Invitation**: a seed glows near the user's dominant hand with a gentle pull-toward-hand animation. Caption: *"Open your hand."* *(Captions are ≤6 words; icons otherwise.)*
 5. Palm-up → seed lands in palm. Caption: *"Pinch, and plant it."*
 6. Pinch → the bed shows ring/step guides (soft annulus grid) and the **hover cue**: a ghost on the cell that will get the plant, shown before anything is committed (FR-HND-16). Release over the bed → the plant grows in on that cell; the tide starts; **first sound within 20 s of launch.**
-   - *If a hand leaves the headset's view mid-gesture (FR-HND-15):* what it held freezes for 200 ms. Hand back in time → the gesture continues. Otherwise the carried seed returns to the supply (a dragged plant returns to its cell), and a hint shows until the hand is seen again. Nothing is lost.
+   - *If a hand leaves the headset's view mid-gesture (FR-HND-15):* what it held freezes for 200 ms. Hand back in time → the gesture continues. Otherwise the carried seed returns to the supply (a dragged plant returns to its cell), and a hint shows until the hand is seen again (at most 5 s). Nothing is lost.
 7. Two more seeds arrive in sequence (different voices). After 3 plants, the guides fade and the garden is "alive" → *first loop ≤90 s.*
 8. A gesture hint ring appears once near a plant: pull-up icon, drag icon. After the user tries one, hints never show again (unless re-enabled in settings).
 9. At ~4 minutes, or after 6 plants: soft prompt *"Rest your hands to listen"* with a palms-out icon and the Listen orb → Listen mode.
@@ -66,19 +66,19 @@ and offers a new seed every day.
 - **Pull up/down** while pinched → height (volume + sustain). The height changes with the hand's vertical travel since the pinch started, from the height the plant already had; 0.25 m of travel covers the full range (FR-HND-08).
 - **Drag** while pinched → move to another ring/step (the ghost shows the free cell it will land on). After a 2 cm dead zone the larger direction of the movement decides pull or drag, and it stays that until release.
 - **Drag off the bed** (release with the pinch position beyond the outer edge + 5 cm; sideways or towards the body, since the far side is beyond reach) → remove (plant dissolves into petals; a short reverse sound). Undo petal floats for 5 s; pinch it to restore. A release inside the centre hole returns the plant to its cell (FR-HND-10).
-- **Hands out of view** (FR-HND-15): the held plant freezes for 200 ms, then returns to where it was (cell or height); a hint shows until the hand is back.
+- **Hands out of view** (FR-HND-15): the held plant freezes for 200 ms, then returns to where it was (cell or height); a hint shows until the hand is back (at most 5 s).
 - *Twist wrist (hue) — Cut (D-011): hue is fixed at seed creation; a settings control for hue is C3.*
 - *Flick (prune) — Cut (D-011): replaced by drag-off, which needs no velocity threshold and is one-hand and gaze-dwell friendly.*
 
 ### 3.4 Listen mode
 - Enter: **both palms facing away** from face, held 1.5 s, **or** a pinch/dwell on the **Listen orb** at the bed centre (or the settings toggle). One-hand mode: one palm suffices.
-- Lights dim to 40%, bed glows brighter, an **aurora halo** rises over the bed, pulsing with the music (Must, default). Vines of light from the bed to the nearest wall are Could (C4; was S2, D-021); the halo is the complete Listen visual. Spatial audio: each plant's sound is positioned at the plant (equal-power panning, the listener at the player's head; NFR-PERF-10); the one shared reverb takes its length from the room signature. No element flashes more than 3 times per second (FR-UI-11).
+- Lights dim to 40%, bed glows brighter, an **aurora halo** rises over the bed, pulsing with the music (Must, default). Vines of light from the bed to the nearest wall are Could (C4; was S2, D-021); the halo is the complete Listen visual. Spatial audio: each plant's sound is positioned at the plant (equal-power panning, the listener at the player's head; NFR-PERF-10); the one shared reverb takes its length from the room signature. No element changes brightness more than 3 times per second (FR-UI-11).
 - Arrangement variations (octave echo, counter-rhythm every 4 bars): C1, only if G2 passes with slack.
 - Exit: any pinch or the **wake** gesture (palm toward face), or after 10 minutes auto-fade to a gentle ending chord.
 
-### 3.5 Settings (a small floating panel, summoned by looking at the wrist orb and pinching, or gaze-dwell)
+### 3.5 Settings (a small floating panel, summoned by looking at the settings orb at the wrist and pinching, or gaze-dwell)
 Tabs: **Sound** (tempo 60–120 BPM, the player's own setting, not the room's; master volume; reverb auto/small/off; "Tuned by" read-out of what the room set), **Access** (one-hand, gaze dwell with a dwell time of 600/900/1200 ms, high contrast,
-reduced motion, visual beat ring, bed height ±10 cm, left/right dominant hand), **Garden** (re-place bed, re-tune, new garden, about).
+reduced motion, visual beat ring, bed height ±10 cm, left/right dominant hand), **Garden** (re-place bed, new garden, about).
 *Codex tab — Cut (D-011).* No sliders are required for gaze-dwell: every Access control is a toggle or a stepper.
 
 ## 4. Functional requirements (summary; full detail in SRS.md)

@@ -17,7 +17,7 @@ Syntax (API_SPEC §3): one `flags` parameter with a comma-separated list. Dev bu
 The parser is built (`src/core/flags.ts`, T-106). Each effect below arrives with the module that reads the flag.
 | Flag | Effect |
 |---|---|
-| `perfHud` | fps, draw calls, triangles, JS ms, voice count overlay |
+| `perfHud` | fps, draw calls, triangles, JS ms, voice count and `maxFlashPerS` overlay |
 | `fovGuide` | draws the ±25°/±20° essential-UI frame |
 | `eventLog` | in-XR scrolling event log |
 | `noAnchors` / `noPlanes` / `noMeshes` | simulate missing capabilities |
@@ -40,7 +40,7 @@ Quest Browser → ⋮ → Settings → Privacy → Clear browsing data → **Sit
 - Error codes: see API_SPEC §5.
 
 ## 5. Updating the app (before the deadline only)
-Follow DEPLOYMENT_GUIDE §4: a release is a push of `main` by Parth, then the mirror. After 2026-11-18 12:00 PT nothing is deployed to either link until 2026-12-12.
+Follow DEPLOYMENT_GUIDE §4: a release is a push of `main` by Parth, then the mirror. After 2026-11-18 12:00 PT nothing is deployed to either link through 2026-12-11.
 
 ## 6. Uptime & incident
 See DEPLOYMENT_GUIDE §6. Checklist, for both links: open the URL on a laptop → `version.json` shows the submitted `commit`? → open on the headset (when one exists) → enters XR? → if the Pages link is down, check the mirror, then with Parth's approval Actions → deploy → Run workflow → Branch: `main` (a rebuild of the same commit) → log in DECISIONS_LOG. *Superseded (T-108):* "re-run the deploy of the same tag": tags do not deploy.

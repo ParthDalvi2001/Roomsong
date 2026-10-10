@@ -14,13 +14,13 @@
 
 | Date (IST) | Milestone | Owner |
 |---|---|---|
-| 2026-11-12 | Feature freeze. Only bug fixes after this. | scrum-master |
 | 2026-11-03 (G2, D-023) | **First rough video cut** (device footage if a headset exists, else emulator placeholder) | Parth + ux-designer |
+| 2026-11-12 | Feature freeze. Only bug fixes after this. | scrum-master |
 | 2026-11-13 | Video capture day 1 (headset footage, all beats; emulator if Emergency mode) | Parth + ux-designer |
 | 2026-11-14 | Video edit v1, screenshots, gallery images; Chinmay reviews | Parth + Chinmay + ux-designer |
 | 2026-11-15 23:59 | **Code freeze.** Tag `v1.0.0-rc1`, deploy to GitHub Pages **and** the mirror (D-022); check from a second device or network that `version.json` shows the same build hash on both (T-183). | devops-engineer + Parth |
 | 2026-11-16 | Full UAT on a clean headset against the prod URL (emulator UAT if no headset; mark as such). Fix only S1 bugs. | qa-engineer + Parth |
-| 2026-11-17 12:00 | Tag `v1.0.0-submission`, final deploy to both hosts (same hash), lock the deploy branch | devops-engineer |
+| 2026-11-17 12:00 | Tag `v1.0.0-submission`, final deploy to both hosts (same hash), lock `main` and require Parth's review on the `github-pages` environment (DEPLOYMENT_GUIDE §5) | devops-engineer |
 | 2026-11-17 18:00 | **Devpost submit.** Screenshot the confirmation. | Chinmay (Representative) |
 | 2026-11-17, straight after | **Post-submission smoke test** from a clean browser profile (§5) | Chinmay + devops-engineer |
 | 2026-11-18 → 12-11 | Hands off. Daily uptime check of both links only. No deploys to prod. | devops-engineer |
@@ -102,7 +102,7 @@ own hands in passthrough; the app draws none. The cell or plant a pinch will act
 commits when you let go. Targets are <2.5> cm wide with a <4> cm hit radius, pinch hysteresis and smoothing. If a
 hand leaves the headset's view, whatever it held goes back to its place. Accessibility: one-hand mode, head-gaze
 dwell for selection and Listen mode, high contrast, voices told apart by shape, a visual beat ring, reduced motion
-(the tuning ripple becomes a glow sequence), and nothing flashes more than 3 times per second.
+(the tuning ripple becomes a glow sequence), and nothing changes brightness more than 3 times per second.
 
 ## What excites us about VR
 <one honest paragraph from the team>

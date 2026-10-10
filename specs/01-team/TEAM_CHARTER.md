@@ -22,7 +22,7 @@ own accounts, approve spec changes and pushes, review sound and copy, record vid
 | Frontend Developer | `frontend-dev` | Rendering, shaders, spatial UI, hand interaction systems, onboarding flow | `hz-iwsdk-webxr`, `threejs-*`, `agent-skills:frontend-ui-engineering`, `xr-perf-budget` |
 | Backend Developer | `backend-dev` | Audio engine, sequencer, music theory, persistence, growth simulation, anchor storage | `agent-skills:test-driven-development`, `agent-skills:source-driven-development` |
 | Full-Stack Developer | `fullstack-dev` | Cross-cutting features (room placement + fallback chain, accessibility modes, settings), integration glue | `hz-iwsdk-webxr`, `agent-skills:incremental-implementation` |
-| DevOps Engineer | `devops-engineer` | Scaffold, CI, static-host deploy (host chosen by Oct 22), environments, freeze, uptime, `npm run verify` | `agent-skills:ci-cd-and-automation`, `agent-skills:shipping-and-launch`, `hz-store-pwa` |
+| DevOps Engineer | `devops-engineer` | Scaffold, CI, static-host deploy (GitHub Pages plus a mirror, D-022), environments, freeze, uptime, `npm run verify` | `agent-skills:ci-cd-and-automation`, `agent-skills:shipping-and-launch`, `hz-store-pwa` |
 | QA Engineer / Tester | `qa-engineer` | Test plan, unit/e2e tests, emulator runs, device test scripts for the human, BUG_LOG, UAT, hands-first audit | `agent-skills:test-driven-development`, `browser-testing-with-devtools`, `hands-first-audit`, `hz-vr-debug` |
 
 The **main Claude session** acts as **engineering manager**: it reads PROGRESS.md, dispatches agents, merges
@@ -98,9 +98,9 @@ their work and talks to the human. It does not write feature code itself unless 
 
 ## 6. Working agreements
 
-- **Developer's copy is master.** Parth's repo is the single source of truth for `specs/` and code. Chinmay's copy is a working copy. Until GitHub hosting exists the two sync by zip/drive; local `git` history on the master is the competition-window proof.
+- **Developer's copy is master.** Parth's repo is the single source of truth for `specs/` and code. Chinmay's copy is a working copy. The two sync through the GitHub repository (D-018; *superseded:* zip/drive); local `git` history on the master is the competition-window proof.
 - **PM proposes, developer applies.** PM-side changes go into `specs/08-status/PM_PROPOSALS.md` (or a pasted note), never directly into spec files. Parth's Claude Code applies approved proposals; rejected or unverified ones are recorded as open in REPLAN §9 / DECISIONS_LOG.
-- **Parallel by default, capped.** The scrum-master dispatches independent tasks in parallel, each agent in its own git worktree. **Max 3 concurrent agents** (lanes A/B/C; lane D on demand) to keep merges and review manageable for one developer.
+- **Parallel by default, capped.** The scrum-master dispatches independent tasks in parallel, each agent in its own git worktree. **Max 2 concurrent agents** (D-023; lanes A/B/C; lane D on demand) to keep merges and review manageable for one developer.
 - **One owner per file set.** Module ownership is in LLD §2. Cross-module changes go through the owner or the architect.
 - **Spec first.** Interface changes update `API_SPEC.md` in the same PR.
 - **No silent scope growth.** New ideas go to PRD §6 via the product-owner with a MoSCoW rating and a swap-out; they do not enter a phase without one. Nothing moves Should → Must without Parth's approval.

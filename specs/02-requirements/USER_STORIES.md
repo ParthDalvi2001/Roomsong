@@ -1,6 +1,6 @@
 # User Stories & Use Cases — Roomsong
 
-**Status:** Approved · **Owner:** product-owner · **Version:** 2.1 (2026-10-10, plan v2.1 propagated by T-113: D-019–D-028, see `08-status/PLAN_AMENDMENT_2026-10-10.md` §6; v2.0 D-010/D-011, see `08-status/REPLAN_2026-10-10.md`)
+**Status:** Approved · **Owner:** product-owner · **Version:** 2.1 (2026-10-10, plan v2.1 propagated by T-113: D-019–D-029, see `08-status/PLAN_AMENDMENT_2026-10-10.md` §6; v2.0 D-010/D-011, see `08-status/REPLAN_2026-10-10.md`)
 Format: `US-xx` · *As a … I want … so that …* · Acceptance criteria (Given/When/Then) · Links to SRS IDs · Priority (M/S/C per PRD §6 v2).
 IDs are stable: cut stories stay in place marked *Cut (D-011)*. Device behaviour in any story is unverified until a headset exists (UC-6); the emulator verifies logic and timing only.
 
@@ -58,7 +58,7 @@ IDs are stable: cut stories stay in place marked *Cut (D-011)*. Device behaviour
 **US-10 Lean back and listen** (M) — FR-HND-06, FR-HND-07, FR-ROOM-04, FR-MUS-06, FR-UI-11
 - When I hold both palms out for 1.5 s, or pinch/dwell on the Listen orb, then lights dim, an aurora halo rises over the bed, and each plant's sound comes from its position (equal-power panning with the listener at my head, FR-MUS-06), in the echo my room set.
 - Given any room, then the halo alone is the complete experience. Vines of light toward the nearest wall are Could (C4; was S2, D-021) and appear only if built.
-- Given any tempo, then nothing in the scene flashes more than 3 times per second (FR-UI-11).
+- Given any tempo, then nothing in the scene changes brightness more than 3 times per second (FR-UI-11).
 - When I pinch or face my palm toward me, then Listen mode exits within 500 ms.
 - Given 10 minutes in Listen mode, then it ends by itself with a gentle chord.
 
@@ -97,7 +97,7 @@ IDs are stable: cut stories stay in place marked *Cut (D-011)*. Device behaviour
 - Given any tempo up to 120 BPM, then no element changes brightness more than 3 times per second (FR-UI-11); above 90 BPM anything that pulses per beat pulses on every second beat.
 
 **US-18 High contrast / reduced motion** (M) — FR-UI-05, FR-UI-06
-- Given high contrast, then captions reach 7:1 and all targets have outlines. Given reduced motion, then no parallax effects, the halo/vines fade instead of growing, and the tuning ripple becomes a glow sequence (US-22).
+- Given high contrast, then captions reach 7:1 and all targets have outlines. Given reduced motion, then no parallax effects, the halo (and the vines, if built, C4) fades instead of growing, and the tuning ripple becomes a glow sequence (US-22).
 
 ## Epic E6 — Robust & fast
 
@@ -160,7 +160,7 @@ Primary actor: Judge. Precondition: unknown room, possibly no Space Setup. Flow:
 Primary actor: Accessibility-first player. Precondition: gaze-dwell + one-hand on (settable from the 2D page before entering, and in-XR). Flow: everything via dwell. Success: full loop and Listen mode reachable without a pinch.
 
 ### UC-4 "Hand tracking lost mid-pinch"
-Flow (FR-HND-15): tracking drops while dragging → a hint shows at once and the plant freezes for 200 ms → tracking back in time: the drag continues → otherwise the plant glides back to its cell over 150 ms (a carried seed returns to the supply, a pulled plant to its earlier height), selection clears, no audio artefacts → tracking resumes → the hint goes, normal. Success: no crash, state consistent (NFR-REL-02; TC-HND-07, TC-E2E-16). Real tracking loss is device-only; the emulator test uses a hand-loss fixture.
+Flow (FR-HND-15): tracking drops while dragging → a hint shows at once and the plant freezes for 200 ms → tracking back in time: the drag continues → otherwise the plant glides back to its cell over 150 ms (a carried seed returns to the supply, a pulled plant to its earlier height), selection clears, no audio artefacts → tracking resumes → the hint goes (at most 5 s after the loss), normal. Success: no crash, state consistent (NFR-REL-02; TC-HND-07, TC-E2E-16). Real tracking loss is device-only; the emulator test uses a hand-loss fixture.
 
 ### UC-5 "Corrupt save"
 Flow: IndexedDB record fails schema validation → backup copy written → new garden starts with a one-line notice → no crash (FR-PER-02).

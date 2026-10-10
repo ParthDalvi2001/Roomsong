@@ -17,7 +17,7 @@ The security goal is therefore: (a) nothing can be injected into what judges run
 | Data | Where | Retention | Leaves device? |
 |---|---|---|---|
 | Garden state (plants, seeds, settings) | IndexedDB / localStorage, origin-scoped | Until the user chooses "New garden" or clears site data | **No** |
-| Anchor handle (opaque UUID from the browser) | IndexedDB | Same | **No** |
+| Anchor handle (opaque UUID from the browser) and its placement level | IndexedDB | Same | **No** |
 | Room geometry (planes/meshes) | Memory only, per session | Discarded on exit | **No** |
 | Hand joint data | Memory only, per frame | Discarded | **No** |
 | Crash/log data | Console only (dev builds show an overlay) | None | **No** |
@@ -27,7 +27,7 @@ No telemetry, analytics, cookies, fingerprinting or third-party embeds. Privacy 
 ## 4. Supply chain
 - Dependencies pinned with a lockfile; `npm audit` runs in CI (fail on high/critical).
 - No runtime CDN scripts; all code is bundled. Fonts (if any) are bundled, not fetched.
-- GitHub Actions use pinned major versions; the deploy job has `contents: write` only to `gh-pages`.
+- GitHub Actions use pinned major versions; every job has `contents: read`, and only the `deploy` job adds `pages: write` and `id-token: write`. There is no `gh-pages` branch.
 
 ## 5. Web hardening
 As built by T-109 (merged 2026-10-10, `develop` f3ac045). Checked on the built pages in headless Chromium and in the emulator; nothing here has run on a headset or on the hosted site yet.
@@ -56,7 +56,7 @@ Gates (NFR-SEC-01, Golden Rule 9). `npm run verify` runs the first four; CI runs
 Known limits, stated in the files: the URL sweep sees a host that SDK code joins from pieces only as its fixed head, and the `src/` check does not see a name split inside a word. In both cases the policy still blocks the request in the browser.
 
 ## 6. Integrity during judging
-- `main` and `gh-pages` protected; deploys only via CI from tagged commits after 2026-11-15.
+- `main` is locked at submission and the `github-pages` environment requires Parth's review (DEPLOYMENT_GUIDE §5). Every deploy is a push to `main` built by `deploy.yml`; tags are labels and deploy nothing.
 - The submission tag `v1.0.0-submission` is immutable; the deployed hash is recorded in RELEASE_NOTES.md and `specs/06-release/evidence/`.
 - Daily uptime check (manual or a GitHub Actions cron hitting the URL) through 2026-12-11.
 
@@ -64,11 +64,11 @@ Known limits, stated in the files: the URL sweep sees a host that SDK code joins
 
 | Threat | Risk | Control |
 |---|---|---|
-| Tampered hosted bundle | Low | Protected branches, CI-only deploys, hash recorded |
+| Tampered hosted bundle | Low | `main` locked, deploys only through `deploy.yml`, `version.json` commit recorded |
 | Malicious dependency | Low–Med | Lockfile, audit in CI, minimal deps |
 | XSS | Very low (no dynamic text) | CSP, no innerHTML |
 | Data exposure | None (no data leaves) | Architecture |
-| DoS of hosting | Low | GitHub Pages; fallback plan: Vercel mirror prepared but **not** switched during judging unless the primary is down (record in DECISIONS_LOG) |
+| DoS of hosting | Low | GitHub Pages plus a Vercel or Netlify mirror of the same build, both live and both named in the Devpost text (D-022) |
 | Policy violation (content) | Med (disqualification) | Compliance gate; no brands/people; 10+ rating; QA sweep |
 
 ## 8. Compliance mapping
@@ -76,4 +76,4 @@ Known limits, stated in the files: the URL sweep sees a host that SDK code joins
 - Contest rules §4: no malware, nothing deceptive; originality proven via Git history and license log.
 
 ## 9. Incident response (during judging)
-If the prod URL is down: devops-engineer verifies within 1 h, re-deploys the **same tagged artefact** (no code change) or activates the mirror; log it in DECISIONS_LOG with timestamps. No functional changes are ever made after the deadline.
+If the prod URL is down: devops-engineer verifies within 1 h, re-runs `deploy` on `main` (a rebuild of the submitted commit: same `commit`, new `builtAt`) or points to the mirror, which holds the identical `dist/`; log it in DECISIONS_LOG with timestamps. No functional changes are ever made after the deadline.

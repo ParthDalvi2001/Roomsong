@@ -42,7 +42,7 @@ misses through the filter, not through the size of the bed.
 | "First try" below "First try unfiltered" | That gap is the filter trailing the hand. It is a filter decision (FR-HND-03: the value of beta), not a geometry one, and no reason to shrink the bed or widen the cells. The `?beta=10` run should close most of it. |
 | The line under the table | Which surface was used (table, plane or floating) and whether the bed's outer edge fits the 25 by 20 degree guideline from where your head was. |
 | Median and max ms, pinch-to-sound | Report only (TC-PERF-07). "n/a" means the browser gave no audio timestamp. |
-| `target` of the bed trials in the JSON | It is ring x 16 + step (ring 0 inner, 4 outer). Step 0 is to your right, 4 farthest, 8 left, 12 nearest to you. Misses bunched at steps 10 to 14 mean the near edge is the problem (it is 15 cm from your head, maybe past the table edge), not the far reach. |
+| `target` of the bed trials in the JSON | It is ring x 16 + step (ring 0 inner, 4 outer). Step 0 is to your right, 4 farthest, 8 left, 12 nearest to you. Misses bunched at steps 10 to 14 mean the near edge is the problem (it is 15 cm from your head, maybe past the table edge), not the far reach. This page's step index predates D-029 and runs the other way: page step s = app step (16 − s) mod 16. Near edge = page steps 10–14 = app steps 2–6. |
 | `heightM` of the trials in the JSON | The unfiltered pinch point above the surface. A steady 3 cm or more means the detected plane lies below the real table top. |
 
 A first-try hit: the first pinch that begins 150 ms or more after a dot lights is within 4 cm of that dot,

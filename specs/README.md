@@ -13,6 +13,7 @@ Code lives outside this folder (`src/`, `tests/`, `public/`). Claude agent and s
 | 4 | [07-workflow/AUTOPILOT.md](07-workflow/AUTOPILOT.md) | How Claude runs the project without repeated instructions |
 | 5 | [08-status/PROGRESS.md](08-status/PROGRESS.md) | Where we are right now |
 | 6 | [08-status/REPLAN_2026-10-10.md](08-status/REPLAN_2026-10-10.md) | The approved re-plan: what changed from v1 and why |
+| 7 | [08-status/PLAN_AMENDMENT_2026-10-10.md](08-status/PLAN_AMENDMENT_2026-10-10.md) | The v2.1 change sheet on top of the re-plan |
 
 ## Folder map
 
@@ -45,7 +46,7 @@ specs/
 │   ├── UAT_PLAN.md                   acceptance scenarios mirroring the judges' process
 │   └── BUG_LOG.md                    live defect ledger
 ├── 06-release/
-│   ├── DEPLOYMENT_GUIDE.md           staging/prod deploy, freeze, rollback
+│   ├── DEPLOYMENT_GUIDE.md           production deploy, mirror, freeze, rollback
 │   ├── RELEASE_NOTES.md              per-version notes
 │   ├── USER_MANUAL.md                player-facing help
 │   ├── ADMIN_GUIDE.md                operator guide (hosting, debug flags, reset)
@@ -62,7 +63,7 @@ specs/
     ├── PLAN_AMENDMENT_2026-10-10.md  v2.1 change sheet (research applied, GitHub + hosting, usage-limit slip, propagation table for T-113)
     └── PM_PROPOSALS.md               the only channel for the PM's proposed changes (this folder is the master copy)
 └── 09-research/
-    ├── reports/                      product discovery research report (2026-10-10; findings not yet applied to the plan)
+    ├── reports/                      product discovery research report (2026-10-10; applied by plan v2.1)
     └── research_notes/               the eight evidence notes behind the report
 ```
 

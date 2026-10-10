@@ -47,7 +47,7 @@ Agents: read this fully before your first commit. Reviewers: reject PRs that vio
 - Never assume planes, meshes, anchors or a second hand exist. Every adapter has a `supported()` and the caller handles `false`.
 - Essential UI goes through `ui/FovGuard` (NFR-FOV-01). Captions through `ui/Captions` only; strings from `core/strings.ts` only.
 - Gesture thresholds only in `hands/config.ts`. Any tuned value from a device session is committed with the date and device in a comment.
-- No flashing > 3 Hz; no camera-locked parallax in reduced-motion mode.
+- Flash cap (FR-UI-11): every brightness animation goes through `render/FlashGuard`; no element changes luminance more than 3 times per second. No camera-locked parallax in reduced-motion mode.
 
 ## 7. Error handling & logging
 - Use `core/log.ts` (`log.debug/info/warn/error(scope, msg, data?)`). No bare `console.*` outside `log.ts`.
@@ -57,20 +57,20 @@ Agents: read this fully before your first commit. Reviewers: reject PRs that vio
 ## 8. Comments & docs
 - Comment **why**, not what. Public functions get a one-line JSDoc with units and the SRS/FR ID they implement.
 - Keep comment density similar to surrounding code; no banner comments.
-- `TODO(T-xxx):` must reference a task ID; CI greps for bare `TODO`.
+- `TODO(T-xxx):` must reference a task ID; a unit test in verify fails on a bare `TODO` (`tests/unit/policy/todo.test.ts`).
 
 ## 9. Testing rules (see TEST_PLAN for cases)
 - TDD for domain logic: write the failing test first (`agent-skills:test-driven-development`).
 - Unit tests: Vitest, deterministic, no timers (use fake timers), no randomness without a seed.
-- Coverage gates: `garden/`, `audio/theory`, `audio/Scheduler`, `persistence/`, `room/PlacementSolver` ≥ 80%.
+- Coverage gates: `garden/`, `audio/theory`, `audio/Scheduler`, `persistence/`, `room/PlacementSolver` ≥ 80% (enforced from T-117; not set up before it).
 - e2e: Playwright + IWER; each scenario ≤ 60 s; uses `?flags=` to force paths (`forceLevel`, `fakeDay`).
 - Never mark a device-only behaviour as verified without a human device report in PROGRESS.md.
 
 ## 10. Git workflow
-- **Trunk-based with short-lived branches.** `main` = releasable; `develop` = staging integration. Branch names: `feat/T-012-pinch-detector`, `fix/BUG-007-undo-petal`, `chore/ci-cache`, `docs/adr-005`.
-- Agents work in **git worktrees** (`git worktree add ../wt-T-012 -b feat/T-012-...`) so parallel tasks never collide.
+- **Trunk-based with short-lived branches.** `main` = releasable; `develop` = integration (CI only, publishes nothing). Branch names: `feat/T-012-pinch-detector`, `fix/BUG-007-undo-petal`, `chore/ci-cache`, `docs/adr-005`.
+- Agents work in **git worktrees** under `.claude/worktrees/` so parallel tasks never collide.
 - Commit often; each commit builds. **Conventional Commits**: `feat(hands): add pinch hysteresis (FR-HND-02)`; types: `feat fix perf refactor test docs chore ci`. Scope = module. Reference FR/NFR/T/BUG IDs in the body.
-- Every commit message ends with the attribution trailer the harness provides (currently `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`).
+- Every commit message ends with the attribution trailer the harness provides.
 - Rebase onto `develop` before merge; squash-merge PRs; delete branches after merge.
 - `git push` and merges to `main` require the human's approval (AUTOPILOT §5). Merges to `develop` may be done by the scrum-master once review + verify are green.
 

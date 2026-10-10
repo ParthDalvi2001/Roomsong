@@ -1,6 +1,6 @@
 # UX / UI Wireframes & Design Direction — Roomsong
 
-**Status:** Approved · **Owner:** ux-designer · **Version:** 1.2 (2026-10-11, applies plan v2.1: PLAN_AMENDMENT_2026-10-10 §6 and contract API_SPEC v1.2.1 / LLD; D-020, D-021, D-025, D-027, D-028. v1.1 applied REPLAN_2026-10-10 §3 geometry, §4 room signature, §5 scope)
+**Status:** Approved · **Owner:** ux-designer · **Version:** 1.2 (2026-10-11, applies plan v2.1: PLAN_AMENDMENT_2026-10-10 §6 and contract API_SPEC v1.2.1 / LLD; D-020, D-021, D-025, D-027, D-028, D-029, D-030. v1.1 applied REPLAN_2026-10-10 §3 geometry, §4 room signature, §5 scope)
 Spatial wireframes are text/ASCII here; the `figma:figma-generate-design` or `ui-ux-pro-max` skills may be used to produce visual boards into `specs/03-design/figma/` (optional, T-012).
 **Verified so far:** nothing in this document has been seen on a headset. Timings and event order are checked in the emulator as each task lands. Reach, pinch accuracy, legibility, tracking loss as real hands produce it, and how the missing hand models feel (D-027) wait for a device (T-105, T-129). Numbers marked provisional may change there.
 
@@ -28,10 +28,10 @@ TOP VIEW (user at bottom)                      SIDE VIEW
      │ │  ╰────────╯   │   │              head ──── ◉  (eye height ~1.15 m seated)
      │  ╲  ring 0 ▶   ╱    │
      │   ╰────────────╯     │          Listen orb: glows in the bed's centre hole (tide origin);
-     │        (wrist orb)   │            one-hand/gaze: also the wrist orb, 20° to the dominant side
-     └──────────user────────┘          Panel: 0.55 m fwd, eye height, ≤ 0.40 m wide
+     │       (wrist orbs)   │            repeated beside the dominant wrist in one-hand and gaze modes
+     └──────────user────────┘          Settings orb (wrist) opens the panel: 0.55 m fwd, eye height, ≤ 0.40 m wide
 ```
-- Bed = annulus (ring-shaped): inner radius 0.12 m, outer 0.30 m; 5 rings at 0.12 / 0.165 / 0.21 / 0.255 / 0.30 m (4.5 cm apart) × 16 steps = 80 cells. Nothing grows in the hole; it holds the tide origin and the Listen orb glow. Provisional (D-020): the outer radius becomes 0.25 m (ring gap 3.25 cm) only if the T-105 outer-ring test fails.
+- Bed = annulus (ring-shaped): inner radius 0.12 m, outer 0.30 m; 5 rings at 0.12 / 0.165 / 0.21 / 0.255 / 0.30 m (4.5 cm apart) × 16 steps = 80 cells. Nothing grows in the hole; it holds the tide origin and the Listen orb glow. Step 0 is on the player's right and the steps run clockwise seen from above: step 4 nearest the player, step 8 on the left, step 12 farthest (D-029). Provisional (D-020): the outer radius becomes 0.25 m (ring gap 3.25 cm) only if the T-105 outer-ring test fails.
 - Targets (FR-HND-04): drawn 2.5 cm across (a cell marker, a plant's base); picked within a 4.0 cm hit radius (tunable 3.5–4.0 cm by T-105), the nearest one wins; the hover moves to a neighbour only when it is ≥ 0.5 cm closer (dead band, FR-HND-16). Inner-ring cells are ≈ 4.7 cm apart (tightest), so neighbouring hit spheres overlap by design (LLD §5.1). All provisional until the on-device pinch test (T-105).
 - Bed centre: **0.45 m** forward of the head by default (D-020; nearer, down to 0.35 m, only when the surface does not reach 0.45 m), on the surface. Floating bed (L4): 0.45 m forward, 0.25 m below eye height (LLD §5.5). *The v1.1 default of 0.40 m: replaced (D-020).*
 - Reach, forward of the head: near rim 0.15 m, centre 0.45 m, far rim 0.75 m, which is exactly the cap. The far half of the outer ring is therefore a full arm's reach, and a lean for short arms (computed, not measured; the T-105 outer-ring test decides, D-020). The remove zone (more than 0.35 m from the bed centre) starts 0.57 m from the head to either side and 0.10 m on the near side; on the far side it would start at 0.80 m, beyond the cap, so removal never needs the far side (LLD §4).
@@ -87,9 +87,9 @@ Nothing changes the garden before a pinch ends: everything in this table up to t
 | Hover (the cue before the commit, FR-HND-16) | The one target a pinch would act on lights up before the pinch. Empty hand: the plant, seed, orb, petal or panel control brightens 20 % with a soft outline (always an outline in high contrast). Carrying a seed or dragging a plant: a ghost on the cell that a release would fill, which is the nearest free cell when the one under the hand is taken. The cue moves to a neighbour only when that one is ≥ 0.5 cm closer, so it does not flicker. It is a level, not a blink (§5, flash cap) | none |
 | Pinch (on a plant) | Lifts 1 cm, glow ring. Inside the first 2 cm of hand travel (dead zone) nothing else reacts | Soft tick |
 | Pull | Starts when the hand leaves the dead zone moving more up or down than sideways (a tie is a pull). Plant stretches; a faint vertical scale ladder; 25 cm of travel is the whole range. Latched until release: a pull never becomes a drag and never moves the plant. The height shown is the height saved on release (FR-HND-08) | Live note preview (quiet) |
-| Drag | Starts when the hand leaves the dead zone moving more sideways than up or down; latched until release. The plant follows the hand; ghost at the cell a release would fill; guides glow; past the outer edge (> 0.35 m from centre) the ghost fades and the bed rim dims to warn. **Remove hint:** during a drag an outward arrow (✥→) glows on the bed rim on the side of the hand that holds the plant. It points sideways, never away from the player: the far side is beyond reach (§2). Shown until the first removal, like the other hints | Cell "tick" on change; soft falling tone when the ghost leaves the bed |
-| Drag off the bed (release outside, sideways or towards the body) | Plant dissolves into petals at the release point; one **undo petal** stays there for 5 s, shrinking as time runs out | Reverse chime |
-| Release in the hole | Plant snaps back to where it was | Soft "no" tone |
+| Drag | Starts when the hand leaves the dead zone moving more sideways than up or down; latched until release. The plant follows the hand; ghost at the cell a release would fill; guides glow; past the outer edge (> 0.35 m from centre) the ghost fades and the bed rim dims to warn. **Remove hint:** during a drag an outward arrow (✥→) glows on the bed rim on the side of the hand that holds the plant. It points sideways, never away from the player: the far side is beyond reach (§2). Shown until the first removal, like the other hints | Cell "tick" on change |
+| Drag off the bed (release outside, sideways or towards the body) | Plant dissolves into petals at the release point; one **undo petal** stays there, clamped into the FoV box, for 5 s, shrinking as time runs out | Reverse chime |
+| Release in the hole | Plant snaps back to where it was | `bump` (the one "no" sound, API_SPEC §1.2) |
 | Undo (pinch and release on the petal, or dwell) | Petals reassemble in the original cell | Forward chime |
 *Twist and flick removed (D-011): no gesture is bound to either.*
 
@@ -136,12 +136,12 @@ Tempo and Volume are steppers, not sliders (changed in v1.2): a panel control ac
 **Tuned by** (US-22; read-only, two lines, not a target): line 1 is what the room set (key root, mode, echo length), line 2 is from what (floor area, ceiling height). It is the one place that credits the room with the key and the echo, because no ripple caption can (§3.2). Wanderer: "C major · echo 0.9 s" over "no room found". The echo part dims while Reverb is not on auto. The Garden line's "(room)" is dropped in a Wanderer session.
 **Dwell** (shown while Gaze dwell is on): 600 / 900 / 1200 ms, default 900 (`Settings.dwellMs`, FR-HND-12).
 No bed-radius control (single annulus bed); bed height ±10 cm stays.
-Interaction: a control lights up on hover and acts when the pinch is released over it; moving off first cancels (FR-HND-16). In gaze mode, dwell for the chosen time. Controls ≥ 3 cm tall. Panel opens via wrist orb pinch / dwell; closes with ✕ or looking away 5 s.
+Interaction: a control lights up on hover and acts when the pinch is released over it; moving off first cancels (FR-HND-16). In gaze mode, dwell for the chosen time. Controls ≥ 3 cm tall. Panel opens via the settings orb (wrist), by pinch / dwell; closes with ✕ or looking away 5 s.
 
 ### 3.7 Garden window (non-XR; Should S6, FR-SYS-07, US-24, LLD §11)
 - The same garden in a normal browser tab, when `immersive-ar` is missing (or `?flags=window` in dev). One fixed camera at a seated eye point over a drawn table. No passthrough and no room, so the song is Wanderer and there is no tuning caption. Never the judged path: the dev bench and the demo.
 - The pointer or a touch is the pinch. A seed rides the pointer: click or tap an empty cell to plant it; press and drag a plant to move it; drag it off the ring to remove it; click the petal to undo; click the centre orb to listen. Commit on release as in XR; nothing needs a hover first, so a touch works like the mouse.
-- It cannot pull (a pointer on the bed has no up or down, so no height shaping) and cannot open the settings panel (no wrist orb; the landing page's access toggles are its settings). The page says so in one line: "Height and settings need a headset." There is no hand-out-of-view state: a lifted finger is a release.
+- It cannot pull (a pointer on the bed has no up or down, so no height shaping) and cannot open the settings panel (no settings orb; the landing page's access toggles are its settings). The page says so in one line: "Height and settings need a headset." There is no hand-out-of-view state: a lifted finger is a release.
 
 ## 4. Gesture language (icons drawn once, reused)
 | Icon | Gesture | Meaning |
@@ -187,10 +187,10 @@ No hand or controller models are drawn (D-027): these icons and the hover cue ar
 ## 7. Error & edge states
 | Situation | Behaviour |
 |---|---|
-| Hand out of view (tracking lost, FR-HND-15) | No hand model exists to fade (D-027). What the hand held freezes and dims; back within 200 ms → the gesture continues; otherwise it is undone (a plant glides to its cell in 150 ms, a seed returns to the supply) and the hand hint shows until the hand is seen again. No caption, no sound; nothing is lost (§3.4). *v1.1 "Hands fade": replaced (D-027).* |
-| Seed released off-bed | Seed floats back to the supply orb with a soft "no" tone |
+| Hand out of view (tracking lost, FR-HND-15) | No hand model exists to fade (D-027). What the hand held freezes and dims; back within 200 ms → the gesture continues; otherwise it is undone (a plant glides to its cell in 150 ms, a seed returns to the supply) and the hand hint shows until the hand is seen again (at most 5 s). No caption, no sound; nothing is lost (§3.4). *v1.1 "Hands fade": replaced (D-027).* |
+| Seed released off-bed | Seed floats back to the supply orb with the `bump` sound |
 | Cell occupied on drop | The ghost already shows the nearest free cell before the release (FR-HND-16); the release plants there + bump sound; if bed full (80), no ghost, caption "Garden is full" and seed returns |
-| Plant dragged off by accident | Undo petal for 5 s at the release point (pinch or dwell); after that the removal is final |
+| Plant dragged off by accident | Undo petal for 5 s at the release point, clamped into the FoV box (pinch or dwell); after that the removal is final |
 | Different room than last time | Garden re-tunes in place (plants keep cells, pitches follow the new key and mode, the echo follows the new room, the tempo stays); tuning ripple plays with its surface captions (§3.2); no other caption |
 | Anchor restore failed, or anchors unsupported (Must with this fallback, FR-ROOM-07; was Should S4, D-021) | Not an error. The saved anchor is tried for up to 4 s, then the bed is re-placed by the placement chain, silently; garden intact; tiny icon "re-placed" for 3 s. How reliably a headset restores an anchor is unverified (T-129, A1) |
 | Save failed | Caption "Saving unavailable" once per session |
@@ -198,7 +198,7 @@ No hand or controller models are drawn (D-027): these icons and the hover cue ar
 
 ## 8. Accessibility specifics
 - Gaze reticle: 1.2 cm dot, dwell ring fills over the chosen dwell time, 600 / 900 / 1200 ms, default 900 (`Settings.dwellMs`, FR-HND-12); dwell pauses when the head moves > 8°/s.
-- One-hand: Listen orb (always visible at 20° right, or left for left-dominant) toggles Listen; palm-out single hand works.
+- One-hand: the Listen orb (bed centre) is repeated beside the dominant wrist (always visible at 20° right, or left for left-dominant) and either one toggles Listen; palm-out single hand works.
 - Beat ring: 16 ticks; tide position; plants flash on trigger with their silhouette icon on the ring.
 - No element changes luminance more than 3 times per second, which is at most 1.5 flashes per second (FR-UI-11; rules in §5). Tide glow ramps, never strobes. *"No flashing > 3 Hz": replaced by this stricter cap.*
 - Reduced motion, in one place: tuning ripple → each surface glows 0.4 s in turn, same notes and captions (§3.2); growth → fades; amplitudes halved; particle counts halved (FR-UI-06). Hover cue, tracking-loss tint and the 150 ms glide are unchanged.

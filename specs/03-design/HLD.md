@@ -57,7 +57,7 @@ A component has to be imported to be used, so the components that modules on the
 
 | Module | Responsibility | Owner |
 |---|---|---|
-| `core/` (+ `src/index.ts`) | `core/`: XR session lifecycle, clock (audio-clock-driven), typed event bus, settings store and the `Settings` type, shared plain types (`Vec2`, `Vec3`, `Mat4`), the shared ECS components, the default tempo, strings, feature flags, logging; it imports no other module. `src/index.ts`: app bootstrap with the mode gate (XR or garden window), the only file that imports every module | software-architect |
+| `core/` (+ `src/index.ts`) | `core/`: the app clock (epoch ms plus the `fakeDay` offset; audio time is `AudioEngine.clock`), typed event bus, settings store and the `Settings` type, shared plain types (`Vec2`, `Vec3`, `Mat4`), the shared ECS components, the default tempo, strings, feature flags, logging; it imports no other module. `src/index.ts`: app bootstrap, owns the XR session and emits the three `xr:*` events, the mode gate (XR or garden window), the only file that imports every module | software-architect |
 | `room/` | Plane/mesh/hit-test/anchor adapters; **PlacementSolver** (fallback chain; bed centre default 0.45 m, D-020); **RoomFeatures** extraction (table height/area, floor area, walls, ceiling, room volume → `RoomFeatures`, FR-ROOM-10; absorbs room-size estimate; reads the planes itself and gives the same result whichever way the user faces); persistent anchors (**Must**, D-021; the handle is saved with the placement level it was made at, so a restored bed keeps its room signature; fallback = re-place); wall finder (Could, C4) | fullstack-dev |
 | `hands/` | **`InputSource`**: the one seam between an input device and the gesture machine (WebXR hand joints, IWER's emulated hands, or a pointer; FR-SYS-07). Hand joint sampling, 1€ filtering, two pinch signals (the platform's `select` for discrete actions, joint distance for pull and drag; FR-HND-02), pose detectors (palm-up, palms-out, wake), gesture state machine (idle → hover → pinched → pull/drag → release; release in the outer zone = remove; discrete actions commit on release, and one `gesture:release` that says what ended is the only event that commits; tracking-loss grace and revert, FR-HND-15), target picking with the hover cue (FR-HND-16: the highlighted cell is the cell a release commits) + bed zone | frontend-dev |
 | `garden/` | Pure-TS domain model: Bed (annulus 0.12–0.30 m, 5×16), Cell, Plant, Seed, growth rules, seed supply, remove/undo, **`roomSignature()`** (v1: quantised features → reverb decay, key root and mode; tempo constant; starter voices and palette seed from a hash; LLD §5.8), the three pentatonic modes (D-025). No Three.js, no DOM. Seasons removed (D-011). | backend-dev |
@@ -90,12 +90,12 @@ No allocations in steps 1–4 hot paths (pools, preallocated vectors).
 Any `garden:changed` → debounce 500 ms → `persistence.save(snapshot)`; also on `visibilitychange` and session end.
 
 ## 5. Deployment topology
-Hosting is decided (D-022, ADR-004): GitHub Pages is the submitted URL, plus a Vercel or Netlify mirror of the same build hash (DEPLOYMENT_GUIDE §1; PoC D1). The staging/production split and the freeze date hold for both hosts.
+Hosting is decided (D-022, ADR-004): GitHub Pages is the submitted URL, plus a Vercel or Netlify mirror of the same build hash (DEPLOYMENT_GUIDE §1; PoC D1). The freeze date holds for both hosts.
 
 | Env | Branch | URL | Purpose |
 |---|---|---|---|
-| Local dev | any | `https://<lan-ip>:5173` | Headset over Wi-Fi via IWSDK dev server |
-| Staging | `develop` | the mirror's preview build (Vercel or Netlify, D-022) | Agents' and human's daily test build |
+| Local dev | any | `https://<lan-ip>:8081` | Headset over Wi-Fi via IWSDK dev server |
+| Local, built | any | `npm run build && npm run preview`, `https://<lan-ip>:4173` | The production build before a release; there is no hosted staging (T-108) |
 | Production | `main`, deployed by GitHub Actions | `https://parthdalvi2001.github.io/Roomsong/` (the path is case-sensitive) | The judged URL; frozen from 2026-11-17 |
 | Mirror | same build as production | Vercel or Netlify (T-108) | Second link in the Devpost text; same build hash |
 

@@ -1,7 +1,7 @@
 # Winning Strategy — Track, Idea, and Scoring Map
 
 **Status:** Approved · **Owner:** product-owner · **Version:** 2.1 (2026-10-10, plan v2.1 propagated by T-113; v2.0 2026-10-10; v1 2026-10-09)
-**Decision record:** D-001, D-002, D-003, D-010 (room signature), D-011 (scope cut), D-019–D-028 (plan v2.1 and contract v1.2) in `08-status/DECISIONS_LOG.md`
+**Decision record:** D-001, D-002, D-003, D-010 (room signature), D-011 (scope cut), D-019–D-029 (plan v2.1 and contract v1.2) in `08-status/DECISIONS_LOG.md`
 **Change sheets:** `08-status/REPLAN_2026-10-10.md` (v2) · `08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1)
 
 > v2 changes in one line: the garden stays the base; the **room signature** ("every room has its own song") becomes the
@@ -95,7 +95,7 @@ show growth stages at 1/3/7 days (Should-have). Take it to a different room and 
 | Judging criterion | How Roomsong scores | Honest gap |
 |---|---|---|
 | **Innovation & Creativity** | The *position in your real room* **is** the composition, and the *room itself* **is** the key. Scene understanding (planes, room geometry) drives the music, not just the placement. Repeat use: a different room, or tomorrow's seed, gives a new song. | A musical garden is not new (§0). Without the room signature we are a polished variant of known ideas. |
-| **Experience Design** | Seated by design (the bed centre sits 0.45 m in front of you on your table by default, its far edge on the 0.75 m reach cap). No text-wall onboarding: the first seed floats to your hand; first sound ≤20 s. A hover cue shows what a pinch will act on before it commits, and a hand that leaves view loses nothing. **Purposeful passthrough**: the table is the stage and the room's geometry tunes the song. FoV-aware: the bed fits within ±25°. | The "Tune" beat must read as *caused by the room*, not as random; the tuning ripple exists for that reason. |
+| **Experience Design** | Seated by design (the bed centre sits 0.45 m in front of you on your table by default, its far edge on the 0.75 m reach cap). No text-wall onboarding: the first seed floats to your hand; first sound ≤20 s. A hover cue shows what a pinch will act on before it commits, and a hand that leaves view loses nothing. **Purposeful passthrough**: the table is the stage and the room's geometry tunes the song. FoV-aware layout (whether the whole bed fits ±25°/±20° is decided on device, D-020). | The "Tune" beat must read as *caused by the room*, not as random; the tuning ripple exists for that reason. |
 | **Technical Implementation** | Hand tracking (pinch, pull, drag, palm-up/out poses, tracking-loss recovery), plane detection (table, walls, ceiling), hit-test fallback, persistent anchors with a re-placement fallback, spatial audio (24 pooled equal-power panners, one reverb whose length follows the room), instanced rendering within budget, a **4-level placement chain** and a **Wanderer fallback** so it works in rooms we never tested. | **Unverified on device until a headset exists** (fps, hand feel, plane availability, anchor restore). Everything in this row is emulator-verified only today. |
 | **Polish & Presentation** | A cohesive bioluminescent art direction tinted per room, every sound synthesized in real time (no licensing risk), and a video with a true demo: *"two rooms, two songs."* | Emulator footage, if that is all we have, looks flat next to device captures. |
 
@@ -131,7 +131,7 @@ show growth stages at 1/3/7 days (Should-have). Take it to a different room and 
 | The Claude usage limit runs out again | Medium | High | 2 agents at once by default, narrow task cards, the reset day used for integration and human tests (D-023). |
 | Persistent anchors are unreliable on device (now a Must) | Unverified | Medium | Re-placement by the chain is the built-in fallback and keeps the garden; device check A1 in T-129. |
 | Deadline slip | Medium | Critical | Gates G0 Oct 17 / G1 Oct 24 / G2 Nov 3 / G3 Nov 12 (D-023); feature freeze 2026-11-12, code freeze 2026-11-15, submit 2026-11-17. Scope already cut ≈55–60% (D-011). |
-| Link breaks during judging | Low | Critical | GitHub Pages is the submitted URL, with a Vercel or Netlify mirror of the same build hash named in the Devpost text (D-022); separate prod (frozen) and staging deploys; a post-submission smoke test from a clean browser profile; uptime checks on both links until 2026-12-11. |
+| Link breaks during judging | Low | Critical | GitHub Pages is the submitted URL, with a Vercel or Netlify mirror of the same build hash named in the Devpost text (D-022); one frozen production build on both links, no hosted staging; a post-submission smoke test from a clean browser profile; uptime checks on both links until 2026-12-11. |
 
 ## 4. Positioning lines (reuse everywhere: video, description, gallery)
 - "Your table is the stage. Your hands are the gardener. Your room writes the key."

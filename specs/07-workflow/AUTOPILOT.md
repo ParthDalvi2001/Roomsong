@@ -9,9 +9,8 @@ Purpose: the human should never need to repeat instructions. This document tells
 By running autopilot the human authorises Claude to, without asking again:
 - Read/modify any file in this repo; create branches and git worktrees; make **local commits** on feature branches; **merge to `develop`** after review + verify.
 - Install npm dev dependencies that follow CODING_GUIDELINES §12 (log them).
-- Run tests, emulators, builds, Playwright, MCP tools (`iwsdk-runtime`, `metavr`), and deploy to **staging**.
-- Spawn subagents (max **3** concurrent, D-017) and let them do the above.
-- While there is no remote (D-014): "merge to develop" means a local merge; "staging deploy" means a local `npm run build` + `vite preview` smoke until hosting is chosen (T-108).
+- Run tests, emulators, builds, Playwright, MCP tools (`iwsdk-runtime`, `metavr`), and run a local preview build.
+- Spawn subagents (max **2** concurrent, D-023; more only when Parth opts in, D-024) and let them do the above.
 
 Claude must still ask before: `git push` to `main`, merging to `main`, **prod deploys**, deleting branches/worktrees with unmerged work, adding a **runtime** dependency, dropping a Must-have, or anything in §5.
 
@@ -26,7 +25,7 @@ Claude must still ask before: `git push` to `main`, merging to `main`, **prod de
 ## 3. The loop (repeat until the sprint's tasks are done or a §5 stop)
 
 ```
-SELECT   pick up to 4 tasks: status=todo, all deps done, different lanes, highest sprint priority (table order).
+SELECT   pick up to 2 tasks: status=todo, all deps done, different lanes, highest sprint priority (table order).
 DISPATCH for each task → Agent(subagent_type=<owner role>, isolation=worktree) with the task card (§4).
 WAIT     agents run in parallel. Meanwhile the main session: updates PROGRESS §Now, answers the human.
 INTEGRATE for each finished agent: read its report → run `npm run verify` on its branch → run review
@@ -34,7 +33,7 @@ INTEGRATE for each finished agent: read its report → run `npm run verify` on i
          → fix or send back once → merge to develop (squash) → delete worktree → mark done / done-pending-device.
 RECORD   PROGRESS.md (status, numbers), BUG_LOG (bugs), DECISIONS_LOG (decisions), RELEASE_NOTES (notable).
 CHECK    if ≥3 tasks are done-pending-device OR sprint end → write a device script and add to §Blocked on human.
-         if sprint end → sprint review (self-score) + retro + staging deploy + next sprint planning.
+         if sprint end → sprint review (self-score) + retro + preview build check + next sprint planning.
 LOOP
 ```
 
@@ -63,9 +62,9 @@ REPORT BACK (≤25 lines): what changed (files), tests added, verify output summ
 7. Three consecutive failed attempts at the same task → stop that task, write what was tried, move on.
 
 ## 6. Parallelism rules
-- Max 3 agents at once: one per lane (A/B/C); lane D agents only when a lane is idle. Never two agents on the same module folder.
+- Max 2 agents at once (D-023; more only when Parth opts in, D-024): one per lane (A/B/C); lane D agents only when a lane is idle. Never two agents on the same module folder.
 - **No headset (D-013):** tasks whose acceptance needs a device finish as `done-pending-device`; the loop keeps selecting emulator-verifiable work. Device scripts accumulate in PROGRESS §Blocked on human until T-000 is resolved.
-- Worktree per agent: `git worktree add ../wt-T-xxx -b feat/T-xxx-slug develop`. Clean up after merge.
+- Worktree per agent, under `.claude/worktrees/`, on a `feat/T-xxx-slug` branch from `develop`. Clean up after merge.
 - Integration order when several finish together: C (backend/garden/audio) → B (hands/render/ui) → A (room/integration) → D.
 - If a merge conflicts: the main session resolves it following API_SPEC; if it can't in 2 tries, it re-dispatches the later task on top of the merged `develop`.
 
@@ -83,7 +82,7 @@ REPORT BACK (≤25 lines): what changed (files), tests added, verify output summ
 | Phase | "continue" → Claude does |
 |---|---|
 | Phase 0 Prove | T-100 → T-101 → (T-106, T-107, T-104, T-105, T-109 in parallel) with T-102 running in lane C from the start; asks Parth for T-000/T-103/T-108 items |
-| Phases 1–3 | §3 loop over SPRINT_PLAN v2 (T-120+); gate reviews at G1/G2/G3 via scrum-master |
+| Phases 1–3 | §3 loop over SPRINT_PLAN v2.1 (T-120+); gate reviews at G1/G2/G3 via scrum-master |
 | Phase 3 end | bug bash loop: pick S1 → S2 → S3; regression; freeze gate |
 | Phase 4 Release | release tasks in order (T-180+); prepares copy and scripts; asks for recordings/uploads |
 | Watch | uptime check; no code changes to prod |

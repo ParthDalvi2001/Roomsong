@@ -6,7 +6,7 @@ flows and emulator behaviour. It proves nothing about a headset: results are tag
 ## Run
 
 ```bash
-npm run test:e2e                    # starts its own dev server on https://localhost:8081, headless Chromium, ~40 s
+npm run test:e2e                    # starts its own dev server on https://localhost:8081, headless Chromium, about 2.8 min
 E2E_PORT=8091 npm run test:e2e      # a second agent or worktree picks another port
 npx playwright test 01-enter        # one file
 ```

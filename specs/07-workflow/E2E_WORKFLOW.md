@@ -24,29 +24,29 @@ This is the lifecycle every piece of work follows. Phases have **entry gates** (
 
 ## Phase 1 — Design & Architect (Oct 9–12)
 **Activities:** HLD/LLD/ADRs/API_SPEC (architect), UX_WIREFRAMES + icon set (ux), SECURITY_PLAN (architect + security-auditor), ENVIRONMENT_SETUP + scaffold + CI (devops), capability spike on device (T-003).
-**Exit gate:** `npm run verify` green on the scaffold; staging URL live; T-003 findings recorded (which XR features actually work); specs updated accordingly.
+**Exit gate:** `npm run verify` green on the scaffold; preview build checked; T-003 findings recorded (which XR features actually work); specs updated accordingly.
 
 ## Phase 2 — Build (Sprints 1–4, Oct 12 → Nov 8)
 Each sprint: **plan → parallel build → integrate → test → device test → review → retro**.
-- **Plan** (scrum-master, day 1): confirm sprint tasks, dependencies, and up to 4 parallel lanes.
+- **Plan** (scrum-master, day 1): confirm sprint tasks, dependencies, and the lanes (at most 2 agents at once, D-023).
 - **Build** (agents in worktrees): per-task loop in AUTOPILOT §3. TDD for logic; spec-first for interfaces.
 - **Integrate** (fullstack/scrum-master): merge lanes into `develop` daily; e2e must stay green.
 - **Test** (qa): e2e suite nightly; write the device script for the sprint.
 - **Device test** (human): run the script; report pass/fail per step; listening review on Fridays.
 - **Review** (product-owner): judging-criteria self-score; adjust scope via MoSCoW.
 - **Retro** (scrum-master): 3 keep / 3 change → DECISIONS_LOG.
-**Sprint exit gate:** all sprint tasks Done per DoD (or explicitly moved), e2e green, device script ≥90% pass, no open S1, perf within budget, release notes drafted, staging deployed.
+**Sprint exit gate:** all sprint tasks Done per DoD (or explicitly moved), e2e green, device script ≥90% pass, no open S1, perf within budget, release notes drafted, preview build checked.
 
 ## Phase 3 — Harden (Sprint 5, Nov 9–12)
 No new features. Bug bash, regression (e2e + full device suite), content/policy sweep, help page, release notes.
 **Exit gate (Feature freeze, Nov 12):** BUG_LOG open S1/S2 = 0; TC-DEV-01..11 pass; self-score ≥8/10 on each criterion or an accepted decision.
 
 ## Phase 4 — Release candidate (Nov 13–16)
-Video capture and edit, gallery images, Devpost copy, `v1.0.0-rc1` tag → prod deploy, UAT-final on prod from a clean headset, compliance gate.
-**Exit gate (Code freeze, Nov 15 23:59 IST):** rc tag deployed; after this only S1 fixes, each re-tagged and re-UAT'd.
+Video capture and edit, gallery images, Devpost copy, push `main` → deploy, then tag `v1.0.0-rc1`, UAT-final on prod from a clean headset, compliance gate.
+**Exit gate (Code freeze, Nov 15 23:59 IST):** rc build deployed and tagged; after this only S1 fixes, each re-tagged and re-UAT'd.
 
 ## Phase 5 — Submit (Nov 17)
-Go/no-go (SUBMISSION_CHECKLIST §4) → `v1.0.0-submission` tag → prod deploy → verify from a second device → human submits on Devpost → evidence archived → prod locked.
+Go/no-go (SUBMISSION_CHECKLIST §4) → push `main` → deploy, then tag `v1.0.0-submission` → verify from a second device → human submits on Devpost → evidence archived → prod locked.
 **Exit gate:** Devpost confirmation screenshot in `specs/06-release/evidence/submission/`.
 
 ## Phase 6 — Judging watch (Nov 18 → Dec 11)

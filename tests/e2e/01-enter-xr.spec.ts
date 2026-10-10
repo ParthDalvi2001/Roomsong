@@ -1,5 +1,6 @@
-// TC-E2E-01 (FR-SYS-01/06): load -> Enter -> immersive-ar session active within 5 s, no errors, nothing but
-// localhost requested (Golden Rule 9). Emulator result: says nothing about a headset.
+// TC-E2E-01 (FR-SYS-01/06): load -> Enter -> immersive-ar session active within the emulator limit of 10 s
+// (SESSION_ENTRY_LIMIT_MS; the 5 s budget is a device number, TC-DEV-01), no errors, nothing but localhost
+// requested (Golden Rule 9). Emulator result: says nothing about a headset.
 import { expect, test, type Page } from '@playwright/test';
 
 import { enterXR, openApp, readRoom, SESSION_ENTRY_LIMIT_MS, xrFrames } from './support/iwer';
@@ -33,7 +34,7 @@ for (const [roomName, input] of [
   ['none', 'hand'],
   ['table', 'controller'],
 ] as const) {
-  const title = `TC-E2E-01 enters immersive-ar within 5 s, no errors, nothing off localhost (${roomName}, ${input})`;
+  const title = `TC-E2E-01 enters immersive-ar within 10 s (emulator), no errors, nothing off localhost (${roomName}, ${input})`;
   test(title, async ({ page }, testInfo) => {
     const run = await loadAndEnter(page, roomName, input);
     await page.screenshot({ path: testInfo.outputPath(`enter-xr-${roomName}-${input}.png`) });
