@@ -107,6 +107,7 @@ const pct = (a, b) => (b ? Math.round((100 * a) / b) : 0);
 const seen = new Set(JSON.parse(localStorage.getItem('roomsong-seen') || '[]'));
 const open = new Set(JSON.parse(localStorage.getItem('roomsong-open') || '["Phase 0"]'));
 let last = null;
+let pageVersion = 0;
 
 function bar(counts) {
   const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
@@ -243,6 +244,8 @@ async function tick() {
   try {
     const d = await (await fetch('/data')).json();
     if (d.error) throw new Error(d.error);
+    if (pageVersion && d.pageVersion !== pageVersion) return location.reload();
+    pageVersion = d.pageVersion;
     render(d);
   } catch (e) {
     $('stamp').textContent = `cannot refresh: ${e.message}`;

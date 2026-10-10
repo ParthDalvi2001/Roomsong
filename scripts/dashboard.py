@@ -272,6 +272,7 @@ def collect():
     commits = [dict(zip(('when', 'subject'), line.split('|', 1))) for line in git('log', '-14', '--format=%cr|%s', 'develop').split('\n') if '|' in line]
     return {
         'generatedAt': datetime.datetime.now().strftime('%a %d %b %H:%M:%S'),
+        'pageVersion': (ROOT / 'scripts/dashboard.html').stat().st_mtime,  # the open tab reloads itself when the page changes
         'today': today.isoformat(),
         'dayNumber': (today - day((10, 10))).days + 1, 'totalDays': total_days,
         'daysToSubmit': (day((11, 17)) - today).days,
