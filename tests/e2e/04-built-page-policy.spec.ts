@@ -2,10 +2,11 @@
 // on the dev server, which carries no policy, so this is the one run that goes red when the policy blocks
 // something the app needs. The build has no emulator: the test adds IWER from node_modules as an init script
 // (init scripts are not subject to the page's policy) and grants the session the app offers.
+// The same run covers the pinch-test page (T-105), which is built into dist/ beside the app.
 // Emulator result: says nothing about a headset.
 import { fileURLToPath } from 'node:url';
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 import { BUILT_PAGE_URL } from '../../playwright.config';
 
@@ -29,9 +30,8 @@ interface BuiltPage {
   policyViolations: string[];
 }
 
-test('NFR-SEC-01 the built page loads and enters XR with no policy violation and no error', async ({
-  page,
-}) => {
+/** Opens a built page with IWER installed and its policy checked. Returns the errors it goes on recording. */
+async function openBuilt(page: Page, path = '') {
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
   page.on('console', (message) => {
@@ -52,18 +52,41 @@ test('NFR-SEC-01 the built page loads and enters XR with no policy violation and
     page.IWER_DEVICE.primaryInputMode = 'hand';
   });
 
-  await page.goto(BUILT_PAGE_URL);
+  await page.goto(BUILT_PAGE_URL + path);
   const policy = await page.evaluate(
     () => document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.getAttribute('content') ?? '',
   );
   expect(policy).toContain("default-src 'self'"); // a page with no policy would pass everything below
+  return { consoleErrors, pageErrors };
+}
+
+/** No policy violation, console error or page error so far. */
+async function expectClean(page: Page, errors: Awaited<ReturnType<typeof openBuilt>>) {
+  expect(await page.evaluate(() => (window as unknown as BuiltPage).policyViolations)).toEqual([]);
+  expect(errors.consoleErrors).toEqual([]);
+  expect(errors.pageErrors).toEqual([]);
+}
+
+test('NFR-SEC-01 the built page loads and enters XR with no policy violation and no error', async ({
+  page,
+}) => {
+  const errors = await openBuilt(page);
   const device = await page.evaluateHandle(() => (window as unknown as BuiltPage).IWER_DEVICE);
   await page.waitForFunction((d) => d.sessionOffered, device);
   await device.evaluate((d) => d.grantOfferedSession());
   await page.waitForFunction((d) => d.activeSession !== undefined, device);
   await xrFrames(page, SESSION_FRAMES);
+  await expectClean(page, errors);
+});
 
-  expect(await page.evaluate(() => (window as unknown as BuiltPage).policyViolations)).toEqual([]);
-  expect(consoleErrors).toEqual([]);
-  expect(pageErrors).toEqual([]);
+test('NFR-SEC-01 the built pinch-test page runs its session with no policy violation and no error', async ({
+  page,
+}) => {
+  const errors = await openBuilt(page, 'proto/pinch/');
+  await page.getByRole('button', { name: 'Start' }).click();
+  // A lit target: the script, the style sheet, WebGL, the audio context and the session all got through.
+  await page.waitForFunction(() =>
+    (window as unknown as { __pinchTest: { lit(): unknown } }).__pinchTest.lit(),
+  );
+  await expectClean(page, errors);
 });

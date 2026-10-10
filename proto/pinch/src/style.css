@@ -1,0 +1,52 @@
+body {
+  margin: 0;
+  background: #101418;
+  color: #e8eef2;
+  font:
+    18px/1.5 system-ui,
+    sans-serif;
+}
+main {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+button {
+  font: inherit;
+  min-height: 3rem;
+  padding: 0.5rem 1.5rem;
+  border: 2px solid #7fd4ff;
+  border-radius: 0.5rem;
+  background: #16303f;
+  color: inherit;
+}
+button:focus-visible,
+pre:focus-visible {
+  outline: 3px solid #ffd66b;
+  outline-offset: 2px;
+}
+button:disabled {
+  opacity: 0.5;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+th,
+td {
+  border: 1px solid #3a4650;
+  padding: 0.3rem 0.5rem;
+  text-align: right;
+}
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+pre {
+  max-height: 20rem;
+  overflow: auto;
+  background: #0a0d10;
+  padding: 0.75rem;
+  font-size: 0.75rem;
+}

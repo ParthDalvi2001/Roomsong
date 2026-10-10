@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Roomsong - pinch accuracy test (T-105)</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Roomsong - pinch accuracy test</h1>
+      <p>
+        Sit at a table. Small dots appear on it, one lights up at a time. Pinch the lit dot with your thumb
+        and index finger, either hand. 80 dots in four rounds, about five minutes. Pinch the large blue dot to
+        your left to finish early. Hands only: put the controllers down. Nothing is sent anywhere.
+      </p>
+      <button id="start" type="button">Start</button>
+      <p id="status" role="status" aria-live="polite"></p>
+      <section id="results" hidden>
+        <h2>Results</h2>
+        <table id="summary"></table>
+        <p id="notes"></p>
+        <button id="copy" type="button">Copy JSON</button>
+        <pre id="json" tabindex="0"></pre>
+      </section>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
