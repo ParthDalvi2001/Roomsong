@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Roomsong text progress dashboard. Read-only: it reads the sprint plan, the progress file, git and the agent logs.
-# Usage: bash scripts/progress.sh      Refresh every minute in your own terminal (costs no tokens):
-#   while true; do clear; bash scripts/progress.sh; sleep 60; done
+# Usage: bash tracker/progress.sh      Refresh every minute in your own terminal (costs no tokens):
+#   while true; do clear; bash tracker/progress.sh; sleep 60; done
 cd "$(dirname "$0")/.." && exec python3 -I - <<'PY'
 import collections, datetime, json, os, pathlib, re, subprocess, time
 

@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roomsong tracker</title>
+<style>
+  /* status colours checked with the dataviz validator on both surfaces (done, working, needs you) */
+  :root {
+    color-scheme: light;
+    --page: #f3f5f9; --surface: #ffffff; --line: #e2e8f0; --axis: #cbd5e1; --track: #e8edf4; --wash: #f6f8fb;
+    --text: #0f172a; --text-2: #475569; --text-3: #64748b;
+    --bar: #111a33; --bar-text: #ffffff; --bar-2: #aab6d3; --accent: #4f46e5;
+    --done: #16a34a; --working: #2563eb; --you: #f59e0b; --todo: #cbd5e1; --late: #dc2626;
+    --shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 6px 16px rgba(15, 23, 42, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0b1120; --surface: #151c2f; --line: #25304a; --axis: #3a4763; --track: #222c45; --wash: #111829;
+      --text: #f8fafc; --text-2: #cbd5e1; --text-3: #94a3b8;
+      --bar: #070b17; --bar-text: #ffffff; --bar-2: #94a3b8; --accent: #a5b4fc;
+      --done: #16a34a; --working: #3b82f6; --you: #c98500; --todo: #3a4763; --late: #ef4444;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .5);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  h2 { font-size: 15px; margin: 0; }
+  h3 { font-size: 13px; margin: 18px 0 6px; color: var(--text-2); }
+  p { margin: 6px 0; }
+  ul { margin: 0; padding-left: 18px; } li { margin: 3px 0; }
+  .muted { color: var(--text-2); } .small, small { font-size: 12px; color: var(--text-3); font-weight: 400; }
+  .hint { color: var(--text-3); font-size: 12px; margin: 2px 0 12px; }
+  [id] { scroll-margin-top: 76px; }
+
+  /* top bar */
+  .top { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 20px; background: var(--bar); color: var(--bar-text); }
+  .brand { display: flex; align-items: center; gap: 9px; font-size: 17px; font-weight: 700; }
+  .brand i { width: 14px; height: 14px; border-radius: 4px; background: #818cf8; box-shadow: 6px 6px 0 -2px #22c55e; margin-right: 4px; }
+  .topsub { color: var(--bar-2); font-size: 13px; } .grow { flex: 1; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .2); font-weight: 600; }
+  .pill i { width: 10px; height: 10px; border-radius: 50%; background: var(--bar-2); flex: none; }
+  .pill.working i { background: #22c55e; animation: pulse 1.4s ease-in-out infinite; }
+  .pill.idle i { background: #f59e0b; }
+  .pill.stopped i, .pill.offline i { background: #ef4444; border-radius: 2px; }
+  .pill small { color: var(--bar-2); }
+  @keyframes pulse { 50% { opacity: .25; } }
+  @media (prefers-reduced-motion: reduce) { .pill.working i { animation: none; } }
+  .bellbox { position: relative; }
+  #bell { padding: 5px 12px; border-radius: 999px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .2); color: var(--bar-text); }
+  #bellcount { margin-left: 6px; padding: 0 6px; border-radius: 999px; background: #ef4444; font-size: 12px; }
+  .panel { position: absolute; right: 0; top: 40px; width: min(400px, 92vw); max-height: 70vh; overflow: auto; padding: 14px 16px; border-radius: 12px; background: var(--surface); color: var(--text); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(15, 23, 42, .25); }
+  .panel button, .chips button, button.plain { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+
+  /* layout */
+  main { max-width: 1440px; margin: 0 auto; padding: 16px 20px 48px; display: grid; gap: 16px; }
+  .grid { display: grid; gap: 16px; }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .lead { grid-template-columns: minmax(300px, 1fr) minmax(0, 2fr); }
+  .three { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .two { grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); min-width: 0; }
+  @media (max-width: 900px) { .lead { grid-template-columns: 1fr; } }
+
+  /* stat tiles */
+  .tile { display: flex; flex-direction: column; gap: 4px; text-align: left; }
+  .tile .label { color: var(--text-2); font-size: 13px; }
+  .tile b { font-size: 28px; font-weight: 650; line-height: 1.15; }
+  .tile b small { font-size: 13px; }
+  .tile .delta { color: var(--text-2); font-size: 13px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  button.tile:hover, .prow:hover, tr.task:hover, .legendlist button:hover { background: var(--wash); }
+  .tile.warn { border-left: 4px solid var(--you); }
+
+  /* marks: thin bars, 2px surface gaps, rounded data ends */
+  .bar { display: flex; gap: 2px; height: 12px; border-radius: 4px; overflow: hidden; background: var(--track); }
+  .bar i { display: block; height: 100%; }
+  .bar.meter { margin: 4px 0 2px; height: 8px; } .bar.meter i { border-radius: 0 4px 4px 0; }
+  .seg-done { background: var(--done); } .seg-running { background: var(--working); } .seg-you { background: var(--you); }
+  .seg-todo, .seg-maybe { background: var(--todo); } .seg-late { background: var(--late); } .seg-time { background: var(--text-3); }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; flex: none; }
+  .key { display: inline-block; width: 16px; border-top: 2px solid var(--done); margin-right: 6px; vertical-align: middle; }
+  .key.key-target { border-top: 2px dashed var(--text-3); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 2px 0 12px; color: var(--text-2); font-size: 12px; align-items: center; }
+  .legend span { display: inline-flex; align-items: center; }
+  .badge { display: inline-flex; align-items: center; white-space: nowrap; padding: 2px 9px; border-radius: 999px; background: var(--wash); border: 1px solid var(--line); font-size: 12px; }
+
+  /* all tasks: donut with the one hero number */
+  .donutrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+  .donut { position: relative; width: 190px; flex: none; margin: 0 auto; }
+  .donut svg { display: block; width: 100%; transform: rotate(0deg); }
+  .arc { fill: none; stroke-width: 4.6; cursor: pointer; }
+  .arc.seg-done { stroke: var(--done); } .arc.seg-running { stroke: var(--working); } .arc.seg-you { stroke: var(--you); } .arc.seg-todo, .arc.seg-maybe { stroke: var(--todo); }
+  .arc:hover { stroke-width: 5.6; }
+  .hero { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+  .hero b { font-size: 52px; font-weight: 650; line-height: 1; } .hero span { color: var(--text-2); font-size: 12px; }
+  .legendlist { flex: 1; min-width: 170px; display: grid; gap: 2px; }
+  .legendlist button { display: grid; grid-template-columns: auto 1fr auto 44px; align-items: center; gap: 4px; padding: 6px 8px; border: 0; border-radius: 8px; background: none; text-align: left; }
+  .legendlist button b { font-variant-numeric: tabular-nums; } .legendlist button small { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* target and done: line chart with a crosshair */
+  .plotwrap { display: flex; gap: 6px; height: 210px; margin-top: 6px; }
+  .yaxis { position: relative; width: 22px; } .yaxis span { position: absolute; right: 0; transform: translateY(50%); font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .plot { position: relative; flex: 1; border-bottom: 1px solid var(--axis); }
+  .plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .plot svg * { fill: none; vector-effect: non-scaling-stroke; }
+  .plot .gridline { stroke: var(--line); stroke-width: 1; }
+  .plot .area { fill: var(--done); opacity: .1; stroke: none; }
+  .plot .target { stroke: var(--text-3); stroke-width: 2; stroke-dasharray: 5 4; }
+  .plot .doneline { stroke: var(--done); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .plot .today, .plot .cross { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--axis); }
+  .plot .cross { display: none; background: var(--text-2); }
+  .plot .enddot { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--done); border: 2px solid var(--surface); }
+  .plot .endlabel { position: absolute; font-size: 12px; font-weight: 600; white-space: nowrap; transform: translate(10px, -150%); background: var(--surface); padding: 0 4px; border-radius: 4px; }
+  .plot .endlabel.flip { transform: translate(calc(-100% - 10px), -150%); }
+  .xaxis { display: flex; gap: 2px; margin: 4px 0 0 28px; font-size: 12px; color: var(--text-2); }
+  .xaxis span { border-left: 1px solid var(--axis); padding-left: 5px; overflow: hidden; white-space: nowrap; } .xaxis small { display: block; }
+
+  /* finished each day: thin columns from one baseline, a mark at the day's target */
+  .cols { display: flex; gap: 4px; height: 190px; padding-top: 20px; }
+  .col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .col .slot { position: relative; flex: 1; width: 100%; display: flex; justify-content: center; align-items: flex-end; border-bottom: 1px solid var(--axis); }
+  .col .fill { width: min(24px, 70%); background: var(--done); border-radius: 4px 4px 0 0; }
+  .col .want { position: absolute; left: 50%; width: 34px; max-width: 100%; transform: translateX(-50%); height: 2px; background: var(--text); }
+  .col .cap { position: absolute; left: 0; right: 0; text-align: center; font-size: 12px; font-weight: 600; margin-bottom: 3px; }
+  .col.now .small { color: var(--text); font-weight: 600; }
+
+  /* rows of bars */
+  .prow { display: grid; grid-template-columns: 172px 1fr 110px; gap: 10px; align-items: center; width: 100%; padding: 7px 6px; border: 0; border-radius: 8px; background: none; text-align: left; }
+  .prow .val { color: var(--text-2); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+  .prow .bar { background: none; } .prow.static { cursor: default; }
+  @media (max-width: 720px) { .prow { grid-template-columns: 1fr; } .prow .val { text-align: left; } }
+
+  /* calendar strip */
+  .cal { position: relative; display: flex; gap: 2px; margin: 28px 0 46px; }
+  .cal .ph { position: relative; height: 34px; background: var(--track); border-radius: 4px; overflow: hidden; }
+  .cal .ph .used { position: absolute; inset: 0 auto 0 0; background: var(--axis); }
+  .cal .ph span { position: absolute; left: 6px; top: 8px; font-size: 12px; white-space: nowrap; }
+  .cal .now { position: absolute; top: -8px; bottom: -8px; width: 2px; background: var(--text); }
+  .cal .now::after { content: "today"; position: absolute; top: -16px; left: -16px; font-size: 11px; color: var(--text-2); }
+  .cal .gate { position: absolute; bottom: -22px; font-size: 11px; color: var(--text-2); transform: translateX(-50%); white-space: nowrap; }
+  .cal .gate::before { content: ""; position: absolute; left: 50%; top: -8px; height: 7px; border-left: 1px solid var(--text-3); }
+  .cal .gate.low { bottom: -38px; } .cal .gate.low::before { top: -24px; height: 23px; }
+
+  /* needs you, agents, lists */
+  .needs { border-left: 4px solid var(--you); }
+  .need { border-top: 1px solid var(--line); padding: 8px 0; } .need:first-of-type { border-top: 0; }
+  .new { font-size: 11px; font-weight: 700; border-radius: 4px; padding: 0 6px; margin-left: 6px; background: var(--you); color: #1f1300; }
+  .clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; cursor: pointer; }
+  .clamp.open { display: block; }
+  details { border-top: 1px solid var(--line); padding: 8px 0 0; margin-top: 8px; } summary { cursor: pointer; }
+
+  /* task board */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; align-items: center; }
+  .chips button[aria-pressed="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  td, th { text-align: left; padding: 7px 10px 7px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--text-2); font-size: 12px; border-top: 0; }
+  td:first-child, td.n { white-space: nowrap; } td.n, th.n { font-variant-numeric: tabular-nums; }
+  tr.task { cursor: pointer; } tr.task td:last-child { color: var(--text-3); white-space: nowrap; }
+  tr.group td { background: var(--wash); font-weight: 600; padding-left: 8px; }
+  tr.today td { font-weight: 600; }
+  .steps { display: inline-flex; gap: 2px; vertical-align: middle; }
+  .steps i { width: 14px; height: 6px; border-radius: 2px; background: var(--track); }
+  .steps i.on { background: var(--done); } .steps i.live { background: var(--working); } .steps i.off { background: var(--late); }
+  .daybar { position: relative; min-width: 140px; margin-top: 4px; }
+  .daybar .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
+
+  /* task details */
+  #shade { position: fixed; inset: 0; z-index: 10; background: rgba(15, 23, 42, .45); }
+  #drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 11; width: min(500px, 100vw); overflow: auto; padding: 20px 22px 32px; background: var(--surface); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(15, 23, 42, .2); }
+  #drawer h2 { font-size: 19px; margin: 4px 36px 12px 0; }
+  #drawer .close { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+  .verdict { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--wash); border: 1px solid var(--line); }
+  .verdict i { width: 18px; height: 18px; border-radius: 50%; flex: none; }
+  .verdict b { font-size: 22px; line-height: 1.1; } .verdict small { display: block; font-size: 13px; color: var(--text-2); }
+
+  /* hover read-out and toast */
+  #tip { position: fixed; z-index: 30; pointer-events: none; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: var(--text); color: var(--surface); font-size: 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
+  #tip .tip-head { opacity: .75; margin-bottom: 2px; } #tip .tip-row { display: flex; align-items: center; gap: 2px; } #tip .tip-row b { margin-right: 5px; } #tip .key { border-top-color: currentColor; }
+  #tip .key.key-done { border-top-color: var(--done); }
+  #toast { position: fixed; right: 20px; bottom: 20px; z-index: 40; max-width: 360px; padding: 12px 16px; border-radius: 12px; background: var(--text); color: var(--surface); box-shadow: 0 12px 32px rgba(0, 0, 0, .3); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><i></i>Roomsong tracker</div>
+  <span id="sub" class="topsub">loading…</span>
+  <span class="grow"></span>
+  <span id="live" class="pill" role="status" aria-live="polite"><i></i>checking…</span>
+  <div class="bellbox">
+    <button id="bell" aria-expanded="false" aria-controls="alertpanel">🔔 Alerts<b id="bellcount" hidden></b></button>
+    <div id="alertpanel" class="panel" hidden></div>
+  </div>
+  <span id="stamp" class="topsub"></span>
+</header>
+<main id="app"></main>
+<div id="shade" hidden></div>
+<aside id="drawer" hidden aria-label="Task details"></aside>
+<div id="tip" hidden></div>
+<div id="toast" hidden role="status"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const STATES = { done: ['✓', 'Done'], running: ['●', 'Working'], you: ['✋', 'Needs you'], todo: ['○', 'Not started'], maybe: ['◇', 'Maybe'] };
+const ORDER = ['done', 'running', 'you', 'todo', 'maybe'];
+const pct = (a, b) => (b ? Math.round((100 * a) / b) : 0);
+const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
+const save = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage can be off in a private window */ } };
+const seen = new Set(load('roomsong-seen', []));
+const open = new Set(load('roomsong-open', []));
+let filter = load('roomsong-filter', null);
+let alertsSeen = load('roomsong-alerts-seen', 0);
+let data = null, pageVersion = 0, openTask = null, drawerHtml = '', panelHtml = '', testNote = '', toastTs = Date.now() / 1000, toastTimer = 0;
+
+const dayName = (iso) => new Date(`${iso}T00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+const shortDay = (iso) => new Date(`${iso}T00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const badge = (state) => `<span class="badge"><i class="dot seg-${state}"></i>${STATES[state][0]} ${STATES[state][1]}</span>`;
+// hover read-out: "title|value~label~key|value~label~key"; built with textContent in showTip
+const tipAttr = (title, rows) => `data-tip="${esc([title, ...rows.map((r) => r.join('~'))].join('|'))}"`;
+const stack = (counts, what) => {
+  const total = ORDER.reduce((a, s) => a + (counts[s] || 0), 0) || 1;
+  return `<span class="bar">${ORDER.filter((s) => counts[s]).map((s) => `<i class="seg-${s}" style="flex:${counts[s]}" ${tipAttr(what, [[`${counts[s]} of ${total}`, STATES[s][1], `seg-${s}`]])}></i>`).join('')}</span>`;
+};
+const meter = (value, total, cls = 'seg-done') => `<span class="bar meter"><i class="${cls}" style="width:${Math.min(100, (100 * value) / (total || 1))}%"></i></span>`;
+const inWords = (k) => (k.state === 'done' ? `finished${k.doneOn ? ` on ${dayName(k.doneOn)}` : ''}`
+  : k.state === 'running' ? 'being worked on now' : k.state === 'you' ? 'waiting for you'
+  : k.waitingFor.length ? `waits for ${k.waitingFor.join(', ')}` : k.state === 'maybe' ? 'optional, only if time allows' : 'ready to start');
+const matches = (k) => (filter.phase === 'all' || k.phase === filter.phase) && (filter.state === 'all'
+  || (filter.state === 'pending' ? k.state !== 'done' : filter.state === 'todo' ? k.state === 'todo' || k.state === 'maybe' : k.state === filter.state));
+const clamp = (key, cls = '') => `class="clamp ${cls} ${open.has(key) ? 'open' : ''}" data-clamp="${esc(key)}" title="Click to read all"`;
+
+function stageMeter(task) {
+  if (task.state === 'done') return '<span class="steps" title="built, reviewed, fixed, merged"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>';
+  if (!task.stage) return '<span class="steps"><i></i><i></i><i></i><i></i></span>';
+  const cls = { done: 'on', running: 'live', stopped: 'off', none: '' };
+  const names = { build: 'Build', review: 'Review', fix: 'Fix' };
+  const words = { done: 'done', running: 'in progress', stopped: 'stopped', none: 'not started' };
+  return `<span class="steps">${['build', 'review', 'fix'].map((k) => `<i class="${cls[task.stage[k]]}" title="${names[k]}: ${words[task.stage[k]]}"></i>`).join('')}<i title="Merge: not yet"></i></span>
+    <span class="small">${['build', 'review', 'fix'].filter((k) => task.stage[k] !== 'none').map((k) => `${names[k]} ${words[task.stage[k]]}`).join(' · ')}</span>`;
+}
+
+function donut(counts, total) {
+  let turn = 0;
+  const arcs = ORDER.filter((s) => counts[s]).map((s) => {
+    const share = (100 * counts[s]) / total, dash = Math.max(share - 0.7, 0.3);  // 0.7 = the surface gap between segments
+    const arc = `<circle class="arc seg-${s}" data-state="${s === 'maybe' ? 'todo' : s}" data-phase="all" cx="18" cy="18" r="15.9155" stroke-dasharray="${dash} ${100 - dash}" stroke-dashoffset="${25 - turn}" ${tipAttr('All tasks', [[`${counts[s]} of ${total}`, STATES[s][1], `seg-${s}`]])}></circle>`;
+    turn += share;
+    return arc;
+  }).join('');
+  return `<div class="donut"><svg viewBox="-2 -2 40 40" role="img" aria-label="${counts.done} of ${total} tasks done">${arcs}</svg>
+    <div class="hero"><b>${counts.done}</b><span>of ${total} tasks done</span></div></div>`;
+}
+
+function render(d) {
+  const tasks = d.phases.flatMap((p) => p.tasks), t = d.totals, all = tasks.length;
+  const current = d.calendar.find((c) => c.current) || d.calendar[0];
+  if (!filter) filter = { state: 'all', phase: current.name };
+  const cur = current.counts, curAll = ORDER.reduce((a, s) => a + cur[s], 0);
+  const working = d.agents.filter((a) => a.state === 'running');
+  const needs = d.status.needs, newNeeds = needs.filter((n) => !seen.has(n.n));
+  const nextGate = d.gates.find((g) => g.daysLeft >= 0);
+  const nowDay = d.daily.find((x) => x.date === d.today) || d.daily[d.daily.length - 1];
+  const doneNow = nowDay.done ?? 0, gap = doneNow - nowDay.target;
+  const versus = (x) => (x.done === null ? '' : x.done === x.target ? '● on target' : x.done > x.target ? `▲ ${x.done - x.target} ahead` : `▼ ${x.target - x.done} behind`);
+  const ago = (sec) => (sec < 90 ? `${sec} s` : sec < 5400 ? `${Math.round(sec / 60)} min` : `${(sec / 3600).toFixed(1)} h`);
+
+  $('sub').textContent = `Day ${d.dayNumber} of ${d.totalDays} · ${d.daysToSubmit} days to submit · ${d.git.unpushed} local commits not on GitHub`;
+  $('stamp').textContent = `updated ${d.generatedAt}`;
+  const live = {
+    working: ['● Claude is working', `${d.driver.agents} agent${d.driver.agents === 1 ? '' : 's'} · last step ${ago(d.driver.quietSeconds)} ago`],
+    idle: ['⏸ Claude is idle', `nothing for ${ago(d.driver.quietSeconds)}: waiting for you, or between steps`],
+    stopped: ['■ Claude is not running', 'open Claude in this project and type "continue"'],
+  }[d.driver.state];
+  $('live').className = `pill ${d.driver.state}`;
+  $('live').innerHTML = `<i></i>${esc(live[0].slice(2))} <small>${esc(live[1])}${d.driver.copies > 1 ? ` · ${d.driver.copies} Claude windows open on this project: use only one` : ''}${d.driver.leftovers ? ` · ${d.driver.leftovers} leftover background cop${d.driver.leftovers === 1 ? 'y' : 'ies'} of Claude: tell Claude to clean up` : ''}</small>`;
+  document.title = `${live[0][0]} ${needs.length ? `(${needs.length}) ` : ''}Roomsong tracker`;
+
+  const html = [];
+
+  // 1. headline numbers
+  html.push(`<section class="grid kpis">
+    <div class="card tile"><span class="label">Done against today's target</span><b>${doneNow} <small>done · ${nowDay.target} due by tonight</small></b>
+      <span class="delta"><i class="dot ${gap < 0 ? 'seg-late' : 'seg-done'}"></i>${gap === 0 ? 'On target' : gap > 0 ? `▲ ${gap} ahead of the plan` : `▼ ${-gap} behind the plan`}</span></div>
+    <div class="card tile"><span class="label">${esc(current.name)} · ${esc(current.goal)}</span><b>${pct(cur.done, curAll)}% <small>${cur.done} of ${curAll} tasks</small></b>${meter(cur.done, curAll)}
+      <span class="delta">day ${current.daysUsed} of ${current.days} in this phase</span></div>
+    <button class="card tile" data-scroll="workingcard"><span class="label">Agents working now</span><b>${working.length}</b>
+      <span class="delta">${working.length ? esc(working.map((a) => a.label).join(' · ')) : 'none right now'}</span></button>
+    <button class="card tile ${needs.length ? 'warn' : ''}" data-scroll="needs"><span class="label">Waiting on you</span><b>${needs.length} <small>item${needs.length === 1 ? '' : 's'}</small></b>
+      <span class="delta">${newNeeds.length ? `${newNeeds.length} new · click to read` : 'click to read them'}</span></button>
+    <div class="card tile"><span class="label">Next gate: ${esc(nextGate ? nextGate.name : 'Submit')}</span><b>${nextGate ? nextGate.daysLeft : 0} <small>days left</small></b>
+      <span class="delta">${d.daysToSubmit} days to submit</span></div>
+  </section>`);
+
+  // 2. all tasks + target against done
+  const goal = d.daily[d.daily.length - 1].target || 1, lastDay = d.daily.length - 1, ti = d.daily.indexOf(nowDay);
+  const X = (i) => (100 * i) / lastDay, Y = (v) => 100 - (100 * v) / goal;
+  const points = (key) => d.daily.map((x, i) => (x[key] === null ? null : `${X(i).toFixed(2)},${Y(x[key]).toFixed(2)}`)).filter(Boolean).join(' ');
+  const tickStep = goal <= 12 ? 2 : goal <= 50 ? 10 : 20, ticks = [];
+  for (let v = 0; v <= goal; v += tickStep) ticks.push(v);
+  const flip = X(ti) > 80 ? ' flip' : '';
+  html.push(`<section class="grid lead">
+    <div class="card"><h2>All tasks</h2><div class="hint">Click a colour or a row to list those tasks below.</div>
+      <div class="donutrow">${donut(t, all)}
+        <div class="legendlist">${ORDER.filter((s) => t[s]).map((s) => `<button data-state="${s === 'maybe' ? 'todo' : s}" data-phase="all"><i class="dot seg-${s}"></i><span>${STATES[s][0]} ${STATES[s][1]}</span><b>${t[s]}</b><small>${pct(t[s], all)}%</small></button>`).join('')}
+          <button data-state="pending" data-phase="all"><i class="dot" style="border:1px solid var(--axis)"></i><span>All pending</span><b>${all - t.done}</b><small>${pct(all - t.done, all)}%</small></button></div>
+      </div></div>
+    <div class="card"><h2>Target and done, day by day</h2>
+      <div class="legend"><span><i class="key"></i>Done</span><span><i class="key key-target"></i>Target: each phase's tasks spread evenly over its days</span><span>${esc(versus(nowDay))}</span></div>
+      <div class="plotwrap"><div class="yaxis">${ticks.map((v) => `<span style="bottom:${(100 * v) / goal}%">${v}</span>`).join('')}</div>
+        <div class="plot" id="burn">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Tasks done against the target for every day of the project: ${doneNow} done, target ${nowDay.target} by tonight, ${goal} by ${dayName(d.daily[lastDay].date)}. The table of days is further down.">
+            ${ticks.map((v) => `<line class="gridline" x1="0" x2="100" y1="${Y(v)}" y2="${Y(v)}"/>`).join('')}
+            <polygon class="area" points="0,100 ${points('done')} ${X(ti).toFixed(2)},100"/>
+            <polyline class="target" points="${points('target')}"/><polyline class="doneline" points="${points('done')}"/>
+          </svg>
+          <i class="today" style="left:${X(ti)}%"></i><i class="cross"></i>
+          <i class="enddot" style="left:${X(ti)}%;top:${Y(doneNow)}%"></i>
+          <span class="endlabel${flip}" style="left:${X(ti)}%;top:${Y(doneNow)}%">${doneNow} done · target ${nowDay.target}</span>
+        </div></div>
+      <div class="xaxis">${d.calendar.map((c) => `<span style="flex:${c.days}">${esc(c.name)}<small>${shortDay(c.start)}</small></span>`).join('')}</div>
+    </div>
+  </section>`);
+
+  // 3. finished each day, by phase, by owner
+  const shown = d.daily.filter((x) => x.date <= current.end), top = shown[shown.length - 1].target || 1;
+  const perDay = shown.map((x, i) => ({ ...x, want: x.target - (i ? shown[i - 1].target : 0), got: x.finished.length }));
+  const tallest = Math.max(1, ...perDay.map((x) => Math.max(x.want, x.got)));
+  const owners = {};
+  tasks.forEach((k) => { const o = k.owner.split(/ \+ | \/ /)[0]; owners[o] = owners[o] || { done: 0, open: 0 }; owners[o][k.state === 'done' ? 'done' : 'open'] += 1; });
+  const most = Math.max(...Object.values(owners).map((o) => o.done + o.open));
+  html.push(`<section class="grid three">
+    <div class="card"><h2>Finished each day</h2>
+      <div class="legend"><span><i class="dot seg-done"></i>Tasks finished that day</span><span><i class="key" style="border-top-color:var(--text)"></i>Target for the day</span></div>
+      <div class="cols" role="img" aria-label="Tasks finished each day against the target for that day. The table of days is further down.">${perDay.map((x) => `<div class="col${x.date === d.today ? ' now' : ''}" ${tipAttr(dayName(x.date), [[x.done === null ? 'not yet' : String(x.got), 'finished that day', 'seg-done'], [String(x.want), 'target for the day', 'key-target'], ...(x.finished.length ? [[x.finished.join(', '), '', '']] : [])])}>
+        <div class="slot"><i class="fill" style="height:${(100 * x.got) / tallest}%"></i>${x.got ? `<span class="cap" style="bottom:${(100 * Math.max(x.got, x.want)) / tallest}%">${x.got}</span>` : ''}<i class="want" style="bottom:${(100 * x.want) / tallest}%"></i></div>
+        <span class="small">${shortDay(x.date)}</span></div>`).join('')}</div></div>
+    <div class="card"><h2>Progress by phase</h2>
+      <div class="legend">${['done', 'running', 'you', 'todo'].map((s) => `<span><i class="dot seg-${s}"></i>${STATES[s][1]}</span>`).join('')}</div>
+      ${d.phases.map((p, i) => { const c = d.calendar[i].counts, n = p.tasks.length; return `<button class="prow" data-phase="${esc(p.name)}" data-state="all" title="List the tasks of ${esc(p.name)}"><span><b>${esc(p.name)}</b> <small>${esc(p.goal)}</small></span>${stack(c, p.name)}<span class="val">${c.done} of ${n} · ${pct(c.done, n)}%</span></button>`; }).join('')}</div>
+    <div class="card"><h2>Who holds the work</h2>
+      <div class="legend"><span><i class="dot seg-done"></i>Done</span><span><i class="dot seg-todo"></i>Still open</span></div>
+      ${Object.entries(owners).sort((a, b) => b[1].open - a[1].open).map(([name, o]) => `<div class="prow static"><span>${esc(name)}</span>
+        <span class="bar"><i class="seg-done" style="flex:${o.done}" ${tipAttr(name, [[String(o.done), 'done', 'seg-done']])}></i><i class="seg-todo" style="flex:${o.open}" ${tipAttr(name, [[String(o.open), 'still open', 'seg-todo']])}></i><i style="flex:${most - o.done - o.open}"></i></span>
+        <span class="val">${o.done} done · ${o.open} open</span></div>`).join('')}</div>
+  </section>`);
+
+  // 4. what needs Parth, who is working
+  html.push(`<section class="grid two">
+    <div class="card needs" id="needs"><h2>✋ Needs you (${needs.length}) ${newNeeds.length ? `<button class="plain" id="markseen">Mark ${newNeeds.length} new as seen</button>` : ''}</h2>
+      ${needs.length ? needs.map((n) => `<div class="need"><b>${n.n}. ${esc(n.title)}</b>${seen.has(n.n) ? '' : '<span class="new">NEW</span>'}<div ${clamp(`need-${n.n}`, 'muted')}>${esc(n.text)}</div></div>`).join('') : '<p class="muted">Nothing is waiting on you.</p>'}
+      ${d.status.resolved.length ? `<details data-key="settled"><summary class="small">Already settled (${d.status.resolved.length})</summary><ul>${d.status.resolved.map((n) => `<li class="small">${esc(n.text)}</li>`).join('')}</ul></details>` : ''}
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card" id="workingcard"><h2>● Working now (${working.length})</h2>
+        ${working.length ? working.map((a) => `<div class="need"><b>${esc(a.label)}</b> <span class="small">${esc(a.role)} · ${a.minutes} min · ${a.steps} steps · last step ${a.quietSeconds}s ago</span><div class="muted">now: ${esc(a.doing || 'thinking')}</div></div>`).join('') : '<p class="muted">No agent has taken a step in the last 5 minutes.</p>'}
+        <details data-key="earlier"><summary class="small">Earlier agents today (${d.agents.length - working.length})</summary>
+          ${d.agents.filter((a) => a.state !== 'running').slice(0, 14).map((a) => `<div class="small">${a.state === 'done' ? '✓ reported back' : '✕ stopped'} · ${esc(a.label)} · ${a.minutes} min · ${a.steps} steps</div>`).join('')}</details>
+      </div>
+      <div class="card"><h2>○ Up next (ready to start: ${d.ready.length})</h2>
+        ${d.ready.length ? `<ul>${d.ready.map((r) => `<li><b>${r.id}</b> ${esc(r.title)} <span class="small">${esc(r.owner)}</span></li>`).join('')}</ul>` : '<p class="muted">Nothing is ready: every open task waits on another task or on you.</p>'}
+      </div>
+    </div>
+  </section>`);
+
+  // 5. calendar
+  const span = d.totalDays, offset = (iso) => (100 * (new Date(iso) - new Date(d.calendar[0].start)) / 864e5 + 50) / span;
+  html.push(`<section class="card"><h2>Calendar and gates</h2>
+    <div class="prow static"><span>Time used</span>${meter(d.dayNumber, d.totalDays, 'seg-time')}<span class="val">day ${d.dayNumber} of ${d.totalDays} · ${pct(d.dayNumber, d.totalDays)}%</span></div>
+    <div class="prow static"><span>Work done</span>${meter(t.done, all)}<span class="val">${t.done} of ${all} tasks · ${pct(t.done, all)}%</span></div>
+    <div class="cal">${d.calendar.map((c) => `<div class="ph" style="flex:${c.days}" ${tipAttr(`${c.name} · ${c.goal}`, [[`${c.daysUsed} of ${c.days}`, 'days used', ''], [`${shortDay(c.start)} to ${shortDay(c.end)}`, '', '']])}><div class="used" style="width:${pct(c.daysUsed, c.days)}%"></div><span>${esc(c.name)} · ${esc(c.goal)}</span></div>`).join('')}
+      <div class="now" style="left:${Math.min(offset(d.today), 100)}%"></div>
+      ${d.gates.map((g, i) => `<div class="gate${i % 2 ? ' low' : ''}" style="left:${Math.min(offset(g.date) + 50 / span, 99)}%" title="${g.date}">${esc(g.name)} ${g.daysLeft}d</div>`).join('')}
+    </div>
+  </section>`);
+
+  // 6. the task list: one filter row above what it scopes
+  const inPhase = tasks.filter((k) => filter.phase === 'all' || k.phase === filter.phase), rows = tasks.filter(matches);
+  const chip = (key, value, label, n) => `<button data-${key}="${esc(value)}" aria-pressed="${filter[key] === value}">${esc(label)}${n === undefined ? '' : ` <small>${n}</small>`}</button>`;
+  let group = '';
+  html.push(`<section class="card" id="board"><h2>Tasks</h2><div class="hint">Click a task to see if it is done or pending, and what was done on it.</div>
+    <div class="chips">${chip('phase', 'all', 'All phases')}${d.phases.map((p) => chip('phase', p.name, p.name)).join('')}
+      <span class="small" style="margin:0 4px">show</span>
+      ${chip('state', 'all', 'All', inPhase.length)}${chip('state', 'done', '✓ Done', inPhase.filter((k) => k.state === 'done').length)}${chip('state', 'pending', '○ Pending', inPhase.filter((k) => k.state !== 'done').length)}${chip('state', 'running', '● Working', inPhase.filter((k) => k.state === 'running').length)}${chip('state', 'you', '✋ Needs you', inPhase.filter((k) => k.state === 'you').length)}${chip('state', 'todo', 'Not started', inPhase.filter((k) => k.state === 'todo' || k.state === 'maybe').length)}</div>
+    <div class="scroll"><table><tr><th>Task</th><th>What</th><th>Owner</th><th>State</th><th>Steps</th><th></th></tr>
+    ${rows.length ? rows.map((k) => `${filter.phase === 'all' && k.phase !== group ? `<tr class="group"><td colspan="6">${esc(group = k.phase)}</td></tr>` : ''}<tr class="task" data-task="${k.id}" tabindex="0" role="button" aria-label="${k.id} ${esc(k.title)}: ${k.state === 'done' ? 'done' : 'pending'}. Open details.">
+      <td><b>${k.id}</b></td><td>${esc(k.title)}<div class="small">${k.state === 'done' ? 'Done' : 'Pending'}: ${esc(inWords(k))}</div></td><td class="muted">${esc(k.owner)}</td><td>${badge(k.state)}</td><td>${stageMeter(k)}</td><td>Details ›</td></tr>`).join('') : '<tr><td colspan="6" class="muted">No task matches this filter.</td></tr>'}
+    </table></div>
+    <details data-key="daytable"><summary>Day by day table: target, done and what finished each day</summary>
+      <div class="scroll"><table><tr><th>Day</th><th class="n">Target</th><th class="n">Done</th><th style="width:38%">Done (bar) against target (mark)</th><th></th><th>Finished that day</th></tr>
+      ${shown.map((x) => `<tr class="${x.date === d.today ? 'today' : ''}"><td>${dayName(x.date)}${x.date === d.today ? ' · today' : ''}</td><td class="n">${x.target}</td><td class="n">${x.done ?? '–'}</td>
+        <td><div class="daybar"><span class="bar"><i class="seg-done" style="flex:${x.done ?? 0}"></i><i style="flex:${Math.max(top - (x.done ?? 0), 0)}"></i></span><i class="tick" style="left:${Math.min((100 * x.target) / top, 99.5)}%" title="target ${x.target}"></i></div></td>
+        <td class="n">${versus(x)}</td><td class="small">${x.finished.join(', ')}</td></tr>`).join('')}
+      </table></div></details>
+  </section>`);
+
+  // 7. decisions, latest work, quality, log
+  html.push(`<section class="grid two">
+    <div class="card"><h2>Decisions (${d.decisions.length})</h2>
+      ${d.decisions.slice(0, 6).map((x) => `<div class="need"><b>${x.id}</b> <span class="small">${esc(x.date)} · ${esc(x.who)}</span><div ${clamp(x.id)}>${esc(x.decision)}</div></div>`).join('')}
+      <details data-key="olddecisions"><summary class="small">Older decisions (${Math.max(d.decisions.length - 6, 0)})</summary>${d.decisions.slice(6).map((x) => `<div class="small"><b>${x.id}</b> ${esc(x.decision)}</div>`).join('')}</details>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h2>Latest work on develop <span class="small">head ${esc(d.git.head)}</span></h2>
+        <ul>${d.git.commits.slice(0, 9).map((c) => `<li>${esc(c.subject)} <span class="small">${esc(c.when)}</span></li>`).join('')}</ul>
+        ${d.git.lanes.length ? `<p class="small">Not merged yet: ${d.git.lanes.map((l) => `${l.ahead} commits (${esc(l.last.split('|')[1] || '')})`).join(' · ')}</p>` : ''}
+      </div>
+      <div class="card"><h2>Quality</h2>
+        ${d.status.tests.map((x) => `<div><b>${esc(x.suite)}</b> <span class="muted">${esc(x.result)}</span></div>`).join('')}
+        <p class="small">${esc(d.status.perf)}</p>
+        <div><b>Bugs</b> ${d.bugs.length ? d.bugs.map((b) => `<div class="small">${b.id} (${esc(b.sev)}) ${esc(b.status)}: ${esc(b.title)}</div>`).join('') : '<span class="muted">none logged</span>'}</div>
+      </div>
+      <div class="card"><h2>Today's log</h2><ul>${d.status.standup.map((s, i) => `<li ${clamp(`log-${i}`, 'small')}>${esc(s)}</li>`).join('')}</ul>
+        ${d.status.banner.map((b, i) => `<p ${clamp(`banner-${i}`, 'small')}>${esc(b)}</p>`).join('')}</div>
+    </div>
+  </section>`);
+
+  $('app').innerHTML = html.join('');
+  document.querySelectorAll('details[data-key]').forEach((el) => {
+    el.open = open.has(el.dataset.key);
+    el.addEventListener('toggle', () => { el.open ? open.add(el.dataset.key) : open.delete(el.dataset.key); save('roomsong-open', [...open]); });
+  });
+  renderDrawer(d, tasks);
+  renderAlerts(d);
+}
+
+// click a task: is it done or pending, and what was done on it
+function renderDrawer(d, tasks) {
+  const k = tasks.find((x) => x.id === openTask);
+  $('drawer').hidden = $('shade').hidden = !k;
+  if (!k) { drawerHtml = ''; return; }
+  const done = k.state === 'done', workers = d.agents.filter((a) => new RegExp(`\\b${k.id}\\b`).test(a.label));
+  const nothing = !k.note && !workers.length && !k.commits.length;
+  const html = `<button class="close" data-close aria-label="Close">✕</button>
+    <div class="small">${k.id} · ${esc(k.phase)} · ${esc(k.owner)}</div><h2>${esc(k.title)}</h2>
+    <div class="verdict"><i class="seg-${k.state}"></i><div><b>${done ? '✓ Done' : '○ Pending'}</b><small>${esc(inWords(k))}</small></div></div>
+    <h3>${done ? 'What was done' : 'What was done so far'}</h3>
+    ${k.note ? `<p>${esc(k.note)}</p>` : ''}
+    ${/^(todo|doing)$/i.test(k.status) ? '' : `<p class="muted">Plan status: ${esc(k.status)}</p>`}
+    ${nothing ? '<p class="muted">Nothing yet: work on this task has not started.</p>' : ''}
+    ${workers.length ? `<h3>Agents on it (last 8 hours)</h3><ul>${workers.map((a) => `<li>${a.state === 'done' ? '✓ reported back' : a.state === 'running' ? '● working now' : '✕ stopped'} · ${esc(a.label)} <span class="small">${esc(a.role)} · ${a.minutes} min · ${a.steps} steps</span></li>`).join('')}</ul>` : ''}
+    ${k.commits.length ? `<h3>Saved work (${k.commits.length} commit${k.commits.length === 1 ? '' : 's'})</h3><ul>${k.commits.map((c) => `<li>${esc(c.subject)} <span class="small">${shortDay(c.date)} · ${esc(c.hash)}</span></li>`).join('')}</ul>` : ''}
+    ${done ? '' : `<h3>What it waits for</h3><p>${k.waitingFor.length ? `Tasks not done yet: ${esc(k.waitingFor.join(', '))}.` : k.state === 'you' ? 'You. See "Needs you" on the page.' : k.state === 'running' ? 'Nothing: it is being worked on now.' : 'Nothing: it starts when an agent is free.'}</p>`}
+    <h3>Done when</h3><p>${esc(k.acceptance) || '–'}</p>
+    <h3>The task in full</h3><p class="muted">${esc(k.detail)}</p>`;
+  if (html !== drawerHtml) { $('drawer').innerHTML = drawerHtml = html; }
+}
+
+function renderAlerts(d) {
+  const fresh = d.events.filter((e) => e.ts > alertsSeen).length;
+  $('bellcount').hidden = !fresh;
+  $('bellcount').textContent = fresh;
+  const when = (ts) => new Date(ts * 1000).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const html = `<h2>Alerts</h2>
+    <p class="small">A Mac notification is sent when something needs you, a task is done, a decision is made, and when Claude stops working. It comes even when this page is closed.</p>
+    <button data-test-alert>Send a test alert</button> <span class="small">${esc(testNote)}</span>
+    ${d.events.length ? d.events.map((e) => `<div class="need"><b>${esc(e.title)}</b> <span class="small">${when(e.ts)}</span><div class="muted">${esc(e.text)}</div></div>`).join('') : '<p class="muted">No alerts yet.</p>'}`;
+  if (html !== panelHtml) { $('alertpanel').innerHTML = panelHtml = html; }
+  const newest = d.events[0];
+  if (newest && newest.ts > toastTs) {
+    toastTs = newest.ts;
+    $('toast').textContent = `${newest.title}: ${newest.text}`;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $('toast').hidden = true; }, 9000);
+  }
+}
+
+// hover read-out
+function showTip(title, rows, x, y) {
+  const tip = $('tip'), head = document.createElement('div');
+  head.className = 'tip-head';
+  head.textContent = title;
+  tip.replaceChildren(head);
+  rows.forEach(([value, label, key]) => {
+    const row = document.createElement('div'), strong = document.createElement('b'), rest = document.createElement('span');
+    row.className = 'tip-row';
+    if (key) { const mark = document.createElement('i'); mark.className = key.startsWith('seg-') ? `dot ${key}` : `key ${key}`; row.append(mark); }
+    strong.textContent = value;
+    rest.textContent = label || '';
+    row.append(strong, rest);
+    tip.append(row);
+  });
+  tip.hidden = false;
+  tip.style.left = `${Math.max(8, Math.min(x + 14, innerWidth - tip.offsetWidth - 8))}px`;
+  tip.style.top = `${Math.max(8, y - tip.offsetHeight - 12)}px`;
+}
+function tipFor(el, x, y) {
+  const [title, ...rows] = el.dataset.tip.split('|');
+  showTip(title, rows.map((r) => r.split('~')), x, y);
+}
+document.addEventListener('pointermove', (e) => {
+  const plot = e.target.closest?.('#burn'), cross = document.querySelector('#burn .cross');
+  if (plot && data) {  // the crosshair finds the day; one read-out lists both lines
+    const box = plot.getBoundingClientRect(), days = data.daily;
+    const i = Math.max(0, Math.min(days.length - 1, Math.round(((e.clientX - box.left) / box.width) * (days.length - 1))));
+    cross.style.cssText = `display:block;left:${(100 * i) / (days.length - 1)}%`;
+    showTip(dayName(days[i].date), [[days[i].done === null ? 'not yet' : String(days[i].done), 'done', 'key-done'], [String(days[i].target), 'target', 'key-target'],
+      ...(days[i].finished.length ? [[days[i].finished.join(', '), '', '']] : [])], e.clientX, e.clientY);
+    return;
+  }
+  if (cross) cross.style.display = 'none';
+  const el = e.target.closest?.('[data-tip]');
+  if (el) tipFor(el, e.clientX, e.clientY); else $('tip').hidden = true;
+});
+document.addEventListener('pointerleave', () => { $('tip').hidden = true; });
+document.addEventListener('focusin', (e) => {
+  const el = e.target.closest?.('[data-tip]') || e.target.querySelector?.('[data-tip]');
+  if (el) { const box = el.getBoundingClientRect(); tipFor(el, box.left + box.width / 2, box.top); }
+});
+document.addEventListener('focusout', () => { $('tip').hidden = true; });
+
+// every click on the page
+document.addEventListener('click', (e) => {
+  const on = (selector) => e.target.closest(selector);
+  const panel = $('alertpanel'), bell = $('bell');
+  let hit;
+  if (on('#bell')) {
+    panel.hidden = !panel.hidden;
+    bell.setAttribute('aria-expanded', String(!panel.hidden));
+    if (!panel.hidden && data && data.events[0]) save('roomsong-alerts-seen', alertsSeen = data.events[0].ts);
+  } else if (on('[data-test-alert]')) {
+    fetch('/test-alert').then(tick);
+    testNote = 'Sent. Nothing at the top right of your screen? Mac System Settings → Notifications → Script Editor → allow, and switch Focus / Do Not Disturb off.';
+  } else if (on('#alertpanel')) {
+    return;
+  } else if (on('[data-close]') || e.target.id === 'shade') {
+    openTask = null;
+  } else if (on('#drawer')) {
+    return;
+  } else if ((hit = on('[data-task]'))) {
+    openTask = hit.dataset.task;
+  } else if (on('#markseen')) {
+    data.status.needs.forEach((n) => seen.add(n.n));
+    save('roomsong-seen', [...seen]);
+  } else if ((hit = on('[data-clamp]'))) {
+    open.has(hit.dataset.clamp) ? open.delete(hit.dataset.clamp) : open.add(hit.dataset.clamp);
+    save('roomsong-open', [...open]);
+  } else if ((hit = on('[data-state], [data-phase]'))) {
+    filter = { state: hit.dataset.state ?? filter.state, phase: hit.dataset.phase ?? filter.phase };
+    save('roomsong-filter', filter);
+    if (!on('#board')) setTimeout(() => $('board').scrollIntoView({ behavior: 'smooth' }), 0);
+  } else if ((hit = on('[data-scroll]'))) {
+    $(hit.dataset.scroll).scrollIntoView({ behavior: 'smooth' });
+    return;
+  } else if (panel.hidden) {
+    return;
+  }
+  if (!on('#bell') && !on('[data-test-alert]')) { panel.hidden = true; bell.setAttribute('aria-expanded', 'false'); }
+  if (data) render(data);
+  if (openTask && on('[data-task]')) $('drawer').querySelector('.close').focus();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && (openTask || !$('alertpanel').hidden)) { openTask = null; $('alertpanel').hidden = true; render(data); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('tr.task')) { e.preventDefault(); e.target.click(); }
+});
+
+async function tick() {
+  try {
+    const d = await (await fetch('/data')).json();
+    if (d.error) throw new Error(d.error);
+    if (pageVersion && d.pageVersion !== pageVersion) return location.reload();
+    pageVersion = d.pageVersion;
+    render(data = d);
+  } catch (e) {
+    $('stamp').textContent = `cannot refresh: ${e.message}`;
+    $('live').className = 'pill offline';
+    $('live').innerHTML = '<i></i>Tracker offline <small>run: python3 tracker/server.py</small>';
+    document.title = '✕ Roomsong tracker';
+  }
+}
+tick();
+setInterval(tick, 10000);
+</script>
+</body>
+</html>

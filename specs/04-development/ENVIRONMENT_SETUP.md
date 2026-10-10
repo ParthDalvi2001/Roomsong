@@ -92,7 +92,7 @@ npm run dev:runtime    # the same page from plain vite, no managed browser; anot
 npm run verify         # typecheck, lint, unit tests, build, dist gates; green before every commit
 npm run test:e2e       # emulator suite (§6); E2E_PORT=8091 npm run test:e2e when 8081 is taken
 npm run build && npm run preview    # the production build on the LAN, HTTPS, port 4173 or the next free one
-python3 scripts/dashboard.py        # team tracking page, http://127.0.0.1:4180/ (read-only; DASHBOARD_PORT changes the port)
+python3 tracker/server.py        # team tracking page, http://127.0.0.1:4180/ (read-only; DASHBOARD_PORT changes the port)
 ```
 - **In the emulator (IWER):** the dev server opens a browser with the IWER panel; toggle hands, planes, etc. This is the default way to run the app until a headset exists (§6).
 - **The dev emulator downloads its room** (`living_room`, from unpkg.com) on every dev page load (`dev.emulator.environment` in `iwsdk.config.json`). Offline that is an uncaught "Failed to fetch" and no emulated room. It is dev tooling, not in `dist/` (BUG-002, won't fix).

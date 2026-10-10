@@ -10,7 +10,7 @@ For whoever operates the hosted app (the team). There is no admin UI; "admin" me
 - `version.json` beside `index.html` on each link reports `{ version, commit, builtAt }`. Check it first when debugging: both links must show the same values, and `commit` is the commit of `main` that is live.
 - Device test pages on the same site: `/Roomsong/proto/pinch/` (TC-DEV-00) and `/Roomsong/proto/spike/` (TC-DEV-0A). Their numbered scripts are `proto/pinch/README.md` and `proto/spike/README.md`. Device runs are pending: no headset yet.
 - No server, no database, no secrets, no service worker (offline mode *Cut (D-011)*).
-- Team tracking page, local only and read-only: `python3 scripts/dashboard.py` → `http://127.0.0.1:4180/`.
+- Team tracking page, local only and read-only: `python3 tracker/server.py` (the `tracker/` folder is a team tool, not part of the app) → `http://127.0.0.1:4180/`.
 
 ## 2. Diagnostic flags (dev builds, or prod with `?dev=1`)
 Syntax (API_SPEC §3): one `flags` parameter with a comma-separated list. Dev build: `?flags=perfHud,forceLevel=3`. Hosted build: `?dev=1&flags=perfHud,forceLevel=3`; without `dev=1` it ignores every flag. An unknown name or a bad value is ignored.

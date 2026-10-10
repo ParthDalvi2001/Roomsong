@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Roomsong live dashboard. Read-only: it reads the sprint plan, the status files, git and the agent logs.
+"""Roomsong tracker: a local page that shows the plan, the work and what needs Parth, and sends Mac alerts.
+Not part of the app: nothing here is built, shipped or imported by the project. Read-only on the repository
+(it reads the sprint plan, the status files, git and the agent logs; its only file is .tmp/tracker-events.json).
 
-Run:   python3 scripts/dashboard.py        then open http://127.0.0.1:4180/
+Run:   python3 tracker/server.py        then open http://127.0.0.1:4180/
 The page refreshes itself every 10 seconds. It costs no tokens.
 """
 import datetime
@@ -10,10 +12,12 @@ import os
 import pathlib
 import re
 import subprocess
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
+HERE = pathlib.Path(__file__).resolve().parent
+ROOT = HERE.parent
 PORT = int(os.environ.get('DASHBOARD_PORT', '4180'))
 YEAR = 2026
 # name, goal, first day, last day (SPRINT_PLAN calendar, v2.1)
@@ -247,6 +251,29 @@ def task_stage(task_id, agents):
     return stages
 
 
+# ---------- what was done, per task ----------
+def load_notes():
+    """Task id -> the note of its row in PROGRESS 'Now' (what was done, in plain words)."""
+    notes = {}
+    for line in section(read('specs/08-status/PROGRESS.md'), '## Now').split('\n'):
+        cells = row_cells(line)
+        m = re.match(r'^\*{0,2}(T-\d+)', cells[0]) if len(cells) >= 4 else None
+        if m:
+            notes[m.group(1)] = ' '.join(filter(None, [notes.get(m.group(1)), plain(cells[3])]))
+    return notes
+
+
+def load_task_commits():
+    """Task id -> its commits, newest first (all branches, so work that is not merged yet shows too)."""
+    out = {}
+    for line in git('log', '--all', '-600', '--format=%h|%cs|%s').split('\n'):
+        parts = line.split('|', 2)
+        if len(parts) == 3:
+            for task_id in set(re.findall(r'T-\d+', parts[2])):
+                out.setdefault(task_id, []).append({'hash': parts[0], 'date': parts[1], 'subject': parts[2]})
+    return out
+
+
 # ---------- day by day ----------
 DONE_DATES = {'key': None, 'dates': {}}
 
@@ -294,9 +321,14 @@ def collect():
     today = datetime.date.today()
     plan = load_plan()
     agents = load_agents()
+    notes, task_commits, dates = load_notes(), load_task_commits(), done_dates()
     for phase in plan:
         for task in phase['tasks']:
             task['stage'] = task_stage(task['id'], agents) if task['state'] == 'running' else None
+            task['phase'] = phase['name']
+            task['note'] = notes.get(task['id'], '')
+            task['commits'] = task_commits.get(task['id'], [])[:12]
+            task['doneOn'] = dates.get(task['id']) if task['state'] == 'done' else None
     tasks = [t for p in plan for t in p['tasks']]
     calendar = []
     for (name, goal, first, last), phase in zip(PHASES, plan):
@@ -314,7 +346,7 @@ def collect():
     commits = [dict(zip(('when', 'subject'), line.split('|', 1))) for line in git('log', '-14', '--format=%cr|%s', 'develop').split('\n') if '|' in line]
     return {
         'generatedAt': datetime.datetime.now().strftime('%a %d %b %H:%M:%S'),
-        'pageVersion': (ROOT / 'scripts/dashboard.html').stat().st_mtime,  # the open tab reloads itself when the page changes
+        'pageVersion': (HERE / 'index.html').stat().st_mtime,  # the open tab reloads itself when the page changes
         'today': today.isoformat(),
         'dayNumber': (today - day((10, 10))).days + 1, 'totalDays': total_days,
         'daysToSubmit': (day((11, 17)) - today).days,
@@ -328,21 +360,75 @@ def collect():
     }
 
 
-CACHE = {'at': 0.0, 'body': b''}
+# ---------- alerts: Mac notifications sent from here, so they arrive even with the page closed ----------
+EVENTS_FILE = ROOT / '.tmp/tracker-events.json'
+try:
+    EVENTS = json.loads(EVENTS_FILE.read_text(encoding='utf-8'))
+except (OSError, ValueError):
+    EVENTS = []
+IDLE_ALERT_S = 240  # quiet this long = Claude stopped working (the longest single step, the e2e run, is under 3 min)
+
+
+def alert(title, text):
+    EVENTS.insert(0, {'ts': time.time(), 'title': title, 'text': text})
+    del EVENTS[60:]
+    try:
+        EVENTS_FILE.parent.mkdir(exist_ok=True)
+        EVENTS_FILE.write_text(json.dumps(EVENTS), encoding='utf-8')
+        script = f'display notification {json.dumps(text, ensure_ascii=False)} with title {json.dumps(title, ensure_ascii=False)} sound name "Glass"'
+        subprocess.run(['osascript', '-e', script], capture_output=True, timeout=5)
+    except Exception:
+        pass
+
+
+def watch():
+    """Every 20 s: alert on each new item that needs Parth, finished task, new decision, and when Claude stops working."""
+    before = None
+    while True:
+        try:
+            data = snapshot()
+            driver = data['driver']
+            now = {'needs': {n['n']: n['title'] for n in data['status']['needs']},
+                   'done': {t['id']: f"{t['id']} {t['title']}" for p in data['phases'] for t in p['tasks'] if t['state'] == 'done'},
+                   'decisions': {x['id']: f"{x['id']}: {x['decision']}"[:200] for x in data['decisions']},
+                   'resting': driver['state'] == 'stopped' or driver['quietSeconds'] >= IDLE_ALERT_S}
+            if before:
+                for key, title in (('needs', 'Roomsong needs you'), ('done', 'Roomsong: task done'), ('decisions', 'Roomsong: new decision')):
+                    for item in sorted(now[key].keys() - before[key].keys()):
+                        alert(title, now[key][item])
+                if now['resting'] and not before['resting']:
+                    alert('Roomsong: Claude stopped working',
+                          'Claude is not running. Open Claude in this project and type "continue".' if driver['state'] == 'stopped'
+                          else f'Nothing has happened for {IDLE_ALERT_S // 60} minutes: Claude finished its turn or is waiting for you.')
+            before = now
+        except Exception:
+            pass
+        time.sleep(20)
+
+
+CACHE = {'at': 0.0, 'data': None}
+
+
+def snapshot():
+    if CACHE['data'] is None or time.time() - CACHE['at'] > 3:
+        CACHE['data'] = collect()
+        CACHE['at'] = time.time()
+    return CACHE['data']
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802 (name fixed by http.server)
         if self.path.split('?')[0] == '/data':
-            if time.time() - CACHE['at'] > 3:
-                try:
-                    CACHE['body'] = json.dumps(collect()).encode('utf-8')
-                except Exception as error:  # never take the page down because one file is mid-edit
-                    CACHE['body'] = json.dumps({'error': f'{type(error).__name__}: {error}'}).encode('utf-8')
-                CACHE['at'] = time.time()
-            self.reply(CACHE['body'], 'application/json')
+            try:
+                body = json.dumps(dict(snapshot(), events=EVENTS[:25]))  # alerts are never served from the cache
+            except Exception as error:  # never take the page down because one file is mid-edit
+                body = json.dumps({'error': f'{type(error).__name__}: {error}'})
+            self.reply(body.encode('utf-8'), 'application/json')
+        elif self.path.split('?')[0] == '/test-alert':
+            alert('Roomsong tracker', 'Test alert: if you can read this, alerts work.')
+            self.reply(b'{"ok": true}', 'application/json')
         elif self.path.split('?')[0] == '/':
-            self.reply((ROOT / 'scripts/dashboard.html').read_bytes(), 'text/html; charset=utf-8')
+            self.reply((HERE / 'index.html').read_bytes(), 'text/html; charset=utf-8')
         else:
             self.send_error(404)
 
@@ -359,5 +445,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    print(f'Roomsong dashboard: http://127.0.0.1:{PORT}/   (Ctrl+C to stop)')
+    print(f'Roomsong tracker: http://127.0.0.1:{PORT}/   (Ctrl+C to stop)')
+    threading.Thread(target=watch, daemon=True).start()
     ThreadingHTTPServer(('127.0.0.1', PORT), Handler).serve_forever()

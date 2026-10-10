@@ -6,7 +6,7 @@ npm run dev        # IWSDK dev server + IWER emulator at https://localhost:8081 
 npm run verify     # typecheck + lint + unit tests + build + bundle URL sweep + size gate; green before every commit
 npm run test:e2e   # Playwright + IWER emulated XR
 npm run build      # production build → dist/
-python3 scripts/dashboard.py   # live tracking page at http://127.0.0.1:4180/ (read-only, refreshes itself, costs no tokens)
+python3 tracker/server.py   # live tracking page at http://127.0.0.1:4180/ (read-only, refreshes itself, costs no tokens)
 npx claude-token-optimizer@2.3.20 audit   # token check of the always-loaded instructions (target: keep CLAUDE.md small)
 ```
 
