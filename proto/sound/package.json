@@ -1,0 +1,22 @@
+{
+  "name": "roomsong-proto-sound",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Roomsong T-102 desktop sound prototype: Web Audio only, no runtime dependencies (ADR-002).",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "test": "vitest run",
+    "verify": "npm run test && npm run build"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vite": "7.3.7",
+    "vitest": "5.0.3"
+  }
+}

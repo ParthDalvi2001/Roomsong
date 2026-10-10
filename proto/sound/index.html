@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Roomsong - sound prototype (T-102)</title>
+    <!-- No favicon file: an empty data URL stops the browser asking the server for /favicon.ico (a 404 in the console). -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <main>
+      <h1>Roomsong - sound prototype</h1>
+      <p class="lead">
+        Six plants on a 5-ring x 16-step bed. A ring of light sweeps the bed; each plant sings when it is
+        touched. Press Play, listen for at least 30 seconds, then press "Next room" to hear the same garden
+        re-tuned by a different room: the key, the scale and the echo change. Tempo is yours to set; the room
+        does not change it. Click an empty cell to plant, click a plant to remove it.
+      </p>
+
+      <div class="controls">
+        <button id="play">Play</button>
+        <button id="stop" disabled>Stop</button>
+        <button id="next">Next room</button>
+        <button id="reset">Reset garden</button>
+        <label
+          >Tempo
+          <select id="tempo"></select
+        ></label>
+        <label>Volume <input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" /></label>
+      </div>
+
+      <section class="room">
+        <div>
+          <span class="muted">Room</span> <strong id="preset-name"></strong>
+          <span class="muted" id="preset-blurb"></span>
+        </div>
+        <div id="ring-notes" class="muted small"></div>
+      </section>
+
+      <section class="grid-wrap">
+        <svg id="grid" viewBox="0 0 420 420" role="img" aria-label="Bed grid: 5 rings, 16 steps"></svg>
+        <ul class="legend">
+          <li><span class="swatch bell"></span> Bell (FM, decays)</li>
+          <li><span class="swatch pad"></span> Pad (detuned saws, slow)</li>
+          <li><span class="swatch pluck"></span> Pluck (plucked string)</li>
+          <li><span class="swatch tide"></span> Tide (current step)</li>
+          <li class="small">Inner ring = low, outer ring = high. Step 1 is at the top, clockwise.</li>
+        </ul>
+      </section>
+
+      <section class="meter">
+        <div class="meter-track"><div id="meter-bar"></div></div>
+        <div class="small">
+          output <span id="meter-text">-inf dBFS</span> · peak hold <span id="peak-hold">-inf dBFS</span> ·
+          ceiling -1 dBFS (manual TC-AUD-05 check: peak hold must never exceed -1.0)
+        </div>
+        <div id="status" class="muted small"></div>
+      </section>
+
+      <section class="selftest">
+        <button id="selftest-run">Run offline render check (TC-AUD-05)</button>
+        <pre id="selftest"></pre>
+      </section>
+
+      <footer class="muted small">
+        Desktop stereo only: each plant is panned left or right by where it sits on the bed; there is no 3D
+        spatialisation yet. All sound is synthesised in the browser (no samples, no network).
+      </footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

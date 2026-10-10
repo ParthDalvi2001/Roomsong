@@ -10,7 +10,7 @@ export default tsConfig(
   {
     ignores: [
       'node_modules/**',
-      'dist/**',
+      '**/dist/**', // any depth: proto/sound/dist is build output too
       'out/**',
       '.iwsdk/**',
       '.vite/**',
