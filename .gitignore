@@ -1,0 +1,18 @@
+node_modules/
+dist/
+out/
+.iwsdk/
+.vite/
+coverage/
+tests/e2e/__artifacts__/
+playwright-report/
+test-results/
+.DS_Store
+*.log
+.env
+.env.*
+specs/06-release/evidence/**/*.zip
+specs/06-release/evidence/**/*.mp4
+
+# stale pre-GitHub sync snapshot
+/specs.zip

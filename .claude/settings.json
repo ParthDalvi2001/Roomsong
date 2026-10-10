@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run verify*)",
+      "Bash(npm run test*)",
+      "Bash(npm run lint*)",
+      "Bash(npm run typecheck*)",
+      "Bash(npm run build*)",
+      "Bash(npm run dev*)",
+      "Bash(npx vitest*)",
+      "Bash(npx playwright*)",
+      "Bash(npx tsc*)",
+      "Bash(npx eslint*)",
+      "Bash(npx prettier*)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git branch*)",
+      "Bash(git worktree list*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git checkout -b*)",
+      "Bash(git switch*)",
+      "Bash(git worktree add*)",
+      "Bash(git merge --squash*)",
+      "Bash(metavr *)",
+      "Bash(npx @iwsdk/cli*)",
+      "Read",
+      "Grep",
+      "Glob"
+    ],
+    "deny": [
+      "Bash(git push*main*)",
+      "Bash(git push --force*)",
+      "Bash(git tag v1.0.0*)",
+      "Bash(npm run deploy:prod*)",
+      "Bash(rm -rf*)"
+    ]
+  }
+}
