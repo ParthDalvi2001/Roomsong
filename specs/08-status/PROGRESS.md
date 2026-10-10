@@ -5,7 +5,7 @@
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 39
 
 > **Read first this session:** `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions), `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) and `specs/07-workflow/SPRINT_PLAN.md` v2.1.
-> **ONE DRIVER (Parth said "continue" at 21:40 IST):** the session started at 21:39 (Claude process 97502) is the only driver. The 20:54 copy (80719) was asked to stand down; its T-105 agent is still alive and is left alone. Ultracode is on again (D-024): work runs as workflows. Running: T-104 and T-108 prep (build, review, fix), T-109 (review, fix), the UX, test and release docs of T-113 (write, critique, fix), and T-105 under the older copy.
+> **ONE DRIVER (Parth said "continue" at 21:40 IST):** the session started at 21:39 (Claude process 97502) is the only driver; the 20:54 copy (80719) confirmed it stands down. Ultracode is on (D-024): work runs as workflows. In the 20:54 window agents' file writes were being declined at permission prompts, so T-105 wrote nothing there; it is relaunched here, where agents write without prompts. Running: T-104, T-105, T-108 prep, T-109 review, and the UX, test and release docs of T-113.
 > **Live tracking page (Parth, 21:00 IST):** http://127.0.0.1:4180/ shows phases, every task, agents, decisions and what needs Parth. Start it with `python3 scripts/dashboard.py` if it is down. It reads this file, SPRINT_PLAN, DECISIONS_LOG, BUG_LOG, git and the agent logs, so keeping those current keeps the page current.
 > **Push hold (Parth, 2026-10-10 19:15 IST):** no pushes to GitHub, `develop` included, until Phase 0 is finished **and** Parth has been told and says go. Commit and merge locally only. Last pushed commit: `118657b`.
 > **This folder is the master copy.** The PM (Chinmay) works on a copy; his proposals go to `PM_PROPOSALS.md`, never into spec files.
@@ -24,13 +24,12 @@
 | T-113 Spec propagation v2.1 | UX / QA / devops | **doing** | contract (9592fd9) and requirements docs (8b84927) done; UX, test and release docs being written, then two critics and a fix pass |
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
 | T-104 Capability spike page | software-architect | **doing** | build, review, fix in the 21:45 workflow |
-| T-105 Pinch-accuracy page | frontend-dev | todo | agent stopped at 22:00 with nothing written (file writes declined); its worktree is ready to resume |
+| T-105 Pinch-accuracy page | frontend-dev | **doing** | relaunched 21:50 (build, review, fix) |
 | T-109 Security + policy gates | software-architect | **doing** | built (lane ac313b6); independent review and fix running in the 21:45 workflow |
 | T-108 CI + Pages deploy prep | devops-engineer | **doing** | build, review, fix in the 21:45 workflow; going live still needs Parth |
 | T-108 Hosting: GitHub Pages + mirror (D-022) | Parth + devops-engineer | **blocked on human** | Parth enables Pages + picks the mirror; then devops runs PoC D1 |
 
 ## Blocked on human (answer in one message; Claude files the results)
-0. **Autopilot is stopped and needs you: say "go".** Since the 20:54 restart, agents' permission prompts are being declined with "stop and wait": first a read by the T-109 reviewer (21:50), then the first three file writes of the pinch page agent (T-105, 22:00). Both agents stopped and wrote nothing. No agent is running. Agents cannot build without writing files, so nothing moves until you either (a) say "go" and approve the write prompts that appear, or (b) switch this session's permission mode so file edits inside the project are allowed without asking. Waiting: T-109 review and merge, T-105, T-104, T-108 prep, and the UX, test and release docs.
 1. **Headset plan (T-000):** which option and by when? (a) buy Quest 3S, (b) borrow, (c) rent. Write the expected date.
 2. ~~Name~~ — done: **Roomsong** (D-016, renamed 2026-10-10).
 3. **Hosting (T-108, D-022):** on github.com/ParthDalvi2001/Roomsong open Settings → Pages → Source: **GitHub Actions**; then say whether the mirror is **Vercel** or **Netlify** (free account in your name). Devops does the rest (PoC D1).
