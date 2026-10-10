@@ -171,13 +171,36 @@ def outcome(agent):
     return ' · '.join(parts)
 
 
+def load_solo_agents():
+    project = pathlib.Path.home() / '.claude/projects' / re.sub(r'[^A-Za-z0-9]', '-', str(ROOT))
+    found = []
+    for meta in project.glob('*/subagents/agent-*.meta.json'):
+        log = meta.with_name(meta.name.replace('.meta.json', '.jsonl'))
+        if not log.exists() or time.time() - log.stat().st_mtime > 3 * 3600:
+            continue
+        try:
+            label = json.loads(meta.read_text(encoding='utf-8')).get('description') or '?'
+        except ValueError:
+            label = '?'
+        agent = {'id': meta.name[len('agent-'):-len('.meta.json')], 'label': label, 'phase': '', 'result': None}
+        read_agent_log(meta.parent, agent)
+        handed_back = agent['doing'] in ('SubagentHandback', 'writing its report')
+        agent['state'] = 'running' if not handed_back and time.time() - (agent['last'] or 0) < 600 else 'ended'
+        found.append(agent)
+    return sorted(found, key=lambda a: (a['state'] != 'running', -(a['last'] or 0)))
+
+
 PLAN = load_plan()
+SOLO = load_solo_agents()
 FLOWS = load_workflows()
 AGENTS = [a for flow in FLOWS for a in flow['agents']]
 
 
 def stage_bar(task_id):
-    mine = [a for a in AGENTS if re.search(rf'\b{task_id}\b', a['label'])]
+    solo = [a for a in SOLO if a['state'] == 'running' and re.search(rf'\b{task_id}\b', a['label'])]
+    if solo:
+        return 'agent working: ' + short(solo[0]['doing'] or 'thinking', 60)
+    mine = [a for a in AGENTS if a['state'] != 'stopped' and re.search(rf'\b{task_id}\b', a['label'])]
     if not mine:
         return ''
     cells = []
@@ -248,7 +271,19 @@ def current_phase():
 
 
 def agents():
-    print('AGENTS')
+    live = [a for a in SOLO if a['state'] == 'running']
+    print(f'WORKING NOW ({len(live)} agent{"" if len(live) == 1 else "s"})')
+    if not live:
+        print('  nobody: no agent has taken a step in the last 10 minutes')
+    for agent in live:
+        took = span(time.time() - (agent['first'] or time.time()))
+        print(f'  {short(agent["label"], 34):<34} {short(agent["type"], 18):<18} {took:>5}  {agent["tools"]:>3} steps  last step {span(time.time() - agent["last"])} ago')
+        print(f'      now: {short(agent["doing"] or "thinking", 96)}')
+    ended = [a for a in SOLO if a['state'] == 'ended'][:6]
+    for agent in ended:
+        print(f'  [ended {span(time.time() - agent["last"])} ago] {short(agent["label"], 34):<34} {agent["tools"]:>3} steps')
+    print()
+    print('WORKFLOW RUNS (earlier today)')
     if not FLOWS:
         print('  no workflow has run in the last 12 hours')
     for flow in FLOWS:
