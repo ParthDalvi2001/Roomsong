@@ -21,9 +21,9 @@
 | T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
 | T-111 Strip starter content | frontend-dev | **done** | develop 28ddf1e; no runtime network; SDK input models off (D-027) |
 | T-107 Emulator/e2e pipeline | qa-engineer | **done** | develop 28ddf1e; `npm run test:e2e` 6 tests ≈33 s; TC-E2E-01 ×3 green |
-| T-113 Spec propagation v2.1 | UX / QA / devops | **doing** | contract (9592fd9) and requirements docs (8b84927) done; test and acceptance plans being written; UX and release docs next |
+| T-113 Spec propagation v2.1 | UX / devops | **doing** | contract, requirements docs and test plans done; UX and release docs being written; then a consistency check across all of them |
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
-| T-104 Capability spike page | software-architect | **doing** | review found 1 blocker (a stuck step would lose the whole headset run) and 3 major points; fix pass running |
+| T-104 Capability spike page | software-architect | **done-pending-device** | develop 31bc96a after independent review and fix; every step has a timeout and partial results are saved; the device run (TC-DEV-0A) waits for a headset |
 | T-105 Pinch-accuracy page | frontend-dev | **done-pending-device** | develop 47bd268 after independent review and fix; emulator-verified; the device run (TC-DEV-00) waits for a headset |
 | T-109 Security + policy gates | software-architect | **done** | develop f3ac045 after independent review and fix; verify now runs the policy, URL, size and TODO gates; e2e loads the built page under the policy |
 | T-108 CI + Pages deploy prep | devops-engineer | **done (prep)** | develop 698ff68 + 408f3fd after an approving review; CI and deploy workflows and the build stamp are in the repo; proven locally under `/Roomsong/`; never run on GitHub |
@@ -50,7 +50,7 @@
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
-| T-000 | todo (critical) | T-104 | doing | T-108 | doing (prep) |
+| T-000 | todo (critical) | T-104 | done-pending-device | T-108 | prep done; go-live needs Parth |
 | T-100 | done | T-105 | done-pending-device | T-109 | done |
 | T-101 | done | T-106 | done | T-110 | todo |
 | T-102 | done | T-107 | done | T-111 | done |
@@ -70,7 +70,7 @@
 | Suite | Last run | Result | Coverage |
 |---|---|---|---|
 | unit | 2026-10-10 23:00 | root 78/78 pass (core 45, pinch page 29, policy 3, smoke 1) · prototype `proto/sound` 70/70 pass + headless render check pass | not measured |
-| e2e (emulator) | 2026-10-10 23:00 | 11/11 pass, ≈1.1 min · TC-E2E-01 ×3 · pinch page: a hit and a miss recorded · built pages under the Content Security Policy: 0 violations | — |
+| e2e (emulator) | 2026-10-11 00:10 | 20/20 pass, ≈2.8 min · TC-E2E-01 ×3 · pinch page: a hit and a miss · capability page: full run, stuck call, 45 s limit, suspended audio, declined room, no WebGL · built pages under the Content Security Policy: 0 violations | — |
 | device | — | **no headset** | — |
 
 ## Perf (latest)
@@ -83,6 +83,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **00:10 IST (Oct 11) — T-104 capability page merged** (develop 31bc96a), done-pending-device: the review's blocker (a browser call that never answers froze the run and lost every result) is fixed with per-step timeouts, a 45 s hard stop and results saved before each step. e2e is now 20 tests. T-113: test and acceptance plans written (7 sheet ids plus TC-PERF-08/09); UX and release docs in progress. Open contract gap for T-120: the direction of bed-local +x and step 0.
 - **23:40 IST — T-108 preparation merged** (develop 698ff68, 408f3fd): CI and Pages deploy workflows plus a build stamp; review approved, all five action versions confirmed to exist, reproduced on Node 22 and 24 and under the `/Roomsong/` sub-path. BUG-003 fixed (the emulator timing limit measured the host). T-104 review: 1 blocker (no timeouts: one stuck step would lose the whole headset run), fix pass running. Reloads at 22:26 and 23:08.
 - **23:00 IST — T-105 pinch page merged** (develop 47bd268), done-pending-device. Review found two ways the headset result would have been skewed (honest hits in the first 150 ms counted as misses; the guide decided on the filtered column, which trails a fast hand by 2–4 cm at beta 0): both fixed. Computed, not measured: at seated height the 0.30 m outer edge sits about 26° off-centre, just outside the 25°×20° guideline (the D-020 question for the headset). T-104 is built and in review; T-108 prep started. A reload at 22:26 cost about 10 minutes.
 - **22:15 IST — T-109 security gates merged** (develop f3ac045). Review: the policy check could be loosened five ways without failing, and no test loaded the built app; both fixed (exact-string policy check; a new e2e spec loads the production build under the policy). First-load size 1970 kB of a 4000 kB budget; 0 production vulnerabilities. Earlier: two leftover session copies stopped at 21:53; the tracking page gained a working/idle/not-running status.

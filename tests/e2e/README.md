@@ -34,7 +34,7 @@ npx playwright test 01-enter        # one file
 | Function | Does |
 |---|---|
 | `openApp(page, room)` | Opens `/` with the room fixture as the emulated room; resolves when the emulator holds exactly its planes and meshes; returns the off-host URLs it blocked |
-| `enterXR(page, input = 'hand')` | Enters the session as above; resolves on the first XR frame with IWER's session status; fails if not active `SESSION_ENTRY_LIMIT_MS` (5 s) after the click |
+| `enterXR(page, input = 'hand')` | Enters the session as above; resolves on the first XR frame with IWER's session status; fails if not active `SESSION_ENTRY_LIMIT_MS` (10 s in the emulator, BUG-003; the 5 s product limit is a device check) after the click |
 | `xrFrames(page, n)` | Resolves after `n` more XR frames: the way to give the app time to react without a sleep; fails if the session has ended |
 | `playHandPath(page, path)` | Plays a hand path through IWER's remote control; returns the `selectstart`/`selectend` events and the final palm direction and pinch gap |
 | `probeCapabilities(page)` | Measures the table below through WebXR in the running session |
@@ -104,4 +104,4 @@ Every `TC-E2E-01` case asserts that the list from `openApp` is empty after the s
 `none` with hands, `table` with controllers. IWSDK 1.0.1 would request a hand or controller model from
 `cdn.jsdelivr.net` when an input source joins; `src/index.ts` turns those models off, and the guard goes red if
 that line is removed or any other request or WebSocket leaves localhost (checked by mutation, 2026-10-10).
-It runs against the dev page only: the production build has no emulator, so no session can start there.
+This guard runs against the dev page. The production build is covered by `04-built-page-policy.spec.ts`, which adds the emulator as an init script and loads each built page under the Content Security Policy.
