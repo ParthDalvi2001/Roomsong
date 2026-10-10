@@ -43,7 +43,7 @@ Agents: read this fully before your first commit. Reviewers: reject PRs that vio
 - Measure before optimising; attach a `perf:sample` before/after in the PR description for any rendering/audio change.
 
 ## 6. XR-specific rules
-- All world positions are in the XR reference space; convert to bed-local only via `BedAnchor.pose` inverse (cached).
+- All world positions are in the XR reference space; convert to bed-local only via the inverse (cached) of the bed's pose. `BedAnchor` has no pose field: the pose is the transform of the entity that carries it, `entity.object3D.matrixWorld` (LLD §3). `object3D` is optional on an entity: null-check it.
 - Never assume planes, meshes, anchors or a second hand exist. Every adapter has a `supported()` and the caller handles `false`.
 - Essential UI goes through `ui/FovGuard` (NFR-FOV-01). Captions through `ui/Captions` only; strings from `core/strings.ts` only.
 - Gesture thresholds only in `hands/config.ts`. Any tuned value from a device session is committed with the date and device in a comment.

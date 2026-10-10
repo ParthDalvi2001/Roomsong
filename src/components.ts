@@ -7,6 +7,8 @@
 
 import { defineComponents } from '@iwsdk/core';
 
-// Empty component manifest (iwsdk.config.json `components.module`). A component must be listed here before
+import { BedAnchor, Caption, Interactable } from './core/index.js';
+
+// Component manifest (iwsdk.config.json `components.module`). A component must be listed here before
 // a scene can author it; keep this module free of systems, DOM and renderer imports.
-export default defineComponents([]);
+export default defineComponents([BedAnchor, Interactable, Caption]);

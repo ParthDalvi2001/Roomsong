@@ -14,11 +14,13 @@ src/
 ├── core/
 │   ├── events.ts               typed EventBus + EventMap (core's own events; modules merge theirs in, API_SPEC §2)
 │   ├── components.ts           ECS components shared across modules: BedAnchor, Interactable, Caption (§3; API_SPEC §1)
-│   ├── clock.ts                audio-clock-backed time source
-│   ├── settings.ts             SettingsStore (reactive, persisted) + the Settings type + DEFAULT_TEMPO_BPM (API_SPEC §1.0)
+│   ├── config.ts               core's named constants: DEFAULT_TEMPO_BPM, CAPTION_MIN_MS, caption limits, flag bounds, BedAnchor defaults
+│   ├── clock.ts                the app clock: ms since the epoch plus the fakeDay offset, with an injectable source.
+│   │                           audio/ keeps its own AudioEngine.clock (audio time); core/ cannot import audio/
+│   ├── settings.ts             SettingsStore (validate, freeze, emit settings:changed; persistence/ saves) + the Settings type (API_SPEC §1.0)
 │   ├── types.ts                Hand, Vec2, Vec3, Mat4: plain shared types (API_SPEC §1.0)
 │   ├── flags.ts                feature flags + URL overrides
-│   ├── strings.ts              ALL user-facing text; CAPTION_MIN_MS
+│   ├── strings.ts              ALL user-facing text
 │   ├── log.ts                  leveled logger → console + dev overlay
 │   └── pool.ts                 generic object pool
 ├── room/
@@ -102,7 +104,7 @@ public/
 ├── scenes/, icons/, manifest.webmanifest        (no service worker — offline support cut, D-011)
 ```
 Removed by the re-plan: `garden/seasons.ts`, `room/RoomSize.ts` (folded into `RoomFeatures.ts`), `public/sw.js`, the Codex panel tab.
-Added by plan v2.1: `core/types.ts`, `core/components.ts`, the five `config.ts` files named above, `hands/InputSource.ts`, `render/FlashGuard.ts`, `window/`. Every module that emits events also has an `events.ts`: its `EventMap` declarations and nothing else, the first file of the module to land (API_SPEC §2). Import direction between the folders: API_SPEC §1.
+Added in T-106: `core/config.ts`. Added by plan v2.1: `core/types.ts`, `core/components.ts`, the five other `config.ts` files named above, `hands/InputSource.ts`, `render/FlashGuard.ts`, `window/`. Every module that emits events also has an `events.ts`: its `EventMap` declarations and nothing else, the first file of the module to land (API_SPEC §2). Import direction between the folders: API_SPEC §1.
 
 ## 2. Module ownership (one owner per folder; cross-edits need the owner's review)
 `core/` architect · `room/` fullstack · `hands/` frontend · `garden/` backend · `audio/` backend · `persistence/` backend ·
@@ -113,7 +115,7 @@ Added by plan v2.1: `core/types.ts`, `core/components.ts`, the five `config.ts` 
 ### Components (data only)
 | Component | Declared in | Fields | Written by → read by |
 |---|---|---|---|
-| `BedAnchor` | `core/` | `pose: Mat4`, `inner = 0.12`, `outer = 0.30`, `heightOffset`, `source: 'table'\|'surface'\|'hittest'\|'floating'` | room → hands (bed-local conversion, zone), render, audio (`syncPlants`) |
+| `BedAnchor` | `core/` | no pose field: the pose is the entity's own transform (below); `inner = 0.12`, `outer = 0.30` (both Float64), `heightOffset`, `source: 'table'\|'surface'\|'hittest'\|'floating'` | room → hands (bed-local conversion, zone), render, audio (`syncPlants`) |
 | `PlantView` | `render/` | `plantId`, `voice`, `instanceIndex` | render |
 | `Interactable` | `core/` | `kind: 'plant'\|'seed'\|'orb'\|'undo'\|'panel'`, `id`, `radius`, `worldPos` | render (plants, seeds, the Listen orb, the undo petal), ui (one per panel control) → hands (TargetPicker), access (gaze targets) |
 | `HandState` | `hands/` | `hand: 'left'\|'right'`, `pinch`, `select`, `pinchPos`, `palmPos`, `palmNormal`, `velocity`, `tracked` (no `wristRoll`: twist cut) | hands → access, render, onboarding |
@@ -121,7 +123,7 @@ Added by plan v2.1: `core/types.ts`, `core/components.ts`, the five `config.ts` 
 | `RoomSurfaces` | `room/` | `table?`, `nearestWall?`, `ceiling?`: one `SurfaceRef` each (extents + pose, for the ripple) | room → render |
 | `VineTarget` | `render/` | `wallPlaneId`, `path: Vec3[]` | render (Could C4) |
 
-Three components are declared in `core/` because a component has to be imported to be queried or attached, and the import direction (API_SPEC §1) forbids importing a module on the same level or above. `BedAnchor` is read by hands, which sits beside room. `Interactable` is attached by render and ui and read by hands, below them. `Caption` is raised by render, persistence and onboarding and drawn by ui: a module raises a caption by creating an entity with a `Caption`, and never calls `ui/`. Garden uses no component; it gets `room:bedPlaced` and `room:anchored` and needs no pose. All components are registered in `src/components.ts`. How a pose is stored in an IWSDK component (vector fields, or the entity's own transform) is settled with `iwsdk-reference` in T-106; a reader sees a `Mat4` either way.
+Three components are declared in `core/` because a component has to be imported to be queried or attached, and the import direction (API_SPEC §1) forbids importing a module on the same level or above. `BedAnchor` is read by hands, which sits beside room. `Interactable` is attached by render and ui and read by hands, below them. `Caption` is raised by render, persistence and onboarding and drawn by ui: a module raises a caption by creating an entity with a `Caption`, and never calls `ui/`. Garden uses no component; it gets `room:bedPlaced` and `room:anchored` and needs no pose. All components are registered in `src/components.ts`. The bed's pose (settled in T-106) is the transform of the entity that carries `BedAnchor`, not a component field: elics 3.4.2 has no matrix field type, and IWSDK gives every entity an `object3D`. A reader takes `entity.object3D.matrixWorld.elements`, which is a `Mat4` (API_SPEC §1.0), and null-checks `object3D` first (it is optional on an entity). room/ sets the transform and calls `updateMatrixWorld()` when it places or moves the bed, so a reader in the same frame sees the new pose. `inner` and `outer` are Float64: a Float32 field reads 0.12 back as 0.11999999731779099. Checked against `node_modules/elics/lib/types.d.ts` and `node_modules/@iwsdk/core/dist/ecs/entity.d.ts` (@iwsdk/core 1.0.1).
 Panel controls are direct pinch targets (T-151: "large pinch targets over ray UI"). `ui/Panel.ts` attaches one `Interactable { kind: 'panel' }` per control, so a control goes through the same picker, hover cue and commit on release as a plant, and gaze dwell finds it the same way. How a UIKit control reports its world position is checked with `iwsdk-reference` in T-151.
 
 ### Systems (order matters)

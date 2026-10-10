@@ -46,3 +46,5 @@ pids/
 
 # Claude Code session lock
 .claude/scheduled_tasks.lock
+
+__pycache__/

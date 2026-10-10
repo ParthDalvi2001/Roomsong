@@ -1,0 +1,12 @@
+// ALL user-facing text (CODING_GUIDELINES §6). English only (Golden Rule 8). A caption is raised by its key.
+export const STRINGS = {
+  // Tuning-ripple captions (LLD §5.8). Limits: RIPPLE_CAPTION_MAX_WORDS, RIPPLE_CAPTION_MAX_CHARS; each names its surface.
+  rippleTableSeeds: 'Table: seeds.',
+  rippleTableColour: 'Table: colour.',
+  rippleWalls: 'Walls: colour.',
+  rippleCeiling: 'Ceiling: scale.',
+  // The message of a user-facing failure has its error code (ErrorCode, API_SPEC §5) as its key (LLD §8).
+  E_SAVE_FAILED: 'Saving unavailable',
+} as const;
+
+export type StringKey = keyof typeof STRINGS;
