@@ -26,7 +26,7 @@ PHASES = [
 ]
 GATES = [('G0', (10, 17)), ('Headset due', (10, 20)), ('G1', (10, 24)), ('G2', (11, 3)),
          ('Feature freeze', (11, 12)), ('Code freeze', (11, 15)), ('Submit', (11, 17))]
-AGENT_QUIET_S = 600  # an agent silent this long without handing back was stopped with its session
+AGENT_QUIET_S = 300  # an agent silent this long without handing back was stopped with its session
 
 
 def git(*args):
@@ -209,6 +209,33 @@ def load_agents():
     return sorted(agents, key=lambda a: -(a['last'] or 0))
 
 
+def load_driver(agents):
+    """Is Claude working right now? Read off the processes, the main session log and the agents' logs."""
+    project = pathlib.Path.home() / '.claude/projects' / re.sub(r'[^A-Za-z0-9]', '-', str(ROOT))
+    copies = leftovers = 0
+    try:
+        listing = subprocess.run(['ps', '-axo', 'pid,ppid,command'], capture_output=True, text=True, timeout=5).stdout
+        for line in listing.split('\n'):
+            if 'native-binary/claude' not in line:
+                continue
+            cwd = subprocess.run(['lsof', '-a', '-p', line.split()[0], '-d', 'cwd', '-Fn'], capture_output=True, text=True, timeout=5).stdout
+            if any(l[1:].startswith(str(ROOT)) for l in cwd.split('\n') if l.startswith('n')):
+                # parent 1 = its editor window is gone: a leftover copy that nobody can see or answer
+                if line.split()[1] == '1':
+                    leftovers += 1
+                else:
+                    copies += 1
+    except Exception:
+        pass
+    logs = [f.stat().st_mtime for f in project.glob('*.jsonl')]
+    main_quiet = time.time() - max(logs) if logs else 1e9
+    running = [a for a in agents if a['state'] == 'running']
+    agent_quiet = min((a['quietSeconds'] for a in running), default=1e9)
+    quiet = min(main_quiet, agent_quiet)
+    state = 'stopped' if not copies else 'working' if quiet < 120 else 'idle'
+    return {'state': state, 'quietSeconds': round(quiet), 'agents': len(running), 'copies': copies, 'leftovers': leftovers}
+
+
 def task_stage(task_id, agents):
     """Build / review / fix progress of one task, read off the labels of the agents that worked on it."""
     stages = {'build': 'none', 'review': 'none', 'fix': 'none'}
@@ -252,7 +279,7 @@ def collect():
         'phases': plan, 'calendar': calendar,
         'totals': {s: sum(1 for t in tasks if t['state'] == s) for s in ('done', 'running', 'you', 'todo', 'maybe')},
         'ready': [{'id': t['id'], 'title': t['title'], 'owner': t['owner']} for t in tasks if t['ready']],
-        'agents': agents, 'status': load_status(), 'decisions': load_decisions(), 'bugs': load_bugs(),
+        'agents': agents, 'driver': load_driver(agents), 'status': load_status(), 'decisions': load_decisions(), 'bugs': load_bugs(),
         'git': {'head': git('rev-parse', '--short', 'develop'), 'unpushed': int(git('rev-list', '--count', 'origin/develop..develop') or 0),
                 'editing': len([l for l in git('status', '--porcelain').split('\n') if l.strip()]), 'lanes': lanes, 'commits': commits},
     }

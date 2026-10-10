@@ -70,6 +70,14 @@
   .steps i { width: 14px; height: 6px; border-radius: 2px; background: var(--track); }
   .steps i.on { background: var(--done); } .steps i.live { background: var(--working); } .steps i.off { background: var(--you); }
   ul { margin: 0; padding-left: 18px; } li { margin: 3px 0; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px; border-radius: 999px; border: 2px solid var(--line); font-weight: 600; white-space: nowrap; }
+  .pill i { width: 10px; height: 10px; border-radius: 50%; background: var(--text-3); }
+  .pill.working { border-color: var(--done); } .pill.working i { background: var(--done); animation: pulse 1.4s ease-in-out infinite; }
+  .pill.idle { border-color: var(--todo); }
+  .pill.stopped, .pill.offline { border-color: var(--you); } .pill.stopped i, .pill.offline i { background: var(--you); border-radius: 2px; }
+  .pill small { font-weight: 400; color: var(--text-2); }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .pill.working i { animation: none; } }
   .clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; cursor: pointer; }
   .clamp.open { display: block; }
   .scroll { overflow-x: auto; }
@@ -84,6 +92,7 @@
     <h1>Roomsong tracker</h1>
     <span class="muted" id="sub">loading…</span>
     <span style="flex:1"></span>
+    <span id="live" class="pill" role="status" aria-live="polite"><i></i>checking…</span>
     <button id="alerts" title="Show a desktop notification when something needs you or a task finishes">Turn on alerts</button>
     <span class="small" id="stamp"></span>
   </header>
@@ -125,7 +134,15 @@ function render(d) {
   const nextGate = d.gates.find((g) => g.daysLeft >= 0);
   $('sub').textContent = `Day ${d.dayNumber} of ${d.totalDays} · ${d.daysToSubmit} days to submit · ${d.git.unpushed} local commits not on GitHub`;
   $('stamp').textContent = `updated ${d.generatedAt}`;
-  document.title = `${needs.length ? `(${needs.length}) ` : ''}Roomsong tracker`;
+  const ago = (sec) => (sec < 90 ? `${sec} s` : sec < 5400 ? `${Math.round(sec / 60)} min` : `${(sec / 3600).toFixed(1)} h`);
+  const live = {
+    working: ['● Claude is working', `${d.driver.agents} agent${d.driver.agents === 1 ? '' : 's'} · last step ${ago(d.driver.quietSeconds)} ago`],
+    idle: ['⏸ Claude is idle', `nothing for ${ago(d.driver.quietSeconds)}: waiting for you, or between steps`],
+    stopped: ['■ Claude is not running', 'open Claude in this project and type "continue"'],
+  }[d.driver.state];
+  $('live').className = `pill ${d.driver.state}`;
+  $('live').innerHTML = `<i></i>${esc(live[0].slice(2))} <small>${esc(live[1])}${d.driver.copies > 1 ? ` · ${d.driver.copies} Claude windows open on this project: use only one` : ''}${d.driver.leftovers ? ` · ${d.driver.leftovers} leftover background cop${d.driver.leftovers === 1 ? 'y' : 'ies'} of Claude: tell Claude to clean up` : ''}</small>`;
+  document.title = `${live[0][0]} ${needs.length ? `(${needs.length}) ` : ''}Roomsong tracker`;
 
   const newNeeds = needs.filter((n) => !seen.has(n.n));
   const html = [];
@@ -228,7 +245,10 @@ async function tick() {
     if (d.error) throw new Error(d.error);
     render(d);
   } catch (e) {
-    $('stamp').textContent = `cannot refresh: ${e.message}. Is "python3 scripts/dashboard.py" still running?`;
+    $('stamp').textContent = `cannot refresh: ${e.message}`;
+    $('live').className = 'pill offline';
+    $('live').innerHTML = '<i></i>Tracker offline <small>run: python3 scripts/dashboard.py</small>';
+    document.title = '✕ Roomsong tracker';
   }
 }
 const alerts = $('alerts');
