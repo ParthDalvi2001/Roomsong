@@ -13,7 +13,12 @@ import { defineConfig, devices } from '@playwright/test';
 // One IWSDK dev server per worktree and one per port: a second agent sets E2E_PORT.
 const PORT = Number(process.env.E2E_PORT ?? 8081);
 const BASE_URL = `https://localhost:${PORT}`;
+// The production build under `vite preview`, for 04-built-page-policy.spec.ts (the dev page has no Content
+// Security Policy). 1000 above the dev port, so agents on neighbouring E2E_PORTs do not meet.
+const BUILT_PAGE_PORT = PORT + 1000;
+export const BUILT_PAGE_URL = `https://localhost:${BUILT_PAGE_PORT}/`;
 const SCENARIO_TIMEOUT_MS = 60_000; // each scenario ≤ 60 s (CODING_GUIDELINES §9)
+const SERVER_START_LIMIT_MS = 120_000;
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -31,13 +36,24 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    command: `npx vite --port ${PORT} --strictPort`,
-    env: { IWSDK_DEV_OPEN: 'false' },
-    url: BASE_URL,
-    ignoreHTTPSErrors: true,
-    // Never reuse: a server already on this port may belong to another worktree and serve other code.
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
+  // Never reuse: a server already on a port may belong to another worktree and serve other code.
+  webServer: [
+    {
+      command: `npx vite --port ${PORT} --strictPort`,
+      env: { IWSDK_DEV_OPEN: 'false' },
+      url: BASE_URL,
+      ignoreHTTPSErrors: true,
+      reuseExistingServer: false,
+      timeout: SERVER_START_LIMIT_MS,
+    },
+    {
+      // Build first: a preview of an old dist/ would test old code.
+      command: `npx vite build && npx vite preview --port ${BUILT_PAGE_PORT} --strictPort`,
+      env: { IWSDK_DEV_OPEN: 'false' },
+      url: BUILT_PAGE_URL,
+      ignoreHTTPSErrors: true,
+      reuseExistingServer: false,
+      timeout: SERVER_START_LIMIT_MS,
+    },
+  ],
 });

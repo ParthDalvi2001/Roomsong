@@ -14,6 +14,7 @@ export default tsConfig(
       'out/**',
       '.iwsdk/**',
       '.vite/**',
+      '.tmp/**', // scratch files (git-ignored)
       'coverage/**',
       'playwright-report/**',
       'test-results/**',
