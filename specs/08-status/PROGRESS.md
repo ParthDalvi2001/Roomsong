@@ -21,7 +21,8 @@
 | T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
 | T-111 Strip starter content | frontend-dev | **done** | develop 28ddf1e; no runtime network; SDK input models off (D-027) |
 | T-107 Emulator/e2e pipeline | qa-engineer | **done** | develop 28ddf1e; `npm run test:e2e` 6 tests ≈33 s; TC-E2E-01 ×3 green |
-| T-113 Spec propagation v2.1 | UX / devops | **doing** | contract, requirements docs and test plans done; UX and release docs being written; then a consistency check across all of them |
+| T-113 Spec propagation v2.1 | UX / devops | **doing** | all four writing parts committed (contract, requirements, tests, release, UX: develop 0a3800a); an independent consistency check across every spec file is running; then one fix pass and a final check |
+| T-120 Garden model and rules | backend-dev | **doing** | Phase 1, started early in its own worktree; bed frame fixed by D-029 |
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
 | T-104 Capability spike page | software-architect | **done-pending-device** | develop 31bc96a after independent review and fix; every step has a timeout and partial results are saved; the device run (TC-DEV-0A) waits for a headset |
 | T-105 Pinch-accuracy page | frontend-dev | **done-pending-device** | develop 47bd268 after independent review and fix; emulator-verified; the device run (TC-DEV-00) waits for a headset |
@@ -46,6 +47,7 @@
 14. **FYI, no action unless you disagree (D-027):** the app draws no virtual hands or controllers. In passthrough you see your real hands. How that feels can only be judged on a headset.
 15. **Confirm two design calls (D-028); reply "ok" or say which to change:** (a) the echo length follows room volume directly, so a bedroom and a living room sound clearly different; the cost is that about 1 room in 6 can land on a different echo step on another day. (b) Hand smoothing stays at its starting value until the headset test tunes it; until then a dragged plant trails the hand by about 3 cm.
 16. **From the requirements update (T-113), four small calls:** (a) the Devpost text may name three earlier works (MR4MR, ARCHISCORE, RoomTone) to back the "first on Quest" wording; the rules ban brand names, so say "keep the names" or "no names" (a no-names version is written). (b) A plant released in the centre hole goes back to its cell instead of being removed: ok? (c) The tuning ripple plays every session, since the room's song is never stored: ok? (d) The copy says "same key and scale in the same room", not "same song", until the headset test shows the echo is stable.
+17. **From the UX update (T-113), three calls; reply "ok" or say which to change:** (a) the "hands out of view" hint shows only when a gesture you were holding got cut off, and for at most 5 s; it does not show for a hand that is just resting. (b) Tempo and Volume are plus and minus buttons (4 BPM and 10 % per press), not sliders, because a pinch or a gaze cannot drag a slider well. (c) FYI for the headset test: by arithmetic the edges of the bed sit 1 to 2 degrees outside the comfortable view box when you look at its centre (the open D-020 question).
 
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
@@ -54,8 +56,8 @@
 | T-100 | done | T-105 | done-pending-device | T-109 | done |
 | T-101 | done | T-106 | done | T-110 | todo |
 | T-102 | done | T-107 | done | T-111 | done |
-| T-113 | doing (contract) | T-115 | todo (Chinmay) | | |
-| T-103 | blocked (needs T-102) | | | | |
+| T-113 | doing (consistency check) | T-115 | todo (Chinmay) | | |
+| T-103 | ready; needs Parth's rating | | | | |
 
 ## Gates
 | Gate | Date | Result | Notes |
@@ -83,6 +85,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **00:55 IST (Oct 11) — UX wireframes committed** (develop 0a3800a): T-113 writing is complete (4 of 4 parts, no id lost). An independent consistency check across all spec files is running, with the writers' reported inconsistencies as input; a fix pass and a final check follow, then the G0 review (T-110). T-120 (garden model) is building in its own worktree. Three UX calls added for Parth (item 17).
 - **00:10 IST (Oct 11) — T-104 capability page merged** (develop 31bc96a), done-pending-device: the review's blocker (a browser call that never answers froze the run and lost every result) is fixed with per-step timeouts, a 45 s hard stop and results saved before each step. e2e is now 20 tests. T-113: test and acceptance plans written (7 sheet ids plus TC-PERF-08/09); UX and release docs in progress. Open contract gap for T-120: the direction of bed-local +x and step 0.
 - **23:40 IST — T-108 preparation merged** (develop 698ff68, 408f3fd): CI and Pages deploy workflows plus a build stamp; review approved, all five action versions confirmed to exist, reproduced on Node 22 and 24 and under the `/Roomsong/` sub-path. BUG-003 fixed (the emulator timing limit measured the host). T-104 review: 1 blocker (no timeouts: one stuck step would lose the whole headset run), fix pass running. Reloads at 22:26 and 23:08.
 - **23:00 IST — T-105 pinch page merged** (develop 47bd268), done-pending-device. Review found two ways the headset result would have been skewed (honest hits in the first 150 ms counted as misses; the guide decided on the filtered column, which trails a fast hand by 2–4 cm at beta 0): both fixed. Computed, not measured: at seated height the 0.30 m outer edge sits about 26° off-centre, just outside the 25°×20° guideline (the D-020 question for the headset). T-104 is built and in review; T-108 prep started. A reload at 22:26 cost about 10 minutes.
