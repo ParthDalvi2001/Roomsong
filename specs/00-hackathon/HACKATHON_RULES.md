@@ -45,7 +45,7 @@ Special Awards and Resources pages, read 2026-10-09) · **Owner:** product-owner
 | A VR/MR application for Meta VR devices | WebXR (IWSDK) app running in Meta Quest Browser |
 | Aligns with ≥1 track | **Entertainment** |
 | One division | **New Experience**: conceived and built after 2026-09-24, with no pre-existing codebase |
-| **Hands-first** (HARD): fully usable end-to-end with hands, no controller ever paired | Hands only by design; controllers are an optional bonus |
+| **Hands-first** (HARD): fully usable end-to-end with hands, no controller ever paired | Hands only by design; controller support is *Cut (D-011)* |
 | Seated (guideline): "airplane seat test", everything works in a 2 ft radius | Garden bed sits on the table in front of you |
 | Easy in/out (guideline): fast cold start, clean pause/resume, satisfying in ≤10 min; "one bus stop test" | Session = plant, shape, listen (3–8 min). Autosave on every action |
 | Original, not a wrapper (guideline): "take it away test" | No third-party service at all; everything is entrant-built |
