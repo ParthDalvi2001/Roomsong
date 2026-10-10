@@ -1,71 +1,45 @@
 # CLAUDE.md — Roomsong (Meta VR Start Developer Competition 2026)
 
-> Claude Code loads this file automatically at the start of every session. It defines how you work in this repo.
-> Every document lives under `specs/`. Read `specs/README.md` for the map. **This folder is the master copy** (D-015).
+Loaded into every session and agent. Documents live under `specs/` (map: `specs/README.md`; this folder is the master copy, D-015).
+On demand: commands `.claude/QUICK_START.md` · where things live `.claude/ARCHITECTURE_MAP.md` · **read before your first commit:** `.claude/COMMON_MISTAKES.md`.
 
-## 1. What we are building (one paragraph)
+## 1. Product
+**Roomsong**: a hands-first mixed-reality music garden on your real table. Pinch to plant glowing seeds in a ring-shaped bed; a ring of light sweeps it and each plant sings. Where you plant sets when it plays (16 steps) and how high (5 rings). The real room tunes the song (room size and volume set key, mode and echo: the "room signature", gated on device evidence). Saved locally; a new seed each day.
+- Track Entertainment · Division New Experience (all code after 2026-09-24) · Meta Quest 3 / 3S in Meta Quest Browser (WebXR).
+- Stack: IWSDK + Three.js + TypeScript + Vite + Web Audio. Hosting: GitHub Pages + a mirror (D-022).
+- **Deadline 2026-11-18 12:00 PT.** Feature freeze Nov 12 · code freeze Nov 15 · submit Nov 17 ≤18:00 IST.
 
-**Roomsong** (formerly Bloomtone; renamed 2026-10-10, D-016) is a hands-first mixed-reality **music garden that grows on your real table**.
-You plant glowing seeds with a pinch into a ring-shaped bed. Each plant is a musical voice. A slow ring of light sweeps
-the bed; when it touches a plant, the plant blooms and sings. Where you plant sets *when* it plays (16 steps around)
-and *how high* (5 rings outward). **Your real room tunes the garden**: table height, room size and walls set the song's
-key, mode, tempo and echo, so every room has its own song (the "room signature", gated on device evidence). Then you
-rest your hands and the room performs in spatial audio. The garden is saved locally and gives you a new seed each day.
-- **Track:** Entertainment · **Division:** New Experience (all code written after 2026-09-24)
-- **Platform:** Meta Quest 3 / 3S via Meta Quest Browser (WebXR). FoV-aware for narrower devices.
-- **Stack:** Immersive Web SDK (IWSDK) + Three.js + TypeScript + Vite + Web Audio API. Static hosting (to be chosen).
-- **Hard deadline:** **2026-11-18 12:00 PT**. Internal: feature freeze Nov 12 · code freeze Nov 15 · **submit Nov 17 ≤18:00 IST**.
+## 2. Reality
+- **No Quest headset** (T-000 is the top priority; H1 Oct 20, Emergency mode Oct 27). Emulator-first (IWER + Playwright); device-dependent work is `done-pending-device`.
+- Repo `github.com/ParthDalvi2001/Roomsong`: `main` = release (never pushed by agents), `develop` = work.
+- Humans: Parth (developer, plan owner, this Mac) and Chinmay (PM, Devpost Representative). Chinmay's Claude only proposes via `specs/08-status/PM_PROPOSALS.md`; only this Claude edits specs.
 
-## 2. Current reality (read before anything else)
-- **No Quest headset on the team as of 2026-10-10.** Build emulator-first (IWER + Playwright). Anything device-dependent
-  (fps, hand feel, real rooms) is `done-pending-device`. Getting a headset is **T-000**, the top priority. Gates: H1 Oct 20 / Emergency mode Oct 27.
-- **GitHub:** `https://github.com/ParthDalvi2001/Roomsong`, branch `main` (D-018, 2026-10-10; supersedes the "no GitHub" part of D-014; zip sync retired). Hosting = **GitHub Pages (submitted URL) + a Vercel/Netlify mirror** (D-022); Parth enables Pages (T-108).
-- **Usage budget:** the Claude weekly limit was exhausted on 2026-10-10 (resets Oct 13 13:30 IST). Keep task cards narrow; 2 agents at once; the reset day is for integration and human tests.
-- **Two humans:** Parth (developer, plan owner; this machine, macOS) and Chinmay (PM, Devpost Representative; Windows).
-  Chinmay's Claude works on a copy and may only **propose** via `specs/08-status/PM_PROPOSALS.md`. Only this Claude edits specs.
+## 3. Session start (every session, unasked)
+1. Read `specs/08-status/PROGRESS.md` (single source of truth), then once per session `REPLAN_2026-10-10.md` and `PLAN_AMENDMENT_2026-10-10.md` (same folder) and `specs/07-workflow/AUTOPILOT.md`.
+2. A specific instruction → do it, then return to the loop. "continue" / "go" / `/autopilot` / nothing → run the Autopilot loop.
+3. Never re-plan from scratch: amend `specs/07-workflow/SPRINT_PLAN.md` (v2.1).
+4. New entries in `PM_PROPOSALS.md` → summarise for Parth and ask before applying.
 
-## 3. Session start protocol (do this EVERY session, without being asked)
-1. Read `specs/08-status/PROGRESS.md`. It is the single source of truth for where we are.
-2. Read `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions) and `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) once per session, and `specs/07-workflow/AUTOPILOT.md`.
-3. If the user gave a specific instruction, do it, then return to the loop. If the user said "continue", "go", "/autopilot" or nothing specific, run the **Autopilot loop**.
-4. Never re-plan from scratch. The plan is `specs/07-workflow/SPRINT_PLAN.md` v2.1 (amended 2026-10-10). Amend it, don't replace it.
-5. If `PM_PROPOSALS.md` has new entries, summarise them for Parth and ask approve/reject before applying.
+## 4. Golden rules (non-negotiable)
+1. **Hands-first.** Everything completable with hands only; no controllers. Stage-1 pass/fail.
+2. **Seated reach.** Bed centre 0.35–0.45 m ahead of the head; far edge ≤ 0.75 m.
+3. **Bed:** annulus 0.12–0.30 m, 5 rings × 16 steps = 80 cells, hit radius ≥ 4 cm (provisional until the device pinch test).
+4. **Session:** ≤ 10 min and satisfying, ≤ 5 s cold start, clean pause/resume, first sound ≤ 20 s, first loop ≤ 90 s.
+5. **≥ 60 fps on Quest 3 at all times, target 72.** Emulator budgets now: draws ≤ 60, tris ≤ 150k, JS ≤ 6 ms.
+6. **FoV:** essential UI within ±25° horizontal / ±20° vertical.
+7. **Purposeful passthrough**, always with a fallback when scene data is missing (floating bed, "Wanderer" signature, aurora halo).
+8. **Original assets only:** procedural, synthesized, or CC0 logged in `specs/06-release/THIRD_PARTY_LICENSES.md`. No brands, logos, real people, third-party IP. English only.
+9. **No thin wrappers:** no load-bearing LLM or API; fully offline once loaded.
+10. **Frozen at submission.** Nothing changes after the deadline.
+11. **Honest submission:** say what was device-tested and what was not.
 
-## 4. Golden rules (non-negotiable; from the contest rules and the re-plan)
-1. **Hands-first.** Every feature completable with hands only. Never require a controller (controllers are cut). Stage-1 pass/fail.
-2. **Seated, 2 ft radius.** Bed centre 0.35–0.45 m in front of the head; far edge ≤ **0.75 m**.
-3. **Bed geometry:** annulus **0.12–0.30 m**, **5 rings**, **16 steps**, **80 cells**, hit radius ≥4 cm (provisional until the on-device pinch test).
-4. **≤10-minute satisfying session, ≤5 s cold start, clean pause/resume.** First sound ≤20 s, first loop ≤90 s.
-5. **≥60 fps on Quest 3 at all times, target 72.** Emulator budgets (draws ≤60, tris ≤150k, JS ≤6 ms) enforced now; device fps once a headset exists.
-6. **FoV-aware.** Essential UI within ±25° horizontal / ±20° vertical.
-7. **Passthrough must be purposeful.** The table is the stage; the room tunes the music; always a fallback when scene data is missing (L4 floating bed, "Wanderer" signature, aurora halo).
-8. **Original assets only.** Procedural visuals, synthesized audio, or CC0 logged in `specs/06-release/THIRD_PARTY_LICENSES.md`. No brands, logos, real people, third-party IP. English only.
-9. **No thin wrappers.** No LLM or API is load-bearing. Fully offline once loaded.
-10. **Nothing changes after the deadline.** The deployed build is frozen at submission.
-11. **Honesty in the submission.** The Devpost text says what was device-tested and what was not.
-
-## 5. Team = Claude subagents (max 2 concurrent by default, D-023; 3 only on an explicit "go 3"; one per lane A/B/C)
-Roles in `.claude/agents/`: `product-owner`, `scrum-master`, `ux-designer`, `software-architect`, `frontend-dev`, `backend-dev`,
-`fullstack-dev`, `devops-engineer`, `qa-engineer`. Route by owner in `specs/07-workflow/SPRINT_PLAN.md`. Worktree per agent. Never two agents on one module.
-
-## 6. Skills
-Stage-to-skill mapping: `specs/07-workflow/SKILLS_SETUP.md`. Project skills in `.claude/skills/`:
-`autopilot` · `hands-first-audit` · `xr-perf-budget` · `submission-pack`.
-Always invoke `hz-quest-verify-first` (Meta agentic-tools) before writing Quest- or WebXR-specific code.
-
-## 7. Engineering standards
-- `specs/04-development/CODING_GUIDELINES.md` (all MUSTs) · `specs/04-development/API_SPEC.md` (change spec first) · `specs/05-testing/TEST_PLAN.md`.
-- A task is done only when `npm run verify` is green and its tests pass; interaction tasks pass `hands-first-audit`; render/audio tasks pass `xr-perf-budget`.
+## 5. How we work
+- Roles in `.claude/agents/`, routed by owner in SPRINT_PLAN. Worktree per agent; never two agents on one module. Max 2 agents at once (D-023); more only when Parth opts in (D-024).
+- Standards: `specs/04-development/CODING_GUIDELINES.md` (all MUSTs) · `specs/04-development/API_SPEC.md` (change the spec first) · `specs/05-testing/TEST_PLAN.md`.
+- **Lean code (D-026):** the smallest complete change; reuse what exists before adding; no unrequested abstractions, options or dependencies; one small test for new non-trivial logic; never cut validation, error handling or accessibility.
+- **Lean context (D-026):** grep or read sections, never whole large files (lock files, the research report); scope every search to a path; keep reports short.
+- Done = `npm run verify` green and tests pass; interaction tasks pass `hands-first-audit`, render/audio tasks pass `xr-perf-budget`. Before IWSDK or WebXR code, load the `iwsdk-dev` skill (and `hz-quest-verify-first` if installed).
 - Bugs → `specs/05-testing/BUG_LOG.md`. Decisions → `specs/08-status/DECISIONS_LOG.md`.
 
-## 8. Commands (after scaffolding, T-101)
-```bash
-npm run dev        # IWSDK dev server (emulator panel in the browser; LAN HTTPS for a headset later)
-npm run verify     # typecheck + lint + unit tests + build; must be green before every commit
-npm run test:e2e   # Playwright + IWER emulated XR
-npm run build      # production build → dist/
-```
-
-## 9. When you must stop and ask Parth
-Only for things Claude physically cannot do or must not decide (AUTOPILOT §5): headset tests, accounts, hosting/pushing/deploying prod,
-listening/visual ratings, dropping a Must, submitting. Put them in `PROGRESS.md` → **Blocked on human** as one numbered list, then keep working on unblocked tasks.
+## 6. Stop and ask Parth only for
+headset tests, accounts, pushing `main` or prod deploys, listening and visual ratings, dropping a Must, spending money, submitting (AUTOPILOT §5). List them under PROGRESS → **Blocked on human**, then keep working on unblocked tasks.
