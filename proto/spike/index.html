@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- An empty data URL stops the browser asking the server for /favicon.ico. -->
+    <link rel="icon" href="data:," />
+    <title>Roomsong - device capability spike (T-104)</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Roomsong - device capability spike</h1>
+      <p>
+        One tap, hands only. The probe asks the headset what it supports, runs by itself for about 30 seconds,
+        ends the session and shows the results here. Nothing is sent anywhere.
+      </p>
+      <ol>
+        <li>Tap Start and answer what the headset asks.</li>
+        <li>
+          When the view turns green, pinch once in front of you (thumb and index finger). You hear a click.
+        </li>
+        <li>
+          Then six steps of sound play, with 8, 16, 24, 32, 48 and 64 voices. Remember the step at which the
+          sound starts to crackle.
+        </li>
+        <li>The results appear on this page. Answer the three questions above the table.</li>
+      </ol>
+      <p>
+        Run it four times: allowing everything, again after a reload, again after closing and re-opening the
+        browser, and last declining the room permission. The full steps are in the repository, in the file
+        proto/spike/README.md.
+      </p>
+      <button id="start" type="button">Start</button>
+      <p id="status" role="status"></p>
+
+      <section id="results" aria-labelledby="results-title" hidden>
+        <h2 id="results-title">Results</h2>
+        <p>
+          <label
+            >Which run was this
+            <select id="run">
+              <option value="">not answered</option>
+              <option value="allow">run 1: allow</option>
+              <option value="reload">run 2: after a reload</option>
+              <option value="restart">run 3: after a browser restart</option>
+              <option value="decline">run 4: decline</option>
+            </select>
+          </label>
+        </p>
+        <p>
+          <label
+            >The sound started to crackle at
+            <select id="crackle">
+              <option value="">not answered</option>
+              <option value="0">never</option>
+              <option value="8">8 voices</option>
+              <option value="16">16 voices</option>
+              <option value="24">24 voices</option>
+              <option value="32">32 voices</option>
+              <option value="48">48 voices</option>
+              <option value="64">64 voices</option>
+            </select>
+          </label>
+        </p>
+        <p>
+          <label
+            >Room permission on this run
+            <select id="permission">
+              <option value="">not answered</option>
+              <option value="allowed">allowed</option>
+              <option value="declined">declined</option>
+              <option value="not asked">the headset did not ask</option>
+            </select>
+          </label>
+        </p>
+        <p><button id="copy" type="button">Copy JSON</button></p>
+        <table>
+          <caption id="caption"></caption>
+          <thead>
+            <tr>
+              <th scope="col">Field</th>
+              <th scope="col">Value</th>
+            </tr>
+          </thead>
+          <tbody id="table"></tbody>
+        </table>
+        <p><label for="json">Results JSON (every run kept in this browser, newest last)</label></p>
+        <textarea id="json" rows="12" readonly></textarea>
+      </section>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

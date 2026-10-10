@@ -1,0 +1,44 @@
+body {
+  margin: 0;
+  font:
+    18px/1.5 system-ui,
+    sans-serif;
+  background: #101418;
+  color: #e8eef2;
+}
+main {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+/* Large targets: every control is used with a hand ray or a finger. */
+button,
+select {
+  font: inherit;
+  min-height: 3rem;
+  padding: 0.5rem 1.5rem;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+caption {
+  text-align: left;
+  font-weight: bold;
+  padding: 0.5rem 0;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid #33414d;
+  overflow-wrap: anywhere;
+}
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font:
+    14px/1.4 ui-monospace,
+    monospace;
+}
