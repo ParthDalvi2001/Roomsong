@@ -23,9 +23,9 @@
 | T-107 Emulator/e2e pipeline | qa-engineer | **done** | develop 28ddf1e; `npm run test:e2e` 6 tests ≈33 s; TC-E2E-01 ×3 green |
 | T-113 Spec propagation v2.1 | UX / QA / devops | **doing** | contract (9592fd9) and requirements docs (8b84927) done; UX, test and release docs queued |
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
-| T-104 Capability spike page | software-architect | todo | queued behind the 2-agent cap |
-| T-105 Pinch-accuracy page | frontend-dev | **doing** | build relaunched 21:48 |
-| T-109 Security + policy gates | software-architect | **doing** | built (lane ac313b6); independent review relaunched 21:48 |
+| T-104 Capability spike page | software-architect | **doing** | build started 22:20 |
+| T-105 Pinch-accuracy page | frontend-dev | **doing** | built, verify green with the new gates (lane merged with develop); independent review running |
+| T-109 Security + policy gates | software-architect | **done** | develop f3ac045 after independent review and fix; verify now runs the policy, URL, size and TODO gates; e2e loads the built page under the policy |
 | T-108 CI + Pages deploy prep | devops-engineer | todo | prep queued; going live still needs Parth |
 | T-108 Hosting: GitHub Pages + mirror (D-022) | Parth + devops-engineer | **blocked on human** | Parth enables Pages + picks the mirror; then devops runs PoC D1 |
 
@@ -51,7 +51,7 @@
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
 | T-000 | todo (critical) | T-104 | doing | T-108 | doing (prep) |
-| T-100 | done | T-105 | doing | T-109 | doing |
+| T-100 | done | T-105 | doing | T-109 | done |
 | T-101 | done | T-106 | done | T-110 | todo |
 | T-102 | done | T-107 | done | T-111 | done |
 | T-113 | doing (contract) | T-115 | todo (Chinmay) | | |
@@ -69,8 +69,8 @@
 ## Test status
 | Suite | Last run | Result | Coverage |
 |---|---|---|---|
-| unit | 2026-10-10 21:30 | root 45/45 pass (core module) · prototype `proto/sound` 70/70 pass + headless render check pass | not measured |
-| e2e (emulator) | 2026-10-10 20:20 | 6/6 pass, ≈33 s · TC-E2E-01 (table+hands, none+hands, table+controllers): session active 2.7–3.1 s after load, 0 console errors, 0 requests off localhost | — |
+| unit | 2026-10-10 22:15 | root 49/49 pass (core 45, policy 3, smoke 1) · prototype `proto/sound` 70/70 pass + headless render check pass | not measured |
+| e2e (emulator) | 2026-10-10 22:15 | 7/7 pass, ≈58 s · TC-E2E-01 ×3: session active 3.6–3.8 s after load on a loaded machine (limit 5 s), 0 console errors, 0 requests off localhost · built page under the Content Security Policy: 0 violations | — |
 | device | — | **no headset** | — |
 
 ## Perf (latest)
@@ -83,6 +83,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **22:15 IST — T-109 security gates merged** (develop f3ac045). Review: the policy check could be loosened five ways without failing, and no test loaded the built app; both fixed (exact-string policy check; a new e2e spec loads the production build under the policy). First-load size 1970 kB of a 4000 kB budget; 0 production vulnerabilities. Earlier: two leftover session copies stopped at 21:53; the tracking page gained a working/idle/not-running status.
 - **21:45 IST — another restart (21:39); Parth said "continue".** The hold from the declined permission prompt is lifted. Agents now keep every scratch file inside the repository (`.tmp/`) and get their task cards in the prompt, so no permission prompt should appear. Two workflows launched: code (T-104, T-108 prep, T-109 review) and docs (T-113 UX, tests, release).
 - **21:30 IST — T-106 core module merged** (develop 6541342): review found no functional bug, 3 major points (contract drift, frozen flags in tests, a missing allocation test), all fixed; API_SPEC is now v1.2.1. Live tracking page added at http://127.0.0.1:4180/ (`python3 scripts/dashboard.py`). The 20:54 session restart stopped two agents; both were resumed with their context.
 - Done: PM review verified (grid + reach bugs confirmed by math; prior art confirmed); REPLAN v2 approved by Parth; specs being updated by 3 agents; SPRINT_PLAN v2 written; product discovery research delivered (`specs/09-research/`, not yet applied to the plan); repo initialised with `origin` set; push to GitHub pending Parth (T-100, D-018); T-101 IWSDK scaffold merged to `develop`, verify green.
