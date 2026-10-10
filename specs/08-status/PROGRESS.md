@@ -19,8 +19,12 @@
 | T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
 | T-111 Strip starter content | frontend-dev | **done** | develop 28ddf1e; no runtime network; SDK input models off (D-027) |
 | T-107 Emulator/e2e pipeline | qa-engineer | **done** | develop 28ddf1e; `npm run test:e2e` 6 tests ≈33 s; TC-E2E-01 ×3 green |
-| T-113 Spec propagation v2.1 | software-architect first, then PO/UX/QA/devops | **doing** | contract stage (API_SPEC v1.2 + LLD) running; propagation next (PLAN_AMENDMENT §6) |
-| T-106 `core/` module | software-architect | todo | starts as soon as the contract stage lands |
+| T-113 Spec propagation v2.1 | PO / UX / QA / devops | **doing** | contract stage **done** (develop 9592fd9, D-028); propagation into the other spec files running |
+| T-106 `core/` module | software-architect | **doing** | built against API_SPEC v1.2 |
+| T-104 Capability spike page | software-architect | **doing** | round 2 workflow |
+| T-105 Pinch-accuracy page | frontend-dev | **doing** | round 2 workflow |
+| T-109 Security + policy gates | software-architect | **doing** | round 2 workflow |
+| T-108 CI + Pages deploy prep | devops-engineer | **doing** | workflow files proven locally; going live still needs Parth |
 | T-108 Hosting: GitHub Pages + mirror (D-022) | Parth + devops-engineer | **blocked on human** | Parth enables Pages + picks the mirror; then devops runs PoC D1 |
 
 ## Blocked on human (answer in one message; Claude files the results)
@@ -38,13 +42,14 @@
 12. **Token-optimizer hooks (optional, not recommended as a set):** `npx claude-token-optimizer hooks install --all`, then paste the block from `npx claude-token-optimizer hooks settings` into `.claude/settings.json`. Caution: its read guard blocks any file over 50 KB and its stop-path guard re-runs a turn when a reply names a missing path. If you want any, take only `pre-tool-bash-guard` and `pre-tool-read-guard`. Do **not** run `cto init`: it appends a second, conflicting session protocol to CLAUDE.md.
 13. **Licence decision (from T-111):** `@drawcall/uikitml` 0.1.8, which IWSDK pulls in for its UI panels, declares no licence anywhere (npm, tarball, repository). Choose: (a) ask the IWSDK team or the maintainer to declare one (Chinmay can post in the Meta Start Discord), or (b) accept and disclose it in the Devpost text. It cannot be removed without dropping IWSDK's UI kit.
 14. **FYI, no action unless you disagree (D-027):** the app draws no virtual hands or controllers. In passthrough you see your real hands. How that feels can only be judged on a headset.
+15. **Confirm two design calls (D-028); reply "ok" or say which to change:** (a) the echo length follows room volume directly, so a bedroom and a living room sound clearly different; the cost is that about 1 room in 6 can land on a different echo step on another day. (b) Hand smoothing stays at its starting value until the headset test tunes it; until then a dragged plant trails the hand by about 3 cm.
 
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
 | T-000 | todo (critical) | T-104 | todo | T-108 | blocked (human) |
-| T-100 | done | T-105 | todo | T-109 | todo |
-| T-101 | done | T-106 | todo | T-110 | todo |
+| T-100 | done | T-105 | doing | T-109 | doing |
+| T-101 | done | T-106 | doing | T-110 | todo |
 | T-102 | done | T-107 | done | T-111 | done |
 | T-113 | doing (contract) | T-115 | todo (Chinmay) | | |
 | T-103 | blocked (needs T-102) | | | | |
@@ -77,6 +82,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 ### 2026-10-10
 - Done: PM review verified (grid + reach bugs confirmed by math; prior art confirmed); REPLAN v2 approved by Parth; specs being updated by 3 agents; SPRINT_PLAN v2 written; product discovery research delivered (`specs/09-research/`, not yet applied to the plan); repo initialised with `origin` set; push to GitHub pending Parth (T-100, D-018); T-101 IWSDK scaffold merged to `develop`, verify green.
 - **Interruption 2026-10-10 ≈15:30 IST:** the Claude account hit its weekly usage limit; all three running agents (T-102, T-106, T-107) stopped mid-task. Resets **Oct 13 13:30 IST**. Phase 0 loses ≈3 working days; G0 (Oct 15) is at risk.
+- **20:50 IST — contract v1.2 committed** (develop 9592fd9, D-028): 4 agents, 1.36 M tokens, 99 min; reviewers raised 11 major findings, all resolved. Prototype presets aligned to values the contract can produce (small room 0.3 s, hall 2.0 s). Round 2 launched: T-104, T-105, T-109, T-108 prep; then T-106 and the T-113 propagation.
 - **20:25 IST — T-111 + T-107 merged** (develop 28ddf1e) after review (1 blocker, 2 major) and fix. The blocker: IWSDK itself fetched hand models from a CDN at session start (BUG-001); fixed by switching SDK input models off (D-027). e2e guard now covers HTTP and WebSocket with hands and controllers. Workflow 1 total: 7 agents, 1.64 M tokens, 93 min.
 - **20:00 IST — T-102 merged** (develop 1d32497). Review found 3 major + 6 minor; all majors fixed (root lint with a built prototype, a limiter test that could not fail, magic numbers). Deferred to T-121: pooled voices/panners per NFR-PERF-10. Measured: peaks ≤ −1.30 dBFS under a 24-bell overload, RT60 0.400/0.904/1.808 s for the three presets, scheduler tick 0.01–0.03 ms. A stale preview server from the interrupted agent (pid 79559, port 4173) was stopped.
 - **19:10 IST — token tools (Parth's request):** `claude-token-optimizer` 2.3.20 run read-only (measure, audit, compress): CLAUDE.md slimmed 1,931 → 1,380 tokens; nothing else to compress. Ponytail plugin and optimizer hooks not installed (safety layer refuses third-party code in the harness); lean-code and lean-context rules added to CLAUDE.md instead (D-026).

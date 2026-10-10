@@ -44,8 +44,8 @@ describe('reverb sizing', () => {
 
   it('the impulse response lasts one RT60 and never more than 2.0 s', () => {
     expect(REVERB_IR_MAX_S).toBe(2);
-    expect(impulseLength(SR, 0.4)).toBe(Math.floor(SR * 0.4));
-    expect(impulseLength(SR, 1.8)).toBe(Math.floor(SR * 1.8));
+    expect(impulseLength(SR, 0.3)).toBe(Math.floor(SR * 0.3));
+    expect(impulseLength(SR, 2.0)).toBe(Math.floor(SR * 2.0));
     expect(impulseLength(SR, 5)).toBe(SR * 2);
     expect(impulseLength(SR, 0)).toBe(Math.floor(SR * 0.3));
   });
@@ -57,8 +57,8 @@ describe('reverb sizing', () => {
 });
 
 describe('decay follows the RT60 of the signature', () => {
-  it('measured RT60 (Schroeder T30) is within 10 % of 0.4, 0.9 and 1.8 s', () => {
-    for (const rt60 of [0.4, 0.9, 1.8]) {
+  it('measured RT60 (Schroeder T30) is within 10 % of 0.3, 0.9 and 2.0 s', () => {
+    for (const rt60 of [0.3, 0.9, 2.0]) {
       const ir = new Float32Array(impulseLength(SR, rt60));
       renderImpulseResponse(ir, SR, rt60, 1000);
       const measured = measuredRt60(ir, SR);

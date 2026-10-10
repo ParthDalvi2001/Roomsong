@@ -15,7 +15,7 @@ describe('signature presets', () => {
     expect(PRESETS[0]?.name).toMatch(/wanderer/i);
   });
 
-  it('are Wanderer (C majorPent, 0.9 s), Small room (E minorPent, 0.4 s) and Hall (A below C, susPent, 1.8 s)', () => {
+  it('are Wanderer (C majorPent, 0.9 s), Small room (E minorPent, 0.3 s) and Hall (A below C, susPent, 2.0 s)', () => {
     const byName = Object.fromEntries(PRESETS.map((p) => [p.name, p.signature]));
     expect(byName['Wanderer']).toMatchObject({
       keyRoot: 0,
@@ -26,13 +26,13 @@ describe('signature presets', () => {
     expect(byName['Small room']).toMatchObject({
       keyRoot: 4,
       mode: 'minorPent',
-      reverbRt60: 0.4,
+      reverbRt60: 0.3,
       reverbSize: 'small',
     });
     expect(byName['Hall']).toMatchObject({
       keyRoot: -3,
       mode: 'susPent',
-      reverbRt60: 1.8,
+      reverbRt60: 2.0,
       reverbSize: 'large',
     });
   });

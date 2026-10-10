@@ -37,8 +37,8 @@ or decent speakers; laptop speakers hide the pad and the reverb tail.
   | Room | Key and scale | Ring notes, inner → outer (bell) | Reverb decay (RT60) |
   |---|---|---|---|
   | Wanderer (room unknown) | C major pentatonic | C4 D4 E4 G4 A4 | 0.9 s |
-  | Small room | E minor pentatonic | E4 G4 A4 B4 D5 | 0.4 s |
-  | Hall | A (below C) suspended pentatonic | A3 B3 D4 E4 G4 | 1.8 s |
+  | Small room | E minor pentatonic | E4 G4 A4 B4 D5 | 0.3 s |
+  | Hall | A (below C) suspended pentatonic | A3 B3 D4 E4 G4 | 2.0 s |
 
 - **Tempo** (72 / 84 / 96 BPM, default 84) is a separate control. **Tempo is not room-driven in v1** (D-021); it is
   here only so you can say which tempo feels right.
@@ -71,7 +71,7 @@ node scripts/offline-check.mjs    # TC-AUD-05 in headless Chromium + a live Play
 | TC-AUD-03 | height → gain/release and hue → cutoff/detune are monotonic and clamped; step → stereo pan | `tests/mapping.test.ts` |
 | TC-AUD-04 | cap 24; the 25th voice steals the quietest note at that moment, the oldest on a tie | `tests/voicePool.test.ts` |
 | TC-AUD-05 | each voice, the full mix, a 96-trigger stress case and a 24-bell overload (about +16 dBFS before the limiter) rendered offline through the real chain: peak ≤ −1 dBFS, non-silent; a plant at step 4 / 12 leans right / left | `node scripts/offline-check.mjs`, the page button, or `?selftest=1` |
-| reverb | RT60 clamp 0.3–2.0 s, impulse response ≤ 2.0 s, measured RT60 within 10 % of the preset (0.400 / 0.904 / 1.808 s) | `tests/reverb.test.ts` |
+| reverb | RT60 clamp 0.3–2.0 s, impulse response ≤ 2.0 s, measured RT60 within 10 % of the preset (0.3 / 0.9 / 2.0 s) | `tests/reverb.test.ts` |
 
 Node has no Web Audio, so TC-AUD-05 runs in a browser. `scripts/offline-check.mjs` serves `dist/` on port 4174,
 opens it in the Chromium that the root project's Playwright installs (run `npm install` at the repository root

@@ -43,3 +43,6 @@ pids/
 # non-Claude adapter files that `adapter sync` regenerates (we only use Claude Code)
 /.cursor/
 /opencode.json
+
+# Claude Code session lock
+.claude/scheduled_tasks.lock

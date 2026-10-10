@@ -17,12 +17,12 @@ export const PRESETS: readonly SignaturePreset[] = [
   },
   {
     name: 'Small room',
-    blurb: 'E minor pentatonic · reverb 0.4 s',
+    blurb: 'E minor pentatonic · reverb 0.3 s',
     signature: {
       keyRoot: 4,
       mode: 'minorPent',
       tempo: 84,
-      reverbRt60: 0.4,
+      reverbRt60: 0.3,
       reverbSize: 'small',
       starterVoices: ['pluck', 'pad', 'bell'],
       paletteSeed: 1,
@@ -30,12 +30,12 @@ export const PRESETS: readonly SignaturePreset[] = [
   },
   {
     name: 'Hall',
-    blurb: 'A (below C) suspended pentatonic · reverb 1.8 s',
+    blurb: 'A (below C) suspended pentatonic · reverb 2.0 s',
     signature: {
       keyRoot: -3,
       mode: 'susPent',
       tempo: 84,
-      reverbRt60: 1.8,
+      reverbRt60: 2.0,
       reverbSize: 'large',
       starterVoices: ['bell', 'pad', 'pluck'],
       paletteSeed: 2,
