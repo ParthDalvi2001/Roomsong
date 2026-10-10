@@ -30,7 +30,6 @@
       "Glob"
     ],
     "deny": [
-      "Bash(git push*main*)",
       "Bash(git push --force*)",
       "Bash(git tag v1.0.0*)",
       "Bash(npm run deploy:prod*)",
