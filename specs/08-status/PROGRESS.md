@@ -5,7 +5,7 @@
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 39
 
 > **Read first this session:** `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions), `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) and `specs/07-workflow/SPRINT_PLAN.md` v2.1.
-> **ONE DRIVER (Parth, 20:38 IST: "here only"):** the session started at 20:25 (Claude process 67171) is the only driver. The 12:53 copy (61611) stood down and the 20:19 copy is gone; their agents stopped with nothing written, and their worktrees are removed. Ultracode is off: 2 agents at once (D-023). Running now: T-106 (core) and T-113 (requirements docs). Queue: T-109, T-105, T-104, T-108 prep, then the UX, test and release docs of T-113.
+> **ONE DRIVER (Parth said "continue" at 21:40 IST):** the session started at 21:39 (Claude process 97502) is the only driver. The 20:54 copy (80719) was asked to stand down; its T-105 agent is still alive and is left alone. Ultracode is on again (D-024): work runs as workflows. Running: T-104 and T-108 prep (build, review, fix), T-109 (review, fix), the UX, test and release docs of T-113 (write, critique, fix), and T-105 under the older copy.
 > **Live tracking page (Parth, 21:00 IST):** http://127.0.0.1:4180/ shows phases, every task, agents, decisions and what needs Parth. Start it with `python3 scripts/dashboard.py` if it is down. It reads this file, SPRINT_PLAN, DECISIONS_LOG, BUG_LOG, git and the agent logs, so keeping those current keeps the page current.
 > **Push hold (Parth, 2026-10-10 19:15 IST):** no pushes to GitHub, `develop` included, until Phase 0 is finished **and** Parth has been told and says go. Commit and merge locally only. Last pushed commit: `118657b`.
 > **This folder is the master copy.** The PM (Chinmay) works on a copy; his proposals go to `PM_PROPOSALS.md`, never into spec files.
@@ -21,12 +21,12 @@
 | T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
 | T-111 Strip starter content | frontend-dev | **done** | develop 28ddf1e; no runtime network; SDK input models off (D-027) |
 | T-107 Emulator/e2e pipeline | qa-engineer | **done** | develop 28ddf1e; `npm run test:e2e` 6 tests ≈33 s; TC-E2E-01 ×3 green |
-| T-113 Spec propagation v2.1 | PO / UX / QA / devops | **doing** | contract done (9592fd9), requirements docs done (8b84927); UX, test and release docs queued |
+| T-113 Spec propagation v2.1 | UX / QA / devops | **doing** | contract (9592fd9) and requirements docs (8b84927) done; UX, test and release docs being written, then two critics and a fix pass |
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
-| T-104 Capability spike page | software-architect | todo | queued behind the 2-agent cap |
+| T-104 Capability spike page | software-architect | **doing** | build, review, fix in the 21:45 workflow |
 | T-105 Pinch-accuracy page | frontend-dev | todo | agent stopped at 22:00 with nothing written (file writes declined); its worktree is ready to resume |
-| T-109 Security + policy gates | software-architect | **doing** | built, verify green (lane ac313b6); independent review not finished: one major point found by reading (the policy check accepts `data:` and `blob:` for scripts); on hold |
-| T-108 CI + Pages deploy prep | devops-engineer | todo | prep queued; going live still needs Parth |
+| T-109 Security + policy gates | software-architect | **doing** | built (lane ac313b6); independent review and fix running in the 21:45 workflow |
+| T-108 CI + Pages deploy prep | devops-engineer | **doing** | build, review, fix in the 21:45 workflow; going live still needs Parth |
 | T-108 Hosting: GitHub Pages + mirror (D-022) | Parth + devops-engineer | **blocked on human** | Parth enables Pages + picks the mirror; then devops runs PoC D1 |
 
 ## Blocked on human (answer in one message; Claude files the results)
@@ -84,6 +84,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **21:45 IST — another restart (21:39); Parth said "continue".** The hold from the declined permission prompt is lifted. Agents now keep every scratch file inside the repository (`.tmp/`) and get their task cards in the prompt, so no permission prompt should appear. Two workflows launched: code (T-104, T-108 prep, T-109 review) and docs (T-113 UX, tests, release).
 - **21:30 IST — T-106 core module merged** (develop 6541342): review found no functional bug, 3 major points (contract drift, frozen flags in tests, a missing allocation test), all fixed; API_SPEC is now v1.2.1. Live tracking page added at http://127.0.0.1:4180/ (`python3 scripts/dashboard.py`). The 20:54 session restart stopped two agents; both were resumed with their context.
 - Done: PM review verified (grid + reach bugs confirmed by math; prior art confirmed); REPLAN v2 approved by Parth; specs being updated by 3 agents; SPRINT_PLAN v2 written; product discovery research delivered (`specs/09-research/`, not yet applied to the plan); repo initialised with `origin` set; push to GitHub pending Parth (T-100, D-018); T-101 IWSDK scaffold merged to `develop`, verify green.
 - **Interruption 2026-10-10 ≈15:30 IST:** the Claude account hit its weekly usage limit; all three running agents (T-102, T-106, T-107) stopped mid-task. Resets **Oct 13 13:30 IST**. Phase 0 loses ≈3 working days; G0 (Oct 15) is at risk.

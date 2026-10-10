@@ -168,7 +168,8 @@ def stamp(text):
 def load_agents():
     project = pathlib.Path.home() / '.claude/projects' / re.sub(r'[^A-Za-z0-9]', '-', str(ROOT))
     agents = []
-    for meta in project.glob('*/subagents/agent-*.meta.json'):
+    metas = list(project.glob('*/subagents/agent-*.meta.json')) + list(project.glob('*/subagents/workflows/*/agent-*.meta.json'))
+    for meta in metas:
         log = meta.with_name(meta.name.replace('.meta.json', '.jsonl'))
         if not log.exists() or time.time() - log.stat().st_mtime > 8 * 3600:
             continue
