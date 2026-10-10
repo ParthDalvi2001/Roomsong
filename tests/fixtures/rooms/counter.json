@@ -1,0 +1,12 @@
+{
+  "description": "Kitchen with no table label: a worktop 0.92 m high labelled other (FR-ROOM-01 level 2, any horizontal plane 0.5-1.1 m high), floor 3 x 4 m = 12 m2, ceiling at 2.4 m, four walls.",
+  "planes": [
+    { "label": "other", "facing": "+y", "center": [0, 0.92, -0.45], "size": [2.4, 0.6] },
+    { "label": "floor", "facing": "+y", "center": [0, 0, 1.25], "size": [3, 4] },
+    { "label": "ceiling", "facing": "-y", "center": [0, 2.4, 1.25], "size": [3, 4] },
+    { "label": "wall", "facing": "+z", "center": [0, 1.2, -0.75], "size": [3, 2.4] },
+    { "label": "wall", "facing": "-z", "center": [0, 1.2, 3.25], "size": [3, 2.4] },
+    { "label": "wall", "facing": "+x", "center": [-1.5, 1.2, 1.25], "size": [4, 2.4] },
+    { "label": "wall", "facing": "-x", "center": [1.5, 1.2, 1.25], "size": [4, 2.4] }
+  ]
+}

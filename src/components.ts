@@ -7,6 +7,6 @@
 
 import { defineComponents } from '@iwsdk/core';
 
-import { Robot } from './robot-component.js';
-
-export default defineComponents([Robot]);
+// Empty component manifest (iwsdk.config.json `components.module`). A component must be listed here before
+// a scene can author it; keep this module free of systems, DOM and renderer imports.
+export default defineComponents([]);

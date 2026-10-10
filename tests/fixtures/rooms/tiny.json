@@ -1,0 +1,12 @@
+{
+  "description": "Box room: floor 2 x 2.5 m = 5 m2, ceiling at 2.2 m, front wall 0.9 m away, and a small labelled table (0.8 x 0.6 m, 0.72 m high), only just as deep as the 0.6 m bed.",
+  "planes": [
+    { "label": "table", "facing": "+y", "center": [0, 0.72, -0.6], "size": [0.8, 0.6] },
+    { "label": "floor", "facing": "+y", "center": [0, 0, 0.35], "size": [2, 2.5] },
+    { "label": "ceiling", "facing": "-y", "center": [0, 2.2, 0.35], "size": [2, 2.5] },
+    { "label": "wall", "facing": "+z", "center": [0, 1.1, -0.9], "size": [2, 2.2] },
+    { "label": "wall", "facing": "-z", "center": [0, 1.1, 1.6], "size": [2, 2.2] },
+    { "label": "wall", "facing": "+x", "center": [-1, 1.1, 0.35], "size": [2.5, 2.2] },
+    { "label": "wall", "facing": "-x", "center": [1, 1.1, 0.35], "size": [2.5, 2.2] }
+  ]
+}

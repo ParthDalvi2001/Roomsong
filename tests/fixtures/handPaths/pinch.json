@@ -1,0 +1,9 @@
+{
+  "description": "Right hand holds still about 3 cm above a 0.74 m table, 0.46 m in front of the user, closes thumb and index at 200 ms and opens them at 500 ms (held 300 ms).",
+  "hand": "right",
+  "frames": [
+    { "t": 0, "position": { "x": 0.1, "y": 0.8, "z": -0.45 }, "orientation": { "roll": 0 }, "pinch": 0 },
+    { "t": 200, "position": { "x": 0.1, "y": 0.8, "z": -0.45 }, "orientation": { "roll": 0 }, "pinch": 1 },
+    { "t": 500, "position": { "x": 0.1, "y": 0.8, "z": -0.45 }, "orientation": { "roll": 0 }, "pinch": 0 }
+  ]
+}

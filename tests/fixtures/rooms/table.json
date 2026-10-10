@@ -1,0 +1,19 @@
+{
+  "description": "Living room after Space Setup: a labelled table 0.74 m high in front of the user (FR-ROOM-01 level 1), floor 4 x 4.5 m = 18 m2, ceiling at 2.5 m, four walls, and a two-triangle global mesh over the floor.",
+  "planes": [
+    { "label": "table", "facing": "+y", "center": [0, 0.74, -0.5], "size": [1.2, 0.8] },
+    { "label": "floor", "facing": "+y", "center": [0, 0, 0], "size": [4, 4.5] },
+    { "label": "ceiling", "facing": "-y", "center": [0, 2.5, 0], "size": [4, 4.5] },
+    { "label": "wall", "facing": "+z", "center": [0, 1.25, -2.25], "size": [4, 2.5] },
+    { "label": "wall", "facing": "-z", "center": [0, 1.25, 2.25], "size": [4, 2.5] },
+    { "label": "wall", "facing": "+x", "center": [-2, 1.25, 0], "size": [4.5, 2.5] },
+    { "label": "wall", "facing": "-x", "center": [2, 1.25, 0], "size": [4.5, 2.5] }
+  ],
+  "meshes": [
+    {
+      "label": "global mesh",
+      "vertices": [-2, 0, -2.25, 2, 0, -2.25, 2, 0, 2.25, -2, 0, 2.25],
+      "indices": [0, 2, 1, 0, 3, 2]
+    }
+  ]
+}

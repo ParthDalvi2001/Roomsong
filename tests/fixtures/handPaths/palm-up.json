@@ -1,0 +1,25 @@
+{
+  "description": "Right hand, open, turns from palm down to palm up (thumb passes over the top) in 300 ms and holds for 700 ms (FR-HND-05 needs 400 ms within 35 degrees of up).",
+  "hand": "right",
+  "frames": [
+    { "t": 0, "position": { "x": 0.15, "y": 0.95, "z": -0.35 }, "orientation": { "roll": 0 }, "pinch": 0 },
+    {
+      "t": 150,
+      "position": { "x": 0.15, "y": 0.95, "z": -0.35 },
+      "orientation": { "roll": -90 },
+      "pinch": 0
+    },
+    {
+      "t": 300,
+      "position": { "x": 0.15, "y": 0.95, "z": -0.35 },
+      "orientation": { "roll": -180 },
+      "pinch": 0
+    },
+    {
+      "t": 1000,
+      "position": { "x": 0.15, "y": 0.95, "z": -0.35 },
+      "orientation": { "roll": -180 },
+      "pinch": 0
+    }
+  ]
+}

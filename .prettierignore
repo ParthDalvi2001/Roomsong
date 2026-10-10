@@ -8,7 +8,7 @@ playwright-report/
 test-results/
 tests/e2e/__artifacts__/
 package-lock.json
-# Owned by the IWSDK editor / Meta starter content
+# Owned by the IWSDK editor
 public/
 iwsdk.config.json
 pnpm-workspace.yaml

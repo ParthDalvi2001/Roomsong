@@ -1,0 +1,7 @@
+{
+  "description": "Space Setup found furniture only: the table of the table room and its floor, no walls and no ceiling (FR-ROOM-04 halo without vines, FR-ROOM-12 missing surfaces).",
+  "planes": [
+    { "label": "table", "facing": "+y", "center": [0, 0.74, -0.5], "size": [1.2, 0.8] },
+    { "label": "floor", "facing": "+y", "center": [0, 0, 0], "size": [4, 4.5] }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "description": "Hall: floor 7 x 6 m = 42 m2, ceiling at 3 m, nearest wall 2.5 m behind the user and the others 3.5 m away, and a large labelled table (2.4 x 2 m, 0.75 m high) whose centre is 1.1 m away (FR-ROOM-03 re-centre).",
+  "planes": [
+    { "label": "table", "facing": "+y", "center": [0, 0.75, -1.1], "size": [2.4, 2] },
+    { "label": "floor", "facing": "+y", "center": [0, 0, -0.5], "size": [7, 6] },
+    { "label": "ceiling", "facing": "-y", "center": [0, 3, -0.5], "size": [7, 6] },
+    { "label": "wall", "facing": "+z", "center": [0, 1.5, -3.5], "size": [7, 3] },
+    { "label": "wall", "facing": "-z", "center": [0, 1.5, 2.5], "size": [7, 3] },
+    { "label": "wall", "facing": "+x", "center": [-3.5, 1.5, -0.5], "size": [6, 3] },
+    { "label": "wall", "facing": "-x", "center": [3.5, 1.5, -0.5], "size": [6, 3] }
+  ]
+}

@@ -14,11 +14,11 @@ Entry for the Meta VR Start Developer Competition 2026 (Entertainment track, New
 npm install
 npm run dev        # IWSDK dev server + managed browser with the IWER emulator (Runtime / Editor toggle)
 npm run verify     # typecheck + lint + unit tests + build (must be green before every commit)
-npm run test:e2e   # Playwright + IWER (placeholder until T-107)
+npm run test:e2e   # Playwright + IWER emulator scenarios: tests/e2e/README.md
 ```
 
 Scene, asset and XR-feature configuration is declarative in `iwsdk.config.json`; systems are registered in
-`src/index.ts`. The robot / welcome-panel starter content is Meta's IWSDK example and is replaced by the Phase-0
-tasks. IWER controls: https://iwsdk.dev/guides/02-testing-experience.html#iwer-controls
+`src/index.ts`. The scene is empty: the IWSDK starter content (robot, plant, banner, welcome panel) was removed in
+T-111. IWER controls: https://iwsdk.dev/guides/02-testing-experience.html#iwer-controls
 
 Code lives in `src/` and `tests/` (scaffolded in T-101 with `npm create @iwsdk@latest`). All code is written after 2026-09-24.

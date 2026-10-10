@@ -208,3 +208,5 @@ Harness-native scoped rules cover `public/scenes/**`, `public/ui/**`,
 harnesses receive nested instruction files; Cursor and Copilot receive their
 native rule formats. Skill procedures live in the selected harness's project
 skill directory and state when they apply.
+
+Roomsong: never put an `AGENTS.md` under `public/`: Vite copies that folder into `dist/`.
