@@ -42,8 +42,9 @@ src/
 │   ├── TargetPicker.ts         nearest interactable within radius; hovered target and the cell a release would commit, with dead band (FR-HND-16); bed zone (inner/bed/outer)
 │   └── HandSystem.ts           ECS system wiring; samples the injected InputSource each frame
 ├── garden/
-│   ├── config.ts               signature constants (§5.8)
-│   ├── model.ts                types: Bed, Cell, Plant, Seed, GardenState, RoomFeatures, RoomSignature, ModeId + MODE_DEGREES
+│   ├── config.ts               bed constants (§5.1: radii, rings, steps, zone margins), PULL_RANGE_M, NEW_PLANT_HEIGHT = 0.55;
+│   │                           the signature constants (§5.8) join it with signature.ts
+│   ├── model.ts                types: Cell, Seed, Plant, GardenState, RoomFeatures, RoomSignature, ModeId, UndoToken, Result + MODE_DEGREES
 │   ├── rules.ts                pure functions: plant, move, grow, removePlant, undoRemove
 │   ├── growth.ts               age → stage; offline growth (Should)
 │   ├── seeds.ts                starter seeds (Must) + daily seed supply (Should)
@@ -195,7 +196,8 @@ t     = clamp((len − R_IN) / (R_OUT − R_IN), 0, 1)        // 0..1 across the
 ring  = round(t * (RINGS − 1))                            // 0..4 (0 = inner ring, low pitch)
 θ = atan2(local.z, local.x); step = mod(round(θ / (2π/STEPS)), STEPS)
 ```
-`snapToCell` returns `null` when `zone ≠ 'bed'`. Occupied → BFS to nearest free cell (ring±1, step±1 first): `nearestFreeCell`, which the picker applies while the hand is still hovering (§4), not after the release.
+Frame (D-029): bed-local +x points to the seated user's right, +y up, +z from the bed centre toward the user. So step 0 is at +x and the steps advance toward +z, clockwise seen from above: step 4 nearest the user, step 8 left, step 12 farthest.
+`snapToCell` returns `null` when `zone ≠ 'bed'`. Occupied → BFS to nearest free cell (ring±1, step±1 first): `nearestFreeCell`, which the picker applies while the hand is still hovering (§4), not after the release. `undoRemove` uses it too: a plant whose cell was taken in the meantime comes back on the nearest free cell (D-031).
 
 Target numbers (`hands/config.ts`; provisional until the on-device pinch-accuracy test T-105 / TC-DEV-00):
 | Constant | Value | ID | Meaning |
@@ -230,6 +232,7 @@ Base octaves: Bass C2, Pad/Choir C3, Pluck/Bell C4, Shimmer C5.
 
 ### 5.5 Placement (`room/PlacementSolver.ts`)
 Returns `Promise<BedPlacement>` (API_SPEC §1.3); runs levels with timeouts (L1+L2 3 s combined, L3 10 s, L4 immediate). Each level emits `room:placementLevel` for UI and logging. Clamp (FR-ROOM-03, D-020; constants in `room/config.ts`): the bed centre targets `BED_CENTRE_DEFAULT_M` = 0.45 m forward of the head, which puts the far edge (centre + R_OUT) exactly on the `BED_FAR_EDGE_MAX_M` = 0.75 m reach cap. The centre may sit nearer, down to `BED_CENTRE_MIN_M` = 0.35 m, when the surface does not reach 0.45 m; it never sits beyond `BED_CENTRE_MAX_M` = 0.45 m. If the chosen surface point is outside 0.35–0.45 m, move it along the head→point vector to 0.45 m while staying on the surface polygon when possible. L4 floating: 0.45 m forward, 0.25 m below eye height. (The v2 default of 0.40 m is replaced, D-020.)
+Orientation (D-029): at every level the solver turns the bed about the vertical so that bed-local +z points from the bed centre toward the user (the head position at placement, projected onto the bed's plane), +x to the user's right and +y up. Step 0 is then on the user's right and step 4 nearest the user (§5.1).
 Anchors (Must, D-021; FR-ROOM-07). The save holds a pair: `anchorHandle` and `anchorLevel`, the placement level the bed had when the anchor was made. A restored anchor gives back a pose and nothing else, and the chain that would report a level does not run. Without a saved level a returning session would have to be treated as level 3 or 4, which is Wanderer: the room signature would be gone from the second day on.
 Order (RoomSystem; the same list as API_SPEC §1.3):
 1. `src/index.ts` passes the saved pair, if there is one.
