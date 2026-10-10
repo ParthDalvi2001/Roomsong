@@ -37,6 +37,11 @@ def short(text, width):
     return text if len(text) <= width else text[: width - 1] + '…'
 
 
+def meter(done, total, width=20):
+    filled = round(width * done / total) if total else 0
+    return f'[{"█" * filled}{"░" * (width - filled)}] {100 * done // max(total, 1):>3}%'
+
+
 def section(fn):
     try:
         fn()
@@ -95,6 +100,8 @@ def load_workflows():
                 agents[agent_id]['state'] = 'done' if event.get('result') is not None else 'failed'
         for agent in agents.values():
             read_agent_log(journal.parent, agent)
+            if agent['state'] == 'running' and time.time() - (agent['last'] or 0) > 600:
+                agent['state'] = 'stopped'
         live = sum(1 for a in agents.values() if a['state'] == 'running')
         idle = time.time() - journal.stat().st_mtime
         flows.append({'name': name, 'phases': declared or list(dict.fromkeys(a['phase'] for a in agents.values())),
@@ -177,7 +184,7 @@ def stage_bar(task_id):
     for label, phases in STAGES:
         group = [a for a in mine if a['phase'] in phases]
         glyph = ('░░░░' if not group else '▒▒▒▒' if any(a['state'] == 'running' for a in group)
-                 else 'XXXX' if any(a['state'] == 'failed' for a in group) else '████')
+                 else 'xxxx' if any(a['state'] != 'done' for a in group) else '████')
         cells.append(f'{label} {glyph}')
     return '  '.join(cells) + '  Merge ░░░░'
 
@@ -199,6 +206,11 @@ def header():
     print('  ' + '  '.join(bars))
     left = [(label, (datetime.date(2026, m, d) - NOW.date()).days) for label, m, d in GATES]
     print('  ' + ' · '.join(f'{label} in {days}d' for label, days in left if days >= 0))
+    tasks = [t for group in PLAN.values() for t in group]
+    done = sum(1 for t in tasks if t['state'] == 'done')
+    span_days = (end - start).days + 1
+    print(f'  Time used  {meter(day, span_days)}   day {day} of {span_days}')
+    print(f'  Work done  {meter(done, len(tasks))}   {done} of {len(tasks)} tasks')
 
 
 def phases():
@@ -215,20 +227,24 @@ def phases():
             notes.append(f'{count["running"]} running')
         if human:
             notes.append(f'{human} need you')
-        print(f'  {short(name, 30):<30} {bar:<18} {", ".join(notes)}')
+        print(f'  {short(name, 30):<30} {bar:<18} {100 * count["done"] // len(tasks):>3}%  {", ".join(notes)}')
     print(f'  Total: {done} of {total} tasks done ({100 * done // max(total, 1)}%)')
 
 
 def current_phase():
     name, tasks = next(((n, t) for n, t in PLAN.items() if any(x['state'] != 'done' for x in t)), list(PLAN.items())[-1])
     print(f'{name.upper()} — EVERY TASK')
+    mine = [t for t in tasks if not t['human']]
+    yours = [t for t in tasks if t['human']]
+    print(f'  Whole phase  {meter(sum(1 for t in tasks if t["state"] == "done"), len(tasks))}   Agents  {meter(sum(1 for t in mine if t["state"] == "done"), len(mine), 10)}   You  {meter(sum(1 for t in yours if t["state"] == "done"), len(yours), 10)}')
     marks = {'done': '[done]   ', 'running': '[running]', 'todo': '[to do]  ', 'could': '[maybe]  '}
     for task in tasks:
         mark = '[YOU]    ' if task['human'] and task['state'] != 'done' else marks[task['state']]
         tail = stage_bar(task['id']) if task['state'] == 'running' else ''
         if task['state'] == 'running' and not tail:
             tail = 'see the workflow below'
-        print(f'  {task["id"]} {mark} {short(task["title"], 36):<36} {short(task["owner"], 22):<22} {tail}'.rstrip())
+        steps = 4 if task['state'] == 'done' else tail.count('████') if task['state'] == 'running' else 0
+        print(f'  {task["id"]} {mark} {"▰" * steps}{"▱" * (4 - steps)}  {short(task["title"], 36):<36} {short(task["owner"], 22):<22} {tail}'.rstrip())
 
 
 def agents():
@@ -239,10 +255,13 @@ def agents():
         steps = []
         for title in flow['phases']:
             group = [a for a in flow['agents'] if a['phase'] == title]
-            glyphs = ''.join('█' if a['state'] == 'done' else '▒' if a['state'] == 'running' else 'X' for a in group) or '·'
+            glyphs = ''.join('█' if a['state'] == 'done' else '▒' if a['state'] == 'running' else 'x' for a in group) or '·'
             steps.append(f'{title} {glyphs}')
-        state = 'FINISHED' if flow['finished'] else 'running'
-        print(f'  {flow["name"]}  [{state}]   ' + '   '.join(steps))
+        live = any(a['state'] == 'running' for a in flow['agents'])
+        whole = all(a['state'] == 'done' for a in flow['agents'])
+        state = 'running' if live else 'FINISHED' if whole else 'STOPPED'
+        done_agents = sum(1 for a in flow['agents'] if a['state'] == 'done')
+        print(f'  {flow["name"]}  [{state}]   {meter(done_agents, len(flow["agents"]), 10)} of {len(flow["agents"])} agents   ' + '   '.join(steps))
         for agent in sorted(flow['agents'], key=lambda a: a['state'] != 'running'):
             took = span((time.time() if agent['state'] == 'running' else agent['last'] or 0) - (agent['first'] or time.time()))
             if agent['state'] == 'running':
@@ -250,7 +269,7 @@ def agents():
                 print(f'    [running] {short(agent["label"], 30):<30} {short(agent["type"], 18):<18} {took:>5}  {agent["tools"]:>3} steps  last step {quiet} ago')
                 print(f'              now: {short(agent["doing"] or "thinking", 92)}')
             else:
-                mark = '[done]   ' if agent['state'] == 'done' else '[FAILED] '
+                mark = {'done': '[done]   ', 'failed': '[FAILED] ', 'stopped': '[stopped]'}[agent['state']]
                 print(f'    {mark} {short(agent["label"], 30):<30} {short(agent["type"], 18):<18} {took:>5}  {agent["tools"]:>3} steps  {outcome(agent)}')
 
 
