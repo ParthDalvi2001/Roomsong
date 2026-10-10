@@ -247,6 +247,48 @@ def task_stage(task_id, agents):
     return stages
 
 
+# ---------- day by day ----------
+DONE_DATES = {'key': None, 'dates': {}}
+
+
+def done_dates():
+    """Task id -> the day its plan status became done, read from the sprint plan's git history."""
+    path = 'specs/07-workflow/SPRINT_PLAN.md'
+    key = git('log', '-1', '--format=%H', '--', path)
+    if key != DONE_DATES['key']:
+        dates = {}
+        for line in reversed(git('log', '--format=%H %cs', '--', path).split('\n')):  # oldest first
+            commit, _, when = line.partition(' ')
+            for task_id, status in re.findall(r'^\| \*{0,2}(T-\d+)\*{0,2} \|.*\|([^|\n]*)\|[ \t]*$', git('show', f'{commit}:{path}'), re.M):
+                if not plain(status).lower().startswith('done'):
+                    dates.pop(task_id, None)
+                elif task_id not in dates:
+                    dates[task_id] = when
+        DONE_DATES.update(key=key, dates=dates)
+    return DONE_DATES['dates']
+
+
+def load_daily(plan, today):
+    """Per day: how many tasks should be done by that evening and how many are.
+    The plan dates phases, not tasks, so each phase's tasks are spread evenly over its days."""
+    dates, start, now = done_dates(), day(PHASES[0][2]), today.isoformat()
+    spans = [(name, day(first), day(last), [t for t in phase['tasks'] if t['state'] != 'maybe'])
+             for (name, _, first, last), phase in zip(PHASES, plan)]
+    finished = {}
+    for _, _, _, tasks in spans:
+        for task in tasks:
+            if task['state'] == 'done':  # done but not committed yet counts as today
+                finished.setdefault(max(start.isoformat(), min(now, dates.get(task['id'], now))), []).append(task['id'])
+    days, done = [], 0
+    for n in range((day(PHASES[-1][3]) - start).days + 1):
+        d = start + datetime.timedelta(days=n)
+        done += len(finished.get(d.isoformat(), []))
+        target = sum(len(tasks) * min(1, max(0, ((d - first).days + 1) / ((last - first).days + 1))) for _, first, last, tasks in spans)
+        days.append({'date': d.isoformat(), 'target': round(target), 'done': done if d <= today else None,
+                     'finished': sorted(finished.get(d.isoformat(), []))})
+    return days
+
+
 # ---------- everything ----------
 def collect():
     today = datetime.date.today()
@@ -277,7 +319,7 @@ def collect():
         'dayNumber': (today - day((10, 10))).days + 1, 'totalDays': total_days,
         'daysToSubmit': (day((11, 17)) - today).days,
         'gates': [{'name': n, 'date': day(d).isoformat(), 'daysLeft': (day(d) - today).days} for n, d in GATES],
-        'phases': plan, 'calendar': calendar,
+        'phases': plan, 'calendar': calendar, 'daily': load_daily(plan, today),
         'totals': {s: sum(1 for t in tasks if t['state'] == s) for s in ('done', 'running', 'you', 'todo', 'maybe')},
         'ready': [{'id': t['id'], 'title': t['title'], 'owner': t['owner']} for t in tasks if t['ready']],
         'agents': agents, 'driver': load_driver(agents), 'status': load_status(), 'decisions': load_decisions(), 'bugs': load_bugs(),

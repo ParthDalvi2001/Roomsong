@@ -53,6 +53,16 @@
   .cal { margin-bottom: 46px !important; }
   .cal .gate { position: absolute; bottom: -22px; font-size: 11px; color: var(--text-2); transform: translateX(-50%); white-space: nowrap; }
   .cal .gate::before { content: ""; position: absolute; left: 50%; top: -8px; height: 7px; border-left: 1px solid var(--text-3); }
+  /* day by day: lines keep their width when the chart stretches */
+  .burn { display: block; width: 100%; height: 130px; margin: 8px 0 2px; border-bottom: 1px solid var(--line); overflow: visible; }
+  .burn * { fill: none; vector-effect: non-scaling-stroke; }
+  .burn-target { stroke: var(--text-3); stroke-width: 2; stroke-dasharray: 5 4; }
+  .burn-done { stroke: var(--done); stroke-width: 3; stroke-linejoin: round; }
+  .burn-now { stroke: var(--text-3); stroke-width: 1; }
+  .ends { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .daybar { position: relative; min-width: 140px; margin-top: 4px; }
+  .daybar .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
+  tr.today td { font-weight: 600; }
   /* needs you */
   .alert { background: var(--alert-bg); border-color: var(--alert-line); }
   .need { border-top: 1px solid var(--line); padding: 8px 0; }
@@ -181,6 +191,28 @@ function render(d) {
       <div class="now" style="left:${Math.min(offset(d.today), 100)}%"></div>
       ${d.gates.map((g, i) => `<div class="gate${i % 2 ? ' low' : ''}" style="left:${Math.min(offset(g.date) + 50 / span, 99)}%" title="${g.date}">${esc(g.name)} ${g.daysLeft}d</div>`).join('')}
     </div>
+  </div>`);
+
+  const titles = Object.fromEntries(d.phases.flatMap((p) => p.tasks.map((k) => [k.id, k.title])));
+  const nowDay = d.daily.find((x) => x.date === d.today) || d.daily[d.daily.length - 1];
+  const shown = d.daily.filter((x) => x.date <= current.end), top = shown[shown.length - 1].target || 1, goal = d.daily[d.daily.length - 1].target || 1;
+  const versus = (x) => (x.done === null ? '' : x.done === x.target ? '● on target' : x.done > x.target ? `▲ ${x.done - x.target} ahead` : `▼ ${x.target - x.done} behind`);
+  const dayX = (i) => (100 * i) / (d.daily.length - 1);
+  const line = (key) => d.daily.map((x, i) => (x[key] === null ? '' : `${dayX(i).toFixed(2)},${(100 - (100 * x[key]) / goal).toFixed(2)}`)).join(' ');
+  const dayName = (iso) => new Date(`${iso}T00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  html.push(`<div class="card"><h2>Day by day: target and done</h2>
+    <div>By tonight the plan wants <b>${nowDay.target}</b> tasks done. Done so far: <b>${nowDay.done ?? 0}</b> <span class="chip">${versus(nowDay)}</span></div>
+    <div class="small">The plan sets dates for phases, not for single tasks, so each phase's tasks are spread evenly over its days. "Maybe" tasks are not counted.</div>
+    <svg class="burn" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Tasks done against the target for every day of the project: ${nowDay.done ?? 0} done, target ${nowDay.target} by tonight, ${goal} by ${dayName(d.daily[d.daily.length - 1].date)}">
+      <line class="burn-now" x1="${dayX(d.daily.indexOf(nowDay))}" x2="${dayX(d.daily.indexOf(nowDay))}" y1="0" y2="100"/>
+      <polyline class="burn-target" points="${line('target')}"/><polyline class="burn-done" points="${line('done')}"/>
+    </svg>
+    <div class="ends small"><span>${dayName(d.daily[0].date)}</span><span>thin line: today · dashed: target · green: done</span><span>${dayName(d.daily[d.daily.length - 1].date)}: all ${goal} tasks</span></div>
+    <div class="scroll"><table><tr><th>Day</th><th>Target</th><th>Done</th><th style="width:38%">Done (bar) against target (mark)</th><th></th><th>Finished that day</th></tr>
+    ${shown.map((x) => `<tr class="${x.date === d.today ? 'today' : ''}"><td>${dayName(x.date)}${x.date === d.today ? ' · today' : ''}</td><td>${x.target}</td><td>${x.done ?? '–'}</td>
+      <td><div class="daybar">${simple(x.done ?? 0, top)}<i class="tick" style="left:${Math.min((100 * x.target) / top, 99.5)}%" title="target ${x.target}"></i></div></td>
+      <td class="chip">${versus(x)}</td><td class="small">${x.finished.map((id) => `<span title="${esc(titles[id])}">${id}</span>`).join(', ')}</td></tr>`).join('')}
+    </table></div>
   </div>`);
 
   html.push(`<div class="card"><h2>Phases and tasks</h2>
