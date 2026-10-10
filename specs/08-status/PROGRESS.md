@@ -21,7 +21,7 @@
 | T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
 | T-111 Strip starter content | frontend-dev | **done** | develop 28ddf1e; no runtime network; SDK input models off (D-027) |
 | T-107 Emulator/e2e pipeline | qa-engineer | **done** | develop 28ddf1e; `npm run test:e2e` 6 tests ≈33 s; TC-E2E-01 ×3 green |
-| T-113 Spec propagation v2.1 | UX / devops | **doing** | all four writing parts committed (contract, requirements, tests, release, UX: develop 0a3800a); an independent consistency check across every spec file is running; then one fix pass and a final check |
+| T-113 Spec propagation v2.1 | UX / devops | **doing** | all writing parts committed (develop 0a3800a). The independent consistency check found 1 blocker, 13 major and 11 small points; the blocker (two different rules for the hand hint) is settled by D-030. One fix pass is running on all 25; then a final check |
 | T-120 Garden model and rules | backend-dev | **doing** | Phase 1, started early in its own worktree; bed frame fixed by D-029 |
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
 | T-104 Capability spike page | software-architect | **done-pending-device** | develop 31bc96a after independent review and fix; every step has a timeout and partial results are saved; the device run (TC-DEV-0A) waits for a headset |
@@ -56,7 +56,7 @@
 | T-100 | done | T-105 | done-pending-device | T-109 | done |
 | T-101 | done | T-106 | done | T-110 | todo |
 | T-102 | done | T-107 | done | T-111 | done |
-| T-113 | doing (consistency check) | T-115 | todo (Chinmay) | | |
+| T-113 | doing (fix pass) | T-115 | todo (Chinmay) | | |
 | T-103 | ready; needs Parth's rating | | | | |
 
 ## Gates
@@ -85,6 +85,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **00:50 IST (Oct 11) — consistency check done:** 25 findings (1 blocker, 13 major, 11 small); numbers, ids and the security policy string were found consistent everywhere. Blocker: the specs gave two rules for the "hands out of view" hint; settled as D-030 (only after an interrupted gesture, at most 5 s; Parth to confirm, item 17a). Other main points: D-029 was missing from the contract (T-120 is writing it), the deploy guide misdescribed the publish guard, old staging and tag wording, a flash cap written twice as loose in four places, and the 80 % coverage gate was never set up (new task T-117). Fix pass running.
 - **00:10 IST (Oct 11) — UX wireframes committed** (develop 0a3800a): T-113 writing is complete (4 of 4 parts, no id lost). An independent consistency check across all spec files is running, with the writers' reported inconsistencies as input; a fix pass and a final check follow, then the G0 review (T-110). T-120 (garden model) is building in its own worktree. Three UX calls added for Parth (item 17).
 - **23:52 IST — T-104 capability page merged** (develop 31bc96a), done-pending-device: the review's blocker (a browser call that never answers froze the run and lost every result) is fixed with per-step timeouts, a 45 s hard stop and results saved before each step. e2e is now 20 tests. T-113: test and acceptance plans written (7 sheet ids plus TC-PERF-08/09); UX and release docs in progress. Open contract gap for T-120: the direction of bed-local +x and step 0.
 - **23:40 IST — T-108 preparation merged** (develop 698ff68, 408f3fd): CI and Pages deploy workflows plus a build stamp; review approved, all five action versions confirmed to exist, reproduced on Node 22 and 24 and under the `/Roomsong/` sub-path. BUG-003 fixed (the emulator timing limit measured the host). T-104 review: 1 blocker (no timeouts: one stuck step would lose the whole headset run), fix pass running. Reloads at 22:26 and 23:08.
