@@ -16,6 +16,8 @@
 | T-100 Local git init + GitHub remote | devops-engineer | **done (push pending)** | 2 commits on `main`, `origin` = `github.com/ParthDalvi2001/Roomsong`; **Parth runs the push** (item 7 below) (D-018) |
 | T-101 Scaffold IWSDK + tooling | devops-engineer | **done** | merged to `develop` (541235b); verify green ≈19 s; follow-up T-111 (strip starter content) |
 | T-102 Desktop sound prototype | backend-dev | **doing** | agent in worktree (lane C), started 2026-10-10 |
+| T-106 `core/` module | software-architect | **doing** | agent in worktree (lane D), started 2026-10-10 |
+| T-107 Emulator/e2e pipeline | qa-engineer | **doing** | agent in worktree (lane D), started 2026-10-10 |
 | T-108 Hosting + name decision | Parth | **blocked on human** | see below |
 
 ## Blocked on human (answer in one message; Claude files the results)
@@ -34,8 +36,8 @@
 |---|---|---|---|---|---|
 | T-000 | todo (critical) | T-104 | todo | T-108 | blocked (human) |
 | T-100 | done (push pending) | T-105 | todo | T-109 | todo |
-| T-101 | done | T-106 | todo | T-110 | todo |
-| T-102 | doing | T-107 | todo | | |
+| T-101 | done | T-106 | doing | T-110 | todo |
+| T-102 | doing | T-107 | doing | | |
 | T-103 | blocked (needs T-102) | | | | |
 
 ## Gates
