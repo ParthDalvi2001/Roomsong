@@ -5,7 +5,7 @@
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 39
 
 > **Read first this session:** `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions), `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) and `specs/07-workflow/SPRINT_PLAN.md` v2.1.
-> **ONE DRIVER (Parth said "continue" at 21:40 IST):** the session started at 21:39 (Claude process 97502) is the only driver; the 20:54 copy (80719) confirmed it stands down. Ultracode is on (D-024): work runs as workflows. In the 20:54 window agents' file writes were being declined at permission prompts, so T-105 wrote nothing there; it is relaunched here, where agents write without prompts. Running: T-104, T-105, T-108 prep, T-109 review, and the UX, test and release docs of T-113.
+> **ONE DRIVER (21:47 IST):** the session started at 21:46 (Claude process 8280) is the only driver. Restarts today at 20:19, 20:25, 20:54, 21:39 and 21:46 each killed the agents in flight; nothing has finished since T-106. Ultracode is off: 2 agents at once (D-023), launched as resumable agents (ids in `.tmp/agents.json`, task cards in `.tmp/cards/`). After a restart: check `ps`, then resume those ids with SendMessage instead of starting over. Running: T-109 review, T-105 build. Queue: T-104, T-108 prep, then the UX, test and release docs of T-113.
 > **Live tracking page (Parth, 21:00 IST):** http://127.0.0.1:4180/ shows phases, every task, agents, decisions and what needs Parth. Start it with `python3 scripts/dashboard.py` if it is down. It reads this file, SPRINT_PLAN, DECISIONS_LOG, BUG_LOG, git and the agent logs, so keeping those current keeps the page current.
 > **Push hold (Parth, 2026-10-10 19:15 IST):** no pushes to GitHub, `develop` included, until Phase 0 is finished **and** Parth has been told and says go. Commit and merge locally only. Last pushed commit: `118657b`.
 > **This folder is the master copy.** The PM (Chinmay) works on a copy; his proposals go to `PM_PROPOSALS.md`, never into spec files.
@@ -21,12 +21,12 @@
 | T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
 | T-111 Strip starter content | frontend-dev | **done** | develop 28ddf1e; no runtime network; SDK input models off (D-027) |
 | T-107 Emulator/e2e pipeline | qa-engineer | **done** | develop 28ddf1e; `npm run test:e2e` 6 tests ≈33 s; TC-E2E-01 ×3 green |
-| T-113 Spec propagation v2.1 | UX / QA / devops | **doing** | contract (9592fd9) and requirements docs (8b84927) done; UX, test and release docs being written, then two critics and a fix pass |
+| T-113 Spec propagation v2.1 | UX / QA / devops | **doing** | contract (9592fd9) and requirements docs (8b84927) done; UX, test and release docs queued |
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
-| T-104 Capability spike page | software-architect | **doing** | build, review, fix in the 21:45 workflow |
-| T-105 Pinch-accuracy page | frontend-dev | **doing** | relaunched 21:50 (build, review, fix) |
-| T-109 Security + policy gates | software-architect | **doing** | built (lane ac313b6); independent review and fix running in the 21:45 workflow |
-| T-108 CI + Pages deploy prep | devops-engineer | **doing** | build, review, fix in the 21:45 workflow; going live still needs Parth |
+| T-104 Capability spike page | software-architect | todo | queued behind the 2-agent cap |
+| T-105 Pinch-accuracy page | frontend-dev | **doing** | build relaunched 21:48 |
+| T-109 Security + policy gates | software-architect | **doing** | built (lane ac313b6); independent review relaunched 21:48 |
+| T-108 CI + Pages deploy prep | devops-engineer | todo | prep queued; going live still needs Parth |
 | T-108 Hosting: GitHub Pages + mirror (D-022) | Parth + devops-engineer | **blocked on human** | Parth enables Pages + picks the mirror; then devops runs PoC D1 |
 
 ## Blocked on human (answer in one message; Claude files the results)
