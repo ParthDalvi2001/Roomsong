@@ -21,12 +21,12 @@
 | T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
 | T-111 Strip starter content | frontend-dev | **done** | develop 28ddf1e; no runtime network; SDK input models off (D-027) |
 | T-107 Emulator/e2e pipeline | qa-engineer | **done** | develop 28ddf1e; `npm run test:e2e` 6 tests ≈33 s; TC-E2E-01 ×3 green |
-| T-113 Spec propagation v2.1 | PO / UX / QA / devops | **doing** | contract stage **done** (develop 9592fd9, D-028); propagation into the other spec files running |
-| T-106 `core/` module | software-architect | **doing** | built against API_SPEC v1.2 |
-| T-104 Capability spike page | software-architect | **doing** | round 2 workflow |
-| T-105 Pinch-accuracy page | frontend-dev | **doing** | round 2 workflow |
-| T-109 Security + policy gates | software-architect | **doing** | round 2 workflow |
-| T-108 CI + Pages deploy prep | devops-engineer | **doing** | workflow files proven locally; going live still needs Parth |
+| T-113 Spec propagation v2.1 | PO / UX / QA / devops | **doing** | contract done (9592fd9), requirements docs done (8b84927); UX, test and release docs queued |
+| T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
+| T-104 Capability spike page | software-architect | todo | queued behind the 2-agent cap |
+| T-105 Pinch-accuracy page | frontend-dev | **doing** | agent in worktree since 21:35 |
+| T-109 Security + policy gates | software-architect | **doing** | resumed after the 20:54 restart |
+| T-108 CI + Pages deploy prep | devops-engineer | todo | prep queued; going live still needs Parth |
 | T-108 Hosting: GitHub Pages + mirror (D-022) | Parth + devops-engineer | **blocked on human** | Parth enables Pages + picks the mirror; then devops runs PoC D1 |
 
 ## Blocked on human (answer in one message; Claude files the results)
@@ -52,7 +52,7 @@
 |---|---|---|---|---|---|
 | T-000 | todo (critical) | T-104 | doing | T-108 | doing (prep) |
 | T-100 | done | T-105 | doing | T-109 | doing |
-| T-101 | done | T-106 | doing | T-110 | todo |
+| T-101 | done | T-106 | done | T-110 | todo |
 | T-102 | done | T-107 | done | T-111 | done |
 | T-113 | doing (contract) | T-115 | todo (Chinmay) | | |
 | T-103 | blocked (needs T-102) | | | | |
@@ -69,7 +69,7 @@
 ## Test status
 | Suite | Last run | Result | Coverage |
 |---|---|---|---|
-| unit | 2026-10-10 20:20 | root 1/1 pass · prototype `proto/sound` 70/70 pass + headless render check pass | not measured |
+| unit | 2026-10-10 21:30 | root 45/45 pass (core module) · prototype `proto/sound` 70/70 pass + headless render check pass | not measured |
 | e2e (emulator) | 2026-10-10 20:20 | 6/6 pass, ≈33 s · TC-E2E-01 (table+hands, none+hands, table+controllers): session active 2.7–3.1 s after load, 0 console errors, 0 requests off localhost | — |
 | device | — | **no headset** | — |
 
@@ -83,6 +83,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **21:30 IST — T-106 core module merged** (develop 6541342): review found no functional bug, 3 major points (contract drift, frozen flags in tests, a missing allocation test), all fixed; API_SPEC is now v1.2.1. Live tracking page added at http://127.0.0.1:4180/ (`python3 scripts/dashboard.py`). The 20:54 session restart stopped two agents; both were resumed with their context.
 - Done: PM review verified (grid + reach bugs confirmed by math; prior art confirmed); REPLAN v2 approved by Parth; specs being updated by 3 agents; SPRINT_PLAN v2 written; product discovery research delivered (`specs/09-research/`, not yet applied to the plan); repo initialised with `origin` set; push to GitHub pending Parth (T-100, D-018); T-101 IWSDK scaffold merged to `develop`, verify green.
 - **Interruption 2026-10-10 ≈15:30 IST:** the Claude account hit its weekly usage limit; all three running agents (T-102, T-106, T-107) stopped mid-task. Resets **Oct 13 13:30 IST**. Phase 0 loses ≈3 working days; G0 (Oct 15) is at risk.
 - **20:50 IST — contract v1.2 committed** (develop 9592fd9, D-028): 4 agents, 1.36 M tokens, 99 min; reviewers raised 11 major findings, all resolved. Prototype presets aligned to values the contract can produce (small room 0.3 s, hall 2.0 s). Round 2 launched: T-104, T-105, T-109, T-108 prep; then T-106 and the T-113 propagation.
