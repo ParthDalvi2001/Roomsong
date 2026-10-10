@@ -65,3 +65,69 @@ D-019 plan v2.1 adopted · D-020 bed centre default 0.45 m, outer radius decided
 
 ## 5. Open (unverified) items carried forward
 Plane semantic labels in Quest Browser · persistent-anchor restore reliability · pinch accuracy on a 4.5 cm pitch · frame budget with 80 instanced plants · Web Audio latency/polyphony on Quest · "no shipped consumer app derives music from room geometry" (re-checked by the research: medium–high confidence; use the "first in a consumer MR instrument" wording only) · whether the weekly usage limit is in fact weekly (assumed; confirm on Oct 13).
+
+---
+
+## 6. Propagation sheet — the single source for T-113 and for code written before T-113 lands (added 2026-10-10 evening)
+Binding for every agent. If a spec file disagrees with this sheet, the sheet wins until T-113 is merged; after that the spec files win.
+
+### 6.1 New and changed IDs (use exactly these; never renumber existing IDs)
+| ID | Pri | Statement |
+|---|---|---|
+| FR-SYS-07 | S (S6) | **Garden window.** When `immersive-ar` is unsupported (or `?flags=window` in dev) the app runs the same garden in a non-XR window: fixed camera over a virtual table, pointer/touch as the pinch-equivalent through the `InputSource` abstraction; the same `garden/`, `audio/`, `persistence/` modules. Never the judged path; the dev bench and demo. |
+| FR-HND-15 | M | **Tracking loss.** When a hand's joints become untracked: emit `hands:lost` at once; freeze any held gesture for a grace of **200 ms** (config range 150–250); tracking back within the grace → the gesture continues; otherwise `gesture:trackingLost` → revert (a dragged plant lerps back to its cell over 150 ms; a carried seed returns to the supply). While lost, a hand-visibility tint/hint is shown. No state corruption (NFR-REL-02). |
+| FR-HND-16 | M | **Hover cue.** The target a pinch would act on is highlighted before commit (cell ghost / plant glow); the picker switches target only when the new candidate is ≥ **0.5 cm** closer (dead band); `target:hover` is emitted on change only; discrete actions commit on pinch **release** over the hovered target. |
+| FR-UI-11 | M | **Flashing cap.** No element changes luminance more than **3 times per second** (tide, beat ring, trigger flash, halo, ripple, hover cue); enforced in the animation code (makes NFR-ACC-01 testable). |
+| NFR-PERF-09 | — | **Rendering rules.** One light at most (or unlit emissive), no shadow maps, no post-processing and no extra render targets (keeps FFR + MSAA), FFR medium requested, MSAA through the XR layer. Verified by inspection + `renderer.info`. |
+| NFR-PERF-10 | — | **Audio graph shape.** ≤ 24 voices (oldest-quietest stolen); 24 pooled **equal-power** `PannerNode`s with a custom distance curve; ≤ 2 HRTF "hero" panners and only if a device A/B justifies them (validate-first, T-129 W1); exactly **one** `ConvolverNode` on a shared send bus, IR ≤ 2.0 s; scheduler look-ahead 120 ms, tick 25 ms; `AudioContext` created/resumed inside the Enter gesture. |
+| US-24 | S6 | "As someone without a headset I can open the link in a normal browser and plant with the mouse, so I can try or demo the garden." |
+| UAT-16 | — | Stranger test H12: ≥ 4 of 5 first-time users complete the first 90 s (first sound, 3-plant loop) unaided. |
+| UAT-17 | — | Stranger test H13: in two different rooms ≥ 3 of 5 listeners attribute the change in the song to the room without being told. |
+| TC-HND-07 | — | Unit (GestureMachine, fake clock): loss < 200 ms → gesture continues; loss ≥ 200 ms → `gesture:trackingLost` + revert; `hands:lost`/`hands:found` emitted once each. |
+| TC-HND-08 | — | Unit (TargetPicker): hover switches only when the new candidate is ≥ 0.5 cm closer; `target:hover` fires on change only. |
+| TC-E2E-14 | — | Garden window: in a plain tab (no XR) the bed renders and a pointer click plants a seed that sounds on the next sweep. |
+| TC-E2E-15 | — | Flash cap: with `autoplant=80` + Listen the renderer's self-report shows no element above 3 luminance changes per second. |
+| TC-E2E-16 | — | Tracking loss e2e: a hand-loss fixture mid-drag → the plant returns to its cell, the hint shows, no console errors. |
+
+PRD §6 MoSCoW after v2.1: **M3** += hover cue and tracking-loss recovery · **M5** += persistent anchor restore with re-placement fallback (was S4; reliability is validate-first on device) · **M7** += rendering rules and flashing cap · **S1** narrowed (6.3) · **S2 → C4** (vines) · **S4** → "moved to M5 (D-021)" · **S6** new (garden window). Could items stay empty-handed until Phase 4 is green.
+
+### 6.2 Numbers (named constants in each module's `config.ts`, each with a comment citing the ID)
+| Constant | Value | ID |
+|---|---|---|
+| Bed centre default / range | 0.45 m forward / 0.35–0.45 m; far edge ≤ 0.75 m | FR-ROOM-03, D-020 |
+| Bed radii | 0.12–0.30 m (outer 0.25 m only if T-105 fails; then radial pitch 3.25 cm) | FR-MUS-01, D-020 |
+| Pinch enter / release | < 0.020 m / > 0.032 m (hysteresis) | FR-HND-02 |
+| Pinch debounce / re-pinch lockout | 2 frames / 130 ms | FR-HND-02 |
+| 1€ filter on the pinch point | min cutoff 1.0 Hz, beta 0.0, d-cutoff 1.0 Hz (replaces β 0.007) | FR-HND-03 |
+| Visible target diameter | 0.025 m | FR-HND-04 |
+| Hit radius | 0.040 m default (tunable 0.035–0.040 by T-105); nearest wins | FR-HND-04 |
+| Hover dead band | 0.005 m | FR-HND-16 |
+| Tracking-loss grace / revert lerp | 200 ms / 150 ms | FR-HND-15 |
+| Drag dead zone | 0.02 m, then the dominant axis decides pull vs drag | FR-HND-08/10 |
+| Flash cap | 3 luminance changes per second | FR-UI-11 |
+| Voices / panners / HRTF / convolver | ≤ 24 / 24 equal-power / ≤ 2 (validate-first) / exactly 1, IR ≤ 2.0 s | NFR-PERF-10 |
+| Reverb RT60 clamp | 0.3–2.0 s | FR-ROOM-06 |
+| Scheduler look-ahead / tick | 0.120 s / 0.025 s | FR-MUS-03 |
+| Tempo | default 84 BPM; **not set by the room in v1**; user range 60–120; research band 60–80 noted, T-103 may change the default | FR-MUS-03 |
+| Gaze dwell | 600 / 900 / 1200 ms, default 900 | FR-HND-12 |
+| Video length | 60–90 s | SUBMISSION_CHECKLIST |
+
+### 6.3 Contract deltas → API_SPEC v1.2 (architect owns the wording; the facts below are fixed)
+- **Modes are anhemitonic pentatonic sets (D-025).** `ModeId = 'majorPent' | 'minorPent' | 'susPent'`; degree sets `majorPent = [0,2,4,7,9]`, `minorPent = [0,3,5,7,10]`, `susPent = [0,2,5,7,10]`. `dorianHex` and `lydianHex` are *Cut (D-025)*: their first five degrees contain a semitone, so two plants on adjacent rings could clash. `chordDegrees(mode)` returns a **mode-specific** index triple so each room chord is a distinct consonant sonority (architect defines; suggested major triad / minor triad / sus4).
+- **Signature v1 (D-021).** Only three things vary with the room: **reverb decay** (`reverbRt60`, seconds, from room volume by Sabine with a named absorption constant, quantised, clamped 0.3–2.0), **key root / register** (from room size = floor area; bigger → lower: E, D, C\*, A), and **mode** (from one further bucket the architect picks; not table height). `tempo` stays in the type but is the constant 84 in v1. Table height, table area, wall count and largest wall width feed only the hash (starter voices, palette). `reverbSize` stays as the derived three-way label for the Settings UI.
+- `RoomFeatures` += `roomVolume?: number` (m³; floor area × ceiling height, else global-mesh bounds, else unknown).
+- `Settings` += `dwellMs: 600 | 900 | 1200` (default 900).
+- Events += `hands:lost { hand }`, `hands:found { hand }` (hands → render, ui, garden) and `target:hover { hand, target: TargetRef | null, cell: Cell | null }` (hands → render, ui; on change only). `gesture:trackingLost` keeps its meaning: the grace expired and the gesture was reverted.
+- `InputSource` interface (XR hands / IWER / pointer) for FR-SYS-07; flag `window` forces the garden window in dev.
+- `PlacementSolver` default centre 0.45 m; `AnchorStore` is Must.
+- `AudioEngine`: one shared reverb whose decay follows `reverbRt60`; equal-power panning by default.
+
+### 6.4 Who edits which file in T-113 (one owner per file; nobody else touches it)
+| Stage | Owner | Files |
+|---|---|---|
+| Contract (first) | software-architect | `04-development/API_SPEC.md`, `03-design/LLD.md`, `03-design/HLD.md`, `03-design/adr/ADR-005-room-signature.md`, `03-design/adr/README.md` |
+| Propagation | product-owner | `02-requirements/PRD.md`, `02-requirements/SRS.md`, `02-requirements/USER_STORIES.md`, `02-requirements/BRD.md`, `00-hackathon/WINNING_STRATEGY.md`, `00-hackathon/SUBMISSION_CHECKLIST.md`, `06-release/USER_MANUAL.md` |
+| Propagation | ux-designer | `03-design/UX_WIREFRAMES.md` |
+| Propagation | qa-engineer | `05-testing/TEST_PLAN.md`, `05-testing/UAT_PLAN.md` |
+| Propagation | devops-engineer | `06-release/DEPLOYMENT_GUIDE.md`, `04-development/ENVIRONMENT_SETUP.md` (§7 only), `03-design/adr/ADR-004-github-pages.md`, `06-release/ADMIN_GUIDE.md` |
+| Never in T-113 | main session only | `08-status/*`, `07-workflow/SPRINT_PLAN.md`, `CLAUDE.md`, `06-release/THIRD_PARTY_LICENSES.md` (T-111 owns it this round) |

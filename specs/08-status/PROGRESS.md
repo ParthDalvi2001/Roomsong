@@ -1,6 +1,6 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-10-10 (re-plan v2 applied; research delivered; repo on GitHub; Phase 0 continues on "continue")
+**Last updated:** 2026-10-10 18:30 IST (plan v2.1; implementation running as an ultracode workflow run on Opus 5.5, D-024)
 **Phase:** 0 Prove (Oct 10–17) · **Next gate:** G0 Oct 17 (D-023) · **Headset gate H1:** Oct 20 · **Plan:** v2.1
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 39
 
@@ -15,9 +15,11 @@
 | **T-000 Get a Quest 3/3S by Oct 20** | Parth + Chinmay | **todo (critical)** | no headset on the team; everything device-side waits on this |
 | T-100 Local git init + GitHub remote | devops-engineer | **done** | pushed by Parth 2026-10-10 18:05 IST: `main` (115b9c1) and `develop` (41d5438) on github.com/ParthDalvi2001/Roomsong (D-018) |
 | T-101 Scaffold IWSDK + tooling | devops-engineer | **done** | merged to `develop` (541235b); verify green ≈19 s; follow-up T-111 (strip starter content) |
-| T-102 Desktop sound prototype | backend-dev | **doing (interrupted)** | theory/scheduler/presets/voice pool committed + engine/voices/page WIP-committed in worktree `agent-ad6ef1e3d6893596d`; agent was cut off by the weekly usage limit; resume (SendMessage to the same agent or re-dispatch on top of the WIP) after Oct 13 13:30 IST |
-| T-106 `core/` module | software-architect | todo | cut off before any output; re-dispatch on resume |
-| T-107 Emulator/e2e pipeline | qa-engineer | todo | cut off before any output; re-dispatch on resume |
+| T-102 Desktop sound prototype | backend-dev | **doing** | resumed 18:30 IST on top of the WIP branch; modes switched to the D-025 pentatonic sets; review + fix in the same workflow |
+| T-111 Strip starter content | frontend-dev | **doing** | pulled into Phase 0 (D-024); network-free empty scene |
+| T-107 Emulator/e2e pipeline | qa-engineer | **doing** | follows T-111 in the same branch |
+| T-113 Spec propagation v2.1 | software-architect first, then PO/UX/QA/devops | **doing** | contract stage (API_SPEC v1.2 + LLD) running; propagation next (PLAN_AMENDMENT §6) |
+| T-106 `core/` module | software-architect | todo | starts as soon as the contract stage lands |
 | T-108 Hosting: GitHub Pages + mirror (D-022) | Parth + devops-engineer | **blocked on human** | Parth enables Pages + picks the mirror; then devops runs PoC D1 |
 
 ## Blocked on human (answer in one message; Claude files the results)
@@ -38,7 +40,8 @@
 | T-000 | todo (critical) | T-104 | todo | T-108 | blocked (human) |
 | T-100 | done | T-105 | todo | T-109 | todo |
 | T-101 | done | T-106 | todo | T-110 | todo |
-| T-102 | doing (interrupted) | T-107 | todo | | |
+| T-102 | doing | T-107 | doing | T-111 | doing |
+| T-113 | doing (contract) | T-115 | todo (Chinmay) | | |
 | T-103 | blocked (needs T-102) | | | | |
 
 ## Gates
@@ -69,6 +72,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.9 MB,
 ### 2026-10-10
 - Done: PM review verified (grid + reach bugs confirmed by math; prior art confirmed); REPLAN v2 approved by Parth; specs being updated by 3 agents; SPRINT_PLAN v2 written; product discovery research delivered (`specs/09-research/`, not yet applied to the plan); repo initialised with `origin` set; push to GitHub pending Parth (T-100, D-018); T-101 IWSDK scaffold merged to `develop`, verify green.
 - **Interruption 2026-10-10 ≈15:30 IST:** the Claude account hit its weekly usage limit; all three running agents (T-102, T-106, T-107) stopped mid-task. Resets **Oct 13 13:30 IST**. Phase 0 loses ≈3 working days; G0 (Oct 15) is at risk.
+- **18:30 IST — implementation restarted** ("Start implementation", ultracode on, Opus 5.5; D-024): workflow 1 = T-102 resume + T-111 → T-107; workflow 0 = T-113 contract stage. D-025 modes.
 - **Plan amended to v2.1** on Parth's instruction ("start refactor the plan"): research applied, GitHub adopted, gates shifted (G0 Oct 17 / G1 Oct 24 / G2 Nov 3), agent cap 2 — `PLAN_AMENDMENT_2026-10-10.md`, D-019–D-023. Spec propagation = T-113.
 - Today: finish spec propagation; then T-100/T-101/T-102 on "continue".
 - Blockers: headset (T-000), name, hosting.
