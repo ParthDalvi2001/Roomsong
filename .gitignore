@@ -17,6 +17,9 @@ specs/06-release/evidence/**/*.mp4
 # stale pre-GitHub sync snapshot
 /specs.zip
 
+# agent worktrees created by Claude Code
+.claude/worktrees/
+
 # IWSDK scaffold additions (T-101)
 *.tsbuildinfo
 .pnpm-debug.log*

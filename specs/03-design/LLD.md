@@ -9,7 +9,7 @@ Exact IWSDK/Three.js API names must be verified with `hz-quest-verify-first` + t
 
 ```
 src/
-├── main.ts                     bootstrap: createWorld, register systems, start
+├── index.ts                    bootstrap: World.create, register systems (IWSDK entry point; was main.ts, T-101)
 ├── core/
 │   ├── events.ts               typed EventBus (see API_SPEC §2)
 │   ├── clock.ts                audio-clock-backed time source
