@@ -25,11 +25,12 @@
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
 | T-104 Capability spike page | software-architect | todo | queued behind the 2-agent cap |
 | T-105 Pinch-accuracy page | frontend-dev | **doing** | agent in worktree since 21:35 |
-| T-109 Security + policy gates | software-architect | **doing** | resumed after the 20:54 restart |
+| T-109 Security + policy gates | software-architect | **doing** | built, verify green (lane ac313b6); independent review not finished: one major point found by reading (the policy check accepts `data:` and `blob:` for scripts); on hold |
 | T-108 CI + Pages deploy prep | devops-engineer | todo | prep queued; going live still needs Parth |
 | T-108 Hosting: GitHub Pages + mirror (D-022) | Parth + devops-engineer | **blocked on human** | Parth enables Pages + picks the mirror; then devops runs PoC D1 |
 
 ## Blocked on human (answer in one message; Claude files the results)
+0. **Autopilot is holding new work: say "go" to continue.** At about 21:50 a permission prompt from the T-109 reviewer (it wanted to read its task card from the Claude session folder, outside the project) was declined with "stop and wait". The reviewer stopped. Nothing new has been started since. Still running: the pinch page (T-105). Waiting: the T-109 review and merge, then T-104, T-108 prep and the UX, test and release docs. On "go", task cards are pasted into the agents' prompts, so that prompt does not come back.
 1. **Headset plan (T-000):** which option and by when? (a) buy Quest 3S, (b) borrow, (c) rent. Write the expected date.
 2. ~~Name~~ — done: **Roomsong** (D-016, renamed 2026-10-10).
 3. **Hosting (T-108, D-022):** on github.com/ParthDalvi2001/Roomsong open Settings → Pages → Source: **GitHub Actions**; then say whether the mirror is **Vercel** or **Netlify** (free account in your name). Devops does the rest (PoC D1).
