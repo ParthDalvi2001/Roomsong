@@ -19,15 +19,16 @@ rest your hands and the room performs in spatial audio. The garden is saved loca
 ## 2. Current reality (read before anything else)
 - **No Quest headset on the team as of 2026-10-10.** Build emulator-first (IWER + Playwright). Anything device-dependent
   (fps, hand feel, real rooms) is `done-pending-device`. Getting a headset is **T-000**, the top priority. Gates: H1 Oct 20 / Emergency mode Oct 27.
-- **GitHub:** `https://github.com/ParthDalvi2001/Roomsong`, branch `main` (D-018, 2026-10-10; supersedes the "no GitHub" part of D-014; zip sync retired). Hosting chosen by Oct 22 (GitHub Pages is the default, ADR-004).
+- **GitHub:** `https://github.com/ParthDalvi2001/Roomsong`, branch `main` (D-018, 2026-10-10; supersedes the "no GitHub" part of D-014; zip sync retired). Hosting = **GitHub Pages (submitted URL) + a Vercel/Netlify mirror** (D-022); Parth enables Pages (T-108).
+- **Usage budget:** the Claude weekly limit was exhausted on 2026-10-10 (resets Oct 13 13:30 IST). Keep task cards narrow; 2 agents at once; the reset day is for integration and human tests.
 - **Two humans:** Parth (developer, plan owner; this machine, macOS) and Chinmay (PM, Devpost Representative; Windows).
   Chinmay's Claude works on a copy and may only **propose** via `specs/08-status/PM_PROPOSALS.md`. Only this Claude edits specs.
 
 ## 3. Session start protocol (do this EVERY session, without being asked)
 1. Read `specs/08-status/PROGRESS.md`. It is the single source of truth for where we are.
-2. Read `specs/08-status/REPLAN_2026-10-10.md` once per session (approved decisions) and `specs/07-workflow/AUTOPILOT.md`.
+2. Read `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions) and `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) once per session, and `specs/07-workflow/AUTOPILOT.md`.
 3. If the user gave a specific instruction, do it, then return to the loop. If the user said "continue", "go", "/autopilot" or nothing specific, run the **Autopilot loop**.
-4. Never re-plan from scratch. The plan is `specs/07-workflow/SPRINT_PLAN.md` v2. Amend it, don't replace it.
+4. Never re-plan from scratch. The plan is `specs/07-workflow/SPRINT_PLAN.md` v2.1 (amended 2026-10-10). Amend it, don't replace it.
 5. If `PM_PROPOSALS.md` has new entries, summarise them for Parth and ask approve/reject before applying.
 
 ## 4. Golden rules (non-negotiable; from the contest rules and the re-plan)
@@ -43,7 +44,7 @@ rest your hands and the room performs in spatial audio. The garden is saved loca
 10. **Nothing changes after the deadline.** The deployed build is frozen at submission.
 11. **Honesty in the submission.** The Devpost text says what was device-tested and what was not.
 
-## 5. Team = Claude subagents (max 3 concurrent, one per lane A/B/C)
+## 5. Team = Claude subagents (max 2 concurrent by default, D-023; 3 only on an explicit "go 3"; one per lane A/B/C)
 Roles in `.claude/agents/`: `product-owner`, `scrum-master`, `ux-designer`, `software-architect`, `frontend-dev`, `backend-dev`,
 `fullstack-dev`, `devops-engineer`, `qa-engineer`. Route by owner in `specs/07-workflow/SPRINT_PLAN.md`. Worktree per agent. Never two agents on one module.
 

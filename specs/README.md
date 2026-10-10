@@ -59,6 +59,7 @@ specs/
     ├── PROGRESS.md                   live state (Claude updates after every task)
     ├── DECISIONS_LOG.md              running log of decisions
     ├── REPLAN_2026-10-10.md          approved re-plan v2 (geometry fix, room signature, scope cuts, gates, headset reality)
+    ├── PLAN_AMENDMENT_2026-10-10.md  v2.1 change sheet (research applied, GitHub + hosting, usage-limit slip, propagation table for T-113)
     └── PM_PROPOSALS.md               the only channel for the PM's proposed changes (this folder is the master copy)
 └── 09-research/
     ├── reports/                      product discovery research report (2026-10-10; findings not yet applied to the plan)
