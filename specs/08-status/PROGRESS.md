@@ -29,6 +29,7 @@
 | T-123 Room and placement | fullstack-dev | **doing** | `src/room/`: reading planes, choosing where the bed goes, the floating-bed fallback; own worktree |
 | T-125 Garden visuals | frontend-dev | **doing** | `src/render/`: bed, plants, the sweeping light, plus a preview page `proto/bed/` Parth can open in a browser; own worktree |
 | T-126 Landing page and captions | frontend-dev | **doing** | `src/ui/`: the start screen, in-session captions, field-of-view guard; own worktree |
+| T-141 Room signature | backend-dev | **doing** | Phase 2, started early: the pure rule that turns room size into key, scale and echo length; own worktree |
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
 | T-104 Capability spike page | software-architect | **done-pending-device** | develop 31bc96a after independent review and fix; every step has a timeout and partial results are saved; the device run (TC-DEV-0A) waits for a headset |
 | T-105 Pinch-accuracy page | frontend-dev | **done-pending-device** | develop 47bd268 after independent review and fix; emulator-verified; the device run (TC-DEV-00) waits for a headset |
@@ -91,6 +92,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **12:03 IST (Oct 11) — T-141 room signature started** in the slot the audio merge freed (it only needs the garden and audio code, both now on develop).
 - **12:03 IST (Oct 11) — T-121 audio engine merged:** all review findings fixed; 351 unit tests, verify green, e2e 24 of 24 (4.0 min). The e2e run needs the dev server on port 8081 stopped (one dev runtime per workspace), so the simulator page was down for about 5 minutes and is back.
 - **11:49 IST (Oct 11) — T-122 local save built** (branch only; verify green); independent review started, with the check of loaded data as its main target. Open from the builder: it added a second storage as a fallback that the contract does not name; the reviewer is asked whether it should stay.
 - **11:41 IST (Oct 11) — T-121 audio review back:** approve after fixes, no blocker. Main gaps: no committed browser render of the app's own engine (TC-AUD-05), and contract text behind the code. Fix pass running. Note for the listening review (T-103): the page on port 4173 is a build made before the move and sounds the same as the new code within measurement noise; it will not be rebuilt until it is rated.
