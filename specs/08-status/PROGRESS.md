@@ -92,6 +92,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **12:43 IST (Oct 11) — session restart (the last agent commits were at about 12:14, the new session began 12:43):** five agents stopped; no leftover copy of Claude; their committed work is intact (room 6 commits, visuals 6, landing page 5, local-save fix 4, room signature not yet started). All five resumed by id.
 - **12:14 IST (Oct 11) — T-122 review back:** approve after fixes, no blocker. The second storage stays (five documents ask for it; only the contract had left it out). Five points to fix before merge, the main ones: no committed test used the real browser database, a database that never answers would have blocked the start, and in one rare case a new garden could replace the old one without a backup. Fix pass running.
 - **12:03 IST (Oct 11) — T-141 room signature started** in the slot the audio merge freed (it only needs the garden and audio code, both now on develop).
 - **12:03 IST (Oct 11) — T-121 audio engine merged:** all review findings fixed; 351 unit tests, verify green, e2e 24 of 24 (4.0 min). The e2e run needs the dev server on port 8081 stopped (one dev runtime per workspace), so the simulator page was down for about 5 minutes and is back.
