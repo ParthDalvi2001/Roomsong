@@ -94,6 +94,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **13:00 IST (Oct 11) — T-122 fix pass handed in** (all findings applied; 219 unit tests in the module, 3 browser tests on the real database). One product ruling added before merge, D-033: if two saved gardens ever exist, the older one is shown and the newer one is kept as a backup.
 - **12:51 IST (Oct 11) — T-126 landing page and captions built** (branch only; verify green); independent review and the hands-first check started. All four builders of the 11:15 round have now handed in; three reviews and one fix pass are running, plus T-141.
 - **12:50 IST (Oct 11) — T-125 garden visuals built** (branch only; verify green); independent review and the performance check started. A built copy of the preview page is served on port 4190 so Parth can see the garden without a headset. Open from the builder: the sweeping light is fainter over a bright table.
 - **12:45 IST (Oct 11) — T-123 room and placement built** (branch only; verify green); independent review and the hands-first check started. Open from the builder: the rule "the table's centre must be within 1.2 m" fails for a long table used from its short end; the reviewer is asked which rule is right. With no table and no pinch the bed floats after 13 s.

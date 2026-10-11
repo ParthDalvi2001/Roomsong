@@ -35,7 +35,7 @@ AGENT_QUIET_S = 300  # an agent silent this long without handing back was stoppe
 
 def git(*args):
     try:
-        return subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True, timeout=10).stdout.strip()
+        return subprocess.run(['git', '--no-optional-locks', *args], cwd=ROOT, capture_output=True, text=True, timeout=10).stdout.strip()
     except Exception:
         return ''
 
