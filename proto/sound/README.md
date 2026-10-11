@@ -21,6 +21,8 @@ For a second device on the same Wi-Fi, run `npx vite preview --host --port 4173 
 If `npm install` fails with `EACCES`, add `--cache "${TMPDIR:-/tmp}/roomsong-npm-cache"` (see `.claude/QUICK_START.md`).
 Requirements: Node ≥ 20.19 and a current desktop Chrome (the only browser this was checked in). Use headphones
 or decent speakers; laptop speakers hide the pad and the reverb tail.
+Since T-121 the page shares its sound code with the app (`src/audio`, `src/garden`), so `npm run build` here also
+needs `npm install` to have been run once at the repository root: its type check follows those imports.
 
 ## What you will hear
 
@@ -60,18 +62,21 @@ relaxed rather than sluggish or hurried.
 ## Verification
 
 ```bash
-npm run verify                    # vitest (70 unit tests) + typecheck + vite build
+npm run verify                    # vitest (22 unit tests) + typecheck + vite build
 node scripts/offline-check.mjs    # TC-AUD-05 in headless Chromium + a live Play check; run after a build
 ```
 
+The tests of the code that moved to `src/audio` with T-121 moved with it, to `tests/unit/audio/` at the
+repository root (`npm run test` there).
+
 | Test case | What it checks | Where |
 |---|---|---|
-| TC-AUD-01 | ring 0..4 → scale degree, inner = low, all notes in the mode, degree ≥ 5 wraps an octave; the three modes are the D-025 sets and have no semitone step | `tests/theory.test.ts` |
-| TC-AUD-02 | fake clock: 16 steps/bar, look-ahead 120 ms, tick 25 ms, no drift over 1000 bars, no missed steps under jitter | `tests/scheduler.test.ts` |
-| TC-AUD-03 | height → gain/release and hue → cutoff/detune are monotonic and clamped; step → stereo pan | `tests/mapping.test.ts` |
-| TC-AUD-04 | cap 24; the 25th voice steals the quietest note at that moment, the oldest on a tie | `tests/voicePool.test.ts` |
-| TC-AUD-05 | each voice, the full mix, a 96-trigger stress case and a 24-bell overload (about +16 dBFS before the limiter) rendered offline through the real chain: peak ≤ −1 dBFS, non-silent; a plant at step 4 / 12 leans right / left | `node scripts/offline-check.mjs`, the page button, or `?selftest=1` |
-| reverb | RT60 clamp 0.3–2.0 s, impulse response ≤ 2.0 s, measured RT60 within 10 % of the preset (0.3 / 0.9 / 2.0 s) | `tests/reverb.test.ts` |
+| TC-AUD-01 | ring 0..4 → scale degree, inner = low, all notes in the mode, degree ≥ 5 wraps an octave | root: `tests/unit/audio/theory.test.ts` (the mode sets: `tests/unit/garden/config.test.ts`) |
+| TC-AUD-02 | fake clock: 16 steps/bar, look-ahead 120 ms, tick 25 ms, no drift over 1000 bars, no missed steps under jitter | root: `tests/unit/audio/scheduler.test.ts` |
+| TC-AUD-03 | height → gain/release and hue → cutoff/detune are monotonic and clamped | root: `tests/unit/audio/mapping.test.ts`; step → stereo pan: `tests/mapping.test.ts` |
+| TC-AUD-04 | the page's own cap of 24: the 25th voice steals the quietest note at that moment, the oldest on a tie | `tests/voicePool.test.ts` (the app's 24 channels: root `tests/unit/audio/voicePool.test.ts`) |
+| TC-AUD-05 | each voice, the full mix, a 96-trigger stress case and a 24-bell overload (about +16 dBFS before the limiter) rendered offline through the page's chain: peak ≤ −1 dBFS, non-silent; a plant at step 4 / 12 leans right / left | `node scripts/offline-check.mjs`, the page button, or `?selftest=1` |
+| reverb | RT60 clamp 0.3–2.0 s | `tests/reverb.test.ts`; impulse response ≤ 2.0 s and measured RT60 within 10 % (0.3 / 0.9 / 2.0 s): root `tests/unit/audio/reverb.test.ts` |
 
 Node has no Web Audio, so TC-AUD-05 runs in a browser. `scripts/offline-check.mjs` serves `dist/` on port 4174,
 opens it in the Chromium that the root project's Playwright installs (run `npm install` at the repository root
@@ -79,24 +84,27 @@ once; it falls back to Google Chrome), prints the result lines, then presses Pla
 tempo and fails if the output is silent, the peak passes −1 dBFS, the page logs an error or any request leaves the
 page's own origin. The page also shows a live output meter with a peak hold.
 
-## How it is built (maps onto `src/audio` for T-121)
+## How it is built (shared with `src/audio` since T-121)
 
 Audio graph: voice → plant gain → equal-power stereo pan → sum bus → volume → limiter → −1 dBFS ceiling →
 analyser → output; plant gain → send → **one** shared `ConvolverNode` → wet return → sum bus. It follows
 NFR-PERF-10 for the voice cap, the one convolver, the impulse-response length and the scheduler timing, but not for
 the panners (see Known limitations).
 
+T-121 moved everything the app also needs into `src/audio` (at the repository root), and this page imports it from
+there: the scheduler, the theory, the plant → voice mappings, the Karplus-Strong string, the reverb impulse
+response, the seeded noise, the limiter, the `Bell` and `Pad` voices, the note record with its steal fade, and the
+shared numbers. What stays here is what only the page has:
+
 | File | Role |
 |---|---|
-| `src/types.ts` | `Cell`, `Plant`, `RoomSignature` (with `reverbRt60`), `WANDERER`, `Voice`, `VoiceParams` — names from API_SPEC §1.1/§1.2 plus the v1.2 deltas of PLAN_AMENDMENT §6.3 |
-| `src/config.ts` | every tunable number, each citing its source or saying what it does |
-| `src/theory.ts` | the three pentatonic modes, `degreeToMidi`, `midiToHz`, `hzForRing` |
-| `src/scheduler.ts` | pure look-ahead scheduler: injectable clock, 25 ms tick, 120 ms look-ahead, anchor-based times |
-| `src/mapping.ts` | plant height/hue → `VoiceParams`; step → pan |
-| `src/VoicePool.ts` | 24-voice cap, oldest-quietest stealing |
-| `src/karplus.ts`, `src/reverb.ts`, `src/prng.ts` | seeded, deterministic DSP buffers (pluck string, reverb impulse response from an RT60) |
-| `src/voices/` | `Bell` (2-op FM), `Pad` (3 detuned saws → LPF), `Pluck` (Karplus-Strong), shared steal/fade helper |
-| `src/engine.ts` | `AudioEngine`: context, master chain, the shared reverb with a scheduled impulse-response swap, per-plant slots, diff-based `syncPlants`, `setSignature` re-tune in place |
+| `src/types.ts` | re-exports the garden and audio types; `WANDERER` and `Tempo` until `garden/` has its own (T-141) |
+| `src/config.ts` | the page's own numbers; re-exports `src/audio/config.ts` |
+| `src/mapping.ts` | step → stereo pan |
+| `src/reverb.ts` | the RT60 clamp (moves to `garden/` with T-141) |
+| `src/VoicePool.ts` | the page's 24-voice cap, oldest-quietest stealing |
+| `src/voices/Pluck.ts` | one string per plant (the app shares strings between plants in four damping steps, which would change the page's sound) |
+| `src/engine.ts` | the page's `AudioEngine`: context, master chain, the shared reverb with a scheduled impulse-response swap, per-plant slots and stereo panners, diff-based `syncPlants`, `setSignature` re-tune in place |
 | `src/signatures.ts`, `src/garden.ts` | the three room presets and the six fixed plants |
 | `src/selftest.ts`, `scripts/offline-check.mjs` | the offline TC-AUD-05 renders and their headless runner |
 | `src/main.ts`, `index.html`, `src/style.css` | the page (the only DOM code) |
@@ -117,8 +125,8 @@ removed plants fade and are disconnected later.
 - **Not the node layout of NFR-PERF-10 or the performance checklist.** There is one `StereoPannerNode` per plant
   (the requirement is 24 pooled equal-power `PannerNode`s), and every note builds its own small node graph
   (2 to 5 nodes, one note record and one array) inside the tick when it is scheduled, instead of re-using pooled
-  voices. Only the number of sounding notes is capped at 24. Pooled voices or per-note graphs is a decision for
-  T-121, once there is a device measurement.
+  voices. Only the number of sounding notes is capped at 24. The app's engine (`src/audio`, T-121) has the 24
+  pooled channels and panners; this page keeps its own graph so that it plays what the listening review is rating.
 - Only Bell, Pad and Pluck exist; the page plants nothing else, and any other voice type would play as a bell
   until T-144.
 - The pluck is a Karplus-Strong string rendered to a buffer per plant (a native `DelayNode` loop cannot go above

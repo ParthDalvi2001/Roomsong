@@ -1,0 +1,429 @@
+// AudioEngine (API_SPEC §1.2, LLD §7.1): the context, the fixed graph, the look-ahead scheduler and the plants.
+// Pure TypeScript + Web Audio: no DOM, no Three.js, and nothing from core/ at run time (AudioSystem.ts does the
+// bus wiring), so it also loads in a bare page and renders in an OfflineAudioContext (tests/e2e/09-audio.spec.ts).
+//
+//   note (built per note by a Voice: single-use sources + envelope)
+//      └─► channel[i] ─┬─► PannerNode[i] (equal-power) ──────────────────────► master gain ─┐
+//           i = 0..23  └─► send (one gain, one level) ─► ConvolverNode (×1) ─► wet return ──┤
+//                                    master gain ─► compressor ─► wave-shaper ceiling (−1 dBFS) ─► destination
+//
+// Everything in the diagram but the note is built once, in init(). Hot path = tick(): Scheduler → triggerStep →
+// VoicePool.play → Voice.trigger. A trigger makes a note's own nodes (sources are single-use in Web Audio) and
+// nothing else; the tick's own code makes no object, array or closure (engine.test.ts measures the heap).
+import { cellCentre, MODE_DEGREES, RINGS, STEPS } from '../garden/index.js';
+
+import {
+  IR_SEED,
+  LATE_DROP_S,
+  MIX_DB,
+  MUTE_TAU_S,
+  PARAM_SMOOTH_S,
+  REVERB_DEFAULT_RT60_S,
+  REVERB_IR_MAX_S,
+  REVERB_SEND,
+  REVERB_SMALL_RT60_S,
+  REVERB_SWAP_DELAY_S,
+  START_DELAY_S,
+  SUSPEND_FADE_S,
+  SUSPEND_FADE_TAUS,
+  TEMPO_MAX_BPM,
+  TEMPO_MIN_BPM,
+  TICK_EMA,
+  TICK_MS,
+  WET_RETURN,
+} from './config.js';
+import { createLimiter } from './limiter.js';
+import { dbToGain, voiceParamsFor } from './mapping.js';
+import { impulseLength, renderImpulseResponse } from './Reverb.js';
+import { Scheduler } from './Scheduler.js';
+import { Spatializer } from './Spatializer.js';
+import { hzForRing, VOICE_OCTAVE } from './theory.js';
+import { VoicePool } from './VoicePool.js';
+import { Bell } from './voices/Bell.js';
+import { Pad } from './voices/Pad.js';
+import { Pluck } from './voices/Pluck.js';
+
+import type { Voice, VoiceParams } from './voices/note.js';
+import type { Mat4 } from '../core/index.js';
+import type { Cell, Plant, RoomSignature } from '../garden/index.js';
+
+/** API_SPEC §1.2. */
+export interface AudioEngine {
+  /** Creates or resumes the AudioContext; must run inside the Enter gesture (NFR-PERF-10). Rejects if it cannot. */
+  init(ctx?: AudioContext): Promise<void>;
+  setTempo(bpm: number): void;
+  setVolume(v: number): void;
+  /** The one shared reverb: 'auto' follows the signature's reverbRt60, 'small' is a fixed 0.6 s, 'off' mutes the send. */
+  setReverb(mode: 'auto' | 'small' | 'off'): void;
+  /** Re-tunes all plants in place (key, mode); the reverb decay follows it while 'auto'. Never the tempo (D-021). */
+  setSignature(sig: RoomSignature): void;
+  /** The listener is the user's head: called every frame with the viewer's world matrix. Allocation-free. */
+  setListenerPose(head: Mat4): void;
+  chordTone(note: 0 | 1 | 2, time: number): void;
+  /** Idempotent and diff-based; plants sound at their world position, equal-power panned. */
+  syncPlants(plants: readonly Plant[], bedPose: Mat4): void;
+  preview(plant: Plant): void;
+  ui(sound: 'tick' | 'confirm' | 'bump' | 'removeRev' | 'undoFwd' | 'placed' | 'goodnight'): void;
+  enterListen(): void;
+  exitListen(): void;
+  suspend(): Promise<void>;
+  resume(): Promise<void>;
+  /** Audio-clock based. */
+  readonly clock: { now(): number; barPhase(): number; stepIndex(): number };
+  /** `voices` ≤ VOICE_CAP, always. `cpuEstimate`: main-thread ms of one scheduler tick, a moving average. */
+  readonly stats: { voices: number; cpuEstimate: number };
+}
+
+/** One plant as the tick needs it: everything worked out on sync, so a trigger computes nothing. */
+interface PlantRecord {
+  plant: Plant;
+  voice: Voice;
+  params: VoiceParams;
+  x: number;
+  y: number;
+  z: number;
+}
+
+/** The fixed graph: built once, in init(). */
+interface Graph {
+  ctx: AudioContext;
+  master: GainNode;
+  send: GainNode;
+  convolver: ConvolverNode;
+  wet: GainNode;
+  space: Spatializer;
+  pool: VoicePool;
+  scheduler: Scheduler;
+  bell: Bell;
+  pad: Pad;
+  pluck: Pluck;
+}
+
+function onBed(cell: Cell): boolean {
+  const { ring, step } = cell;
+  return (
+    Number.isInteger(ring) && Number.isInteger(step) && ring >= 0 && ring < RINGS && step >= 0 && step < STEPS
+  );
+}
+
+export class Engine implements AudioEngine {
+  readonly clock = {
+    now: (): number => this.g?.ctx.currentTime ?? 0,
+    barPhase: (): number => this.g?.scheduler.barPhase() ?? 0,
+    stepIndex: (): number => this.g?.scheduler.stepIndex() ?? 0,
+  };
+  readonly stats = { voices: 0, cpuEstimate: 0 };
+
+  private g: Graph | null = null;
+  private timer: ReturnType<typeof setInterval> | null = null;
+  /** Until setTempo: AudioSystem.ts applies the user's tempo, volume and reverb as soon as it makes the engine. */
+  private bpm = TEMPO_MIN_BPM;
+  private volume = 1;
+  /** Until the first signature: C major pentatonic, the Wanderer tuning (FR-MUS-02). */
+  private key: Pick<RoomSignature, 'keyRoot' | 'mode'> = { keyRoot: 0, mode: 'majorPent' };
+
+  private plants: readonly Plant[] = [];
+  /** A copy of the last bed pose: the caller's matrix may change after the call. Starts as the identity. */
+  private readonly bed = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  private readonly records = new Map<string, PlantRecord>();
+  private readonly steps: PlantRecord[][] = Array.from({ length: STEPS }, () => []);
+  private readonly centre = { x: 0, y: 0 };
+
+  private reverbMode: 'auto' | 'small' | 'off' = 'auto';
+  /** Decay of the signature: the default until the first one, like the Wanderer tuning above. */
+  private signatureRt60 = REVERB_DEFAULT_RT60_S;
+  /** The decay the convolver holds or is about to hold; 0 = none yet. */
+  private reverbRt60 = 0;
+  private pendingIr: AudioBuffer | null = null;
+  private swapAt = 0;
+
+  /** Audio time at which the tick suspends the context; Infinity = nobody asked. */
+  private suspendAt = Infinity;
+  private suspending: Promise<void> | null = null;
+  private settleSuspend: ((result?: Promise<void>) => void) | null = null;
+  private tickMs = 0;
+
+  async init(ctx?: AudioContext): Promise<void> {
+    // No await before the context is created and resumed: both happen in the call stack of the Enter gesture.
+    // latencyHint stays at its default (LLD §7.1).
+    const g = this.g ?? this.build(ctx ?? new AudioContext());
+    // An OfflineAudioContext (a render test) has no gesture to wait for and no real time to tick on: it rejects
+    // resume() before it renders, and the test calls tick() on the offline clock itself.
+    if ('startRendering' in g.ctx) return;
+    await this.resume();
+  }
+
+  setTempo(bpm: number): void {
+    if (!Number.isFinite(bpm)) return; // a step of 0 or NaN seconds would never end the scheduler's loop
+    this.bpm = Math.min(TEMPO_MAX_BPM, Math.max(TEMPO_MIN_BPM, bpm));
+    this.g?.scheduler.setBpm(this.bpm);
+  }
+
+  setVolume(v: number): void {
+    if (!Number.isFinite(v)) return;
+    this.volume = Math.min(1, Math.max(0, v));
+    const g = this.g;
+    if (g !== null && this.suspendAt === Infinity) {
+      g.master.gain.setTargetAtTime(this.volume, g.ctx.currentTime, PARAM_SMOOTH_S);
+    }
+  }
+
+  setReverb(mode: 'auto' | 'small' | 'off'): void {
+    this.reverbMode = mode;
+    this.applyReverb();
+  }
+
+  setSignature(sig: RoomSignature): void {
+    // A NaN pitch would make an oscillator throw in the tick, at every step.
+    if (MODE_DEGREES[sig.mode] === undefined || !Number.isFinite(sig.keyRoot)) return;
+    const retune = sig.keyRoot !== this.key.keyRoot || sig.mode !== this.key.mode;
+    this.key = sig;
+    this.signatureRt60 = sig.reverbRt60;
+    this.applyReverb();
+    const g = this.g;
+    if (!retune || g === null) return;
+    // Notes that sound or are scheduled were tuned to the old key: they fade out and never ring over the new one.
+    g.pool.releaseAll(g.ctx.currentTime);
+    g.pluck.dispose();
+    // shortcut: every string of the new key is rendered here, at once, and so is the impulse response in
+    // applyReverb() when the decay changes (at most 20 strings and one 2.0 s stereo response: about 23 ms in Node
+    // on a laptop, not measured on a headset). Spread them over ticks as LLD §7 describes if a re-tune stalls a
+    // frame (T-143).
+    this.applyPlants();
+  }
+
+  setListenerPose(head: Mat4): void {
+    this.g?.space.setListenerPose(head);
+  }
+
+  syncPlants(plants: readonly Plant[], bedPose: Mat4): void {
+    // A pose with a value that is not finite is not taken: a NaN position makes a panner throw in the tick.
+    let finite = true;
+    for (let i = 0; i < 16; i++) finite &&= Number.isFinite(bedPose[i]);
+    let moved = false;
+    for (let i = 0; finite && i < 16; i++) {
+      const v = bedPose[i] as number;
+      if (this.bed[i] !== v) {
+        this.bed[i] = v;
+        moved = true;
+      }
+    }
+    // Garden state is immutable, so the same array is the same plants: a call that changes nothing returns here.
+    // A real change re-tunes every plant and allocates: the caller syncs on garden:changed and room:bedPlaced,
+    // not every frame (API_SPEC §1.2).
+    if (plants === this.plants && !moved) return;
+    this.plants = plants; // also kept for init(): a garden restored before the Enter gesture must sound after it
+    this.applyPlants();
+  }
+
+  // The next five wait for their tasks: silent and safe to call until then.
+  chordTone(): void {} // T-142; needs garden's chordDegrees (T-141)
+  preview(): void {} // T-147
+  ui(): void {} // T-164
+  enterListen(): void {} // T-148
+  exitListen(): void {}
+
+  /** FR-SYS-05: the master fades out, then the context stops. The tick does the stop, on the audio clock. */
+  suspend(): Promise<void> {
+    const g = this.g;
+    if (g === null || this.timer === null) return Promise.resolve(); // not started, or suspended already
+    if (g.ctx.state !== 'running') {
+      // The context never started (autoplay blocked): its clock stands still, so a fade would never be over.
+      clearInterval(this.timer);
+      this.timer = null;
+      return Promise.resolve();
+    }
+    if (this.suspending === null) {
+      const now = g.ctx.currentTime;
+      g.master.gain.setTargetAtTime(0, now, SUSPEND_FADE_S / SUSPEND_FADE_TAUS);
+      this.suspendAt = now + SUSPEND_FADE_S;
+      this.suspending = new Promise<void>((settle) => {
+        this.settleSuspend = settle;
+      });
+    }
+    return this.suspending;
+  }
+
+  /** Resumes the context, restarts the tick and fades the master back in. The audio clock stood still meanwhile. */
+  async resume(): Promise<void> {
+    const g = this.g;
+    if (g === null) return; // a context is only ever created by init(), inside the gesture
+    this.endSuspend();
+    this.timer ??= setInterval(this.tick, TICK_MS);
+    g.master.gain.setTargetAtTime(this.volume, g.ctx.currentTime, PARAM_SMOOTH_S);
+    if (g.ctx.state === 'running') return;
+    await g.ctx.resume();
+    // A suspend() that came while the browser was still starting the context found nothing to fade and only
+    // stopped the tick. It wins: without this the context would run on with no tick, playing leftover tails.
+    if (this.timer === null) await g.ctx.suspend();
+  }
+
+  /** The 25 ms tick: schedule the steps that are due, then cheap bookkeeping on the audio clock. */
+  readonly tick = (): void => {
+    const g = this.g;
+    if (g === null) return;
+    const t0 = performance.now();
+    g.scheduler.tick();
+    const now = g.ctx.currentTime;
+    if (this.pendingIr !== null && now >= this.swapAt) {
+      g.convolver.buffer = this.pendingIr;
+      g.wet.gain.setTargetAtTime(WET_RETURN, now, PARAM_SMOOTH_S);
+      this.pendingIr = null;
+    }
+    if (now >= this.suspendAt) {
+      if (this.timer !== null) clearInterval(this.timer);
+      this.timer = null;
+      this.endSuspend(g.ctx.suspend());
+    }
+    this.stats.voices = g.pool.active(now);
+    this.tickMs += (performance.now() - t0 - this.tickMs) * TICK_EMA;
+    this.stats.cpuEstimate = this.tickMs;
+  };
+
+  /** The scheduler's listener: every plant on `step` plays at audio time `time`. */
+  triggerStep(step: number, time: number): void {
+    const g = this.g;
+    // A step found long after its time (a stalled tick, a throttled tab) is skipped: playing it and the ones
+    // after it at once would be a burst.
+    if (g === null || time < g.ctx.currentTime - LATE_DROP_S) return;
+    const list = this.steps[step] as PlantRecord[];
+    for (let i = 0; i < list.length; i++) {
+      const r = list[i] as PlantRecord;
+      g.pool.play(r.voice, time, r.params, r.x, r.y, r.z, r);
+    }
+  }
+
+  private build(ctx: AudioContext): Graph {
+    const master = ctx.createGain();
+    master.gain.value = this.volume;
+    const limiter = createLimiter(ctx);
+    master.connect(limiter.input);
+    limiter.output.connect(ctx.destination);
+
+    // One send gain on the bus, not one per channel: every channel has the same level (LLD §7.1), so the sum is
+    // the same signal with 24 nodes fewer.
+    const send = ctx.createGain();
+    send.gain.value = REVERB_SEND;
+    const convolver = ctx.createConvolver();
+    convolver.normalize = true;
+    const wet = ctx.createGain();
+    wet.gain.value = WET_RETURN;
+    send.connect(convolver).connect(wet).connect(master);
+
+    const space = new Spatializer(ctx, master, send);
+    const pool = new VoicePool(ctx, space);
+    const scheduler = new Scheduler(
+      { now: () => ctx.currentTime },
+      (step, time) => this.triggerStep(step, time),
+      this.bpm,
+    );
+    const g: Graph = {
+      ctx,
+      master,
+      send,
+      convolver,
+      wet,
+      space,
+      pool,
+      scheduler,
+      bell: new Bell(ctx, pool.ref),
+      pad: new Pad(ctx, pool.ref),
+      pluck: new Pluck(ctx, pool.ref),
+    };
+    this.g = g;
+    scheduler.start(START_DELAY_S);
+    this.applyReverb();
+    this.applyPlants();
+    return g;
+  }
+
+  /** Settle a pending suspend(): with the context's own promise when the fade is over, with nothing when cancelled. */
+  private endSuspend(result?: Promise<void>): void {
+    this.suspendAt = Infinity;
+    this.suspending = null;
+    const settle = this.settleSuspend;
+    this.settleSuspend = null;
+    settle?.(result);
+  }
+
+  /** Point the one reverb at the decay in force. Renders an impulse response when the decay changes; never in the tick. */
+  private applyReverb(): void {
+    const g = this.g;
+    if (g === null) return;
+    const now = g.ctx.currentTime;
+    const off = this.reverbMode === 'off';
+    g.send.gain.setTargetAtTime(off ? 0 : REVERB_SEND, now, PARAM_SMOOTH_S);
+    const rt60 = Math.min(
+      this.reverbMode === 'small' ? REVERB_SMALL_RT60_S : this.signatureRt60,
+      REVERB_IR_MAX_S,
+    );
+    if (off || !(rt60 > 0) || rt60 === this.reverbRt60) return;
+    const first = this.reverbRt60 === 0;
+    this.reverbRt60 = rt60;
+    const sr = g.ctx.sampleRate;
+    const ir = g.ctx.createBuffer(2, impulseLength(sr, rt60), sr);
+    for (let ch = 0; ch < 2; ch++) renderImpulseResponse(ir.getChannelData(ch), sr, rt60, IR_SEED + ch);
+    if (first) {
+      g.convolver.buffer = ir; // the convolver was silent until now: nothing to cut off
+      return;
+    }
+    // Swapping a ConvolverNode's buffer resets its state: mute the return first and swap in a later tick.
+    g.wet.gain.setTargetAtTime(0, now, MUTE_TAU_S);
+    this.pendingIr = ir;
+    this.swapAt = now + REVERB_SWAP_DELAY_S;
+  }
+
+  /**
+   * The diff against the records: a new plant gets one, a removed plant's notes fade out and its record goes, and
+   * every plant is tuned to the key, the bed pose and its own cell, height and hue. Nothing in the graph is rebuilt.
+   */
+  private applyPlants(): void {
+    const g = this.g;
+    if (g === null) return;
+    const seen = new Set<string>();
+    for (const plant of this.plants) {
+      // A cell off the bed has no step and no pitch; a voice that is not a VoiceType has no octave and no level.
+      // Either would put a NaN in the tick, where an AudioParam throws at every bar: such a plant is left out.
+      if (!onBed(plant.cell) || typeof VOICE_OCTAVE[plant.voice] !== 'number') continue;
+      seen.add(plant.id);
+      let record = this.records.get(plant.id);
+      if (record === undefined) {
+        record = {
+          plant,
+          voice: g.bell,
+          params: { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 },
+          x: 0,
+          y: 0,
+          z: 0,
+        };
+        this.records.set(plant.id, record);
+      }
+      record.plant = plant;
+      this.tune(g, record);
+    }
+    for (const [id, record] of this.records) {
+      if (seen.has(id)) continue;
+      g.pool.release(record, g.ctx.currentTime); // no orphan note (FR-MUS-12)
+      this.records.delete(id);
+    }
+    for (const list of this.steps) list.length = 0;
+    for (const record of this.records.values())
+      (this.steps[record.plant.cell.step] as PlantRecord[]).push(record);
+  }
+
+  /** Work out everything a trigger needs: voice, pitch, level, string and world position. */
+  private tune(g: Graph, record: PlantRecord): void {
+    const plant = record.plant;
+    // Bass, Choir and Shimmer have no synth yet (T-144): until then they ring as bells, at their own octave.
+    record.voice = plant.voice === 'pad' ? g.pad : plant.voice === 'pluck' ? g.pluck : g.bell;
+    voiceParamsFor(plant, hzForRing(this.key, plant.cell.ring, plant.voice), record.params);
+    record.params.gain *= dbToGain(MIX_DB[plant.voice]);
+    if (record.voice === g.pluck) g.pluck.prepare(record.params);
+    // The cell centre on the bed plane, through the bed's pose (column-major): bed-local (x, 0, z) → world.
+    const { x, y: z } = cellCentre(plant.cell, this.centre);
+    const b = this.bed;
+    record.x = (b[0] as number) * x + (b[8] as number) * z + (b[12] as number);
+    record.y = (b[1] as number) * x + (b[9] as number) * z + (b[13] as number);
+    record.z = (b[2] as number) * x + (b[10] as number) * z + (b[14] as number);
+  }
+}

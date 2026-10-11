@@ -1,5 +1,5 @@
 // Pad (LLD §7): three detuned sawtooths → resonant low-pass (cutoff from hue) → slow 0.4 s attack.
-// Height sets gain and the hold/release length, so tall pads overlap into a drone.
+// Height sets gain and the hold/release length, so tall pads overlap into a drone. Stateless (see Bell).
 import {
   PAD_ATTACK_S,
   PAD_CUTOFF_CLOSED_MUL,
@@ -13,12 +13,9 @@ import {
   PAD_RELEASE_TAU_DIV,
   PAD_SAW_LEVEL,
   PAD_TAIL_TAUS,
-} from '../config';
+} from '../config.js';
 
-import { ScheduledNote } from './note';
-
-import type { Voice, VoiceParams } from '../types';
-import type { VoicePool } from '../VoicePool';
+import type { NoteRef, Voice, VoiceParams } from './note.js';
 
 function clamp(x: number, lo: number, hi: number): number {
   return x < lo ? lo : x > hi ? hi : x;
@@ -27,11 +24,10 @@ function clamp(x: number, lo: number, hi: number): number {
 export class Pad implements Voice {
   constructor(
     private readonly ctx: BaseAudioContext,
-    private readonly output: AudioNode,
-    private readonly pool: VoicePool,
+    private readonly ref: NoteRef,
   ) {}
 
-  trigger(time: number, p: VoiceParams): void {
+  trigger(time: number, p: VoiceParams, out: AudioNode): void {
     const ctx = this.ctx;
     const hold = p.release * PAD_HOLD_MUL;
     const relTau = p.release / PAD_RELEASE_TAU_DIV;
@@ -50,9 +46,10 @@ export class Pad implements Voice {
     env.gain.setValueAtTime(0, time);
     env.gain.linearRampToValueAtTime(p.gain * PAD_SAW_LEVEL, time + PAD_ATTACK_S);
     env.gain.setTargetAtTime(0, releaseAt, relTau);
-    filter.connect(env).connect(this.output);
+    filter.connect(env).connect(out);
 
-    const sources: OscillatorNode[] = [];
+    const note = this.ref.note;
+    note.begin(time, end, env, p.gain * PAD_SAW_LEVEL, releaseAt, relTau);
     for (let i = 0; i < PAD_DETUNE_CENTS.length; i++) {
       const osc = ctx.createOscillator();
       osc.type = 'sawtooth';
@@ -61,12 +58,8 @@ export class Pad implements Voice {
       osc.connect(filter);
       osc.start(time);
       osc.stop(end);
-      sources.push(osc);
+      note.add(osc);
     }
-    this.pool.admit(
-      new ScheduledNote(time, end, env, sources, p.gain * PAD_SAW_LEVEL, releaseAt, relTau),
-      time,
-    );
   }
 
   dispose(): void {

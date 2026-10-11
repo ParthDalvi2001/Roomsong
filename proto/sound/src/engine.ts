@@ -1,25 +1,27 @@
-// AudioEngine (API_SPEC §1.2 subset for Phase 0): context + master chain + shared reverb + look-ahead scheduler +
-// plant slots with diff-based syncPlants. Pure TypeScript + Web Audio; no DOM, no Three.js.
+// The prototype page's engine (T-102): context + master chain + shared reverb + look-ahead scheduler + plant slots
+// with diff-based syncPlants. Pure TypeScript + Web Audio; no DOM, no Three.js.
 // Graph: voice → plant gain → equal-power stereo pan → sum bus → volume → limiter → −1 dBFS ceiling → analyser →
-// destination; plant gain → send → the one ConvolverNode → wet return → sum bus. NFR-PERF-10 holds for the voice
-// cap, the one convolver and the timing; the panners differ (one StereoPannerNode per plant, not 24 pooled
-// PannerNodes) and are T-121/T-145 work.
+// destination; plant gain → send → the one ConvolverNode → wet return → sum bus.
+// The app's engine is src/audio/AudioEngine.ts (T-121): 24 pooled voice channels with one PannerNode each. This
+// one keeps its node graph per plant and its own VoicePool, so the page plays what the listening review T-103
+// is rating; the scheduler, the voices, the mappings, the limiter and the reverb impulse are the app's own files.
 // Hot path = tick(): scheduler → triggerStep → voice.trigger, then bookkeeping. A trigger builds one small node
 // graph and one note record per note (at most 24 sound at once); nothing else creates nodes or allocates in the
-// tick. CODING_GUIDELINES §5 allows node creation for voice triggers; pooling the voices is a T-121 decision.
+// tick.
+import { createLimiter } from '../../../src/audio/limiter';
+import { dbToGain, voiceParamsFor } from '../../../src/audio/mapping';
+import { impulseLength, renderImpulseResponse } from '../../../src/audio/Reverb';
+import { Scheduler } from '../../../src/audio/Scheduler';
+import { hzForRing } from '../../../src/audio/theory';
+import { Bell } from '../../../src/audio/voices/Bell';
+import { Note, type NoteRef } from '../../../src/audio/voices/note';
+import { Pad } from '../../../src/audio/voices/Pad';
+
 import {
   ANALYSER_FFT,
-  CEILING_CURVE_POINTS,
-  CEILING_DBFS,
-  CEILING_KNEE,
   DEFAULT_VOLUME,
   DISCONNECT_AFTER_S,
   IR_SEED,
-  LIMITER_ATTACK_S,
-  LIMITER_KNEE_DB,
-  LIMITER_RATIO,
-  LIMITER_RELEASE_S,
-  LIMITER_THRESHOLD_DB,
   METER_SILENCE_DB,
   MIX_DB,
   MUTE_TAU_S,
@@ -33,10 +35,8 @@ import {
   VOICE_CAP,
   WET_RETURN,
 } from './config';
-import { dbToGain, panForStep, voiceParamsFor } from './mapping';
-import { clampRt60, impulseLength, renderImpulseResponse } from './reverb';
-import { Scheduler } from './scheduler';
-import { hzForRing } from './theory';
+import { panForStep } from './mapping';
+import { clampRt60 } from './reverb';
 import {
   WANDERER,
   type Plant,
@@ -46,8 +46,6 @@ import {
   type VoiceType,
 } from './types';
 import { VoicePool } from './VoicePool';
-import { Bell } from './voices/Bell';
-import { Pad } from './voices/Pad';
 import { Pluck } from './voices/Pluck';
 
 export interface EngineClock {
@@ -82,27 +80,11 @@ interface Chain {
   ctx: BaseAudioContext;
   sumBus: GainNode;
   volume: GainNode;
-  limiter: DynamicsCompressorNode;
-  ceiling: WaveShaperNode;
   analyser: AnalyserNode;
   reverbIn: GainNode;
   convolver: ConvolverNode;
   wetReturn: GainNode;
   scheduler: Scheduler;
-}
-
-/** Soft ceiling at −1 dBFS: linear below the knee, tanh approach above; never reaches the ceiling (FR-MUS-06). */
-export function makeCeilingCurve(points = CEILING_CURVE_POINTS): Float32Array<ArrayBuffer> {
-  const c = dbToGain(CEILING_DBFS);
-  const k = CEILING_KNEE * c;
-  const curve = new Float32Array(new ArrayBuffer(points * Float32Array.BYTES_PER_ELEMENT));
-  for (let i = 0; i < points; i++) {
-    const x = (i / (points - 1)) * 2 - 1;
-    const a = Math.abs(x);
-    const y = a <= k ? a : k + (c - k) * Math.tanh((a - k) / (c - k));
-    curve[i] = x < 0 ? -y : y;
-  }
-  return curve;
 }
 
 export class AudioEngine {
@@ -111,6 +93,8 @@ export class AudioEngine {
 
   private chain: Chain | null = null;
   private readonly pool = new VoicePool(VOICE_CAP);
+  /** The voices write each note here; `play` hands it to the pool. */
+  private readonly ref: NoteRef = { note: new Note() };
   private readonly slots = new Map<string, PlantSlot>();
   private readonly stepTable: PlantSlot[][] = [];
   private readonly pending: PendingDisconnect[] = [];
@@ -240,15 +224,19 @@ export class AudioEngine {
   /** Scheduler listener: trigger every plant on `step` at audio time `time`. */
   triggerStep(step: number, time: number): void {
     const list = this.stepTable[step] as PlantSlot[];
-    for (let i = 0; i < list.length; i++) {
-      const s = list[i] as PlantSlot;
-      s.voice.trigger(time, s.params);
-    }
+    for (let i = 0; i < list.length; i++) this.play(list[i] as PlantSlot, time);
   }
 
   /** Stress helper for the offline self-test: every plant at once, regardless of step. */
   triggerAllPlants(time: number): void {
-    for (const s of this.slots.values()) s.voice.trigger(time, s.params);
+    for (const s of this.slots.values()) this.play(s, time);
+  }
+
+  /** One note: the voice builds it into a fresh record, then the pool admits it (and steals if it is full). */
+  private play(s: PlantSlot, time: number): void {
+    this.ref.note = new Note();
+    s.voice.trigger(time, s.params, s.out);
+    this.pool.admit(this.ref.note, time);
   }
 
   /** Peak of the last analyser window in dBFS, measured after the ceiling (what reaches the output). */
@@ -283,18 +271,11 @@ export class AudioEngine {
     const sumBus = ctx.createGain();
     const volume = ctx.createGain();
     volume.gain.value = DEFAULT_VOLUME;
-    const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = LIMITER_THRESHOLD_DB;
-    limiter.knee.value = LIMITER_KNEE_DB;
-    limiter.ratio.value = LIMITER_RATIO;
-    limiter.attack.value = LIMITER_ATTACK_S;
-    limiter.release.value = LIMITER_RELEASE_S;
-    const ceiling = ctx.createWaveShaper();
-    ceiling.curve = makeCeilingCurve();
-    ceiling.oversample = 'none'; // sample-exact ceiling; the compressor ahead of it does the musical work
+    const limiter = createLimiter(ctx);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = ANALYSER_FFT;
-    sumBus.connect(volume).connect(limiter).connect(ceiling).connect(analyser).connect(ctx.destination);
+    sumBus.connect(volume).connect(limiter.input);
+    limiter.output.connect(analyser).connect(ctx.destination);
 
     const reverbIn = ctx.createGain();
     const convolver = ctx.createConvolver();
@@ -308,7 +289,7 @@ export class AudioEngine {
       (step, time) => this.triggerStep(step, time),
       this.tempoOverride ?? this.sig.tempo,
     );
-    return { ctx, sumBus, volume, limiter, ceiling, analyser, reverbIn, convolver, wetReturn, scheduler };
+    return { ctx, sumBus, volume, analyser, reverbIn, convolver, wetReturn, scheduler };
   }
 
   /** Stereo impulse response for `rt60` (already clamped): one RT60 long, at most 2.0 s. Never called from the tick. */
@@ -373,7 +354,7 @@ export class AudioEngine {
     out.connect(send).connect(chain.reverbIn);
     const slot: PlantSlot = {
       plant,
-      voice: this.makeVoice(ctx, plant.voice, out),
+      voice: this.makeVoice(ctx, plant.voice),
       out,
       pan,
       send,
@@ -384,10 +365,10 @@ export class AudioEngine {
   }
 
   /** Phase 0 has Bell, Pad and Pluck only (LLD §7); any other voice type would play as a bell until T-144. */
-  private makeVoice(ctx: BaseAudioContext, type: VoiceType, out: GainNode): Voice {
-    if (type === 'pad') return new Pad(ctx, out, this.pool);
-    if (type === 'pluck') return new Pluck(ctx, out, this.pool, this.pluckSeed++);
-    return new Bell(ctx, out, this.pool);
+  private makeVoice(ctx: BaseAudioContext, type: VoiceType): Voice {
+    if (type === 'pad') return new Pad(ctx, this.ref);
+    if (type === 'pluck') return new Pluck(ctx, this.ref, this.pluckSeed++);
+    return new Bell(ctx, this.ref);
   }
 
   private retune(slot: PlantSlot): void {

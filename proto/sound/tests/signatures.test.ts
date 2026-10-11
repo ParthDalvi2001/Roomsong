@@ -2,10 +2,10 @@
 // Signature v1 (D-021, PLAN_AMENDMENT §6.3): only key root, mode and reverb decay follow the room; tempo does not.
 import { describe, expect, it } from 'vitest';
 
+import { hzForRing } from '../../../src/audio/theory';
 import { DEFAULT_TEMPO, REVERB_RT60_MAX_S, REVERB_RT60_MIN_S, TEMPO_OPTIONS } from '../src/config';
 import { FIXED_PLANTS } from '../src/garden';
 import { PRESETS, nextPresetIndex } from '../src/signatures';
-import { hzForRing } from '../src/theory';
 import { WANDERER } from '../src/types';
 
 describe('signature presets', () => {

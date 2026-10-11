@@ -1,4 +1,6 @@
 // Prototype page (DOM only here; the engine never touches the DOM). Play creates the AudioContext inside the click.
+import { degreeToMidi, VOICE_OCTAVE } from '../../../src/audio/theory';
+
 import {
   CEILING_DBFS,
   CELL_RADIUS_PX,
@@ -20,7 +22,6 @@ import { AudioEngine } from './engine';
 import { FIXED_PLANTS } from './garden';
 import { formatSelfTest, runSelfTest } from './selftest';
 import { PRESETS, nextPresetIndex, type SignaturePreset } from './signatures';
-import { degreeToMidi, VOICE_OCTAVE } from './theory';
 
 import type { Plant, VoiceType } from './types';
 

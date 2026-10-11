@@ -1,10 +1,10 @@
-// TC-AUD-04 (FR-MUS-07, NFR-PERF-10): voice cap with oldest-quietest stealing: the note with the lowest level at the
-// steal time goes; equally quiet notes go oldest first. Pure bookkeeping; the Web Audio fade lives in the voice.
+// The page's own voice cap (FR-MUS-07): the note with the lowest level at the steal time goes; equally quiet notes
+// go oldest first. Pure bookkeeping; the fade lives in the note (src/audio/voices/note.ts, tested in
+// tests/unit/audio). The app's pool of 24 voice channels is src/audio/VoicePool.ts (TC-AUD-04).
 import { describe, expect, it } from 'vitest';
 
 import { VOICE_CAP } from '../src/config';
 import { VoicePool, type PoolNote } from '../src/VoicePool';
-import { ScheduledNote } from '../src/voices/note';
 
 class Note implements PoolNote {
   stolenAt: number | null = null;
@@ -112,15 +112,5 @@ describe('VoicePool', () => {
     expect(pool.active).toBe(24);
     expect(notes.filter((n) => n.stolenAt !== null)).toHaveLength(1);
     expect(notes[0]?.stolenAt).not.toBeNull();
-  });
-});
-
-describe('ScheduledNote.levelAt (what the pool compares)', () => {
-  it('is the peak through the attack and hold, then falls exponentially from the decay start', () => {
-    const note = new ScheduledNote(0, 5, {} as GainNode, [], 0.5, 1, 0.25);
-    expect(note.levelAt(0)).toBe(0.5);
-    expect(note.levelAt(1)).toBe(0.5);
-    expect(note.levelAt(1.25)).toBeCloseTo(0.5 / Math.E, 9);
-    expect(note.levelAt(3)).toBeLessThan(0.001);
   });
 });

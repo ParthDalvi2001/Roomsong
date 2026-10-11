@@ -6,6 +6,8 @@
 // Two more renders check that a plant on the right or left of the bed really lands on that side (stereo pan by step).
 // Runs in any browser (no user gesture needed for OfflineAudioContext); Node has no Web Audio, so this is
 // exercised from the page (`?selftest=1`) and headless by `node scripts/offline-check.mjs`.
+import { Scheduler } from '../../../src/audio/Scheduler';
+
 import {
   CEILING_DBFS,
   RINGS,
@@ -22,7 +24,6 @@ import {
 } from './config';
 import { AudioEngine } from './engine';
 import { FIXED_PLANTS } from './garden';
-import { Scheduler } from './scheduler';
 import { WANDERER, type Plant } from './types';
 
 export interface RenderCheck {

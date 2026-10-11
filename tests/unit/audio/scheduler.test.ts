@@ -1,10 +1,11 @@
-// TC-AUD-02 (FR-MUS-03): fake clock; 16 steps/bar; look-ahead ≥ 100 ms; no drift over 1000 bars;
+// TC-AUD-02 (FR-MUS-03): fake clock; 16 steps/bar; 120 ms look-ahead, 25 ms tick; no drift over 1000 bars;
 // plus ordering, no missed steps under tick jitter, tempo change, and clock-derived phase.
 import { describe, expect, it } from 'vitest';
 
-import { LOOK_AHEAD_S, STEPS, TICK_MS } from '../src/config';
-import { mulberry32 } from '../src/prng';
-import { Scheduler, type StepListener } from '../src/scheduler';
+import { LOOK_AHEAD_S, TICK_MS } from '../../../src/audio/config.js';
+import { mulberry32 } from '../../../src/audio/prng.js';
+import { Scheduler, type StepListener } from '../../../src/audio/Scheduler.js';
+import { STEPS } from '../../../src/garden/index.js';
 
 interface Ev {
   step: number;
@@ -50,17 +51,15 @@ describe('Scheduler configuration', () => {
   });
 
   it('step duration follows the tempo: 84 BPM, 4 beats/bar, 16 steps → 60/84/4 s', () => {
-    const { sched } = harness(84);
-    expect(sched.stepDurationS()).toBeCloseTo(60 / 84 / 4, 12);
-    sched.setBpm(96);
-    expect(sched.stepDurationS()).toBeCloseTo(60 / 96 / 4, 12);
+    expect(Scheduler.stepDurationFor(84)).toBeCloseTo(60 / 84 / 4, 12);
+    expect(Scheduler.stepDurationFor(96)).toBeCloseTo(60 / 96 / 4, 12);
   });
 });
 
 describe('Scheduler: one bar', () => {
   it('emits exactly 16 steps 0..15 in bar 0 at exact multiples of the step duration', () => {
     const { clock, sched, events } = harness(84);
-    const stepDur = sched.stepDurationS();
+    const stepDur = Scheduler.stepDurationFor(84);
     sched.start(0.05);
     const t0 = clock.now() + 0.05;
     runFor(clock, sched, 0.05 + 16 * stepDur - 1e-6 - LOOK_AHEAD_S);
@@ -101,7 +100,7 @@ describe('Scheduler: one bar', () => {
 describe('Scheduler: no drift over 1000 bars (TC-AUD-02)', () => {
   it('step 15999 lands at t0 + 15999 × stepDur within 1 µs, with no missed or duplicated steps', () => {
     const { clock, sched, events } = harness(84);
-    const stepDur = sched.stepDurationS();
+    const stepDur = Scheduler.stepDurationFor(84);
     sched.start(0.05);
     const t0 = clock.now() + 0.05;
     runFor(clock, sched, 0.05 + 1000 * 16 * stepDur - LOOK_AHEAD_S - 1e-6);
@@ -123,7 +122,7 @@ describe('Scheduler: no drift over 1000 bars (TC-AUD-02)', () => {
 describe('Scheduler: robustness', () => {
   it('under seeded tick jitter (5–60 ms) every step is still emitted exactly once at its exact time', () => {
     const { clock, sched, events } = harness(96);
-    const stepDur = sched.stepDurationS();
+    const stepDur = Scheduler.stepDurationFor(96);
     const rnd = mulberry32(42);
     sched.start(0.05);
     const t0 = clock.now() + 0.05;
@@ -147,7 +146,7 @@ describe('Scheduler: robustness', () => {
     const before = events.length;
     clock.advance(0.5); // main thread stalled
     sched.tick();
-    const stepDur = sched.stepDurationS();
+    const stepDur = Scheduler.stepDurationFor(84);
     const emitted = events.length - before;
     expect(emitted).toBeGreaterThanOrEqual(Math.floor(0.5 / stepDur));
     for (let i = 1; i < events.length; i++) {
@@ -162,10 +161,10 @@ describe('Scheduler: robustness', () => {
     const { clock, sched, events } = harness(84);
     sched.start(0.05);
     runFor(clock, sched, 1);
-    const slowDur = sched.stepDurationS();
+    const slowDur = Scheduler.stepDurationFor(84);
     const lastBefore = events[events.length - 1] as Ev;
     sched.setBpm(96);
-    const fastDur = sched.stepDurationS();
+    const fastDur = Scheduler.stepDurationFor(96);
     runFor(clock, sched, 2);
     const after = events.slice(events.findIndex((e) => e === lastBefore) + 1);
     expect(after.length).toBeGreaterThan(4);
@@ -189,13 +188,40 @@ describe('Scheduler: robustness', () => {
   });
 });
 
+describe('Scheduler: a listener that throws', () => {
+  it('cannot stall the clock: the step is not tried again, and the steps after it are emitted', () => {
+    const clock = new FakeClock();
+    const steps: number[] = [];
+    const sched = new Scheduler(
+      clock,
+      (step) => {
+        if (step === 2) throw new Error('a bad trigger');
+        steps.push(step);
+      },
+      84,
+    );
+    sched.start(0.05);
+    let thrown = 0;
+    for (let i = 0; i < 60; i++) {
+      try {
+        sched.tick();
+      } catch {
+        thrown++;
+      }
+      clock.advance(TICK_MS / 1000);
+    }
+    expect(thrown).toBe(1); // the caller sees it once, not on every tick from then on
+    expect(steps).toEqual([0, 1, 3, 4, 5, 6, 7, 8]);
+  });
+});
+
 describe('Scheduler: clock-derived phase (tide render reads the audio clock, not the tick)', () => {
   it('barPhase and stepIndex are computed from clock.now()', () => {
     const { clock, sched } = harness(84);
     expect(sched.barPhase()).toBe(0);
     expect(sched.stepIndex()).toBe(0);
     sched.start(0.05);
-    const stepDur = sched.stepDurationS();
+    const stepDur = Scheduler.stepDurationFor(84);
     runFor(clock, sched, 0.5);
     clock.t = 10 + 0.05 + 3.5 * stepDur;
     expect(sched.stepIndex()).toBe(3);
@@ -212,5 +238,43 @@ describe('Scheduler: clock-derived phase (tide render reads the audio clock, not
     sched.start(0.5);
     expect(sched.barPhase()).toBe(0);
     expect(sched.stepIndex()).toBe(0);
+  });
+
+  it('a tempo change does not move the phase: the time up to the next step was played at the old tempo', () => {
+    for (const [from, to] of [
+      [60, 120],
+      [120, 60],
+      [84, 96],
+    ] as const) {
+      const { clock, sched } = harness(from);
+      const steps = (): number => (sched.barIndex() + sched.barPhase()) * STEPS;
+      sched.start(0.05);
+      runFor(clock, sched, 3); // some steps in, and between two steps
+      const before = steps();
+      const stepBefore = sched.stepIndex();
+
+      sched.setBpm(to);
+      expect(steps(), `${from} → ${to}`).toBeCloseTo(before, 9);
+      expect(sched.stepIndex(), `${from} → ${to}`).toBe(stepBefore);
+      // A slider sends many changes before the next step is scheduled: none of them moves the phase either.
+      sched.setBpm(from);
+      sched.setBpm(to);
+      expect(steps(), `${from} → ${to}, again`).toBeCloseTo(before, 9);
+
+      // Through the next step and on, the phase runs forward without a jump, then at the new tempo.
+      const fastest = Math.min(Scheduler.stepDurationFor(from), Scheduler.stepDurationFor(to));
+      let last = before;
+      for (let i = 0; i < 100; i++) {
+        sched.tick();
+        clock.advance(0.01);
+        const now = steps();
+        expect(now).toBeGreaterThan(last);
+        expect(now - last).toBeLessThanOrEqual(0.01 / fastest + 1e-9);
+        last = now;
+      }
+      const a = steps();
+      clock.advance(Scheduler.stepDurationFor(to));
+      expect(steps() - a).toBeCloseTo(1, 9);
+    }
   });
 });

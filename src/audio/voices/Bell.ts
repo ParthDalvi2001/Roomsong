@@ -1,5 +1,6 @@
 // Bell (LLD §7): 2-operator FM, ratio 3.5, modulation index decays, exponential amplitude decay.
 // Hue (cutoffMul) scales the onset index → brighter or mellower strike; height sets gain and decay length.
+// Stateless: one instance plays every bell note, on whichever voice channel it is handed.
 import {
   BELL_ATTACK_S,
   BELL_FM_INDEX,
@@ -8,21 +9,17 @@ import {
   BELL_FM_RATIO,
   BELL_RELEASE_TAU_DIV,
   BELL_TAIL_TAUS,
-} from '../config';
+} from '../config.js';
 
-import { ScheduledNote } from './note';
-
-import type { Voice, VoiceParams } from '../types';
-import type { VoicePool } from '../VoicePool';
+import type { NoteRef, Voice, VoiceParams } from './note.js';
 
 export class Bell implements Voice {
   constructor(
     private readonly ctx: BaseAudioContext,
-    private readonly output: AudioNode,
-    private readonly pool: VoicePool,
+    private readonly ref: NoteRef,
   ) {}
 
-  trigger(time: number, p: VoiceParams): void {
+  trigger(time: number, p: VoiceParams, out: AudioNode): void {
     const ctx = this.ctx;
     const carrier = ctx.createOscillator();
     carrier.type = 'sine';
@@ -42,20 +39,20 @@ export class Bell implements Voice {
     env.gain.setValueAtTime(0, time);
     env.gain.linearRampToValueAtTime(p.gain, time + BELL_ATTACK_S);
     env.gain.setTargetAtTime(0, time + BELL_ATTACK_S, tau);
-    carrier.connect(env).connect(this.output);
+    carrier.connect(env).connect(out);
 
     const end = time + BELL_ATTACK_S + p.release + BELL_TAIL_TAUS * tau;
     carrier.start(time);
     mod.start(time);
     carrier.stop(end);
     mod.stop(end);
-    this.pool.admit(
-      new ScheduledNote(time, end, env, [carrier, mod], p.gain, time + BELL_ATTACK_S, tau),
-      time,
-    );
+    const note = this.ref.note;
+    note.begin(time, end, env, p.gain, time + BELL_ATTACK_S, tau);
+    note.add(carrier);
+    note.add(mod);
   }
 
   dispose(): void {
-    // Nothing persistent: the plant's output gain is owned by the engine; sounding notes finish on their own.
+    // Nothing persistent: a note's nodes are single-use and finish on their own.
   }
 }

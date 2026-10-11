@@ -1,5 +1,5 @@
 // Karplus-Strong pluck (LLD §7) rendered by pure code into a buffer. A native DelayNode cannot loop shorter than one
-// render quantum (128 samples ≈ 2.7 ms → max ≈ 370 Hz), so the string is rendered here once per plant and played
+// render quantum (128 samples ≈ 2.7 ms → max ≈ 370 Hz), so the string is rendered here, outside the tick, and played
 // back through an AudioBufferSourceNode; it stays synthesised at runtime (ADR-002: no audio files ship).
 import {
   STRING_FADE_IN_SAMPLES,
@@ -7,8 +7,8 @@ import {
   STRING_T60_LONG_S,
   STRING_T60_SHORT_S,
   T60_AMPLITUDE,
-} from './config';
-import { mulberry32 } from './prng';
+} from './config.js';
+import { mulberry32 } from './prng.js';
 
 /**
  * Fill `out` with a plucked string at `hz`. `damping` 0..1 shortens the note (T60 2.5 s → 0.4 s); `seed` fixes the

@@ -1,12 +1,15 @@
 // TC-AUD-01 (FR-MUS-02): ring 0..4 → scale degree 0..4, inner = low; 5 degrees = one pentatonic octave;
-// every note in the mode's scale set; degree ≥ 5 wraps an octave instead of throwing.
+// every note in the mode's scale set; degree ≥ 5 wraps an octave instead of throwing. The three mode sets and
+// their no-semitone property are tested where they live now: tests/unit/garden/config.test.ts.
 import { describe, expect, it } from 'vitest';
 
-import { MODES, VOICE_OCTAVE, degreeToMidi, hzForRing, isInScale, midiToHz } from '../src/theory';
-import { WANDERER, type ModeId, type RoomSignature } from '../src/types';
+import { VOICE_OCTAVE, degreeToMidi, hzForRing, midiToHz } from '../../../src/audio/theory.js';
+import { MODE_DEGREES, type ModeId } from '../../../src/garden/index.js';
 
-const MODE_IDS = Object.keys(MODES) as ModeId[];
+const MODE_IDS = Object.keys(MODE_DEGREES) as ModeId[];
 const KEY_ROOTS = [-3, 0, 2, 4] as const;
+/** The Wanderer tuning (FR-MUS-02): C major pentatonic. */
+const WANDERER = { keyRoot: 0, mode: 'majorPent' } as const;
 
 describe('midiToHz', () => {
   it('maps A4 (69) to 440 Hz and C4 (60) to 261.63 Hz', () => {
@@ -37,11 +40,12 @@ describe('degreeToMidi', () => {
     }
   });
 
-  it('every ring note is in the scale set of its mode', () => {
+  it('every ring note is in the scale set of its mode, in every octave', () => {
     for (const mode of MODE_IDS) {
       for (const root of KEY_ROOTS) {
-        for (let r = 0; r < 5; r++) {
-          expect(isInScale(degreeToMidi(root, mode, r), root, mode)).toBe(true);
+        for (let degree = -5; degree < 10; degree++) {
+          const semitonesAboveRoot = degreeToMidi(root, mode, degree) - 60 - root;
+          expect(MODE_DEGREES[mode]).toContain(((semitonesAboveRoot % 12) + 12) % 12);
         }
       }
     }
@@ -72,27 +76,6 @@ describe('degreeToMidi', () => {
   });
 });
 
-describe('MODES', () => {
-  it('are exactly the three D-025 pentatonic sets (PLAN_AMENDMENT §6.3); the hexatonics are cut', () => {
-    expect(MODES).toEqual({
-      majorPent: [0, 2, 4, 7, 9],
-      minorPent: [0, 3, 5, 7, 10],
-      susPent: [0, 2, 5, 7, 10],
-    });
-  });
-
-  it('are anhemitonic: no two degrees a semitone apart, octave wrap included, so adjacent rings never clash', () => {
-    for (const mode of MODE_IDS) {
-      const scale = MODES[mode];
-      expect(scale).toHaveLength(5);
-      for (let i = 0; i < scale.length; i++) {
-        const next = i + 1 < scale.length ? (scale[i + 1] as number) : (scale[0] as number) + 12;
-        expect(next - (scale[i] as number)).toBeGreaterThanOrEqual(2);
-      }
-    }
-  });
-});
-
 describe('hzForRing (voice base octaves, LLD §5.2)', () => {
   it('bell/pluck start at C4, pad at C3, bass at C2, shimmer at C5', () => {
     expect(VOICE_OCTAVE.bell).toBe(0);
@@ -108,7 +91,7 @@ describe('hzForRing (voice base octaves, LLD §5.2)', () => {
 
   it('re-tune: a new signature changes pitches while the ring stays the same', () => {
     // A sus pentatonic below C (A3 B3 D4 E4 G4) differs on every ring from C major pentatonic (C4 D4 E4 G4 A4).
-    const hall: RoomSignature = { ...WANDERER, keyRoot: -3, mode: 'susPent' };
+    const hall = { keyRoot: -3, mode: 'susPent' } as const;
     for (let r = 0; r < 5; r++) {
       const a = hzForRing(WANDERER, r, 'bell');
       const b = hzForRing(hall, r, 'bell');

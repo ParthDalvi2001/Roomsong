@@ -1,7 +1,7 @@
 // Pluck = Karplus-Strong (LLD §7) rendered into a buffer by pure code, so it can be tested in Node.
 import { describe, expect, it } from 'vitest';
 
-import { renderKarplusStrong } from '../src/karplus';
+import { renderKarplusStrong } from '../../../src/audio/karplus.js';
 
 const SR = 48000;
 

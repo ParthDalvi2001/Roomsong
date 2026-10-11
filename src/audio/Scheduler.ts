@@ -2,7 +2,9 @@
 // "Two clocks": a wall-clock tick (25 ms, owned by the caller) asks `tick()`, which schedules every step whose
 // audio time falls before now + LOOK_AHEAD_S. Times are computed from an anchor (no accumulated += drift).
 // Hot path (`tick`): no allocations; the listener receives primitives.
-import { BEATS_PER_BAR, LOOK_AHEAD_S, SECONDS_PER_MINUTE, STEPS } from './config';
+import { STEPS } from '../garden/index.js';
+
+import { BEATS_PER_BAR, LOOK_AHEAD_S, SECONDS_PER_MINUTE } from './config.js';
 
 export interface Clock {
   /** Audio-clock seconds (AudioContext.currentTime). */
@@ -13,8 +15,10 @@ export type StepListener = (step: number, time: number, bar: number) => void;
 
 export class Scheduler {
   private stepDur: number;
+  /** The step duration that was in force up to `anchorTime`: the tide phase before the anchor ran at it. */
+  private stepDurBefore: number;
   private running = false;
-  /** Audio time of absolute step `anchorIndex`; re-based on every tempo change. */
+  /** Audio time of absolute step `anchorIndex`; re-based on a tempo change. */
   private anchorTime = 0;
   private anchorIndex = 0;
   /** Absolute index (bar × STEPS + step) of the next step to schedule. */
@@ -25,16 +29,12 @@ export class Scheduler {
     private readonly listener: StepListener,
     bpm: number,
   ) {
-    this.stepDur = Scheduler.stepDurationFor(bpm);
+    this.stepDur = this.stepDurBefore = Scheduler.stepDurationFor(bpm);
   }
 
   /** Seconds per step at `bpm`: 4 beats and 16 steps per bar (FR-MUS-03). */
   static stepDurationFor(bpm: number): number {
     return (BEATS_PER_BAR * SECONDS_PER_MINUTE) / bpm / STEPS;
-  }
-
-  stepDurationS(): number {
-    return this.stepDur;
   }
 
   /** Begin at step 0, bar 0, `startDelayS` after the current clock time. */
@@ -49,11 +49,14 @@ export class Scheduler {
     this.running = false;
   }
 
-  /** Change tempo: the next unscheduled step keeps its time; later steps use the new spacing. */
+  /** Change tempo: the next unscheduled step keeps its time; later steps use the new spacing. The phase does not jump. */
   setBpm(bpm: number): void {
-    if (this.running) {
+    // Re-anchor on the next unscheduled step. When no step was scheduled since the last change (a slider sends
+    // many), that step is the anchor already, and the duration before it is still the one from before that change.
+    if (this.running && this.nextIndex !== this.anchorIndex) {
       this.anchorTime = this.timeOf(this.nextIndex);
       this.anchorIndex = this.nextIndex;
+      this.stepDurBefore = this.stepDur;
     }
     this.stepDur = Scheduler.stepDurationFor(bpm);
   }
@@ -65,8 +68,10 @@ export class Scheduler {
     let t = this.timeOf(this.nextIndex);
     while (t < horizon) {
       const i = this.nextIndex;
-      this.listener(i % STEPS, t, Math.floor(i / STEPS));
+      // Counted before the listener runs: a listener that throws loses its step, not the clock (it would otherwise
+      // be handed the same step on every tick from then on).
       this.nextIndex = i + 1;
+      this.listener(i % STEPS, t, Math.floor(i / STEPS));
       t = this.timeOf(this.nextIndex);
     }
   }
@@ -92,7 +97,8 @@ export class Scheduler {
 
   private elapsedSteps(): number {
     if (!this.running) return 0;
-    const e = this.anchorIndex + (this.clock.now() - this.anchorTime) / this.stepDur;
+    const dt = this.clock.now() - this.anchorTime;
+    const e = this.anchorIndex + dt / (dt < 0 ? this.stepDurBefore : this.stepDur);
     return e < 0 ? 0 : e;
   }
 }

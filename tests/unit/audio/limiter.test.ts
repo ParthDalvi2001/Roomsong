@@ -1,10 +1,11 @@
 // FR-MUS-06 / TC-AUD-05 (pure part): the WaveShaper ceiling can never output ≥ −1 dBFS, is exactly linear below
-// its knee (no distortion at normal levels), monotonic and odd-symmetric. The offline render check covers the rest.
+// its knee (no distortion at normal levels), monotonic and odd-symmetric. A WaveShaperNode clamps its input to the
+// ends of the curve, so the curve's own maximum is the most the stage can ever put out.
 import { describe, expect, it } from 'vitest';
 
-import { CEILING_DBFS, CEILING_KNEE } from '../src/config';
-import { makeCeilingCurve } from '../src/engine';
-import { dbToGain } from '../src/mapping';
+import { CEILING_DBFS, CEILING_KNEE } from '../../../src/audio/config.js';
+import { makeCeilingCurve } from '../../../src/audio/limiter.js';
+import { dbToGain } from '../../../src/audio/mapping.js';
 
 describe('makeCeilingCurve', () => {
   const curve = makeCeilingCurve(4097);
