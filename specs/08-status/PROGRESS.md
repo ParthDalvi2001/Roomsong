@@ -29,7 +29,7 @@
 | T-123 Room and placement | fullstack-dev | **doing** | review: approve after fixes (33 cases worked by hand, all correct against the written rule). Fix pass running: a better rule for when a table counts (D-034), two height limits, tests for the gaps. With no table and no pinch the bed floats after 13 s; a hint for that wait comes with T-128 |
 | T-125 Garden visuals | frontend-dev | **doing** | review: approve after fixes (14 draw calls confirmed; positions and directions right; nothing allocated per frame). Fix pass running: two holes in the flash limit closed (the sweeping light now fades in and out under the limit), plants no longer vanish when a whole bed is swapped at once, colours now match the palette. The preview at http://127.0.0.1:4190/proto/bed/ is the version from before these fixes |
 | T-126 Landing page and captions | frontend-dev | **doing** | review: approve after fixes (16 view-box cases worked by hand all match; keyboard order and screen-reader structure right). Fix pass running: a caption that could get stuck on screen, a clear message when the garden fails to load, stronger caption contrast over a bright wall, tests for the gaps |
-| T-141 Room signature | backend-dev | **doing** | built on its branch: the rule that turns room size into key, scale and echo length, with the default for an unknown room; 58 unit tests, verify green. Independent review running |
+| T-141 Room signature | backend-dev | **doing** | review: approve after fixes (57 rooms worked by hand all match the rule; the audio change alters no sound). A short fix pass is running: two test gaps, one guard line, corrected wording. The review also showed the scale is less stable between visits than the design text claimed (see Needs you, item 21) |
 | T-117 Coverage gate | qa-engineer | **doing** | makes the 80 % test-coverage rule real: one dev tool, thresholds per module, a CI step; own worktree |
 | T-144 Bass and Choir voices | backend-dev | **doing** | the last two of the five instruments; own worktree |
 | T-161 Daily seed and growth | backend-dev | **doing** | one new seed per day, plants grow with real time; the garden half only; own worktree |
@@ -63,6 +63,8 @@
 
 19. **FYI, say if you disagree (D-034):** a table now counts when the bed can reach it (its nearest point within 0.75 m in front of you), not when its centre is within 1.2 m. A long table used from its short end now works; a small table too far to touch no longer counts.
 20. **FYI, say if you disagree (D-033):** if two saved gardens ever exist, the older one is shown and the newer one is kept as a backup.
+
+21. **Know this about "the room tunes the song" (from the T-141 review); no action yet:** the scale comes from ceiling height, with steps at 2.60 m and 2.90 m. By arithmetic about 1 room in 5 has a ceiling within the measuring error (5 cm) of a step, so such a room could get a different scale on another visit; a rough model says about 1 visit in 14 at worst, about 1 in 70 if the headset measures five times better than assumed. The key and the echo have the same kind of risk, smaller. Nothing is decided: the headset test (T-129) will measure the real drift, and only then do we choose between keeping it, remembering the last result, or wording the promise more softly.
 
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
@@ -100,6 +102,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **14:19 IST (Oct 11) — T-141 review back:** approve after fixes, no blocker; 57 hand-worked rooms all match. Its main point is not about code: with ceilings spread evenly, about 22 % of rooms sit within 5 cm of a scale boundary, so "the same room gives the same scale" can fail more often than the design text said. Text corrected in the fix pass; the device run will measure the real drift (T-129).
 - **14:13 IST (Oct 11) — T-126 review back:** approve after fixes, no blocker. Three majors, all small: a withdrawn caption could still show and block the queue; a failed load left the page saying "Getting the garden ready" for ever; caption text over a white wall could fall under the contrast rule. Fix pass running. For T-128: the browser can start a session without the Enter click, which the sound needs.
 - **14:07 IST (Oct 11) — T-125 review back:** approve after fixes, no blocker. Three majors, all small: two paths around the flash limit (a light that has never pulsed could flicker; the sweeping light's show and hide were not counted), and plants not drawn when every plant is replaced in one step. Also: plant colours were paler than the palette. Fix pass running.
 - **14:04 IST (Oct 11) — session restart (the new session began 14:02 after about 50 idle minutes):** five agents resumed by id (T-123 fix pass, reviews of T-125, T-126 and T-141, T-117 coverage gate). On Parth's word two more tasks started: T-144 Bass and Choir voices and T-161 daily seed and growth (D-035, cap 7). T-123 review: approve after fixes; the table rule is reworded (D-034).
