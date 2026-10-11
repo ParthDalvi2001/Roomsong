@@ -1,6 +1,16 @@
 // Public API of the `garden` module (API_SPEC §1.1, LLD §1). Other modules import from here only, never from
 // files inside the folder (CODING_GUIDELINES §3). The pure files import nothing but plain types from core/.
-export { BED_INNER, BED_OUTER, PULL_RANGE_M, RINGS, STEPS } from './config.js';
+export {
+  BED_INNER,
+  BED_OUTER,
+  PULL_RANGE_M,
+  REVERB_RT60_DEFAULT_S,
+  REVERB_RT60_MAX_S,
+  REVERB_RT60_MIN_S,
+  REVERB_RT60_STEPS_S,
+  RINGS,
+  STEPS,
+} from './config.js';
 export { MODE_DEGREES } from './model.js';
 export type {
   BedZone,
@@ -27,4 +37,5 @@ export {
   setHeight,
   undoRemove,
 } from './rules.js';
+export { chordDegrees, roomSignature, WANDERER } from './signature.js';
 export { bedZone, cellCentre, snapToCell } from './snap.js';

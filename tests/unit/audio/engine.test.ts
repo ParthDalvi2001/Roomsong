@@ -25,7 +25,7 @@ import {
 } from '../../../src/audio/config.js';
 import { dbToGain } from '../../../src/audio/mapping.js';
 import { Scheduler } from '../../../src/audio/Scheduler.js';
-import { RINGS, STEPS } from '../../../src/garden/index.js';
+import { REVERB_RT60_MAX_S, RINGS, STEPS, WANDERER } from '../../../src/garden/index.js';
 
 import { FakeAudioContext, last, type FakeNode } from './fakeAudio.js';
 
@@ -39,15 +39,6 @@ const TICK_S = TICK_MS / 1000;
 const BED = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1];
 /** A level head at 1.20 m over the origin, looking down −z at the bed. */
 const HEAD = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1.2, 0, 1];
-const WANDERER: RoomSignature = {
-  keyRoot: 0,
-  mode: 'majorPent',
-  tempo: 84,
-  reverbRt60: 0.9,
-  reverbSize: 'medium',
-  starterVoices: ['bell', 'pad', 'pluck'],
-  paletteSeed: 0,
-};
 const HALL: RoomSignature = {
   ...WANDERER,
   keyRoot: -3,
@@ -591,6 +582,11 @@ describe('volume and reverb', () => {
     expect(convolver.buffer?.length).toBe(48000 * REVERB_IR_MAX_S);
     expect(wet.gain.last('target')).toMatchObject({ value: WET_RETURN });
     expect(ctx.count('convolver')).toBe(1);
+    // The decay itself was capped at garden's maximum, not only the buffer: 2.0 s is no change now.
+    engine.setSignature({ ...WANDERER, reverbRt60: REVERB_RT60_MAX_S });
+    expect(ctx.buffers).toHaveLength(2);
+    // The longest decay a room can get fits the impulse-response budget (NFR-PERF-10): a longer one would be cut off.
+    expect(REVERB_RT60_MAX_S).toBeLessThanOrEqual(REVERB_IR_MAX_S);
   });
 
   it("setReverb: 'small' is a fixed 0.6 s, 'off' mutes the send, 'auto' goes back to the signature", async () => {

@@ -10,7 +10,14 @@
 // Everything in the diagram but the note is built once, in init(). Hot path = tick(): Scheduler → triggerStep →
 // VoicePool.play → Voice.trigger. A trigger makes a note's own nodes (sources are single-use in Web Audio) and
 // nothing else; the tick's own code makes no object, array or closure (engine.test.ts measures the heap).
-import { cellCentre, MODE_DEGREES, RINGS, STEPS } from '../garden/index.js';
+import {
+  cellCentre,
+  MODE_DEGREES,
+  REVERB_RT60_DEFAULT_S,
+  REVERB_RT60_MAX_S,
+  RINGS,
+  STEPS,
+} from '../garden/index.js';
 
 import {
   IR_SEED,
@@ -18,8 +25,6 @@ import {
   MIX_DB,
   MUTE_TAU_S,
   PARAM_SMOOTH_S,
-  REVERB_DEFAULT_RT60_S,
-  REVERB_IR_MAX_S,
   REVERB_SEND,
   REVERB_SMALL_RT60_S,
   REVERB_SWAP_DELAY_S,
@@ -131,7 +136,7 @@ export class Engine implements AudioEngine {
 
   private reverbMode: 'auto' | 'small' | 'off' = 'auto';
   /** Decay of the signature: the default until the first one, like the Wanderer tuning above. */
-  private signatureRt60 = REVERB_DEFAULT_RT60_S;
+  private signatureRt60 = REVERB_RT60_DEFAULT_S;
   /** The decay the convolver holds or is about to hold; 0 = none yet. */
   private reverbRt60 = 0;
   private pendingIr: AudioBuffer | null = null;
@@ -355,7 +360,7 @@ export class Engine implements AudioEngine {
     g.send.gain.setTargetAtTime(off ? 0 : REVERB_SEND, now, PARAM_SMOOTH_S);
     const rt60 = Math.min(
       this.reverbMode === 'small' ? REVERB_SMALL_RT60_S : this.signatureRt60,
-      REVERB_IR_MAX_S,
+      REVERB_RT60_MAX_S,
     );
     if (off || !(rt60 > 0) || rt60 === this.reverbRt60) return;
     const first = this.reverbRt60 === 0;

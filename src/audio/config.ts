@@ -78,8 +78,6 @@ export const PAN_ROLLOFF = 1;
 export const REVERB_IR_MAX_S = 2.0;
 /** Decay of setReverb('small') (FR-ROOM-06). */
 export const REVERB_SMALL_RT60_S = 0.6;
-/** Decay before the first signature. garden's REVERB_RT60_DEFAULT_S replaces this local number in T-141. */
-export const REVERB_DEFAULT_RT60_S = 0.9;
 /** Wet send level, the same for every channel and every room (UX §6: 20–35 %; D-021). */
 export const REVERB_SEND = 0.28;
 /** Gain of the reverb return while it is open. */

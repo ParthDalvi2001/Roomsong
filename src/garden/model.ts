@@ -75,7 +75,7 @@ export interface RoomSignature {
   tempo: number; // v1: always core's DEFAULT_TEMPO_BPM; the room does not set it (D-021)
   reverbRt60: number; // seconds; one of REVERB_RT60_STEPS_S (LLD §5.8)
   reverbSize: 'small' | 'medium' | 'large'; // label for the Settings UI only; it sets nothing in audio/
-  starterVoices: [VoiceType, VoiceType, VoiceType];
+  starterVoices: readonly [VoiceType, VoiceType, VoiceType]; // frozen, like every signature roomSignature returns
   paletteSeed: number; // uint32 hash of the bucket tuple; 0 = Wanderer
 }
 

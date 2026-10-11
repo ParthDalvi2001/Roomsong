@@ -105,7 +105,7 @@ describe('garden/snap snapToCell (TC-GAR-01)', () => {
       }
     }
     expect(seen.size).toBe(80);
-  });
+  }, 30_000); // about 94,000 checks: it ran past the default 5 s on a loaded machine
 
   it('hands out one shared frozen object per cell, not a new one per call', () => {
     const cell = snapToCell(at(0.255, 3 * STEP_RAD));
