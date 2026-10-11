@@ -340,7 +340,7 @@ describe('the tick builds nothing but the notes it schedules', () => {
     // once a tick would read 16 or more. The least of three rounds, because a collection already due can hit one.
     expect(Math.min(bytesPerRound(tickAll), bytesPerRound(tickAll), bytesPerRound(tickAll))).toBeLessThan(4);
     expect(kept).toEqual({ i: ROUNDS - 1 });
-  });
+  }, 30_000); // four million ticks: over the default 5 s when other agents load the machine
 
   it('the per-frame calls make no object: setListenerPose, and syncPlants when nothing changed', async () => {
     const { ctx, engine } = await start();
