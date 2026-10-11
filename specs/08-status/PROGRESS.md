@@ -91,6 +91,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **11:27 IST (Oct 11) — session restart at 11:27** stopped all five agents a few minutes in; no leftover copy of Claude was running and nothing was lost (the four new builders had written nothing yet). All five resumed by id.
 - **11:22 IST (Oct 11) — parallel mode on (D-032):** Parth asked for more agents at once. Four builders started together: T-122 local save, T-123 room and placement, T-125 garden visuals with a browser preview page, T-126 landing page and captions. The T-121 audio review is still running. T-141 (room signature) waits for the audio merge.
 - **11:11 IST (Oct 11) — T-121 audio engine built** (branch only; 277 unit tests there, verify green; 9-minute soak with a full bed held steady); independent review and the performance check started. Parth asked to see the app without a headset: the dev server with the built-in emulator is running on https://localhost:8081/ (the app scene is still empty; the pinch test page shows its targets).
 - **11:06 IST (Oct 11) — T-124 hands module merged:** both review bugs fixed (a held pinch no longer survives a session end; the pinch fallback is per session), garden wired in; 216 unit tests, verify green, e2e 22 of 22 (2.8 min). The Mac slept from about 02:00 to 10:45, so no work happened in between. T-121 audio engine is still building.
