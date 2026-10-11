@@ -58,7 +58,8 @@ This page judges a joint-distance pinch at its START. The game commits on RELEAS
 results in the table room, and the surface choice in a room with a worktop and in a room with no planes. The
 emulated hand snaps shut in one frame, which moves its pinch point 7.7 cm; the default filter cannot follow
 that, so the test runs with `?beta=100`. `04-built-page-policy` loads the built page under its Content Security
-Policy. Unit tests: `npx vitest run tests/unit/proto-pinch`.
+Policy. Unit tests: `npx vitest run tests/unit/proto-pinch tests/unit/hands` (the pinch detector and the filter
+are the app's own since T-124: `src/hands/poses/pinch.ts`, `src/hands/OneEuroFilter.ts`, `src/hands/config.ts`).
 
 Emulator, software rendering: 2 draw calls a frame (one per eye); 832 triangles in a grid block (measured) and
 2592 in the bed block (computed: 81 discs x 16 triangles x 2 eyes).

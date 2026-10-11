@@ -1,6 +1,6 @@
 # API Specification — Internal Module Contracts, Event Bus, Storage Schema, URL Flags
 
-**Status:** Living · **Owner:** software-architect · **Version:** 1.2.2 (2026-10-11, T-120 and D-029/D-031: the garden contract as built and reviewed, see the Changelog; on plan v2.1 of 2026-10-10: PLAN_AMENDMENT_2026-10-10 §6; D-020, D-021, D-025; v1.2.1 added core's runtime surface as built in T-106)
+**Status:** Living · **Owner:** software-architect · **Version:** 1.2.3 (2026-10-11, T-124: the hands contract as built and reviewed, see the Changelog; v1.2.2 was T-120 and D-029/D-031, the garden contract as built and reviewed; on plan v2.1 of 2026-10-10: PLAN_AMENDMENT_2026-10-10 §6; D-020, D-021, D-025; v1.2.1 added core's runtime surface as built in T-106)
 Roomsong has **no HTTP API** (static app, no backend). This document is the contract **between modules**.
 Rule: change this file first, then the code, in the same PR. Breaking changes bump the section's version note.
 
@@ -234,16 +234,29 @@ export interface HandFrame {
   hand: Hand; tracked: boolean;
   pinch: boolean;      // the hold signal: thumb tip to index tip with hysteresis, debounce and lockout (constants below). A pinch on a plant uses it
   select: boolean;     // the tap signal: the platform's own pinch classifier (selectstart..selectend). Discrete actions use it.
-                       // A source with no platform classifier reports select = pinch (LLD §4, Pinch signal)
+                       // A source with no platform classifier reports select = pinch (LLD §4, Pinch signal). HandSampler decides
+                       // that per session: select = pinch for both hands until either hand's first selectstart of the session
   pinchPos: Vec3;      // world; 1€-filtered
   palmPos: Vec3;       // world; where a delivered seed rests (a hand: just above the palm; a pointer: LLD §11)
-  palmNormal: Vec3; velocity: Vec3;
-} // wristRoll removed (twist cut)
+  palmNormal: Vec3;    // world, unit length, pointing out of the palm
+  velocity: Vec3;      // of the pinch point, world, metres per second
+} // wristRoll removed (twist cut). An untracked sample (tracked = false) leaves the four vectors as they were and keeps `pinch`
+  // as held; `select` goes on following the platform's events (or `pinch`, in a session without them)
 // InputSource (FR-SYS-07): the one seam between an input device and the gesture machine. hands/ owns the interface and the WebXR
 // implementation (IWER's emulated hands arrive through the same WebXR hand API, so they need no adapter); window/ implements it for a pointer.
 export interface InputSource {
   readonly hands: readonly Hand[];                            // the hands this source reports: WebXR = both, pointer = one
-  sample(hand: Hand, timeMs: number, out: HandFrame): void;   // fills `out` for this frame; allocation-free (hot path)
+  sample(hand: Hand, timeMs: number, out: HandFrame): void;   // fills `out` for this frame; creates no objects (hot path)
+}
+export function createHandFrame(hand: Hand): HandFrame;      // untracked and zeroed. The caller keeps one per hand and passes it to sample() every frame
+// HandSampler (v1.2.3): the WebXR InputSource, on raw joints. Precondition: the caller (HandSystem) calls setFrame() in every XR frame
+// before it samples, and detach() on xr:sessionEnd.
+export class HandSampler implements InputSource {
+  readonly hands: readonly Hand[];                            // ['left', 'right']
+  attach(session: XRSession): void;                           // on xr:sessionStart: listens for the session's selectstart / selectend
+  detach(): void;                                             // stops listening and forgets all it held: pinch, select, filters, the select fallback
+  setFrame(frame: XRFrame, space: XRReferenceSpace): void;    // an XRFrame can be read only inside its own callback
+  sample(hand: Hand, timeMs: number, out: HandFrame): void;   // never throws: a joint read that fails reports the hand untracked (logged once per session)
 }
 export type HeldGesture = 'press' | 'carry' | 'drag' | 'pull' | 'none'; // what the pinch had become when it ended.
                                                               // 'none' = it never left the dead zone, or it started on nothing
@@ -257,7 +270,26 @@ export type GestureEvent =
   | { type: 'gesture:palmsOut' } | { type: 'gesture:wake' }
   | { type: 'gesture:trackingLost'; hand: Hand };             // the FR-HND-15 grace expired and the held gesture was reverted
 export interface TargetRef { kind: 'plant'|'seed'|'orb'|'undo'|'bed'|'panel'; id: string }
+// Picker and machine (v1.2.3, as built in T-124). HandSystem (T-128) builds the candidates and the context.
+export interface PickCandidate { readonly target: TargetRef; readonly radius: number; readonly pos: Vec3 } // one Interactable (LLD §3): hit radius in m, world position
+export function pickTarget(pos: Vec3, candidates: readonly PickCandidate[]): TargetRef | null; // FR-HND-04: the nearest candidate that has `pos` within its OWN
+                                                              // radius, else null. Whoever builds the candidates sets each radius to at least HIT_RADIUS_M
+                                                              // (an Interactable's default radius is 0, which is never picked)
+export function toBedLocal(bedPose: Mat4, world: Vec3, out: Vec2): Vec2; // world → bed-local (§1.0 Axes), written into `out`. bedPose = the BedAnchor entity's
+                                                              // matrixWorld.elements, read as rotation + translation (a bed has no scale)
+export function hoverCell(bedLocal: Vec2, nearestFreeCell: (cell: Cell) => Cell | null): Cell | null; // the cell a release there would commit: snapToCell (§1.1),
+                                                              // then the nearest free cell; null off the bed or on a full bed
+export interface GestureContext {                             // what the machine reads when a pinch starts or ends. HandSystem keeps one and refreshes it every frame
+  candidates: readonly PickCandidate[];                       // every Interactable there is this frame
+  bedPose: Mat4 | null;                                       // null while no bed is placed
+  nearestFreeCell: (cell: Cell) => Cell | null;               // garden's nearestFreeCell (§1.1) on the state of the latest garden:changed
+}
+export class GestureMachine {                                 // one per hand. v1 (T-124): IDLE, CARRYING, PINCHED, PRESSED; pull, drag and remove are T-146;
+  constructor(hand: Hand);                                    // the tracking-loss grace, the revert and the hover are T-116
+  update(frame: HandFrame, timeMs: number, context: GestureContext): void; // one sample of that hand; emits gesture:* on the bus.
+}                                                             // Nothing starts, ends or commits on an untracked sample
 // hands/config.ts: thresholds as named constants (render and tests read them; LLD §4, §5.1, §5.7)
+export const PALM_UP_MAX_ANGLE_DEG = 35, PALM_UP_HOLD_MS = 400;           // FR-HND-05: palm normal within the angle of world up, held this long
 export const PINCH_ENTER_M = 0.020, PINCH_RELEASE_M = 0.032;              // FR-HND-02: thumb tip to index tip, hysteresis
 export const PINCH_DEBOUNCE_FRAMES = 2, PINCH_LOCKOUT_MS = 130;           // FR-HND-02; a frame = one InputSource sample (2 = 27.8 ms at 72 Hz)
 export const ONE_EURO_MIN_CUTOFF_HZ = 1.0, ONE_EURO_BETA = 0.0, ONE_EURO_D_CUTOFF_HZ = 1.0; // FR-HND-03: on the pinch point; beta in Hz per m/s (LLD §5.7)
@@ -266,7 +298,9 @@ export const HOVER_DEAD_BAND_M = 0.005;                                   // FR-
 export const TRACKING_GRACE_MS = 200, REVERT_LERP_MS = 150;               // FR-HND-15: grace tunable 150..250
 export const DRAG_DEAD_ZONE_M = 0.02;                                     // FR-HND-08/10: then the dominant axis decides pull or drag
 ```
-`gesture:release` by `gesture`. `zone` is `bedZone` of the bed-local release point in every row; `'outer'` on a dragged plant = remove (FR-HND-11). Garden reads `gesture` and never infers it from `zone` or `target`.
+**As built (v1.2.3, T-124).** A `gesture:*` payload is the `GestureEvent` member of that name, `type` included, and it is an object the emitter reuses for the next event of that kind: a handler reads it at once and copies what it keeps. `gesture:palmUp` fires once per hold (FR-HND-05), only while that hand holds nothing, and again 400 ms after a pinch of that hand ends if the palm is still up; hands does not look at the seed supply, garden decides whether a seed is delivered. Until T-116 adds the hover, `gesture:release.cell` is worked out at the release: `snapToCell` of the release point, then `nearestFreeCell`. Not built yet, declared only: `gesture:pull`, `gesture:drag`, `gesture:palmsOut`, `gesture:wake`, `gesture:trackingLost`, `hands:lost`, `hands:found`, `target:hover`.
+
+`gesture:release` by `gesture`. `zone` is `bedZone` of the bed-local release point in every row; with no bed placed it is `'inner'`, the zone where a release commits nothing (the same answer garden gives for a point it cannot place, §1.1). `'outer'` on a dragged plant = remove (FR-HND-11). Garden reads `gesture` and never infers it from `zone` or `target`.
 
 | `gesture` | `target` | `cell` | `dy` | Who commits what |
 |---|---|---|---|---|
@@ -318,7 +352,7 @@ A consumer never imports the emitter to name a payload: it writes `EventMap['ges
 | `room:signature` | `{ signature: RoomSignature, starterSeeds: boolean }` | garden → audio, render (TuningRipple, palette), onboarding, log (FR-ROOM-11/13). `starterSeeds` = this session issued the starter seeds from `signature.starterVoices` (a new garden); it picks the ripple's table caption (LLD §5.8) |
 | `room:tuned` | `{}` | render (TuningRipple) → onboarding, ui (≤ 4 s after `room:signature`; FR-ROOM-12) |
 | `room:wallsFound` | `{ walls }` | room → render (Could, C4; was Should, D-021) |
-| `gesture:*` | see §1.4 | hands/access → garden, onboarding, ui, render (`gesture:trackingLost` = the grace expired and the gesture was reverted: render lerps a dragged plant back over `REVERT_LERP_MS`) |
+| `gesture:*` | see §1.4: the `GestureEvent` member of that name, `type` included. The object is reused by its emitter, so a handler copies what it keeps (v1.2.3) | hands/access → garden, onboarding, ui, render (`gesture:trackingLost` = the grace expired and the gesture was reverted: render lerps a dragged plant back over `REVERT_LERP_MS`) |
 | `hands:lost` / `hands:found` | `{ hand: Hand }` | hands → render (hand-visibility tint), ui (hint): tint and hint only for a hand that holds a gesture (D-030, LLD §4); garden (listed per sheet 6.3; no action in v1: the model is not touched before a release). Once per loss and once per return, emitted at once, before the grace runs (FR-HND-15) |
 | `target:hover` | `{ hand: Hand, target: TargetRef \| null, cell: Cell \| null }` | hands → render (cell ghost, plant glow), ui. `cell` = the cell a release would commit: the snapped cell resolved to the nearest free one; `null` off the bed or when the bed is full. On change only (FR-HND-16) |
 | `garden:changed` | `{ state: GardenState, diff: { added, removed, changed } }` | garden → audio, render, persistence, ui. `added`, `removed` and `changed` are each a `readonly string[]` of plant ids: planted or put back by undo, removed, moved or reshaped (v1.2.2, D-031) |
@@ -356,3 +390,4 @@ Module interface changes: note here under a "Changelog" entry with date, PR, and
 - 2026-10-11 — T-113 consistency pass (no signature changes; no version change in this entry). **events (§2):** the `hands:lost` / `hands:found` row says the tint and the hint are shown only for a hand that holds a gesture (D-030); the events themselves are unchanged. **flags (§3):** `pinchTest` and `capSpike` marked *Cut (T-104, T-105)*: still parsed, read by nothing; the test pages are opened by address. **LLD, same pass:** §4 the tint and hint rule (D-030: a hand that held a gesture, until `hands:found`, at most 5 s); §5.8 the volume row is labelled as rounded (`raw` decides), the "Tuned by" read-out on the Sound tab is where the room is credited with the key and the echo, and `forceSignature=wanderer` gives the L3/L4 ripple with no caption; §9 the two flags.
 - 2026-10-11 — D-029 (T-120; a clarification: no signature changes, still v1.2.1). **core (§1.0):** the Axes paragraph now says which way the bed faces: bed-local +x to the seated user's right, +y up, +z from the bed centre toward the user; step 0 at +x, steps advancing toward +z (clockwise seen from above), so step 4 is nearest the user, step 8 left, step 12 farthest. The LLD §5.1 formula `θ = atan2(z, x)` is unchanged; LLD §5.5 has the solver orient the bed that way.
 - 2026-10-11 — v1.2.2 (2026-10-11, T-120 and D-029/D-031; the garden contract as built and reviewed; the bed frame of D-029 is the entry above). **garden (§1.1), changed:** `removePlant` returns `Result<{ state: GardenState; undo: UndoToken }>` with reason `notFound` (the old shape had no value for an unknown plant). **garden, decided (D-031):** `undoRemove` keeps the plant: its own cell when free, else the nearest free cell, and nothing on a full bed; the token's 5 s life stays with GardenSystem (T-128); a plant takes its seed's id and seed ids are never reused for the life of a garden. **garden, written down as built:** a new plant starts at height 0.55; a cell that is not on the bed is `notFound`; `full` = the bed has no free cell; `movePlant` onto the plant's own cell is ok; a call that changes nothing returns the same reference; `heightAfterPull` counts a NaN `dy` as 0; `setAnchor` does not validate the pair (the persistence validator does); a point that is not finite is zone `inner`; `snapToCell` and `nearestFreeCell` return shared frozen Cells; `nearestFreeCell` is `null` also for a cell that is not on the bed; `cellCentre` does not validate. **events (§2):** `garden:changed.diff` is `{ added, removed, changed }`, each a `readonly string[]` of plant ids. **LLD, same pass:** §1 the lines for `garden/config.ts` and `garden/model.ts`; §5.1 undo uses `nearestFreeCell`.
+- 2026-10-11 — v1.2.3 (2026-10-11, T-124; the hands contract as built and reviewed; additions only, no v1.2.2 signature changed). **hands (§1.4), added:** `createHandFrame`; `HandSampler` with `attach` / `detach` / `setFrame` and its precondition (a frame every XR frame, `detach` on `xr:sessionEnd`; `sample` never throws); `PickCandidate`, `pickTarget` (each candidate's own radius, set to at least `HIT_RADIUS_M` by whoever builds the candidates), `toBedLocal`, `hoverCell`; `GestureContext` (`candidates`, `bedPose`, garden's `nearestFreeCell` bound to the latest state) and `GestureMachine` (one per hand); `PALM_UP_MAX_ANGLE_DEG = 35`, `PALM_UP_HOLD_MS = 400`. **hands, written down as built:** `palmNormal` is unit length and points out of the palm; `velocity` is the pinch point's, in m/s; an untracked sample keeps the last vectors and the held `pinch`; the `select = pinch` fallback is per session, as in LLD §4; `InputSource.sample` "creates no objects" replaces "allocation-free" (V8 may still box numbers); a release with no bed placed has zone `inner`; `gesture:palmUp` fires once per hold and again 400 ms after a pinch ends, and hands does not check the seed supply; `gesture:release.cell` is computed at the release until T-116 adds the hover. **events (§2):** a `gesture:*` payload carries its own `type` and is reused by its emitter. **LLD, same pass:** §1 `HandSampler` fills the caller's `HandFrame` in place (there is no pool).

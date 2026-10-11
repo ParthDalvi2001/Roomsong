@@ -1,24 +1,22 @@
 // Named constants of the pinch-accuracy test page (T-105, TC-DEV-00). The numbers are sheet 6.2 of
 // specs/08-status/PLAN_AMENDMENT_2026-10-10.md; this page exists to check them on a headset.
 
-/** FR-HND-02: thumb tip to index tip below this starts a pinch; above the release value ends it (hysteresis). */
-export const PINCH_ENTER_M = 0.02;
-export const PINCH_RELEASE_M = 0.032;
-/** FR-HND-02: each edge is confirmed over this many consecutive frames. */
-export const PINCH_DEBOUNCE_FRAMES = 2;
-/** FR-HND-02: no new pinch for this long after a release. */
-export const PINCH_LOCKOUT_MS = 130;
-
-/** FR-HND-03: 1-euro filter on the pinch point. Beta is the value to tune on device (?beta=, LLD 5.7). */
-export const ONE_EURO_MIN_CUTOFF_HZ = 1.0;
-export const ONE_EURO_BETA = 0.0;
-export const ONE_EURO_D_CUTOFF_HZ = 1.0;
+// FR-HND-02/03/04: the pinch thresholds, the 1-euro filter values (beta is the one to tune on device: ?beta=,
+// LLD 5.7), the pick radius and the drawn size of a target are the app's own, so this page tests what ships.
+// Imported file by file, not through hands/index.ts: the page must not load the rest of the module.
+export {
+  HIT_RADIUS_M,
+  ONE_EURO_BETA,
+  ONE_EURO_D_CUTOFF_HZ,
+  ONE_EURO_MIN_CUTOFF_HZ,
+  PINCH_DEBOUNCE_FRAMES,
+  PINCH_ENTER_M,
+  PINCH_LOCKOUT_MS,
+  PINCH_RELEASE_M,
+  TARGET_VISIBLE_DIAMETER_M as TARGET_DIAMETER_M,
+} from '../../../src/hands/config.js';
 /** LLD 5.7 searches beta in about 5 to 50; anything above this in the URL is a typo. */
 export const ONE_EURO_BETA_MAX = 100;
-
-/** FR-HND-04: pick radius around a target (nearest wins) and the drawn size of a target. */
-export const HIT_RADIUS_M = 0.04;
-export const TARGET_DIAMETER_M = 0.025;
 
 /** FR-ROOM-03, D-020: the bed centre, ahead of the head along the floor. */
 export const BED_CENTRE_AHEAD_M = 0.45;

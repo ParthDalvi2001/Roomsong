@@ -35,7 +35,7 @@ src/
 ├── hands/
 │   ├── config.ts               every gesture threshold as a named constant (API_SPEC §1.4)
 │   ├── InputSource.ts          the InputSource interface (FR-SYS-07; API_SPEC §1.4)
-│   ├── HandSampler.ts          WebXR joints + select events → HandFrame (pooled); implements InputSource; IWER's emulated hands take the same path
+│   ├── HandSampler.ts          WebXR joints + select events → the caller's HandFrame, filled in place (no pool); implements InputSource; IWER's emulated hands take the same path
 │   ├── OneEuroFilter.ts
 │   ├── poses/                  pinch.ts, palmUp.ts, palmsOut.ts, wake.ts
 │   ├── GestureMachine.ts       state machine incl. tracking-loss grace and commit on release (see §4)
@@ -167,7 +167,7 @@ HELD, frozen ──(200ms elapsed)──────► IDLE          (emit gest
 **Dominant axis (FR-HND-08/10).** Inside the dead zone (`|d| < DRAG_DEAD_ZONE_M`, 2 cm) a pinched plant does not react. On the first frame outside it the larger part of `d` decides: `|dy| ≥ |dxz|` → PULLING, otherwise DRAGGING. The choice is latched until release, so a pull never turns into a drag. A tie goes to PULLING, the gesture that cannot remove a plant. Provisional until the device pinch test (T-105).
 
 **Hover (FR-HND-16, `hands/TargetPicker.ts`).** Every frame, for each tracked hand, the picker finds what a pinch would act on.
-- *Empty hand:* the nearest `Interactable` within `HIT_RADIUS_M` (4 cm; nearest wins). The current target is kept until another candidate is at least `HOVER_DEAD_BAND_M` (0.5 cm) closer, and it is dropped once it is further away than `HIT_RADIUS_M + HOVER_DEAD_BAND_M`, so the highlight cannot flicker between neighbours or at the edge of the radius.
+- *Empty hand:* the nearest `Interactable` within that target's own radius (at least `HIT_RADIUS_M`, 4 cm; nearest wins; API_SPEC v1.2.3). The current target is kept until another candidate is at least `HOVER_DEAD_BAND_M` (0.5 cm) closer, and it is dropped once it is further away than `HIT_RADIUS_M + HOVER_DEAD_BAND_M`, so the highlight cannot flicker between neighbours or at the edge of the radius.
 - *Carrying a seed or dragging a plant:* the cell a release would commit. The picker snaps the pinch point (`snapToCell`, with the same 0.5 cm dead band between neighbouring cells) and then resolves it with `nearestFreeCell(state, cell, draggedPlantId)`, using the plants of the latest `garden:changed`; a dragged plant's own cell counts as free. The cell is `null` when the zone is not `bed` or the bed is full.
 
 `target:hover { hand, target, cell }` is emitted only when the choice changes; render draws the cell ghost or the plant glow from it. The ghost therefore shows the cell that will get the plant, also when the cell under the hand is occupied, and `gesture:release.cell` is that hovered cell, not a fresh snap. The hover is frozen during a tracking-loss grace and cleared (`target: null, cell: null`) when the grace expires or an empty hand is lost.

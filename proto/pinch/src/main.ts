@@ -1,6 +1,7 @@
 /// <reference types="webxr" />
 // T-105 pinch-accuracy test page (TC-DEV-00): the XR session, the hand joints, drawing, the feedback tones and
-// the results. The logic is in pinch.ts and trials.ts (unit-tested); this file joins it to the browser.
+// the results. The logic is in trials.ts and in the app's own pinch detector and filter (src/hands/), all
+// unit-tested; this file joins it to the browser.
 // Hands only: an input source without hand joints (a controller) is ignored. Nothing is sent anywhere.
 import {
   CircleGeometry,
@@ -14,6 +15,9 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
+
+import { OneEuroFilter } from '../../../src/hands/OneEuroFilter.js';
+import { PinchMachine } from '../../../src/hands/poses/pinch.js';
 
 import {
   BED_CENTRE_AHEAD_M,
@@ -43,7 +47,6 @@ import {
   TARGET_DIAMETER_M,
   TONE_GAIN,
 } from './config.js';
-import { OneEuro, PinchMachine } from './pinch.js';
 import { bedFov, plan, Run, summarize, type PinchSample } from './trials.js';
 
 const TEXT = {
@@ -81,8 +84,8 @@ interface Hand {
   sample: PinchSample;
   tracked: boolean;
   machine: PinchMachine;
-  u: OneEuro;
-  v: OneEuro;
+  u: OneEuroFilter;
+  v: OneEuroFilter;
 }
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -317,8 +320,8 @@ function runSession(session: XRSession, renderer: WebGLRenderer, context: AudioC
     sample: { hand: name, u: 0, v: 0, rawU: 0, rawV: 0, heightM: 0 },
     tracked: false,
     machine: new PinchMachine(),
-    u: new OneEuro(ONE_EURO_MIN_CUTOFF_HZ, beta, ONE_EURO_D_CUTOFF_HZ),
-    v: new OneEuro(ONE_EURO_MIN_CUTOFF_HZ, beta, ONE_EURO_D_CUTOFF_HZ),
+    u: new OneEuroFilter(ONE_EURO_MIN_CUTOFF_HZ, beta, ONE_EURO_D_CUTOFF_HZ),
+    v: new OneEuroFilter(ONE_EURO_MIN_CUTOFF_HZ, beta, ONE_EURO_D_CUTOFF_HZ),
   });
   const leftHand = makeHand('left');
   const rightHand = makeHand('right');
