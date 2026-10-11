@@ -17,7 +17,7 @@ The security goal is therefore: (a) nothing can be injected into what judges run
 | Data | Where | Retention | Leaves device? |
 |---|---|---|---|
 | Garden state (plants, seeds, settings) | IndexedDB / localStorage, origin-scoped | Until the user chooses "New garden" or clears site data | **No** |
-| Anchor handle (opaque UUID from the browser) and its placement level | IndexedDB | Same | **No** |
+| Anchor handle (opaque UUID from the browser) and its placement level | IndexedDB / localStorage (the fallback), origin-scoped: it is part of the garden state | Same | **No** |
 | Room geometry (planes/meshes) | Memory only, per session | Discarded on exit | **No** |
 | Hand joint data | Memory only, per frame | Discarded | **No** |
 | Crash/log data | Console only (dev builds show an overlay) | None | **No** |

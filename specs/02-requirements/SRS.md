@@ -106,7 +106,7 @@ Hosting: static files over HTTPS: GitHub Pages + a mirror of the same build (D-0
 ### 2.6 Persistence
 | ID | Requirement | Pri | Verify |
 |---|---|---|---|
-| FR-PER-01 | Garden state (plants, seeds, settings incl. `dwellMs`, anchor handle and its placement level, timestamps) is saved to IndexedDB (localStorage fallback) within 500 ms of any change, and on `visibilitychange`. | M | T |
+| FR-PER-01 | Garden state (plants, seeds, settings incl. `dwellMs`, anchor handle and its placement level, timestamps) is saved to IndexedDB (localStorage fallback): a save starts within 500 ms of a change, and at once on `visibilitychange`. | M | T |
 | FR-PER-02 | State is versioned with a schema version and migrated forward; corrupt state falls back to a new garden without crashing and keeps a backup copy. | M | T |
 | FR-PER-03 | "New garden" requires a two-step confirmation (pinch + hold 1.5 s). | M | T |
 | FR-PER-04 | No data leaves the device. No analytics, no network calls after assets load. | M | I, T |

@@ -70,10 +70,11 @@ src/
 │   │                           Bass.ts Choir.ts (Must, T-144) + Shimmer.ts (Should) (implement Voice)
 │   └── Variations.ts           Listen-mode arrangement variations (Could, C1; not built)
 ├── persistence/
-│   ├── schema.ts               versioned types + validators
+│   ├── config.ts               storage names, size bounds, SAVE_DEBOUNCE_MS, IDB_OPEN_TIMEOUT_MS (API_SPEC §4)
+│   ├── schema.ts               the version-1 validator, hand-written: the trust boundary for stored data
 │   ├── migrations.ts
-│   ├── Store.ts                IndexedDB (idb-keyval-like minimal) + localStorage fallback
-│   └── PersistenceSystem.ts    debounce + visibility hooks
+│   ├── Store.ts                IndexedDB + localStorage fallback behind one four-call key-value interface; backup
+│   └── PersistenceSystem.ts    the debounce: a plain class that listens to no event; src/index.ts calls save() and flush()
 ├── render/
 │   ├── config.ts               FLASH_CAP_PER_S, FLASH_MIN_DELTA (API_SPEC §1.8); tuning-ripple timeline (§5.8)
 │   ├── BedRenderer.ts          ring/step guides, beat ring
@@ -127,11 +128,11 @@ Added in T-106: `core/config.ts`. Added by plan v2.1: `core/types.ts`, `core/com
 | `PlantView` | `render/` | `plantId`, `voice`, `instanceIndex` | render |
 | `Interactable` | `core/` | `kind: 'plant'\|'seed'\|'orb'\|'undo'\|'panel'`, `id`, `radius`, `worldPos` | render (plants, seeds, the Listen orb, the undo petal), ui (one per panel control) → hands (TargetPicker), access (gaze targets) |
 | `HandState` | `hands/` | `hand: 'left'\|'right'`, `pinch`, `select`, `pinchPos`, `palmPos`, `palmNormal`, `velocity`, `tracked` (no `wristRoll`: twist cut) | hands → access, render, onboarding |
-| `Caption` | `core/` | `key` (a key of `core/strings.ts`), `expiresAt` | render (tuning ripple), persistence ("Saving unavailable"), onboarding, ui → ui (`Captions.ts`, the only reader) |
+| `Caption` | `core/` | `key` (a key of `core/strings.ts`), `expiresAt` | render (tuning ripple), `src/index.ts` ("Saving unavailable", from PersistenceSystem's `onSaveFailed`, §8), onboarding, ui → ui (`Captions.ts`, the only reader) |
 | `RoomSurfaces` | `room/` | `table?`, `nearestWall?`, `ceiling?`: one `SurfaceRef` each (extents + pose, for the ripple) | room → render |
 | `VineTarget` | `render/` | `wallPlaneId`, `path: Vec3[]` | render (Could C4) |
 
-Three components are declared in `core/` because a component has to be imported to be queried or attached, and the import direction (API_SPEC §1) forbids importing a module on the same level or above. `BedAnchor` is read by hands, which sits beside room. `Interactable` is attached by render and ui and read by hands, below them. `Caption` is raised by render, persistence and onboarding and drawn by ui: a module raises a caption by creating an entity with a `Caption`, and never calls `ui/`. Garden uses no component; it gets `room:bedPlaced` and `room:anchored` and needs no pose. All components are registered in `src/components.ts`. The bed's pose (settled in T-106) is the transform of the entity that carries `BedAnchor`, not a component field: elics 3.4.2 has no matrix field type, and IWSDK gives every entity an `object3D`. A reader takes `entity.object3D.matrixWorld.elements`, which is a `Mat4` (API_SPEC §1.0), and null-checks `object3D` first (it is optional on an entity). room/ sets the transform and calls `updateMatrixWorld()` when it places or moves the bed, so a reader in the same frame sees the new pose. `inner` and `outer` are Float64: a Float32 field reads 0.12 back as 0.11999999731779099. Checked against `node_modules/elics/lib/types.d.ts` and `node_modules/@iwsdk/core/dist/ecs/entity.d.ts` (@iwsdk/core 1.0.1).
+Three components are declared in `core/` because a component has to be imported to be queried or attached, and the import direction (API_SPEC §1) forbids importing a module on the same level or above. `BedAnchor` is read by hands, which sits beside room. `Interactable` is attached by render and ui and read by hands, below them. `Caption` is raised by render and onboarding, and by `src/index.ts` for persistence (the save-failed caption, §8: PersistenceSystem is a plain class and creates no entity), and drawn by ui: a module raises a caption by creating an entity with a `Caption`, and never calls `ui/`. Garden uses no component; it gets `room:bedPlaced` and `room:anchored` and needs no pose. All components are registered in `src/components.ts`. The bed's pose (settled in T-106) is the transform of the entity that carries `BedAnchor`, not a component field: elics 3.4.2 has no matrix field type, and IWSDK gives every entity an `object3D`. A reader takes `entity.object3D.matrixWorld.elements`, which is a `Mat4` (API_SPEC §1.0), and null-checks `object3D` first (it is optional on an entity). room/ sets the transform and calls `updateMatrixWorld()` when it places or moves the bed, so a reader in the same frame sees the new pose. `inner` and `outer` are Float64: a Float32 field reads 0.12 back as 0.11999999731779099. Checked against `node_modules/elics/lib/types.d.ts` and `node_modules/@iwsdk/core/dist/ecs/entity.d.ts` (@iwsdk/core 1.0.1).
 Panel controls are direct pinch targets (T-151: "large pinch targets over ray UI"). `ui/Panel.ts` attaches one `Interactable { kind: 'panel' }` per control, so a control goes through the same picker, hover cue and commit on release as a plant, and gaze dwell finds it the same way. How a UIKit control reports its world position is checked with `iwsdk-reference` in T-151.
 
 ### Systems (order matters)
@@ -411,7 +412,8 @@ Unit check for the listener (qa adds it to the audio cases): after `setListenerP
 ## 8. Error handling & recovery
 - Each system's `update` is wrapped: catch → `log.error` → system disabled for 1 s → re-enabled (circuit breaker).
 - Audio context suspended (autoplay) → resume on first user gesture (Enter button already satisfies).
-- Save failure → retry with localStorage; still failing → in-memory only + caption "Saving unavailable" (PersistenceSystem raises a `Caption`, §3; it never calls `ui/`).
+- Save failure → the same write goes to localStorage; still failing → in-memory only (the state stays pending, and the next `save()` or `flush()` tries again) + caption "Saving unavailable". PersistenceSystem calls `onSaveFailed` when writes start to fail, once per run of failures, and `src/index.ts` raises the `Caption` from it (§3); PersistenceSystem listens to no event and never calls `ui/` (API_SPEC §1.5, §2).
+- IndexedDB that does not open within `IDB_OPEN_TIMEOUT_MS` (1.5 s) → the session runs on localStorage alone, so the start never waits for it. A garden already in IndexedDB is not shown in that session and is never overwritten without a backup (API_SPEC §4).
 - Hand tracking lost → grace, revert and hint as in §4 (FR-HND-15); the garden model is never touched before a release, so there is nothing to repair.
 - Anchor restore fails or anchors are unsupported → re-place by the chain, garden kept (§5.5, FR-ROOM-07).
 
