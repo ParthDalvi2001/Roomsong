@@ -31,7 +31,7 @@ Budgets come from `specs/03-design/HLD.md` §7. Fill the table with **measured**
 - [ ] Dirty flags: only changed instances/uniforms updated
 - [ ] No `new Vector3/Array/closure/spread/map/filter` in `update()` or scheduler tick
 - [ ] Alpha-blended overdraw minimal (small glow sprites; no large transparent planes stacked)
-- [ ] Audio: nodes built once; `setTargetAtTime`; pooled panners/voices; no node creation in the tick
+- [ ] Audio: nodes built once; `setTargetAtTime`; pooled panners, channel strips, note records and Pluck strings; the tick creates only a note's single-use sources and envelope (LLD §7.1), nothing else
 - [ ] Particle counts capped and halved in reduced-motion
 
 ## 4. Verdict
