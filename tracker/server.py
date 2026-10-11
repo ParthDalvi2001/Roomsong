@@ -218,9 +218,9 @@ def load_driver(agents):
     project = pathlib.Path.home() / '.claude/projects' / re.sub(r'[^A-Za-z0-9]', '-', str(ROOT))
     copies = leftovers = 0
     try:
-        listing = subprocess.run(['ps', '-axo', 'pid,ppid,command'], capture_output=True, text=True, timeout=5).stdout
+        listing = subprocess.run(['ps', '-axo', 'pid,ppid,comm'], capture_output=True, text=True, timeout=5).stdout
         for line in listing.split('\n'):
-            if 'native-binary/claude' not in line:
+            if not line.rstrip().endswith('native-binary/claude'):
                 continue
             cwd = subprocess.run(['lsof', '-a', '-p', line.split()[0], '-d', 'cwd', '-Fn'], capture_output=True, text=True, timeout=5).stdout
             if any(l[1:].startswith(str(ROOT)) for l in cwd.split('\n') if l.startswith('n')):
