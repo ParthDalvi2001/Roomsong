@@ -32,7 +32,8 @@
 | T-141 Room signature | backend-dev | **done** | merged to develop after independent review and fix: room size gives the key, the scale and the echo length, with a default for an unknown room; the reviewer worked 57 rooms by hand and all matched; contract v1.2.7. Known limit: about 1 room in 5 is close enough to a scale boundary to switch on another day; how often that really happens needs a headset |
 | T-117 Coverage gate | qa-engineer | **doing** | makes the 80 % test-coverage rule real: one dev tool, thresholds per module, a CI step; own worktree |
 | T-144 Bass and Choir voices | backend-dev | **doing** | the last two of the five instruments; own worktree |
-| T-161 Daily seed and growth | backend-dev | **doing** | one new seed per day, plants grow with real time; the garden half only; own worktree |
+| T-161 Daily seed and growth | backend-dev | **doing** | built on its branch: three starter seeds on the first visit, one new seed per calendar day up to five waiting, plants grow in stages at 1, 3 and 7 days and never shrink, a clock set back gives nothing and takes nothing; 44 unit tests, verify green. Independent review running |
+| T-140 Room measurements | fullstack-dev | **doing** | reads floor area, ceiling height, room volume, walls and the table from what the headset reports, for the room signature; own worktree |
 | T-106 `core/` module | software-architect | **done** | develop 6541342 after independent review and fix; 45 unit tests; API_SPEC v1.2.1 |
 | T-104 Capability spike page | software-architect | **done-pending-device** | develop 31bc96a after independent review and fix; every step has a timeout and partial results are saved; the device run (TC-DEV-0A) waits for a headset |
 | T-105 Pinch-accuracy page | frontend-dev | **done-pending-device** | develop 47bd268 after independent review and fix; emulator-verified; the device run (TC-DEV-00) waits for a headset |
@@ -102,6 +103,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-10
+- **14:36 IST (Oct 11) — T-161 garden half built** (branch only; verify green); independent review started, with dates and time zones as its main target. T-140 room measurements started in the slot the room merge freed. T-117 coverage gate handed in: sent back for one tidy-up (the browser-only database code gets its own file so the 80 % rule holds for all four modules).
 - **14:34 IST (Oct 11) — T-141 room signature merged:** 689 unit tests, verify green, the audio render spec re-run. SRS FR-ROOM-11 now says the scale, not the echo, is the least stable output.
 - **14:32 IST (Oct 11) — T-123 room and placement merged:** all review findings fixed, the table rule of D-034 in code and in SRS FR-ROOM-01; 630 unit tests, verify green, e2e 38 of 38 (5.9 min). T-141 fix pass and T-117 coverage gate handed in; merging next.
 - **14:20 IST (Oct 11) — session restart at 14:18, with a leftover copy.** The previous copy of Claude (process 5819, started 14:02) kept running with no window after the reload and was still driving all seven agents and committing status (a2d4fde is its commit; it also sent the T-141 fix pass). Two drivers on one repository is the 2026-10-10 failure, so the leftover was stopped at 14:21 and all seven agents were resumed by id in the new session. No work lost: every worktree kept its commits; two had unsaved edits, which their agents re-read first.
