@@ -45,7 +45,8 @@ Agents: read this fully before your first commit. Reviewers: reject PRs that vio
 ## 6. XR-specific rules
 - All world positions are in the XR reference space; convert to bed-local only via the inverse (cached) of the bed's pose. `BedAnchor` has no pose field: the pose is the transform of the entity that carries it, `entity.object3D.matrixWorld` (LLD §3). `object3D` is optional on an entity: null-check it.
 - Never assume planes, meshes, anchors or a second hand exist. Every adapter has a `supported()` and the caller handles `false`.
-- Essential UI goes through `ui/FovGuard` (NFR-FOV-01). Captions through `ui/Captions` only; strings from `core/strings.ts` only.
+- Essential UI goes through `ui/FovGuard` (NFR-FOV-01). Captions through `ui/Captions` only.
+- Strings: `core/strings.ts` `STRINGS` is the caption table (everything a `Caption.key` may name, at most six words each); the 2D page's copy lives in `ui/strings.ts`; no user-facing text anywhere else (API_SPEC §1.0).
 - Gesture thresholds only in `hands/config.ts`. Any tuned value from a device session is committed with the date and device in a comment.
 - Flash cap (FR-UI-11): every brightness animation goes through `render/FlashGuard`; no element changes luminance more than 3 times per second. No camera-locked parallax in reduced-motion mode.
 

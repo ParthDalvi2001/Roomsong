@@ -41,21 +41,36 @@ TOP VIEW (user at bottom)                      SIDE VIEW
 ## 3. Screens / states
 
 ### 3.1 2D landing page (the only 2D screen; also the door to the garden window, §3.7)
+As built in T-126 (`ui/Landing.ts`; the copy is `ui/strings.ts`):
 ```
-┌──────────────────────────────────────────┐
-│  ✿ Roomsong                              │
-│  Grow a song on your table.               │
-│                                           │
-│          [  Enter the garden  ]           │  ← single primary button
-│                                           │
-│  Access:  ☐ One hand   ☐ Eyes only (gaze) │
-│           ☐ High contrast ☐ Reduce motion │
-│  Needs: Meta Quest, hand tracking on.     │
-│  Help · Privacy (local only) · v1.0.0     │
-└──────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│  Roomsong                                    │
+│  Grow a song on your table.                  │
+│                                              │
+│            [  Enter the garden  ]            │  ← single primary button
+│  (status line: empty, or one sentence)       │
+│                                              │
+│  This device                                 │
+│  ▏Immersive AR: supported.                   │
+│  ▏Hand tracking: checked when you enter. …   │
+│  ▏Plane detection: checked when you enter. … │
+│  ▏Anchors: checked when you enter. …         │
+│                                              │
+│  Access                                      │
+│  ☐ One hand         ☐ Eyes only (gaze)       │
+│  ☐ High contrast    ☐ Reduce motion          │
+│                                              │
+│  ▸ Help                                      │
+│  Your garden is saved on this device only.   │
+│  Nothing is sent anywhere.                   │
+└──────────────────────────────────────────────┘
 ```
-Errors: "Hand tracking is off → Settings > Movement tracking > Hand tracking" shown inline if the feature is rejected.
-No `immersive-ar` (a desktop or phone browser) is not an error once the garden window is built (Should S6): the same button opens it (§3.7) and the Needs line reads "No headset: use mouse or touch."
+- **This device** (in place of the v1.2 line "Needs: Meta Quest, hand tracking on."): four lines, for immersive AR, hand tracking, plane detection and anchors. Each says in words whether the feature is there and what the app does without it; the coloured bar beside a line only repeats that. Before the first session only immersive AR can be known, because WebXR cannot be asked about a feature without a session: the other three read "checked when you enter" and are filled in from what the session was granted. A feature that was not granted reads "not available", not "not supported": the page cannot tell the two apart.
+- **Status line** under the button: "Getting the garden ready." while the world loads (Enter is disabled until then); "The garden could not load. Reload the page." if it cannot; empty otherwise.
+- **A refused session:** "The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking." in the status line, with Enter still usable (FR-SYS-03). The browser does not say why it refused, so the page never claims that hand tracking is off. *v1.2 "Hand tracking is off → Settings > Movement tracking > Hand tracking": replaced.*
+- **No `immersive-ar`** (a desktop or phone browser): for now Enter is disabled and the status line reads "Roomsong needs immersive AR. Open this page in the browser of a Meta Quest 3 or 3S." Once the garden window is built (Should S6) this is not an error: the same button opens it (§3.7) and the line reads "No headset: use mouse or touch."
+- **Help** is a disclosure on the page, not a link: four steps (sit and put the controllers down, palm up for a seed, pinch and plant, palms out to listen). **Privacy** is the one sentence, not a link. The build's version is not printed on the page; it is read from `/version.json` (T-108). *v1.2 "Help · Privacy (local only) · v1.0.0": replaced.*
+- Native controls only (mouse, touch, keyboard, visible focus ring); no animation; no image, icon or web font. While a session runs the page is hidden; when it ends the page is back with the focus on Enter. Without JavaScript the page shows one line saying that it needs it.
 
 ### 3.2 Placement states (in XR)
 | State | Visual | Audio | Caption |
@@ -68,8 +83,8 @@ No `immersive-ar` (a desktop or phone browser) is not an error once the garden w
 
 The four ripple captions are fixed by LLD §5.8: copy them, do not reword them outside its limits. They use the caption slot of §3.3, one at a time. No caption credits a surface with the key or the echo: those come from the floor area and the room volume, and no sweep shows either. The "Tuned by" read-out in Settings says it (§3.6).
 
-### 3.3 Onboarding sequence (captions ≤ 6 words, 1 at a time, 0.6 m, slightly below eye line)
-Captions are drawn inside the scene (the projection layer), not in a separate WebXR quad layer (FR-UI-01); each stays at least 1.2 s (`CAPTION_MIN_MS`).
+### 3.3 Onboarding sequence (captions ≤ 6 words, 1 at a time, 0.6 m, slightly below the gaze)
+Captions are drawn inside the scene (the projection layer), not in a separate WebXR quad layer (FR-UI-01); each stays at least 1.2 s (`CAPTION_MIN_MS`). A caption appears 8 degrees below the gaze (not below the eye line: a seated player looks down at the table), stays at that point of the room, and is held inside the FoV box when the head turns away (API_SPEC §1.9). *"Slightly below eye line": replaced (T-126).*
 0. **Tune** beat (4.0 s; only the ripple's own surface captions, §3.2): the tuning ripple crosses the room's surfaces and rings the room chord; onboarding captions wait for `room:tuned`, so step 1 never overlaps a ripple caption. (Wanderer rooms: a single bed ripple + chord, no caption.)
 1. "Open your hand" + palm icon → seed glides to palm (the 3 starter seeds are the signature's starter voices).
 2. "Pinch, and plant it" + pinch icon → ring guides visible on the annulus; a ghost marks the cell that will get the seed (hover cue, §3.4); the seed is planted on release.

@@ -1,0 +1,120 @@
+/* The landing page (UX §3.1; built by Landing.ts). A style sheet of its own: the Content Security Policy blocks
+   <style> elements. Colours are the UX §5 palette. Contrast (NFR-ACC-01): page text 16.6:1, the Enter label 12:1,
+   the focus ring 9:1, so high contrast has nothing to change here; the one pair below 7:1 is the label of the
+   disabled Enter button, 5.4:1. There is no animation, so reduced motion has nothing to switch off. */
+:root {
+  color-scheme: dark;
+}
+html {
+  background: #141a1f;
+}
+/* Over the scene's canvas, which is empty until a session starts. Taller than the window on a small screen: the
+   document then scrolls, as any page does. */
+#landing {
+  position: absolute;
+  inset: 0 0 auto;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 2.5rem 1.25rem;
+  background: #141a1f;
+  color: #fff8e7;
+  font:
+    1.125rem/1.5 system-ui,
+    sans-serif;
+}
+/* The page sets `hidden` for the length of a session; without this the rule above would keep it on screen. */
+#landing[hidden] {
+  display: none;
+}
+#landing > * {
+  max-width: 34rem;
+  margin: 0 auto 1.5rem;
+}
+#landing h1 {
+  margin-bottom: 0.25rem;
+  font-size: 2.5rem;
+  line-height: 1.1;
+}
+#landing .tagline {
+  font-size: 1.25rem;
+}
+#landing button {
+  display: block;
+  min-height: 3rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 1.75rem;
+  border: 0;
+  border-radius: 1.5rem;
+  background: #f4d35e;
+  color: #141a1f;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+#landing button:disabled {
+  background: #8a8f94;
+  cursor: default;
+}
+#landing [role='status'] {
+  min-height: 1.5em;
+}
+#landing h2,
+#landing legend,
+#landing summary {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+#landing ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* The bar repeats what the sentence says in words: supported, not supported, not known yet. */
+#landing ul li {
+  margin-bottom: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 0.25rem solid #8a8f94;
+}
+#landing ul li[data-support='yes'] {
+  border-left-color: #7dd181;
+}
+#landing ul li[data-support='no'] {
+  border-left-color: #f4d35e;
+}
+#landing fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  padding: 0;
+  border: 0;
+}
+#landing label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+#landing input {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+  accent-color: #f4d35e;
+}
+#landing summary {
+  min-height: 2.75rem;
+  line-height: 2.75rem;
+  cursor: pointer;
+}
+#landing ol {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+#landing ol li {
+  margin-bottom: 0.5rem;
+}
+#landing :focus-visible {
+  outline: 3px solid #48cae4;
+  outline-offset: 3px;
+}

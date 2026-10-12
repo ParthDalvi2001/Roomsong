@@ -20,7 +20,7 @@ src/
 │   ├── settings.ts             SettingsStore (validate, freeze, emit settings:changed; persistence/ saves) + the Settings type (API_SPEC §1.0)
 │   ├── types.ts                Hand, Vec2, Vec3, Mat4: plain shared types (API_SPEC §1.0)
 │   ├── flags.ts                feature flags + URL overrides
-│   ├── strings.ts              ALL user-facing text
+│   ├── strings.ts              the caption table: everything a Caption.key may name (API_SPEC §1.0)
 │   ├── log.ts                  leveled logger → console + dev overlay
 │   └── pool.ts                 generic object pool
 ├── room/
@@ -91,12 +91,16 @@ src/
 │   ├── shaders/                plant.vert/frag, tide, ripple, halo, vine, glowSprite (GLSL)
 │   ├── PerfHud.ts
 │   └── RenderSystems.ts
-├── ui/
-│   ├── Captions.ts             one caption at a time, FoV-guarded; drawn in the projection layer, not a WebXR quad layer (T-126)
+├── ui/                         as built in T-126 (API_SPEC §1.9); Hints.ts and Panel.ts are not built yet
+│   ├── config.ts               the FoV box (25 and 20 degrees) and the caption's size, distance, font and colours
+│   ├── strings.ts              the 2D page's copy (LANDING); captions are in core/strings.ts
+│   ├── FovGuard.ts             clampToFov: clamps essential UI into ±25°/±20°; fovBoundsDeg: the self-report of TC-E2E-11
+│   ├── Captions.ts             CaptionQueue (pure) and CaptionSystem: one caption at a time, FoV-guarded; drawn on a canvas quad
+│   │                           in the projection layer, not a WebXR quad layer
+│   ├── Landing.ts              2D page: Enter button, what the device supports, access toggles, help
+│   ├── landing.css             the page's style sheet, linked from index.html (the Content Security Policy blocks <style> elements)
 │   ├── Hints.ts                gesture icon rings
-│   ├── Panel.ts                settings panel: Sound / Access / Garden (UIKit)
-│   ├── Landing.ts              2D page: Enter button, access toggles, help
-│   └── FovGuard.ts             clamps essential UI into ±25°/±20°
+│   └── Panel.ts                settings panel: Sound / Access / Garden (UIKit; T-151)
 ├── access/
 │   ├── GazeDwell.ts            dwell time = Settings.dwellMs (600 / 900 / 1200 ms, FR-HND-12)
 │   ├── OneHand.ts
@@ -138,8 +142,9 @@ Three components are declared in `core/` because a component has to be imported 
 Panel controls are direct pinch targets (T-151: "large pinch targets over ray UI"). `ui/Panel.ts` attaches one `Interactable { kind: 'panel' }` per control, so a control goes through the same picker, hover cue and commit on release as a plant, and gaze dwell finds it the same way. How a UIKit control reports its world position is checked with `iwsdk-reference` in T-151.
 
 ### Systems (order matters)
-`RoomSystem(10) → HandSystem(20) → GazeDwellSystem(25) → GardenSystem(30) → OnboardingSystem(35) → AudioSystem(40, scheduler-driven) → PlantRenderSystem(50) → TideRenderSystem(51) → HaloSystem(52) → VineRenderSystem(53, Could) → ParticleSystem(54) → TuningRippleSystem(55) → UISystem(60) → PerfHudSystem(99)`
+`RoomSystem(10) → HandSystem(20) → GazeDwellSystem(25) → GardenSystem(30) → OnboardingSystem(35) → AudioSystem(40, scheduler-driven) → PlantRenderSystem(50) → TideRenderSystem(51) → HaloSystem(52) → VineRenderSystem(53, Could) → ParticleSystem(54) → TuningRippleSystem(55) → CaptionSystem(60) → PerfHudSystem(99)`
 
+CaptionSystem (`ui/Captions.ts`, API_SPEC §1.9) is the ui system built so far; Hints and Panel bring their own with T-151. It runs after every system that raises a caption, so a caption raised in a frame is on screen in that frame.
 RoomSystem is also the producer of `room:features` → (GardenSystem computes) `room:signature`; AudioSystem applies the signature before the first scheduled step so the garden never sounds in the wrong key.
 The garden window (§11) registers the same systems in the same order; only the `InputSource` given to HandSystem and the camera differ.
 
