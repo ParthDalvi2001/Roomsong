@@ -59,6 +59,7 @@ describe('core/ dependency direction (API_SPEC §1)', () => {
         'DEFAULT_SETTINGS',
         'DEFAULT_TEMPO_BPM',
         'Interactable',
+        'MS_PER_DAY',
         'Pool',
         'STRINGS',
         'bus',

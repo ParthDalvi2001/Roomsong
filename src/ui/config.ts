@@ -34,3 +34,91 @@ export const CAPTION_BACKDROP_HIGH_CONTRAST = '#000000';
 export const CAPTION_OUTLINE_PX = 4;
 /** Drawn after the garden and without a depth test: a caption is never hidden inside a plant. */
 export const CAPTION_RENDER_ORDER = 1000;
+
+// The settings panel (T-151, UX §3.6). Drawn like a caption: text on a canvas, on one quad in the scene.
+
+/** UX §3.6: the panel is 0.40 by 0.28 m and opens 0.55 m ahead of the head. */
+export const PANEL_WIDTH_M = 0.4;
+export const PANEL_HEIGHT_M = 0.28;
+export const PANEL_DISTANCE_M = 0.55;
+/** Canvas pixels per metre: 1000 by 700, about one per display pixel at 0.55 m on a Quest 3 (25 px per degree). */
+export const PANEL_PX_PER_M = 2500;
+/** FR-UI-04: a cap height of at least 1.4 cm. A sans-serif capital is about 0.72 of its font size: 50 px is 1.44 cm. */
+export const PANEL_FONT_PX = 50;
+export const PANEL_FONT = `600 ${PANEL_FONT_PX}px system-ui, sans-serif`;
+/** A control that holds one character (+, -, x, L, R) shows it larger. */
+export const PANEL_SYMBOL_FONT = '700 70px system-ui, sans-serif';
+/**
+ * T-151, Golden Rule 3: a control is drawn 4 cm tall (UX §3.6 asks for 3 at least) and picked within the hit
+ * radius of FR-HND-04 (4.0 cm, hands/config.ts). One that holds a word is 8 cm wide, which that radius covers.
+ */
+export const PANEL_TARGET_M = 0.04;
+export const PANEL_WIDE_TARGET_M = 0.08;
+/** T-151 ("clear gaps"): the centres of two controls are at least this far apart, so 1.5 cm lies between them. */
+export const PANEL_TARGET_PITCH_M = 0.055;
+/**
+ * A control at its limit, and the echo read-out while it is not in effect, are drawn this faint: normal and high
+ * contrast. Still readable: cream at 0.55 on the charcoal backdrop is 5.6:1 (NFR-ACC-01 asks 4.5:1) and at 0.75 on
+ * black it is 10.6:1 (FR-UI-05 asks 7:1); tests/unit/ui/PanelSystem.test.ts works both out.
+ */
+export const PANEL_DIM_ALPHA = 0.55;
+export const PANEL_DIM_ALPHA_HIGH_CONTRAST = 0.75;
+/** FR-UI-05: the outline of a control, in canvas pixels: normal and high contrast. */
+export const PANEL_OUTLINE_PX = 3;
+export const PANEL_OUTLINE_HIGH_CONTRAST_PX = 6;
+/** UX §5 palette: a control that is off is a faint cream glass; the text on one that is on is the charcoal. */
+export const PANEL_TARGET_FILL = 'rgba(255, 248, 231, 0.12)';
+export const PANEL_INK = '#141A1F';
+/**
+ * UX §3.6 ("a control lights up on hover"): a cream ring round the control, from 2 to 6 mm outside it. High contrast
+ * asks for an outline as well as a glow (UX §8): the ring is an outline.
+ */
+export const CUE_RING_INNER_M = PANEL_TARGET_M / 2 + 0.002;
+export const CUE_RING_OUTER_M = PANEL_TARGET_M / 2 + 0.006;
+/**
+ * UX §8 ("dwell ring fills"), T-151 (the hold): the same ring, filling from the top in this many steps, in the
+ * violet of the UX §5 palette. It lies on the cream ring and the backdrop, never on the control's own word: 3.9:1
+ * against the cream, 4.2:1 against the charcoal; tests/unit/ui/PanelSystem.test.ts works both out.
+ */
+export const CUE_FILL_COLOUR = '#9B5DE5';
+export const CUE_SEGMENTS = 48;
+/** UX §3.6: one press moves the tempo by 4 BPM and the volume by 10 %. */
+export const TEMPO_STEP_BPM = 4;
+export const VOLUME_STEP = 0.1;
+/** FR-UI-10: one press moves the bed by 2 cm, ten presses from end to end. No requirement fixes the step. */
+export const BED_HEIGHT_STEP_M = 0.02;
+/**
+ * T-151: New garden acts only when the pinch was held on it this long (in gaze mode: the look, after the dwell).
+ * No requirement fixes the time; 1.5 s is the hold of the Listen pose (FR-HND-09).
+ */
+export const NEW_GARDEN_HOLD_MS = 1500;
+/** UX §3.6: the panel closes when its centre has been outside the FoV box for this long. */
+export const PANEL_LOOK_AWAY_MS = 5000;
+/** A frame counts as this long at most: a pause must not finish a hold, a dwell or the look-away time. */
+export const PANEL_MAX_FRAME_MS = 100;
+/** Under the captions (CAPTION_RENDER_ORDER), above the garden; the hover ring and the fill are drawn over it. */
+export const PANEL_RENDER_ORDER = 990;
+/**
+ * UX §2, §3.6: the panel opens as if the head looked down no more than this. A head that looks at the bed (44
+ * degrees down in the seated sketch) would otherwise get the panel on the table, its bottom row among the plants or
+ * under the table top; with the limit its lower edge is at most 35 cm below the eyes, and the user looks up to it.
+ */
+export const PANEL_MAX_PITCH_DOWN_DEG = 30;
+
+/** The settings orb (UX §2, §3.6): drawn 4 cm across, picked like every other target. */
+export const ORB_DIAMETER_M = 0.04;
+export const ORB_CANVAS_PX = 128;
+/**
+ * UX §2 ("wrist orb"): the orb floats this far behind the palm point, off the back of the hand. The palm point is
+ * 3 cm above the palm (hands/config.ts PALM_REST_OFFSET_M); a hand is about 3 cm thick; 3 cm of air. It is 9 cm from
+ * a seed resting on the palm, so their hit spheres never claim the same pinch. Unverified on a hand: device check.
+ */
+export const ORB_OFF_HAND_M = 0.09;
+/**
+ * FR-UI-09, FR-HND-12: with one hand or the gaze alone the orb cannot ride a hand, so it waits in the view box,
+ * this far ahead, to the side of the hand that is not the dominant one, below the gaze line (UX §8 puts the copy
+ * of the Listen orb 20 degrees to the dominant side). No requirement fixes the numbers: device check.
+ */
+export const ORB_DISTANCE_M = 0.45;
+export const ORB_SIDE_DEG = 20;
+export const ORB_BELOW_GAZE_DEG = 12;

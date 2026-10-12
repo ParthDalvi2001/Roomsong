@@ -5,3 +5,6 @@ export type { FovElement } from './FovGuard.js';
 export { CaptionSystem } from './Captions.js';
 export { mountLanding } from './Landing.js';
 export type { Landing } from './Landing.js';
+// The settings panel and its orb (T-151): an ECS system for priority 62 that takes `garden` and `room` (API_SPEC §1.10).
+export { PanelSystem } from './PanelSystem.js';
+export type { PanelGarden, PanelRoom } from './PanelSystem.js';

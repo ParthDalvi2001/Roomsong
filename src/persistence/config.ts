@@ -17,8 +17,8 @@ export const SAVE_DEBOUNCE_MS = 500;
 /** Golden Rule 4 (cold start ≤ 5 s): how long openStore waits for IndexedDB before it goes on with localStorage alone. */
 export const IDB_OPEN_TIMEOUT_MS = 1500;
 
-/** API_SPEC §1.1 (GardenState.bedHeightOffset), FR-UI-10: metres, either way. */
-export const BED_HEIGHT_OFFSET_MAX_M = 0.1;
+/** API_SPEC §1.1 (GardenState.bedHeightOffset), FR-UI-10: metres, either way. Garden's limit, so it is defined once. */
+export { BED_HEIGHT_OFFSET_MAX_M } from '../garden/index.js';
 /** API_SPEC §4: size bounds of a stored state. A bed holds RINGS * STEPS plants; that bound needs no constant here. */
 export { SEED_SUPPLY_MAX } from '../garden/index.js'; // FR-MUS-08: garden's cap, so that 5 is defined once
 export const ID_MAX_LENGTH = 64; // plant and seed ids, the anchor handle (a UUID has 36 characters)

@@ -62,6 +62,6 @@ describe('ui/ dependency direction (API_SPEC §1)', () => {
   });
 
   it('index.ts exports the public surface, and nothing else', () => {
-    expect(Object.keys(ui).sort()).toEqual(['CaptionSystem', 'clampToFov', 'mountLanding']);
+    expect(Object.keys(ui).sort()).toEqual(['CaptionSystem', 'PanelSystem', 'clampToFov', 'mountLanding']);
   });
 });

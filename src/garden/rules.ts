@@ -1,7 +1,7 @@
 // The pure reducers of planting and shaping (API_SPEC §1.1). None mutates its input, reads a clock or throws
 // on a bad argument. A refusal is a Result; where the contract returns a GardenState, a call that changes
 // nothing returns the state it was given (the same reference), which is how a caller tells.
-import { NEW_PLANT_HEIGHT, PULL_RANGE_M, RINGS, STEPS } from './config.js';
+import { BED_HEIGHT_OFFSET_MAX_M, NEW_PLANT_HEIGHT, PULL_RANGE_M, RINGS, STEPS } from './config.js';
 import { cellAt } from './snap.js';
 
 import type { Cell, GardenState, PlacementLevel, Plant, Result, UndoToken } from './model.js';
@@ -119,6 +119,17 @@ export function setAnchor(
   delete next.anchorHandle;
   delete next.anchorLevel;
   return next;
+}
+
+/**
+ * Sets how far the bed is raised or lowered, in metres, clamped to 10 cm either way (FR-UI-10). No plant moves:
+ * a cell is a place on the bed, whatever its height. A value that is not finite changes nothing.
+ */
+export function setBedHeightOffset(s: GardenState, metres: number): GardenState {
+  if (!Number.isFinite(metres)) return s;
+  // `+ 0`: a -0 would be stored as it is, and it is not the 0 a new garden has
+  const offset = Math.min(BED_HEIGHT_OFFSET_MAX_M, Math.max(-BED_HEIGHT_OFFSET_MAX_M, metres)) + 0;
+  return offset === s.bedHeightOffset ? s : { ...s, bedHeightOffset: offset };
 }
 
 /** Neighbour `k` of cell index `i`, in search order: ring+1, ring-1, step+1, step-1. -1 = off the bed. */

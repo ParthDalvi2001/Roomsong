@@ -35,3 +35,11 @@ export const PALM_UP_MAX_ANGLE_DEG = 35;
 export const PALM_UP_HOLD_MS = 400;
 /** API_SPEC §1.4 `palmPos`: a delivered seed rests this far above the palm, along its normal. Not rated on a headset. */
 export const PALM_REST_OFFSET_M = 0.03;
+/**
+ * UX §2 (the settings orb, ui/PanelSystem.ts): the orb shows while the back of the hand faces the head. The cosine
+ * of the angle between the two directions is above the first number to show it, and below the second to hide it
+ * (the gap keeps it from flickering, FR-UI-11). Palm up, the pose that asks for a seed (FR-HND-05), it is hidden.
+ * No requirement fixes the numbers, and neither was tried on a hand: device check.
+ */
+export const ORB_SHOW_FACING = 0.3;
+export const ORB_HIDE_FACING = 0.1;

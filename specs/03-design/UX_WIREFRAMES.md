@@ -126,7 +126,7 @@ Grace 200 ms (tunable 150–250), glide 150 ms: `hands/config.ts`. Reduced motio
 - Wake: any pinch, or palm to face. Fades back in 0.8 s.
 - Auto-end at 10 min: ending chord, caption "Goodnight" (the one allowed non-instruction caption), stays in XR.
 
-### 3.6 Settings panel (UIKit, 0.40 × 0.28 m, 0.55 m forward at eye height) — tabs Sound / Access / Garden (Codex cut, D-011)
+### 3.6 Settings panel (0.40 × 0.28 m, 0.55 m forward at eye height; as built in T-151 it is drawn on a canvas, not with UIKit, bed height sits on the Garden tab in 2 cm steps, volume reads as a per cent, and the tab is named "Access") — tabs Sound / Access / Garden (Codex cut, D-011)
 ```
 ┌──────────────────────────────────────────────┐
 │ ● Sound   ● Access   ● Garden              ✕ │

@@ -9,6 +9,7 @@ import {
   plantSeed,
   removePlant,
   setAnchor,
+  setBedHeightOffset,
   setHeight,
   snapToCell,
   undoRemove,
@@ -395,8 +396,33 @@ describe('garden/rules never mutate their input (TC-GAR-07)', () => {
 });
 
 describe('garden/rules and the bed height (TC-GAR-08, FR-UI-10)', () => {
-  // The setter that changes and clamps the offset is not built yet (T-151).
-  // What holds today: no reducer loses it.
+  it('setBedHeightOffset stores the offset and leaves the plants, their cells and the radii alone', () => {
+    const before = garden([plant('a', 0, 0), plant('b', 4, 15)], [seed('s1')]);
+    const after = setBedHeightOffset(before, 0.04);
+    expect(after.bedHeightOffset).toBe(0.04);
+    expect(after).toEqual({ ...before, bedHeightOffset: 0.04 });
+    expect(after.plants).toBe(before.plants); // the same array: every plant keeps its cell
+    expect(before.bedHeightOffset).toBe(0);
+    expect(setBedHeightOffset(after, -0.06).bedHeightOffset).toBe(-0.06);
+  });
+
+  it('setBedHeightOffset clamps to 10 cm up or down', () => {
+    const s = garden();
+    expect(setBedHeightOffset(s, 0.1).bedHeightOffset).toBe(0.1);
+    expect(setBedHeightOffset(s, 0.11).bedHeightOffset).toBe(0.1);
+    expect(setBedHeightOffset(s, 3).bedHeightOffset).toBe(0.1);
+    expect(setBedHeightOffset(s, -0.1).bedHeightOffset).toBe(-0.1);
+    expect(setBedHeightOffset(s, -0.25).bedHeightOffset).toBe(-0.1);
+  });
+
+  it('setBedHeightOffset hands back the same state when nothing changes, or the value is not finite', () => {
+    const s = garden([plant('a', 0, 0)], [], { bedHeightOffset: 0.1 });
+    expect(setBedHeightOffset(s, 0.1)).toBe(s);
+    expect(setBedHeightOffset(s, 0.5)).toBe(s); // clamps to the 0.1 it already has
+    for (const bad of [NaN, Infinity, -Infinity]) expect(setBedHeightOffset(s, bad)).toBe(s);
+    expect(setBedHeightOffset(s, -0).bedHeightOffset).toBe(0); // toBe tells -0 from 0: a new garden has 0
+  });
+
   it('every reducer copies the bed height offset and the radii through', () => {
     const s = garden([plant('a', 0, 0)], [seed('s1')], { bedHeightOffset: -0.1 });
     const removed = value(removePlant(s, 'a'));

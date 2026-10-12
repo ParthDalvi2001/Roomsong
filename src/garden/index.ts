@@ -1,6 +1,7 @@
 // Public API of the `garden` module (API_SPEC §1.1, LLD §1). Other modules import from here only, never from
 // files inside the folder (CODING_GUIDELINES §3). The pure files import nothing but plain types from core/.
 export {
+  BED_HEIGHT_OFFSET_MAX_M,
   BED_INNER,
   BED_OUTER,
   PULL_RANGE_M,
@@ -36,6 +37,7 @@ export {
   plantSeed,
   removePlant,
   setAnchor,
+  setBedHeightOffset,
   setHeight,
   undoRemove,
 } from './rules.js';

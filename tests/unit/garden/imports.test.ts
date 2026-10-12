@@ -110,6 +110,7 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
   it('index.ts exports the public surface, and nothing else', () => {
     expect(Object.keys(garden).sort()).toEqual(
       [
+        'BED_HEIGHT_OFFSET_MAX_M',
         'BED_INNER',
         'BED_OUTER',
         'MODE_DEGREES',
@@ -134,6 +135,7 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
         'removePlant',
         'roomSignature',
         'setAnchor',
+        'setBedHeightOffset',
         'setHeight',
         'snapToCell',
         'stageFor',
