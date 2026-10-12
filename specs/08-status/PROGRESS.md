@@ -69,6 +69,8 @@
 
 21. ~~Claude's file tools were refused~~ — cleared on 2026-10-12 08:43 when Parth reloaded the window; a leftover copy of the previous session was still running and was stopped.
 
+22. **Headset day: five questions (the script is ready: `specs/05-testing/DEVICE_SCRIPT_S1.md`).** (a) Which room and table will you use (a table at least 75 cm deep; round or not), and is there a second room without Space Setup in Wi-Fi reach? (b) Your own headset or a borrowed one (the script has a full 3-hour version and a 1-hour version), and Quest 3 or 3S? (c) Will GitHub Pages be live before the headset arrives? Only that route gives the real start-up time. (d) Results back by mail from the headset browser, or by USB? (e) Can you keep the headset overnight, to repeat one block the next day?
+
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
