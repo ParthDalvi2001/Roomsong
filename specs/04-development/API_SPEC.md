@@ -1,6 +1,6 @@
 # API Specification — Internal Module Contracts, Event Bus, Storage Schema, URL Flags
 
-**Status:** Living · **Owner:** software-architect · **Version:** 1.2.12 (2026-10-12, T-140: room feature extraction as built and reviewed, see the Changelog; v1.2.11 was T-144, Bass and Choir voices; v1.2.10 was T-161, daily seed and growth as built and reviewed; v1.2.9 was T-125, the render contract as built and reviewed; v1.2.8 was T-126, the ui contract as built and reviewed, new §1.9; v1.2.7 was T-141, the room signature as built and reviewed; v1.2.6 was T-123, the room contract as built and reviewed, with the reach rule of D-034; v1.2.5 was T-122, the persistence contract as built and reviewed; v1.2.4 was T-121, the audio contract as built and reviewed; v1.2.3 was T-124, the hands contract as built and reviewed; v1.2.2 was T-120 and D-029/D-031, the garden contract as built and reviewed; on plan v2.1 of 2026-10-10: PLAN_AMENDMENT_2026-10-10 §6; D-020, D-021, D-025; v1.2.1 added core's runtime surface as built in T-106)
+**Status:** Living · **Owner:** software-architect · **Version:** 1.2.13 (2026-10-12, T-128 wiring contract, reviewed: new §1.10 and the changes it needs elsewhere, not built yet, see the Changelog; v1.2.12 was T-140, room feature extraction as built and reviewed; v1.2.11 was T-144, Bass and Choir voices; v1.2.10 was T-161, daily seed and growth as built and reviewed; v1.2.9 was T-125, the render contract as built and reviewed; v1.2.8 was T-126, the ui contract as built and reviewed, new §1.9; v1.2.7 was T-141, the room signature as built and reviewed; v1.2.6 was T-123, the room contract as built and reviewed, with the reach rule of D-034; v1.2.5 was T-122, the persistence contract as built and reviewed; v1.2.4 was T-121, the audio contract as built and reviewed; v1.2.3 was T-124, the hands contract as built and reviewed; v1.2.2 was T-120 and D-029/D-031, the garden contract as built and reviewed; on plan v2.1 of 2026-10-10: PLAN_AMENDMENT_2026-10-10 §6; D-020, D-021, D-025; v1.2.1 added core's runtime surface as built in T-106)
 Roomsong has **no HTTP API** (static app, no backend). This document is the contract **between modules**.
 Rule: change this file first, then the code, in the same PR. Breaking changes bump the section's version note.
 
@@ -8,8 +8,8 @@ Rule: change this file first, then the code, in the same PR. Breaking changes bu
 
 ## 1. Module public interfaces (TypeScript)
 
-**Dependency direction (v1.2).** `core/` imports no other Roomsong module; the only package it may import is `@iwsdk/core`, in `core/components.ts`. `garden/` imports only `core/`: its pure files (`model`, `rules`, `snap`, `signature`, `growth`, `config`) take plain types only (`import type`, so no IWSDK or Three.js code is loaded with them), and `garden/GardenSystem.ts`, the one garden file that is an ECS system, also uses core's bus, log and flags. `room/`, `hands/`, `audio/` and `persistence/` import `core/` and `garden/`. `render/`, `ui/`, `access/`, `onboarding/` and `window/` may import any module named before them. Only `src/index.ts` imports everything and wires it. Every import goes through the other module's `index.ts`. Nothing imports upward, and modules on the same level talk through the event bus (§2) or a shared component, never through imports.
-**Shared ECS components.** A component has to be imported to be queried or attached, so a component that a module on the same level or a lower level uses is declared in `core/components.ts`: `BedAnchor` (room writes it; hands, render and audio read it), `Interactable` (render and ui attach it; hands and access read it) and `Caption` (any module raises one; ui is the only reader). Every other component stays with the module that writes it and is read only from above: `HandState` in `hands/`, `RoomSurfaces` in `room/`, `PlantView` and `VineTarget` in `render/`. Fields: LLD §3. All of them are registered in `src/components.ts`.
+**Dependency direction (v1.2).** `core/` imports no other Roomsong module; the only package it may import is `@iwsdk/core`, in `core/components.ts`. `garden/` imports only `core/`: its pure files (`model`, `rules`, `snap`, `signature`, `growth`, `config`) take plain types only (`import type`, so no IWSDK or Three.js code is loaded with them), and `garden/GardenSystem.ts`, the garden's state holder, a plain class and not an ECS system (§1.10), also uses core's bus, clock, flags, log and settings store. `room/`, `hands/`, `audio/` and `persistence/` import `core/` and `garden/`. `render/`, `ui/`, `access/`, `onboarding/` and `window/` may import any module named before them. Only `src/index.ts` (the boot) and `src/app.ts` (the wiring it loads, §1.10) import across all modules. An import goes through the other module's `index.ts`, with two rules that keep the SDK out of the boot chunk (§1.10 rule 1): every importer of the three shared components takes them from `core/components.js`, which `core/index.ts` does not re-export; and `src/index.ts` takes `mountLanding` from `ui/Landing.js`, because `ui/index.ts` also exports `CaptionSystem`. Nothing imports upward, and modules on the same level talk through the event bus (§2) or a shared component, never through imports.
+**Shared ECS components.** A component has to be imported to be queried or attached, so a component that a module on the same level or a lower level uses is declared in `core/components.ts`: `BedAnchor` (room writes it; hands, render and audio read it), `Interactable` (render and ui attach it; hands and access read it) and `Caption` (any module raises one; ui is the only reader). Every other component stays with the module that writes it and is read only from above: today that is `HandState` in `hands/` alone. Fields: LLD §3.1. All of them are registered in `src/components.ts`. Not components: `RoomSurfaces` is a plain type of `room/` that travels in `room:features` (§2); `PlantView` is *Cut (T-128 contract)*, nothing would read it; `VineTarget` belongs to the vines (Could, C4) and is not built.
 
 ### 1.0 `core/` (the base; imports no other module)
 ```ts
@@ -72,8 +72,13 @@ export class Pool<T extends object> {                       // pre-allocated; ac
   readonly size: number; readonly grown: number; readonly inUse: number;
 }
 export const STRINGS: Readonly<Record<StringKey, string>>;  // the caption table (below). The message of a failure has its ErrorCode as its key
-export type StringKey = keyof typeof STRINGS;               // 'rippleTableSeeds' | 'rippleTableColour' | 'rippleWalls' | 'rippleCeiling' | 'E_SAVE_FAILED' so far
-export const BedAnchor, Interactable, Caption;              // the shared ECS components (above); fields: LLD §3
+export type StringKey = keyof typeof STRINGS;               // 'rippleTableSeeds' | 'rippleTableColour' | 'rippleWalls' | 'rippleCeiling' | 'E_SAVE_FAILED' so far.
+                                                            // T-128 adds three: placeLook "Look at your table, and pinch" · placeLookGaze "Look at your
+                                                            // table, and wait" (UX §9.2, the level-3 hint) · E_AUDIO_CONTEXT "Sound unavailable" (a session
+                                                            // with no sound, §1.10 rule 2; the wording is UX's to confirm)
+export const BedAnchor, Interactable, Caption;              // the shared ECS components (above); fields: LLD §3.1. Exported from core/components.ts
+                                                            // and NOT from core/index.ts: that file is the one that loads @iwsdk/core, and the landing
+                                                            // page's chunk must not (§1.10 rule 1). Every importer uses core/components.js
 ```
 **Runtime rules (v1.2.1).** `log`: without `Flags.dev`, debug and info are dropped before any work; warn and error always reach the console and the ring. `bus`: one function is one subscription per event, as with `addEventListener`; `on`, `once` and `off` allocate and never run per frame. `core/` builds `flags`, `log` and `clock` once, when it is first imported; every other module follows the `Flags` rule of §3.
 **Strings.** `STRINGS` is the caption table: everything a `Caption.key` may name, at most six words each (FR-UI-01; tuning-ripple captions have their own smaller limits, LLD §5.8). The 2D page's copy lives in `ui/strings.ts` (§1.9). There is no user-facing text anywhere else, except the two things `index.html` must hold without a script: the page title and the `<noscript>` line.
@@ -268,11 +273,19 @@ export class MeshAdapter  { constructor(flags?: Flags); setFrame(frame: XRFrame,
 export class HitTestAdapter { setFrame(frame: XRFrame, space: XRReferenceSpace): void; supported(): boolean; hit(): Vec3 | null }  // gaze ray
 export class PlacementSolver {                              // the chain of FR-ROOM-01; the bed centre targets BED_CENTRE_DEFAULT_M (LLD §5.5)
   constructor(planes: { supported(): boolean; read(): readonly RoomPlane[] }, hits: { supported(): boolean; hit(): Vec3 | null }, flags?: Flags);
-  run(opts: { timeoutMs: number }): Promise<BedPlacement>; // timeoutMs: the wait of levels 1+2; level 3 waits 10 s. Never rejects. A second run() drops the first
+  run(opts: { timeoutMs: number }): Promise<BedPlacement>; // timeoutMs: the wait of levels 1+2; level 3 waits HIT_TEST_TIMEOUT_MS (10 000, room/config.ts: the one
+                                                            // place that number is written). Never rejects. A second run() drops the first. The caller does no
+                                                            // work in the promise's continuation: it runs after the frame, outside any XRFrame (§1.10 rule 4)
   cancel(): void;                                           // drops the pending run: its promise never settles
   update(headPose: Mat4, nowMs: number): void;              // every XR frame while a run is pending, after the adapters' setFrame; never throws
-  confirm(): void;                                          // the level-3 pinch; ignored at any other level
-}
+  confirm(): void;                                          // the level-3 confirm; ignored at any other level. As built it places only on a usable spot.
+                                                            // To build (T-128c, UX §9.2): it places the bed where preview() is, on the surface (level 3)
+                                                            // or, with the gaze on no usable spot, floating at once (level 4)
+  // To build (T-128c, UX §9.2):
+  preview(): Readonly<BedPlacement> | null;                 // level 3 only: the pose and the level (3 or 4) a confirm in this frame would give, as of the last
+                                                            // update(). One reused object: copy what you keep. null at any other level and with no run pending
+}                                                           // Also to build: a level-3 wait that runs out places the bed where preview() is, so on the surface
+                                                            // when the gaze is on a usable spot. As built it always floats then
 // AnchorStore is Must (M5, D-021; was Should S4). supported() === false, or restore() → null, is not an error:
 // the caller re-places the bed by the PlacementSolver chain and keeps the garden (FR-ROOM-07).
 export interface AnchorStore {
@@ -295,7 +308,7 @@ export interface RoomSurfaces { table?: SurfaceRef; nearestWall?: SurfaceRef; ce
 ```
 **The solver as built (T-123, D-034).** `PlacementSolver` holds no XR and no timer: RoomSystem calls `update` with the head pose in the reference space (the camera's `matrixWorld.elements`) and a clock that only goes forward, and the wait of levels 1 and 2 starts at the first `update` after `run`. A `timeoutMs` that is not finite counts as expired. `flags.forceLevel` starts the chain at that level, and a forced level that cannot place still falls on to the next. Forward is the level direction square to the head's right vector, and every distance of FR-ROOM-01 and FR-ROOM-03 is measured level (horizontally) from the head. Pitch therefore does not move the bed, and a user looking straight down at the table still has a forward; head roll does move it (20° of roll at 45° of pitch shifts the spot by about 11 cm). A frame whose head pose is not finite, or whose head lies on its side, is skipped: the run waits for a usable one. The solver emits `room:placementLevel` (§2) once for each level it tries. Do not call `run()` from a `room:placementLevel` handler: the new run would be resolved with the old run's bed. `E_PLACEMENT_TIMEOUT` is logged at warn when a wait ran out and the chain ended at level 4 (§5).
 **Placing the bed** (RoomSystem; once per session, and again on Re-place; LLD §5.5). This is how an anchor travels in both directions:
-1. `src/index.ts` hands RoomSystem the saved pair `{ anchorHandle, anchorLevel }` from `Store.load()`, or nothing. `room/` never reads the store.
+1. RoomSystem takes the saved pair `{ anchorHandle, anchorLevel }`, or its absence, from the state of the latest `garden:changed`: the first one of a page comes from `GardenSystem.load`, before any session (§1.10 rule 6). Nothing hands it over, and `room/` never reads the store.
 2. Pair present and `supported()`: `restore(anchorHandle, 4000)`. A pose comes back → `BedPlacement { pose, level: anchorLevel }`, then `room:placementLevel` and `room:bedPlaced { restored: true }`. The chain does not run.
 3. Otherwise (no pair, unsupported, `null`, timeout): `PlacementSolver.run()`, then `room:bedPlaced { restored: false }`, on which garden drops a stale pair. After that, holding nothing up: `clear()`, `create(pose)`, and `room:anchored { handle, level }` when it resolves; garden stores the pair with `setAnchor` and the normal save persists it.
 4. In both cases `RoomFeatureExtractor.extract(placement)` runs next and `room:features` follows. A bed restored at level 1 or 2 gets its room signature again; only a bed that was placed at level 3 or 4 is Wanderer, as it was on the day it was placed.
@@ -380,7 +393,7 @@ export const DRAG_DEAD_ZONE_M = 0.02;                                     // FR-
 | `carry` | the seed | `zone = 'bed'`: the cell that gets the plant, already resolved to a free cell (§2 `target:hover`), or `null` when the bed is full. Other zones: `null` | `null` | garden `plantSeed(seed, cell)`; `null` → the seed returns to the supply |
 | `drag` | the plant | `zone = 'bed'`: the free cell it moves to. Other zones: `null` | `null` | `bed` → garden `movePlant` · `inner` → nothing (render returns the plant to its cell) · `outer` → garden `removePlant` + `garden:removed` |
 | `pull` | the plant | `null`, always: a pull never moves a plant | total vertical travel since pinch start, metres | garden `setHeight(plant, heightAfterPull(plant.height, dy))` |
-| `none` | the plant, or `null` | `null` | `null` | nothing |
+| `none` | the plant, or `null` | `null` | `null` | nothing in the garden. With `target: null` while placement level 3 runs it is the confirm: RoomSystem calls `PlacementSolver.confirm()` (§1.3, §1.10) |
 
 ### 1.5 `persistence/`
 ```ts
@@ -425,7 +438,9 @@ export class FlashGuard {              // one per page, built by src/index.ts an
                                        // element); with one that is not finite nothing changes. An element id that was never claimed gets 0, always
   takePeak(): number;                  // the most changes any one element had inside one second, since the last call. It resets: only PerfSampler calls it
 }
-export class BedRenderer { constructor(parent: Object3D); dispose(): void } // static: the glass with its five ring lines, and 80 cell markers. 2 draw calls
+export class BedRenderer { constructor(parent: Object3D); setGhost(on: boolean): void; dispose(): void } // static: the glass with its five ring lines, and
+                                       // 80 cell markers. 2 draw calls. setGhost (to build, T-128c): true hides the cell markers, which leaves the
+                                       // level-3 ghost of UX §9.2 (the glass and its ring lines, 1 draw call); false shows them again
 export class PlantRenderer {           // one InstancedMesh per silhouette: at most 3 draw calls (LLD §1)
   constructor(parent: Object3D, guard: FlashGuard);
   setState(state: Pick<GardenState, 'plants'>): void; // on garden:changed, not per frame: it rewrites every instance. The same array reference again is no
@@ -479,6 +494,100 @@ export function mountLanding(root: HTMLElement): Landing;   // once per page
 **Landing.** `mountLanding` builds the page into `root`. Until `ready(enter)`, Enter is disabled. `enter` is called synchronously inside the click (a session request needs the user's gesture), must not throw, and resolves false when no session started; a throw or a rejection is logged and counted as false, so Enter stays usable. `granted` is called at each session start. After `failed()` Enter stays disabled. The page hides on `xr:sessionStart` and shows on `xr:sessionEnd`, with the focus back on Enter. `src/index.ts` emits an `xr:sessionEnd` only for a session whose `xr:sessionStart` it emitted. A handler of `xr:sessionStart` takes the session from `renderer.xr.getSession()`: IWSDK sets `world.session` only after the event.
 **Strings.** The page's copy is `LANDING` in `ui/strings.ts`, in the character set of `STRINGS` (§1.0); a failure message that has an error code (§5) has it as its key.
 
+### 1.10 App wiring (`src/index.ts` and the systems)
+The contract of the integration task T-128: what a task other than T-128 may rely on once the modules are joined. The design behind it, the sequences and the build order are in LLD §3. Written 2026-10-12 against `develop` at `44dfe39`; **to build** marks what is not there yet, with its task. Internals of the wiring are not listed.
+```ts
+// Files
+//   src/index.ts   exists; becomes the boot: mountLanding(), then import('./app.js'). Its chunk holds no SDK code (rule 1)
+//   src/app.ts     to build (T-128a): makes the objects below, registers the systems, owns the session.
+//                  Where §1.2, §1.5, §1.8, §1.9 and §2 say that `src/index.ts` wires, saves or emits, the code is here
+
+// One per page, made in src/app.ts and nowhere else (unit tests and the proto pages make their own):
+//   world: World                                        IWSDK
+//   engine: AudioEngine = createAudioEngine()           §1.2
+//   guard: FlashGuard = new FlashGuard()                §1.8
+//   garden: GardenSystem                                below
+//   saver: PersistenceSystem, over openStore()          §1.5
+
+// How a system receives them: as configData when it is registered. It declares each key it needs in its schema as
+// { type: Types.Object, default: null } and reads it once, in init(): `this.config.engine.value as AudioEngine`.
+//   engine: AudioEngine · guard: FlashGuard · garden: GardenSystem · room: RoomSystem · bed: Object3D (the bed entity's object3D)
+// Who takes which today: PerfSystem guard, engine · GardenAudioSystem engine · BedRenderSystem guard, engine, bed ·
+// RoomSystem, HandSystem, CaptionSystem none. A later system names its keys in the table at the end of this section
+
+// garden/ (to build, T-128b)
+export const UNDO_LIFE_MS = 5000;                     // FR-MUS-12: how long a removed plant can be brought back
+export class GardenSystem {                           // a plain class, not an ECS system: the one owner of GardenState
+  constructor(appClock?: Clock, appFlags?: Flags);    // core's clock and flags by default. It subscribes to the bus here, and reads
+                                                      // core's settings store when it makes a garden
+  readonly state: GardenState | null;                 // null before load(). A module follows garden:changed; this is for a late reader
+  load(state: GardenState): void;                     // once per page, after every system is registered: the saved garden or
+                                                      // newGarden(clock.now(), settings.get()). Emits garden:changed, every plant id in diff.added
+  newGarden(): void;                                  // FR-PER-03: a new garden in place of this one. The caller has done the two-step
+                                                      // confirm. Kept undo tokens are dropped; the bed and its anchor pair stay. Its three
+                                                      // starter seeds come at once when the session has its signature, else with that
+                                                      // session's visit
+}                                                     // T-151 adds setBedHeightOffset(metres), with its reducer in garden/rules.ts
+// Two events join garden/events.ts (§2):
+//   'garden:seedOut':  { seed: Seed; hand: Hand }    a seed of the supply is on that hand (FR-HND-05). At most one seed is out
+//   'garden:seedBack': { seedId: string; reason: 'offBed' | 'full' | 'lost' | 'reset' }
+//                                                    that seed is in the supply again: released off the bed · released over a full bed ·
+//                                                    the carrying hand was lost past its grace · the session ended or newGarden() ran
+
+// room/ (to build, T-128c)
+export class RoomSystem {                             // ECS system, priority 10
+  readonly bed: Entity;                               // made in init(), lives as long as the page. Everything drawn on the bed is a child
+                                                      // of bed.object3D. It carries BedAnchor only while a bed is placed (rule 5)
+  replace(): void;                                    // FR-ROOM-05: places the bed again by the chain; the garden is kept. Nothing outside a session
+  confirm(): void;                                    // the level-3 confirm from a gaze dwell (T-160). It acts only while the solver's
+                                                      // preview is at level 3 (the gaze on a usable spot): a dwell never floats the bed
+}
+
+// audio/ (to build, T-128d): the ECS system that drives the engine is GardenAudioSystem, priority 40, in audio/AudioSystem.ts.
+// It is not named AudioSystem: IWSDK registers a system of that name. §1.2's "AudioSystem" means this class
+
+// hands/: HandSystem, priority 20, is §1.4's (built by T-116). It makes its own HandSampler and has no way to take another
+// InputSource; the garden window (T-114) adds one
+```
+**Priorities.** A system is registered through the wiring's one helper, in ascending priority, with a number from this table. Bus handlers of one event run in the same order, because systems subscribe in `init()` (§2: subscription order).
+
+| −100 | 10 | 20 | 25 | 35 | 40 | 49 | 50 | 52 | 53 | 54 | 55 | 60 | 61 | 62 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Perf | Room | Hand | GazeDwell | Onboarding | GardenAudio | Seed | BedRender | Halo | Vine | Particle | TuningRipple | Caption | Hint | Panel |
+
+IWSDK's own systems hold −5 to 1. A new system takes a free number between the two it must run between and adds it here first.
+
+**Rules a task may rely on.**
+1. **The boot chunk.** `src/index.ts` and everything it imports without `import()` load neither `@iwsdk/core` nor `three`: the landing page is on screen before the SDK has arrived. That is `ui/Landing.ts`, `ui/strings.ts` and `core/` without `core/components.ts`. A file that joins that graph keeps the rule; a test follows the imports from `src/index.ts` and fails on either package.
+2. **One way in.** `world.xr.offer` is `"none"` in `iwsdk.config.json`: a session starts from the page's Enter click only, in the emulator and on a headset. `engine.init()` and the session request are both made inside that click. A session therefore has sound or the `E_AUDIO_CONTEXT` caption: the caption is raised at `xr:sessionStart` when `init()` rejected or was never called (the dev plugin's native XR control can start a session with no click), and `AUDIO_START_GRACE_MS` (3000) later when `engine.clock.now()` is still 0, because a context the browser will not start rejects nothing.
+3. **A session is two bus events.** `src/app.ts` emits `xr:sessionStart`, `xr:sessionEnd` (only for a session whose start it emitted) and `xr:visibility { visible }`, where `visible` is `session.visibilityState !== 'hidden'`, emitted on a change, from the session's own `visibilitychange` event. `world.visibilityState` is not a substitute: IWSDK sets it inside the render tick, and a hidden session has none. A system starts and ends its session work on those events and reads XR objects only where it needs them: the session in an `xr:sessionStart` handler is `this.renderer.xr.getSession()` (`world.session` is set later); the frame is `this.xrFrame`, which is `null` outside XR; the reference space is `this.xrManager.getReferenceSpace()`; the head is `this.xrManager.isPresenting ? this.player.head.matrixWorld : this.camera.matrixWorld`. A system written that way runs unchanged in the garden window.
+4. **The order inside a session.** `xr:sessionStart` → `room:placementLevel` (one or more) → `room:bedPlaced` → `room:features` → `room:signature` → `garden:changed` (the visit) → `garden:grown` (when plants grew) → `garden:seedArrived` (one per new seed). Everything from `room:bedPlaced` on is emitted in one frame, inside `RoomSystem.update`, with this frame's `XRFrame` readable; nothing is emitted from a promise continuation. That one frame may take up to 50 ms of script time (LLD §3.3 D). Plants sound, and the tide shows, from `room:signature` on and not before. `room:tuned` follows 4.0 s later once the ripple is built (T-142); the wiring does not wait for it.
+5. **The bed.** One entity for the life of the page, `RoomSystem.bed`. It carries `BedAnchor` exactly while a bed is placed: not before the first placement, not during Re-place, not after `xr:sessionEnd`, and not while the level-3 ghost shows. A query on `BedAnchor` is how a system learns "placed" and "no longer placed". Where the bed is drawn is `bed.object3D.matrixWorld`, which includes `bedHeightOffset`; `room:bedPlaced.placement.pose` is the surface's pose without it, and is what an anchor is made from.
+6. **The garden's state** changes in `GardenSystem` only. Every change is one `garden:changed { state, diff }`, emitted after the state is replaced; a call that changes nothing emits nothing. The first one of a page comes from `load()`, before any session. A module that wants a change sends the gesture event the release table of §1.4 names, or calls one of the methods above.
+7. **Targets.** `Interactable.id` is the id the reducers take: a plant's id for `kind: 'plant'`, the seed's id for `'seed'`, and the removed plant's id for `'undo'`. A plant's `worldPos` is its cell centre on the bed (its foot), in world space, with `radius = HIT_RADIUS_M`. `BedRenderSystem` owns the plants' targets; whoever draws a seed, an orb, a petal or a control owns that target. `kind`, `id` and `radius` are passed to `addComponent` and never set afterwards: hands reads them once, when the component is added (§1.4); only `worldPos` is written later.
+8. **Seeds.** `garden:seedArrived` = a seed joined the supply. `garden:seedOut` = the next seed of the supply rests on a hand; it is still in `state.seeds`. It is drawn at that hand's `HandState.palmPos` until another hand's `gesture:pinchStart` names it as its target, and from then at the carrying hand's `HandState.pinchPos`. It stops being out in exactly two ways: `garden:changed` naming its id in `diff.added` (planted), or `garden:seedBack`, whose `reason` covers every other end, the session's end and `newGarden()` included. No seed is handed out before the session's visit.
+9. **Saving.** Every `garden:changed` and every `settings:changed` is handed to the saver, with the live settings in the state, and written within `SAVE_DEBOUNCE_MS`; the saver is flushed on `xr:visibility { visible: false }`, on `xr:sessionEnd` and when the document is hidden. A module never calls the store or the saver.
+10. **Brightness.** There is one `FlashGuard`. An element belongs to the object that claimed it, and only that object calls `request` for it, once per frame. A second effect on a plant (hover glow, bloom, Listen foreground) is handed to `PlantRenderer` and combined there.
+11. **The tide's phase.** A renderer that follows the tide takes `engine.clock.barPhase()` only when the bed is placed, the session has its signature and `engine.clock.now() > 0`, and `NaN` otherwise. Before `init()` the engine reports phase 0, which is a valid phase, and during Re-place there is no bed to sweep.
+12. **A throw does not stop the frames.** The helper catches a throw from a system's `update`, logs it and pauses that system for 1 s (LLD §8). It covers every system of the world: the ones registered through it, and IWSDK's own, which it wraps after the last registration. It does not reach three other places, and code there catches its own throw: a query's `qualify` or `disqualify` callback (it runs inside the caller's `addComponent`), a callback inside the render (`scene.onAfterRender`), and a promise continuation, which does no work in the wiring for that reason. A bus handler is covered by the bus (§2). `register` returns the instance, and throws at start-up for a priority lower than the previous call's and for a `configData` key the system's schema lacks.
+13. **One space.** `world.player` is never moved (`locomotion: false`), so a pose in the XR reference space is a world pose.
+14. **For browser tests.** With `Flags.dev` on, `window.__roomsong` is `{ world, engine, garden }`. Nothing in `src/` reads it. Events are read from the bus, which a test already reaches through the dev server's `/src/core/index.ts`.
+
+**Where the later tasks plug in.**
+| Task | Uses |
+|---|---|
+| Seed delivery (T-127) | `garden:seedOut`, `garden:seedBack` and its `reason`, `HandState.palmPos` and `pinchPos` (rule 8); a system at 49 that takes `guard` |
+| Shaping (T-146) | makes `GestureMachine` send `drag` and `pull`; `GardenSystem` already commits them and emits `garden:removed`. The undo petal is an `Interactable { kind: 'undo', id }` drawn on `garden:removed` |
+| Listen mode (T-148) | adds the Listen state and `listen:*` to `GardenSystem`; a system at 52 that takes `guard` and `engine` |
+| Onboarding (T-150) | `room:signature`, `room:tuned`, `garden:seedOut`, `garden:changed`; a system at 35 |
+| Settings panel (T-151) | a system at 62 that takes `garden` and `room`: `garden.newGarden()`, `room.replace()`, and its own `garden.setBedHeightOffset()` |
+| Pause and resume (T-152) | `xr:visibility`; rule 9 |
+| Anchors (T-162) | an `AnchorStore` handed to `RoomSystem`; the saved pair from `garden:changed.state`; `room:bedPlaced.placement.pose` for `create()` |
+| Garden window (T-114) | the mode gate in `src/app.ts` (`World.create` with `xr: false`, the page's own `xr:*` events), rule 3, and a way to give `HandSystem` another `InputSource`, which it adds to `hands/` |
+| Gaze dwell (T-160) | `room.confirm()`; the `Interactable` entities |
+
+**What the wiring adds to other sections**, each marked "to build" where it stands: `PlacementSolver.preview()` and the two level-3 rules (§1.3); `BedRenderer.setGhost()` (§1.8); the caption keys `placeLook`, `placeLookGaze` and `E_AUDIO_CONTEXT` and the components' export (§1.0); the events `garden:seedOut` and `garden:seedBack` (§2). Still to be written into §1.2 by the task that builds it (T-128d): `AudioEngine.stats.triggers`, the number of notes the scheduler has started since `init()`.
+
 ## 2. Event bus (`core/events.ts`)
 Typed pub/sub, synchronous, no async handlers in hot paths.
 `core/events.ts` owns the bus and the `EventMap` interface (§1.0), which holds only the events declared in `core/`: `settings:changed`, which core emits, and the three `xr:*` events, which `src/index.ts` emits (it owns the session; core cannot see it). Every other module adds the events it emits by declaration merging in its own `events.ts` (`declare module '../core/index.js' { interface EventMap { … } }`), so `core/` imports no payload type and a payload type lives with its emitter. The table is the merged map.
@@ -488,12 +597,12 @@ A consumer never imports the emitter to name a payload: it writes `EventMap['ges
 
 | Event | Payload | Emitter → Consumers |
 |---|---|---|
-| `xr:sessionStart` / `xr:sessionEnd` / `xr:visibility` | `{ visible: boolean }`, all three: `true` on `xr:sessionStart`, `false` on `xr:sessionEnd` | `src/index.ts` (declared in core's `EventMap`) → audio, ui; for persistence `src/index.ts` itself calls `flush()` (below) (in the garden window the same three events are emitted for the page: Enter click, close, `visibilitychange`; FR-SYS-07) |
+| `xr:sessionStart` / `xr:sessionEnd` / `xr:visibility` | `{ visible: boolean }`, all three: `true` on `xr:sessionStart`, `false` on `xr:sessionEnd` | `src/index.ts`, in its wiring half `src/app.ts` (§1.10; declared in core's `EventMap`) → audio, ui, room, hands, garden; for persistence the wiring itself calls `flush()` (below). `xr:visibility.visible` is `session.visibilityState !== 'hidden'`, emitted when that value changes, from the session's own `visibilitychange` event; a blurred session counts as seen (§1.10 rule 3). (In the garden window the same three events are emitted for the page: Enter click, close, `visibilitychange`; FR-SYS-07) |
 | `settings:changed` | `{ settings: Settings }` | core (`settings.set`) → audio, access, render, ui, `src/index.ts` (it saves: below). Emitted only when a field really changed. `settings` is the new frozen value; a handler reads `settings.get()` when another handler may have called `set()` in between (v1.2.1) |
 | `room:placementLevel` | `{ level }` | room → ui, log. Once for each level the chain tries, in order; the last one of a run is the level of its bed (for example 1, 3, 4), so a consumer must expect several. For a bed that comes back from an anchor RoomSystem emits it once (§1.3) |
 | `room:bedPlaced` | `{ placement: BedPlacement, restored: boolean }` | room → garden, render, audio. `restored` = the pose came back from the saved anchor and the chain did not run. On `restored = false` garden drops any saved anchor pair (`setAnchor(null)`): it is stale (§1.3) |
 | `room:anchored` | `{ handle: string, level: PlacementLevel }` | room → garden (stores the pair with `setAnchor`). Emitted when `AnchorStore.create()` resolves, any time after `room:bedPlaced`; never in a restored session; not at all when anchors are unsupported or creation fails (FR-ROOM-07) |
-| `room:features` | `{ features: RoomFeatures, surfaces: RoomSurfaces }` | room → garden, log (≤ 3 s after session start; FR-ROOM-10) |
+| `room:features` | `{ features: RoomFeatures, surfaces: RoomSurfaces }` | room → garden, render (the ripple's surfaces), log. Emitted by RoomSystem in the frame of `room:bedPlaced`, once per placement, so again after Re-place (§1.10 rule 4). That is within 3 s of session start when the bed lands on a plane or comes back from its anchor (FR-ROOM-10). At level 3 it follows the confirm or the end of the level-3 wait, so it can be as late as `PLANE_LEVELS_TIMEOUT_MS + HIT_TEST_TIMEOUT_MS` (13 s) after session start; the signature is Wanderer then, whatever was read |
 | `room:signature` | `{ signature: RoomSignature, starterSeeds: boolean }` | garden → audio, render (TuningRipple, palette), onboarding, log (FR-ROOM-11/13). `starterSeeds` = this session issued the starter seeds from `signature.starterVoices` (a new garden); it picks the ripple's table caption (LLD §5.8) |
 | `room:tuned` | `{}` | render (TuningRipple) → onboarding, ui (≤ 4 s after `room:signature`; FR-ROOM-12) |
 | `room:wallsFound` | `{ walls }` | room → render (Could, C4; was Should, D-021) |
@@ -501,9 +610,11 @@ A consumer never imports the emitter to name a payload: it writes `EventMap['ges
 | `hands:lost` / `hands:found` | `{ hand: Hand }` | hands → render (hand-visibility tint), ui (hint): tint and hint only for a hand that holds a gesture (D-030, LLD §4); garden (listed per sheet 6.3; no action in v1: the model is not touched before a release). Once per loss and once per return, emitted at once, before the grace runs (FR-HND-15) |
 | `target:hover` | `{ hand: Hand, target: TargetRef \| null, cell: Cell \| null }` | hands → render (cell ghost, plant glow), ui. `cell` = the cell a release would commit: the snapped cell resolved to the nearest free one; `null` off the bed or when the bed is full. On change only (FR-HND-16) |
 | `garden:changed` | `{ state: GardenState, diff: { added, removed, changed } }` | garden → audio, render, ui, `src/index.ts` (it saves: below). `added`, `removed` and `changed` are each a `readonly string[]` of plant ids: planted or put back by undo, removed, moved or reshaped (v1.2.2, D-031) |
-| `garden:removed` | `{ plantId, undoToken, expiresAt }` | garden → render (undo petal at the release point), audio (`removeRev`), ui; `expiresAt = now + 5000` (FR-HND-11, FR-MUS-12) |
-| `garden:grown` | `{ deltas }` | garden → render, audio |
-| `garden:seedArrived` | `{ seed }` | garden → render, onboarding |
+| `garden:removed` | `{ plantId, undoToken, expiresAt }` | garden → render (undo petal over the removed plant's own cell, UX §9.3), audio (`removeRev`), ui; `expiresAt = now + UNDO_LIFE_MS` (5000; FR-HND-11, FR-MUS-12) |
+| `garden:grown` | `{ deltas }` | garden → render, audio. At most once per visit: at a session's signature and at a return from a pause (§1.10 rule 4) |
+| `garden:seedArrived` | `{ seed }` | garden → render (the supply), onboarding. A seed joined the supply: one event per new seed of a visit. Not a seed reaching a hand: that is `garden:seedOut` |
+| `garden:seedOut` | `{ seed, hand }` | garden → render (the seed on the palm, T-127), onboarding. The next seed of the supply rests on that hand after its palm-up (FR-HND-05); at most one seed is out, and it stays in `state.seeds` until planted (§1.10 rule 8). To build: T-128b |
+| `garden:seedBack` | `{ seedId, reason }` | garden → render, audio (`bump`), onboarding, ui. The seed that was out is in the supply again; `reason` is `'offBed'` (released off the bed), `'full'` (released over a full bed), `'lost'` (the carrying hand was lost past its grace) or `'reset'` (the session ended, or New garden). To build: T-128b |
 | `listen:enter` / `listen:exit` | `{}` | garden → audio, render, ui |
 | `onboarding:step` | `{ step }` | onboarding → ui |
 | `perf:sample` | `{ fps, draws, tris, jsMs, voices, maxFlashPerS }` | render (`PerfSampler`, once a second; the object is reused, so a handler copies what it keeps) → perf hud, tests. `fps` and the mean `jsMs` over the last second; `draws` and `tris` of the frame the sample was taken on; `voices` as the caller hands it in; `maxFlashPerS` = the peak since the previous sample: the most luminance changes any one element had inside one second. It must stay ≤ `FLASH_CAP_PER_S` = 3: FR-UI-11, TC-E2E-15; §1.8 |
@@ -548,3 +659,4 @@ Module interface changes: note here under a "Changelog" entry with date, PR, and
 - 2026-10-12 — v1.2.10 (2026-10-12, T-161 and D-037; daily seed and growth as built and reviewed). **garden (§1.1), changed:** `applyVisit(s, now, sig, tzOffsetMin)` takes the zone offset as a required fourth argument (garden reads no clock and no zone). **Added:** `newGarden(now, settings)`, the one way to make a garden (`visits` 0 is what makes it new); `SEED_SUPPLY_MAX` (5), which persistence now imports; the rules of a visit (three starter seeds on the first, one seed per local day visited and not per day missed, a full supply keeps the day's seed, ids `seed-<date>`, the garden's time never goes back, a plant's age is `lastVisitAt − plantedAt`); `stageFor` boundaries at 1, 3 and 7 days belong to the higher stage. No `seeds.ts`: the supply lives in `growth.ts`.
 - 2026-10-12 — v1.2.11 (2026-10-12, T-144; no signature changed). **audio (§1.2), as built:** Bass and Choir plants play their own voices; only Shimmer still rings as a bell.
 - 2026-10-12 — v1.2.12 (2026-10-12, T-140; room feature extraction as built and reviewed). **room (§1.3), changed:** `RoomFeatureExtractor` is a class, `new RoomFeatureExtractor(planes, meshes)` over the two adapters, with `extract(placement)` and the member `surfaces` (of the last extract). It emits nothing; the caller emits `room:features`. `extract` reads the bed pose and level only: `BedPlacement.surfaceId` is no longer a hint, so a bed restored from an anchor finds the same table as the session that placed it. `RoomSurfaces` gives the ceiling and nearest wall at every level and the table at levels 1 and 2. The rules for each feature are in LLD §5.8.
+- 2026-10-12 — v1.2.13 (2026-10-12, T-128 wiring contract; written and independently reviewed, nothing of it built yet). **New §1.10, app wiring:** `src/index.ts` is the boot and loads `src/app.ts`, which makes one of each (world, audio engine, FlashGuard, store and saver, garden holder) and registers the systems through `register()` in ascending priority; a session is `xr:sessionStart` to `xr:sessionEnd` on the bus; `GardenSystem` is a plain class that owns the garden state; no system saves. **Changed for it:** §1: only the boot and `src/app.ts` import across modules; `GardenSystem` is not an ECS system. §1.0: the three shared components are imported from `core/components.js` by every importer and are no longer re-exported by `core/index.ts`; `StringKey` gains `placeLook`, `placeLookGaze` and `E_AUDIO_CONTEXT`. §1.3: `PlacementSolver.preview()`; `confirm()` places where the preview is, and from a gaze dwell acts only at preview level 3; the level-3 wait is `HIT_TEST_TIMEOUT_MS` and then places at the preview. §1.4: a `none` release with no target confirms a level-3 placement. §1.8: `BedRenderer.setGhost(on)` and `dispose()`. §2: new events `garden:seedOut { seed, hand }` and `garden:seedBack { seedId, reason }`; `garden:seedArrived` means only "a seed joined the supply"; `room:features` timing at level 3; `xr:visibility` comes from the session's own `visibilitychange`. Each of these is built by the T-128 row named in LLD §3.5; until then the code is as the older sections say where they are marked "as built".

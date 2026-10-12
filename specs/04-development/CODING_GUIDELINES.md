@@ -20,7 +20,7 @@ Agents: read this fully before your first commit. Reviewers: reject PRs that vio
 - Node ≥ 20.19. npm (lockfile committed).
 
 ## 3. Project structure & naming
-- Folders are modules with one owner (LLD §2). Public API via `index.ts` only; **MUST NOT** deep-import another module's internals.
+- Folders are modules with one owner (LLD §2). Public API via `index.ts` only; **MUST NOT** deep-import another module's internals. Two rules stand beside that one, both so that the landing page's chunk loads no SDK code (API_SPEC §1 and §1.10 rule 1): the three shared ECS components (`BedAnchor`, `Interactable`, `Caption`) **MUST** be imported from `core/components.js`, by every importer, because `core/index.ts` does not export them; and `src/index.ts`, the boot, imports `mountLanding` from `ui/Landing.js`. `src/index.ts` and what it imports without `import()` **MUST NOT** load `@iwsdk/core` or `three`.
 - Files: `PascalCase.ts` for classes/systems/components, `camelCase.ts` for function modules, `*.test.ts` beside the mirror path in `tests/unit/`.
 - Names: `PascalCase` types/classes, `camelCase` functions/vars, `UPPER_SNAKE` true constants, `IFoo` **not** used (no I-prefix). Booleans read as predicates: `isTracked`, `hasSeed`, `canPlant`.
 - Units in names when ambiguous: `heightM`, `durationMs`, `angleRad`, `gainDb`. Default units: **metres, seconds (audio), milliseconds (wall-clock), radians**.

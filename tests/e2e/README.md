@@ -25,9 +25,12 @@ npx playwright test 01-enter        # one file
   so runs are the same online and offline. One request is answered locally instead: the emulator downloads its room
   from unpkg.com on every dev page load (`dev.emulator.environment` in `iwsdk.config.json`), and the helper serves
   the room fixture there. That download is dev tooling; it is not in the production build.
-- **Enter:** the app offers the session; the emulator shows an "Enter XR" button in place of the browser's prompt.
-  `enterXR` selects hands (IWER starts on controllers) and clicks that button; `enterXR(page, 'controller')` keeps
-  the controllers.
+- **Enter:** as built, the app offers the session and the emulator shows an "Enter XR" button in place of the
+  browser's prompt; `enterXR` selects hands (IWER starts on controllers) and clicks that button, and
+  `enterXR(page, 'controller')` keeps the controllers. **From T-128a** `xr.offer` is `"none"` (API_SPEC §1.10
+  rule 2): no session is offered, the emulator shows no button, and `enterXR` presses the page's own
+  "Enter the garden" button, the only way in, which is also what starts the audio. `iwsdk xr enter` needs an
+  offered session and no longer works then.
 
 ## Helper — `support/iwer.ts`
 

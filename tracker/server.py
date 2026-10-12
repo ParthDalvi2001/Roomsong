@@ -79,7 +79,7 @@ def load_plan():
             continue
         if line.startswith('## '):
             current = None
-        m = re.match(r'^\| \*{0,2}(T-\d+)\*{0,2} \|', line)
+        m = re.match(r'^\| \*{0,2}(T-\d+[a-e]?)\*{0,2} \|', line)
         if not (m and current):
             continue
         cells = row_cells(line)
@@ -96,7 +96,7 @@ def load_plan():
     for phase in phases:
         ids = [t['id'] for t in phase['tasks']]
         for task in phase['tasks']:
-            deps = set(re.findall(r'T-\d+', task['depsText']))
+            deps = set(re.findall(r'T-\d+[a-e]?', task['depsText']))
             for lo, hi in re.findall(r'T-(\d+)\.\.T-(\d+)', task['depsText']):
                 deps |= {f'T-{n}' for n in range(int(lo), int(hi) + 1)} & set(ids)
             if task['depsText'].lower().startswith('all'):
@@ -257,7 +257,7 @@ def load_notes():
     notes = {}
     for line in section(read('specs/08-status/PROGRESS.md'), '## Now').split('\n'):
         cells = row_cells(line)
-        m = re.match(r'^\*{0,2}(T-\d+)', cells[0]) if len(cells) >= 4 else None
+        m = re.match(r'^\*{0,2}(T-\d+[a-e]?)', cells[0]) if len(cells) >= 4 else None
         if m:
             notes[m.group(1)] = ' '.join(filter(None, [notes.get(m.group(1)), plain(cells[3])]))
     return notes
@@ -269,7 +269,7 @@ def load_task_commits():
     for line in git('log', '--all', '-600', '--format=%h|%cs|%s').split('\n'):
         parts = line.split('|', 2)
         if len(parts) == 3:
-            for task_id in set(re.findall(r'T-\d+', parts[2])):
+            for task_id in set(re.findall(r'T-\d+[a-e]?', parts[2])):
                 out.setdefault(task_id, []).append({'hash': parts[0], 'date': parts[1], 'subject': parts[2]})
     return out
 
@@ -286,7 +286,7 @@ def done_dates():
         dates = {}
         for line in reversed(git('log', '--format=%H %cs', '--', path).split('\n')):  # oldest first
             commit, _, when = line.partition(' ')
-            for task_id, status in re.findall(r'^\| \*{0,2}(T-\d+)\*{0,2} \|.*\|([^|\n]*)\|[ \t]*$', git('show', f'{commit}:{path}'), re.M):
+            for task_id, status in re.findall(r'^\| \*{0,2}(T-\d+[a-e]?)\*{0,2} \|.*\|([^|\n]*)\|[ \t]*$', git('show', f'{commit}:{path}'), re.M):
                 if not plain(status).lower().startswith('done'):
                     dates.pop(task_id, None)
                 elif task_id not in dates:
