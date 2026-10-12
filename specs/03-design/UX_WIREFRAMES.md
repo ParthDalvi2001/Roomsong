@@ -218,3 +218,247 @@ No hand or controller models are drawn (D-027): these icons and the hover cue ar
 - No element changes luminance more than 3 times per second, which is at most 1.5 flashes per second (FR-UI-11; rules in §5). Tide glow ramps, never strobes. *"No flashing > 3 Hz": replaced by this stricter cap.*
 - Reduced motion, in one place: tuning ripple → each surface glows 0.4 s in turn, same notes and captions (§3.2); growth → fades; amplitudes halved; particle counts halved (FR-UI-06). Hover cue, tracking-loss tint and the 150 ms glide are unchanged.
 - High contrast: every hover cue is an outline as well as a glow; the hand hint and the remove hint are outlined.
+
+## 9. Design answers, 2026-10-12
+Seven questions the builders and reviewers raised, settled so the next tasks do not have to guess. Written against the code on `develop` at `bfe0e20` (`src/hands/`, `src/room/`, `src/render/`, `src/ui/`). Nothing here has been seen on a headset: every answer says what the emulator can show and what the device run (T-129) has to confirm. Sections 1 to 8 are not edited by this section; where an answer changes a sentence above, **Replaces** quotes it, and the driver folds it in. Numbers marked *computed* come from the seated sketch of §2 (eye 1.15 m, table 0.72 m, bed centre 0.45 m ahead), not from a measurement.
+
+### 9.1 One-hand seed pick-up (T-160)
+**Decision.** In one-hand mode a delivered seed rests at the fingertips of the hand that asked for it, at that hand's own pinch point, not above its palm. The same hand closes thumb and index on it, carries it and lets go over a cell: the carry and the planting are unchanged. This is the rule the garden window already has for a pointer (LLD §11), so there is no new gesture and the gesture machine does not change.
+
+**Numbers and text.**
+- Asking is unchanged: palm up within 35° for 400 ms (FR-HND-05).
+- Rest point: `HandFrame.pinchPos` (the filtered midpoint of thumb tip and index tip), in place of the point 3 cm above the palm (`PALM_REST_OFFSET_M`). The seed is drawn 2.5 cm across with a 4.0 cm hit radius; at the pinch point its distance to the pinch is 0, so the pinch cannot miss it.
+- Stepping aside: while a plant, the orb, an undo petal or a panel control is within 4.0 cm (`HIT_RADIUS_M`) of the fingertips, the seed rests above the palm instead, so a pinch there acts on that target. It returns to the fingertips once nothing is within 4.5 cm (`HIT_RADIUS_M + HOVER_DEAD_BAND_M`). Each hop is a 100 ms glide, ease-out. Without this rule a waiting seed would take every pinch and no plant could be shaped until it was planted.
+- Either hand may ask; the seed rests at the fingertips of the hand that did. Icons mirror for the dominant hand as everywhere (FR-HND-13).
+- Captions unchanged: "Open your hand", then "Pinch, and plant it". No new caption, no new icon.
+- Gaze only: there is no pick-up. A dwell on a free cell plants the next seed there (US-16), as before.
+
+**Needs from the code.**
+- `hands/` (T-160; API_SPEC §1.4 first): with `Settings.oneHand` on, `palmPos` is the pinch point, with the stepping-aside rule above. The contract's comment on `palmPos` gains "one-hand mode: the pinch point".
+- `window/PointerSource` (T-114): the same rule in LLD §11's words. Whichever of the two lands second reuses the first one's function.
+- `render/`, `onboarding/`, `garden/`: nothing. A delivered seed is already drawn at `palmPos` and picked there as an ordinary target (LLD §4).
+- Tests (T-160): one unit case (the rest point with and without a target within 4.0 cm) and one emulator case beside TC-E2E-07: with one-hand mode on, a single emulated hand goes palm up for 400 ms, pinches, moves over a cell, releases, and one plant exists.
+
+**Inside the rules.** Hands only, and one hand is enough for the whole loop. Gaze-only users are not affected. Reach and view box: the seed is in the player's own hand, as today. Flash limit: nothing changes brightness (the hover cue is a level). Reduced motion: the 100 ms hop stays, like the 150 ms tracking-loss glide.
+
+**Emulator / headset.** The emulator shows the whole flow with one emulated hand, the stepping-aside rule and the event order. Only a headset shows whether a real open hand's pinch point is steady enough to rest a seed on (the filter trails a moving hand by about 3 cm at 0.2 m/s with beta 0), whether the platform's classifier sees a pinch made palm up (`select`), and whether a seed drawn over the fingers with no occlusion reads as lying between them (TC-DEV-06).
+
+**Rejected.** A seed stand on the table beside the bed: every free spot there is either in the remove zone or outside the view box, and it is one more place to learn.
+
+**Replaces.** Nothing. Adds one sentence to the One-hand bullet of §8: "A delivered seed rests at the fingertips of the hand that asked for it (§9.1)." Step 1 of §3.3 gains "(one-hand mode: to the fingertips)" after "seed glides to palm".
+
+### 9.2 Placement level 3: the wait and the confirm (T-128)
+**Decision.** The moment level 3 starts, a ghost of the bed shows where the bed will land and one caption says what to do. The bed lands where the ghost is, in all three endings: a pinch, a dwell in gaze mode, or the 10 s running out. So nothing jumps at the end of the wait and no pinch is ignored.
+
+**Numbers and text.**
+- Start: `room:placementLevel { level: 3 }`, at most 3 s after the session starts (at once in a session without plane detection). Ghost and caption fade in over 300 ms. A session without hit-test never enters level 3 and shows neither.
+- Caption, hands: **"Look at your table, and pinch"** (6 words) with the pinch icon. Gaze mode: **"Look at your table, and wait"** (6 words) with the gaze-dot icon. It sits in the caption slot of §3.3 (0.6 m ahead, 8° below the gaze, held in the view box by the FoV guard) and stays until the bed is placed. Keys `placeLook` and `placeLookGaze` in `core/strings.ts`.
+- Ghost: the bed's own glass with its five ring lines and nothing else: no cell markers, no plants. Its pose is exactly the pose a confirm in this frame would give:
+  - gaze on a usable spot (a hit at least 0.25 m below the eyes and at least 0.5 m above the floor, D-034): on that surface, its centre pulled to 0.35–0.45 m from the head by the solver's own clamp;
+  - anything else (no hit, a wall, the floor): the floating bed, 0.45 m ahead and 0.25 m below eye height.
+  It follows with a 100 ms ease, so hit-test jitter does not shake it, and keeps one brightness: a level, never a pulse.
+- Confirm, hands: a pinch of either hand, anywhere, acting on its release (`gesture:release` with `target: null`; there is nothing else to pinch yet). The bed is placed where the ghost is: on the surface (level 3), or floating (level 4) when the gaze is on nothing usable.
+- Confirm, gaze mode: the ghost is the dwell target. It confirms after resting on a usable spot for `Settings.dwellMs` (600 / 900 / 1200 ms) with the head moving less than 8°/s (the §8 rule), the reticle's ring filling as for any target. A dwell never places a floating bed; that comes from the time-out only, so a moment of sitting still does not cost the table. A pinch works in gaze mode too.
+- Time-out: 10 s after level 3 began (`HIT_TEST_TIMEOUT_MS`) the bed is placed where the ghost is at that moment: on the surface when the gaze is on a usable spot (level 3), floating otherwise (level 4).
+- Placed, in all three endings: the ghost stops following, the cell markers fade in, one pulse and the confirm chord (the Placed row of §3.2), and the caption is withdrawn. No error text and no "no" sound: a floating bed is a complete garden (FR-ROOM-02).
+- Cost: 0 new draw calls and 0 new geometry. The ghost is the bed's first mesh (1 draw call), shown before the bed is placed instead of after.
+
+**Needs from the code.**
+- `room/PlacementSolver` (T-128; API_SPEC §1.3 first): a read-only preview, the pose and the level (3 or 4) that a confirm in this frame would give; nothing outside level 3.
+- `room/PlacementSolver` (T-128; FR-ROOM-01 (3) and LLD §5.5 first): a confirm with no usable spot places the floating bed at once, and a wait that runs out over a usable spot uses that spot. Today the first is ignored for up to 10 s and the second floats above the table the user is looking at.
+- `room/RoomSystem` (T-128): calls `confirm()` on `gesture:release` with `target: null` while level 3 runs.
+- `render/BedRenderer` (T-128): its glass is shown at the preview pose with the markers hidden until `room:bedPlaced`.
+- `ui/` (T-128): raises the caption on `room:placementLevel { level: 3 }` and withdraws it on `room:bedPlaced`; the two keys above.
+- `access/GazeDwell` (T-160): the ghost as a dwell target; it calls `confirm()`.
+
+**Inside the rules.** Hands only; either hand, so one hand is enough. Gaze only: the dwell, with no pinch anywhere. Reach: the solver's clamp holds the centre to 0.35–0.45 m and the far edge to 0.75 m at every level, and the ghost shows that clamped pose. View box: the caption is held in it; the ghost is the bed and is in view as far as the bed is (§2). Flash limit: the ghost and the caption are levels; the placed pulse is one pulse. Reduced motion: unchanged; the ghost is an aiming cue like the gaze reticle, with no sweep and no parallax.
+
+**Emulator / headset.** The emulator, with `forceLevel=3` and a stubbed hit: the caption text and when it shows and goes, the ghost's pose equal to the placed pose, a pinch on a usable spot (level 3), a pinch on nothing usable (level 4 at once), no pinch (placed at 10 s where the ghost is), a dwell with no pinch event, the draw-call count and the flash count. Only a headset shows what hit-test meets in a room without Space Setup (already on the T-129 list), whether a bed resting on the real table and a floating one can be told apart by depth alone (if not: ring lines cream while floating, through the existing `uLine` uniform), how much the hit point shakes, and whether a stranger follows the caption (UAT-16, the room with no scanned table).
+
+**Not decided here: the first-sound budget (for Parth).** FR-UI-02 allows 20 s. Before the first seed can be asked for, level 3 spends: cold start up to 5 s + plane wait 3 s + the time to the confirm + the bed ripple 4.0 s. With a confirm 3 s after the hint that is 15 s, which leaves 5 s for the first seed where §3.3 counts 8. With the full 10 s it is 22 s. The design above shortens the usual case and cannot shorten the worst one: that takes a shorter level-3 wait (FR-ROOM-01) or a shorter ripple for a bed-only room (LLD §5.8), or FR-UI-02 scoped to rooms where a table is found.
+
+**Rejected.** A countdown ring on the ghost: one more animated element, and a hurry the app does not need once the bed lands where the ghost is.
+
+**Replaces.** In §3.2, the Hit-test (L3) row: Visual "Ghost bed follows gaze; pinch icon" becomes "Ghost bed where the bed will land: on the surface under the gaze, else floating (§9.2); pinch icon", and Caption "Pinch to place" becomes "Look at your table, and pinch" (gaze mode: "Look at your table, and wait"). In §3.3, "session start ≤ 5 s + scanning ≤ 3 s + tuning 4.0 s = 12 s at worst" becomes "session start ≤ 5 s + scanning ≤ 3 s + tuning 4.0 s = 12 s when a table is found (levels 1 and 2); at level 3 add the time to the confirm, up to 10 s (§9.2)".
+
+### 9.3 The undo petal (T-146, T-147)
+**Decision.** The petal waits where the plant stood: over the removed plant's own cell, not at the release point. It is then a thing on the bed, always within reach, never two on one spot, and it says which plant it brings back. `render/` draws it. No view-box clamp is needed, so `clampToFov` stays in `ui/` and nothing moves to `core/`.
+
+**Numbers.**
+- Place: the centre of the removed plant's cell, 3 cm above the bed, fixed in the room for its whole life. One petal per removed plant; several can be alive at once, each over its own cell.
+- Arrival: the plant dissolves at the release point as before, the burst's petals drift to the cell in 400 ms (the remove burst's time) and one stays. The drift leads the eye from the hand back to the bed.
+- Look: one petal of the burst, in the plant's own colour at the rest brightness 0.7, constant. Drawn 2.5 cm across at the start and shrinking in a straight line to 1.0 cm at 5 000 ms. The cell's own marker ring (2.5 cm, already drawn) lies under it, so the shrinking has a fixed size to be read against. It fades out over the last 300 ms: one luminance change in its life. Nothing blinks and nothing speeds up near the end.
+- Target: hit radius 4.0 cm for the whole 5 s, however small it is drawn. Lifted 3 cm, it is at least 5.6 cm from a neighbouring plant's foot even on the inner ring, so the nearest target is never in doubt.
+- Taking it: a pinch released on it (the existing `press`), with either hand, or a gaze dwell of `Settings.dwellMs`. The hover cue is the existing one (20 % brighter with an outline). Undo itself is unchanged: the petals reassemble in the cell, forward chime.
+- If a seed is planted into that cell meanwhile, the petal stays and an undo puts the plant on the nearest free cell (D-031).
+- View box, *computed*: with the gaze on the bed centre the petal is inside ±25°/±20° for 68 of the 80 cells. For the other 12 (ring 4, steps 0 to 8; ring 3, steps 1, 4 and 7) it is outside by at most 7.2°. These are the near-side and side-rim cells whose plants §2 already lists as outside the box, and the T-105 decision on the outer radius settles both together.
+- Reach: on the bed, so at most 0.75 m from the head, measured level.
+
+**Needs from the code.**
+- `render/` (T-146: the petal and its `Interactable { kind: 'undo' }`; T-147: the drift): on `garden:removed`, a petal at `cellCentre(undoToken.plant.cell)` plus 3 cm, until `expiresAt` or the undo. One more draw call at most, shared with the burst's particles.
+- `garden/GardenSystem` (T-128): keeps the 5 s life, as planned. `hands/`: nothing, PRESSED on an undo target exists. `access/GazeDwell` (T-160): the petal is a dwell target like any `Interactable`. `ui/`: nothing.
+- To fold in outside this document: API_SPEC §2, `garden:removed`, "render (undo petal at the release point)" becomes "at the removed plant's cell"; the T-146 row's open choice (move `clampToFov` to `core/`, or let `ui/` draw the petal) falls away.
+
+**Inside the rules.** Hands only; one hand; gaze only by dwell (the longest dwell, 1 200 ms, fits in the 5 s). Reach as above. View box as computed above: not strict for 12 cells, which is the one open point of this answer. If the petal has to be strictly inside the box for every cell, say so before T-146 starts: the answer is then the rejected one below. Flash limit: constant brightness and one fade. Reduced motion: no drift; the petal fades in at the cell over 150 ms; the shrinking stays (1.5 cm over 5 s). High contrast: the marker ring under it at full strength as its outline.
+
+**Emulator / headset.** The emulator shows the petal's place for every cell, its life against a fake clock, pinch and dwell, several petals at once, and the flash count. Only a headset shows whether a 1.0 to 2.5 cm petal among plants is found in time by someone who did not mean to remove a plant, and whether 4.0 cm is enough to pinch it on the far rings.
+
+**Rejected.** The petal at the release point, clamped into the view box by `ui/`: it needs the head pose, a floor so that it never lands inside the table, and a rule for two petals on one spot, and it cannot say which plant it brings back.
+
+**Replaces.** In §3.4, "Plant dissolves into petals at the release point; one **undo petal** stays there, clamped into the FoV box, for 5 s, shrinking as time runs out" becomes "Plant dissolves into petals at the release point; the petals drift back to the plant's cell and one **undo petal** waits 3 cm above it for 5 s, shrinking as time runs out (§9.3)". In §7, "Undo petal for 5 s at the release point, clamped into the FoV box (pinch or dwell)" becomes "Undo petal for 5 s over the plant's own cell (pinch or dwell; §9.3)".
+
+### 9.4 The sweep of light on a bright table (follow-up of T-125, before the T-163 review)
+**Decision.** One rule: the light travels with its own shade. The wedge keeps its cream light at the strength it has, and a charcoal band is added directly ahead of the crest. On a dark table the band cannot be seen; on a light table it is the dark edge the crest stands against. The light is never made brighter: a light table is already near white, so more light adds nothing there and washes out the plants everywhere else.
+
+**Numbers.**
+- Light, unchanged (`render/config.ts`): cream, peak 0.7 (`TIDE_PEAK`), rising over the 0.5 step ahead of the crest, trailing 3 steps behind it, falloff power 2.
+- Shade, new: the bed's own charcoal (#141A1F). It runs from 1.0 step ahead of the crest to the crest: cover 0 at 1.0 step ahead, 0.6 at 0.5 step ahead, 0 at the crest, in straight lines. Across the bed it has the light's own profile (nothing at the two glass edges, full between ring 0 and ring 4). New constants `TIDE_SHADE_STEPS = 1` and `TIDE_SHADE_COVER = 0.6`.
+- How the two combine: what is drawn = the light + what lies under it × (1 − cover). Where the cover is 0 this is today's additive light, so the crest and its tail look as they do now.
+- Contrast, *computed* for the bed glass at 40 % over four table colours, as luminance ratios. Today, crest against the bed around it: white 2.5, light (#E8E4DA) 3.1, grey (#808080) 7.2, the preview's dark table (#2B2622) 10.3. With the shade, crest against the shade's darkest point: 8.0, 8.9, 12.8, 10.9. Those figures blend the encoded colour values, as the browser canvas does. If a headset blends in linear light they are 1.6, 2.0, 4.6, 11.0 today and 3.5, 4.3, 7.7, 11.6 with the shade.
+- Pass mark: crest to the shade's darkest point at least 3:1 on a white table and on the dark one, measured on the preview page.
+- Cost: the wedge grows from 3.5 to 4 steps of arc, 96 triangles in place of 84, still one mesh and one draw call when its blend carries light and cover together; one more draw call per eye if the builder needs a second mesh (16 in a session with both eyes where 14 are measured today, of a budget of 60).
+- Plants stand above the wedge and are not darkened by it. Their trigger flash is unchanged (0.7 to 1.0 and back).
+
+**Needs from the code.**
+- `render/TideRenderer` and `render/config.ts`: the shade as above; showing and hiding the wedge fades light and shade together, through the one FlashGuard element it has.
+- `proto/bed`: a way to set the table to white, so the pass mark can be checked.
+- Test: in `07-bed`, the luminance at the crest and half a step ahead of it, on both tables.
+
+**Inside the rules.** Hands, one hand, gaze, reach and view box are not touched. Flash limit: the wedge still moves at one brightness, which the cap does not count (LLD §5.9). Counted the hard way, at one fixed spot of the bed on a white table, a spot goes darker, brighter and back once per bar; the three changes begin within one step of each other and bars are at least 2.0 s apart (120 BPM), so no second holds more than 3. On a dark table the shade's swing is 0.01 of full scale, below `FLASH_MIN_DELTA`. Reduced motion and high contrast: the same wedge.
+
+**Emulator / headset.** The emulator shows both tables on the preview page, the pass mark, the draw calls and the flash count. Only a headset shows how bright a real light table arrives in passthrough, whether the compositor honours the canvas's cover and in which space it blends (the two rows of figures above), and so whether 0.6 is enough.
+
+**For Parth's eye, not decided here.** A darker bed glass (40 % to 65 %) would also help the markers and the ring lines on a light table (crest against bed 5.4 on white, 2.6 if blended in linear light), but it hides more of the real table and changes the look he is rating now.
+
+**Rejected.** A dark layer of the wedge's own shape under it: it darkens exactly where the light is, so on white the crest drops from 2.5 to 2.2 against the bed.
+
+**Replaces.** Nothing. Adds to the flash-cap bullet of §5 that begins "The tide crest keeps one brightness as it moves": "A charcoal shade leads the crest by half a step, so the crest has a dark edge on any table (§9.4)."
+
+### 9.5 Shapes for Bass and Choir (follow-up of T-125; T-163 polishes)
+**Decision.** Bass is a jug: a low, broad bulb that sits on the bed itself, with a thin neck and a small cap. It is the only plant whose weight is at the ground. Choir is an umbrella: a canopy of three rounded petals that hangs over the top of the stem, open underneath, the pad's cup turned upside down. Both are two more rows in the table the renderer already has (an outline turned round the stem, with or without lobes), so no new kind of geometry is needed.
+
+**Numbers.** In the form of `SHAPES` in `render/PlantRenderer.ts`: radius in metres, then height, then head (1) or stem (0). A stem row's height is a share of the stem; a head row's is metres above the stem's top.
+```
+Bass   segments 12, lobes 0, 216 triangles, 4.0 cm across
+  [0.0125, 0,    0]   foot, 2.5 cm across like every plant
+  [0.020,  0.06, 0]   the bulb: the lowest 30 % of the stem
+  [0.020,  0.16, 0]
+  [0.011,  0.24, 0]
+  [0.005,  0.30, 0]   neck
+  [0.004,  1,    0]
+  [0.009,  0.003, 1]  cap, 2.2 cm across and 1.7 cm tall
+  [0.011,  0.008, 1]
+  [0.008,  0.014, 1]
+  [0,      0.017, 1]
+
+Choir  segments 18, lobes 3, 252 triangles, 4.2 cm across
+  [0.0125, 0,    0]   foot
+  [0.004,  0.08, 0]
+  [0.004,  1,    0]
+  [0.004,  0.010, 1]  crown: the stem runs 1 cm up into the canopy
+  [0.013,  0.006, 1]
+  [0.020, -0.006, 1]  the canopy hangs below the stem's top
+  [0.021, -0.016, 1]
+  [0.019, -0.024, 1]  open rim, 2.4 cm below the stem's top
+```
+- The bass bulb stretches with the stem: 0.9 cm tall on the shortest stem (3 cm), 2.7 cm on a new plant (9 cm), 4.2 cm on the tallest (14 cm); always 4.0 cm across, so broader than it is tall on every stem but the very tallest, where the two are about equal. The choir's canopy keeps its shape; its rim is 0.6 cm above the bed on the shortest stem.
+- Triangles of the three shapes as built, from their tables: Bell 240, Pad 200, Pluck 112. Both new shapes are under the 280 asked for. A bed of 80 choirs is 20,160 triangles in one eye (80 bells: 19,200), of a budget of 150,000.
+- Draw calls: two more instanced meshes, 5 for the plants in place of 3: 18 in a session with both eyes where 14 are measured today, of 60.
+- Telling them apart by outline alone, *computed*: the share of two side outlines that coincides (1.00 = the same outline), the worst of three stem heights. Bass against Bell 0.42, Pad 0.51, Pluck 0.24, Choir 0.42. Choir against Bell 0.40, Pad 0.51, Pluck 0.25. The three existing shapes among themselves: Bell and Pad 0.64, Bell and Pluck 0.36, Pad and Pluck 0.30. So neither new shape is closer to anything than Bell and Pad already are to each other.
+- In words, for a reviewer with the hue turned off: Bell a lantern (a bulb under a cap), Pad an open cup, Pluck a pin, Bass a jug on the ground, Choir an umbrella. From the seated view, 44° down: Bell a round cap, Pad a scalloped cup with its inside showing, Pluck a bead, Bass a round bulb on the glass with a small cap above it, Choir a closed three-sided dome.
+- Lobes: the choir uses the lobe depth the pad has (`PLANT_LOBE_DEPTH` 0.3). No new constant.
+- Shimmer (Should, S5) keeps the pluck's shape. If it ships it needs its own; not designed here.
+
+**Needs from the code.**
+- `render/PlantRenderer.ts`: the two rows in `SHAPES`, and `SHAPE_OF` bass and choir pointing at them. A head row with a negative height is new: the shader's arithmetic already places it, the type's comment needs the word.
+- Tests: the mesh count in `PlantRenderer.test.ts` (3 becomes 5), and one unit case for the outline figures above, worked from the tables with no rendering.
+- `proto/bed`: the five in a row, so they can be looked at.
+- To fold in outside this document: LLD §7, Choir's silhouette "Cluster of three rounded petals" becomes "Canopy of three rounded petals hanging over the top of the stem"; Bass's "Low, broad bulb" stays.
+
+**Inside the rules.** Hands, reach, view box and the flash limit are not touched: every foot is still 2.5 cm across, the hit radius is unchanged, nothing is wider than the 4.5 cm between two rings, and the shapes take the same brightness from the same guard. Colour-blind users: the figures above use the outline only, never the hue (FR-UI-08).
+
+**Emulator / headset.** The emulator shows the five side by side from the seated camera, in colour and in grey, with the triangle and draw-call counts. Only a headset shows whether they can be named at arm's length through the lenses, and from above whether the choir's three sides read against the pad's five scallops; if they do not, deepen the choir's lobes to 0.5 (then a number per shape). How they look is Parth's rating (1 to 5).
+
+**Rejected.** Choir as a closed three-lobed bud on top of the stem: its side outline coincides with the pad's by 0.83 and with the bell's by 0.74, and the lobes show only from straight above.
+
+**Replaces.** Nothing in §5. The Shapes bullet stays true: "each voice has a unique silhouette (LLD §7)".
+
+### 9.6 Growth you can see (T-161, the drawing half)
+**Decision.** A plant's age is counted in leaf whorls on its stem: none on the day it is planted, one after a day, two after three days; after a week the two whorls open into cream blossoms and the plant's colour turns lighter. The plant's own shape and width never change with age, so the five silhouettes stay as readable in the first session as they are in the preview. The bloom-in is not a separate show: each grown plant unfurls on its own first note of the session, as the sweep of light first reaches it.
+
+**Numbers.**
+
+| Stage | Age | Whorls on the stem | Colour |
+|---|---|---|---|
+| 0 | under 1 day | none | the plant's own (lightness 0.63, `PLANT_LIGHTNESS`) |
+| 1 | 1 day | one, at 0.40 of the stem | the same |
+| 2 | 3 days | two, at 0.40 and 0.60 of the stem | the same |
+| 3 | 7 days | the same two, opened: cream, 1.3 times as wide | lighter: lightness 0.75, same hue |
+
+- A whorl: a flat ring of four leaves round the stem, 2.4 cm across and 0.3 cm thick (an outline turned round the stem like the plants: 8 segments, 4 lobes, 32 triangles), in the plant's colour and at the plant's brightness. A blossom is the same whorl in cream at 3.1 cm.
+- Heights, *computed*: the two whorls are 0.6 cm apart on the shortest stem (3 cm), 1.8 cm on a new plant's (9 cm), 2.8 cm on the tallest (14 cm). Both are above the bass's bulb, which ends at 0.30 of the stem. Under the choir's canopy the upper whorl is hidden on stems shorter than about 6 cm and both on stems shorter than about 4 cm: a choir pulled that low shows its age only at stage 3, by its colour.
+- Cost: one more instanced mesh for all whorls of all voices: 1 draw call per eye, at most 160 whorls, 5,120 triangles in one eye. No new FlashGuard element: a whorl takes the brightness its plant was granted.
+- The stage is what `garden/` already computes (`stageFor`: 1, 3 and 7 days). It changes only when a session starts (`applyVisit`), never while the player watches, except in the bloom-in.
+
+**The bloom-in.**
+- When the bed appears, a plant that grew since the last visit (`garden:grown`, `from` and `to`) is drawn at its old stage.
+- It unfurls when the tide's crest first reaches its step in that session: on its own first note. The whole garden has bloomed within one bar (2.86 s at 84 BPM), in the order it plays, at most five plants in the same moment (one step). From stage 2 on that note carries the octave shimmer (FR-MUS-09), so the growth is heard in the same instant it is seen. No new sound.
+- What moves, over 600 ms, ease-out (the bloom-in time of §5): each new whorl grows from nothing to 2.4 cm; at stage 3 the whorls widen to 3.1 cm and turn cream while the plant's colour goes from lightness 0.63 to 0.75, one way. A plant that skipped stages (a week away) does it in one bloom.
+- Luminance: the bloom asks the guard for nothing. The plant's ordinary trigger flash (0.7 to 1.0 and back) is the only swing: two changes, as on every bar. The stage-3 colour rises while the flash rises and then stays, so the plant goes up, and down to a level a little above the old one: still two.
+- Safety net: a grown plant that no crest has reached 10 s after the bed was placed takes its new stage then, without waiting. That is longer than the tuning (4.0 s) plus the slowest bar (4.0 s at 60 BPM), so it only acts when no tide is running.
+- Reduced motion: no unfurling. The new stage appears at once, whorls at full size and the colour changed, on the same trigger: a cut on the plant's own flash.
+- `fakeDay` (`?flags=fakeDay=+1`, `+3`, `+7`) produces the same deltas at session start, so the bloom-in can be filmed and tested without waiting a day.
+
+**Needs from the code.**
+- `render/PlantRenderer` (T-161, drawing half; API_SPEC §1.8 first): the whorl mesh; `setState` also takes `lastVisitAt`, so it can ask `stageFor` for each plant's stage; the pending blooms from `garden:grown`, started in `update` when a step's light first rises; the stage-3 lightness in the instance colour.
+- `garden/` (T-161, built): `applyVisit` and `stageFor` as they are. `GardenSystem` emits `garden:grown` once per session (T-128).
+- `audio/`: nothing new; the octave shimmer from 3 days on is FR-MUS-09's own.
+- `proto/bed`: one plant per stage in a row, so the four can be looked at.
+- Tests: TC-E2E-06 with `fakeDay`, and the flash count of TC-E2E-15 during a bloom-in with a full bed.
+
+**Inside the rules.** Hands, reach and view box are not touched: nothing here is a target, and a whorl or a blossom (at most 3.1 cm across) is narrower than the 4.5 cm between two rings. One hand and gaze only: nothing to do, it plays by itself. Flash limit and reduced motion: as above. Colour-blind users: the stage is a count (0, 1, 2), and stage 3 differs by size (3.1 against 2.4 cm) and by lightness, not by hue.
+
+**Emulator / headset.** The emulator shows the four stages side by side, the bloom-in during the first bar after a `fakeDay` reload, the reduced-motion cut, the draw calls and the flash count. Only a headset shows whether a 2.4 cm whorl can be counted at arm's length, and whether cream blossoms stand out over a light table: at rest brightness cream is close to a white table's glass, the same weakness as §9.4.
+
+**Rejected.** Growing the plant's width with age (0.70, 0.85, 1.00): it makes every plant of the first session, the one a judge sees, 30 % narrower and harder to tell apart, to show a change that only exists from the second day on.
+
+**Replaces.** In §5, Motion: "replaces growth with fades" becomes "shows a grown plant's new stage at once, on its own trigger (§9.6)". In §8, Reduced motion: "growth → fades" becomes "growth → the new stage at once, on the plant's own trigger (§9.6)". The plants are opaque and cannot cross-fade without a second, transparent pass. The Shapes bullet of §5, "age adds branches/blossoms", stays true: the whorls are the branches.
+
+### 9.7 The words on the landing page (T-128's re-read; T-167 proofreads)
+**Decision.** The copy in `ui/strings.ts` is honest in tone and mostly right. Fifteen strings change, in the eleven rows below: the browser's feature names become words a visitor knows, one access label stops promising eye control, the two fallback lines for a room without table detection stop promising what may not ship or may not happen, and the privacy line names the room. Nothing breaks the English-only rule, and the only brand on the page is the device's name.
+
+**Where the page stands today.** On `develop` at `bfe0e20` Enter opens an empty session: no bed, no seed, no sound. Every Help step, the four access checkboxes and the table and anchor lines of "This device" describe the app after T-128 (bed, seeds, save), T-148 (Listen), T-160 (the access modes) and T-162 (the saved position). That is the plan and not a fault of the copy, but the page must not reach a public address before those are in, and a mode that is cut takes its checkbox with it.
+
+**Replacements** (key in `LANDING`, the text today, why, the new text).
+
+| Key | Today | Why | New text |
+|---|---|---|---|
+| `E_XR_UNSUPPORTED` | "Roomsong needs immersive AR. Open this page in the browser of a Meta Quest 3 or 3S." | "Immersive AR" is the browser feature's name, not a word a visitor on a laptop knows | "Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S." |
+| `features.immersiveAr` (three lines) | "Immersive AR: supported." / "Immersive AR: not supported. Roomsong needs it." / "Immersive AR: checking." | the same | "Mixed reality: supported." / "Mixed reality: not supported. Roomsong needs it." / "Mixed reality: checking." |
+| `features.planeDetection.yes` | "Plane detection: on. The garden looks for your table." | the label is a developer's term | "Table detection: on. The garden looks for your table." |
+| `features.planeDetection.no` | "Plane detection: not available. You place the garden yourself and the room does not tune the song." | "the room does not tune the song" promises that it otherwise does: the room signature is a Should (S1), gated on the device run, and not wired today. "You place the garden yourself" is untrue when hit-test is missing too: the bed then floats | "Table detection: not available. The garden asks you where to put it, or floats in front of you." |
+| `features.planeDetection.unknown` | "Plane detection: checked when you enter. Without it you place the garden yourself." | the same two points | "Table detection: checked when you enter. Without it the garden asks you where to put it, or floats in front of you." |
+| `features.anchors` (three lines) | "Anchors: on. The garden can come back to the same place." / "Anchors: not available. The garden is placed again on each visit." / "Anchors: checked when you enter. Without them the garden is placed again on each visit." | "Anchors" is a developer's term | "Saved position: on. The garden can come back to the same spot." / "Saved position: not available. The garden is placed again on each visit." / "Saved position: checked when you enter. Without it the garden is placed again on each visit." |
+| `accessHeading` | "Access" | reads as signing in | "Accessibility" |
+| `access.gazeDwell` | "Eyes only (gaze)" | promises eye control; the reticle follows the head (FR-HND-12), and the headset has no eye tracking | "No hands: look and hold" |
+| `help[2]` | "Pinch the seed, carry it over the glowing ring and let go. Where you plant sets when it plays and how high." | "how high" can be the note or the plant | "Pinch the seed, carry it over the glowing ring and let go. Where you plant it sets when it sounds and which note it sings." |
+| `help[3]` | "Hold both palms out to stop and listen. Pinch to come back." | "stop" reads as stopping the music; in one-hand mode one palm is enough | "Hold your palms out, facing away from you, to sit back and listen. Pinch to come back." |
+| `privacy` | "Your garden is saved on this device only. Nothing is sent anywhere." | true, but silent on the room, which is the first worry of a visitor the headset has just asked for a room permission; and the save is this browser's | "Your garden is saved in this browser, on this device only. What the headset shares about your room and your hands stays on the device: nothing is sent anywhere." |
+
+- Kept as they are: `title`, `tagline`, `enter`, `loading`, `loadFailed`, `deviceHeading`, both `features.handTracking` lines, `access.oneHand`, `access.highContrast`, `access.reducedMotion`, `helpHeading`, `help[0]`, `help[1]`, and the no-JavaScript line of `index.html`.
+- `E_HANDS_UNAVAILABLE` is kept, with one thing unverified: the menu path "Settings, Movement tracking, Hand tracking" has never been read off a headset. T-129 reads it there.
+- Missing, suggested as one more Help step before the last, once T-146 is in: "Pinch a plant and pull it up or down to make it louder or softer. Drag it to move it, or off the ring to remove it."
+- When the room signature ships with its device evidence, `features.planeDetection.yes` may end "The garden looks for your table, and the room tunes the song." Not before.
+
+**Needs from the code.**
+- `ui/strings.ts` (T-128, which already has "re-read every sentence on the landing page" in its row): the texts above. No key changes name, so `ui/Landing.ts` is untouched.
+- `tests/e2e/08-landing.spec.ts` and `tests/unit/ui/Landing.test.ts` quote some of these sentences word for word and follow the text.
+- To fold in outside this document: USER_MANUAL uses some of the old words (T-167).
+
+**Inside the rules.** English only, the character set of the caption table. Brands: "Meta Quest 3 or 3S" is the device's name and the only one. The page stays native controls with no image, icon or animation, so hands, reach, view box, flash limit and reduced motion do not apply to it; the access labels now say what each mode asks of the body (one hand; no hands, look and hold).
+
+**Emulator / headset.** The emulator shows every line in every state of the page (`08-landing`). Only a headset shows the real menu path for hand tracking, whether "Table detection: on" is what a user who ran the room scan sees, and whether the privacy line matches what the headset's own permission prompt says it shares.
+
+**Rejected.** Keeping the browser's feature names because they match the developer documentation: the page is read by a visitor, and the developer's names stay where they belong, in the keys.
+
+**Replaces.** In §3.1: in the wireframe, "Immersive AR: supported." becomes "Mixed reality: supported.", "Plane detection:" becomes "Table detection:", "Anchors:" becomes "Saved position:", the heading "Access" becomes "Accessibility", and "Eyes only (gaze)" becomes "No hands: look and hold"; the privacy lines become the new sentence. In the bullets, the status line "Roomsong needs immersive AR. Open this page in the browser of a Meta Quest 3 or 3S." becomes "Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S.", and "four lines, for immersive AR, hand tracking, plane detection and anchors" becomes "four lines, for mixed reality, hand tracking, table detection and the saved position".
