@@ -1,16 +1,17 @@
-// TC-HND-01 (the two-signal rule), TC-HND-04 (the subset without T-116 and T-146: plant, press, commit on
-// release), TC-HND-05 (release.cell is the snapped cell resolved to a free one) and TC-HND-03 (palm up through
-// the machine). Synthetic HandFrames, garden's own bedZone and snapToCell, and a counted clock: no XR, no timers.
+// TC-HND-01 (the two-signal rule), TC-HND-04 (the subset without T-146: plant, press, commit on release),
+// TC-HND-05 (release.cell is the hovered cell), TC-HND-07 (tracking loss), TC-HND-08 (the hover and its dead band)
+// and TC-HND-03 (palm up through the machine). Synthetic HandFrames, garden's own bedZone and snapToCell, and a
+// counted clock: no XR, no timers.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { bus } from '../../../src/core/index.js';
-import { PALM_UP_HOLD_MS } from '../../../src/hands/config.js';
+import { HOVER_DEAD_BAND_M, PALM_UP_HOLD_MS, TRACKING_GRACE_MS } from '../../../src/hands/config.js';
 import { GestureMachine } from '../../../src/hands/GestureMachine.js';
 import { createHandFrame } from '../../../src/hands/InputSource.js';
 
 import { heapCost, PROBE_BYTES } from './heapCost.js';
 
-import type { Hand, Vec3 } from '../../../src/core/index.js';
+import type { EventMap, Hand, Vec3 } from '../../../src/core/index.js';
 import type { Cell } from '../../../src/garden/index.js';
 import type { GestureContext, GesturePayload } from '../../../src/hands/GestureMachine.js';
 import type { PickCandidate } from '../../../src/hands/TargetPicker.js';
@@ -34,12 +35,29 @@ const SEED = { kind: 'seed', id: 'seed-1' } as const;
 const PLANT = { kind: 'plant', id: 'plant-1' } as const;
 const ORB = { kind: 'orb', id: 'listen' } as const;
 
+// The events of T-116, kept apart from `seen` so the older tests still read as the list of gestures.
+const HEARD = ['hands:lost', 'hands:found', 'gesture:trackingLost', 'target:hover'] as const;
+type Heard = {
+  [K in (typeof HEARD)[number]]: { name: K } & Omit<EventMap[K], 'type'>;
+}[(typeof HEARD)[number]];
+
 let seen: Emitted[];
+let heard: Heard[];
 let unsubscribe: (() => void)[];
 beforeEach(() => {
   seen = [];
+  heard = [];
   // The machine reuses its payload objects, so each one is copied as it arrives.
-  unsubscribe = EMITTED.map((type) => bus.on(type, (payload) => seen.push(structuredClone(payload))));
+  unsubscribe = [
+    ...EMITTED.map((type) => bus.on(type, (payload) => seen.push(structuredClone(payload)))),
+    ...HEARD.map((name) =>
+      bus.on(name, (payload) => {
+        const copy = structuredClone(payload) as Record<string, unknown>;
+        delete copy.type; // gesture:trackingLost names itself; here every event is named the same way
+        heard.push({ name, ...copy } as Heard);
+      }),
+    ),
+  ];
 });
 afterEach(() => unsubscribe.forEach((off) => off()));
 
@@ -65,24 +83,43 @@ function rig(hand: Hand = 'right') {
   frame.tracked = true;
   frame.palmNormal.y = -1; // palm down
   let timeMs = 0;
-  /** Changes what is given, keeps the rest, and feeds one sample. */
+  /** Changes what is given, keeps the rest, and feeds one sample, `afterMs` after the last one (14 ms if not given). */
   const step = (
-    change: { at?: Vec3; pinch?: boolean; select?: boolean; tracked?: boolean; palmUp?: boolean } = {},
+    change: {
+      at?: Vec3;
+      pinch?: boolean;
+      select?: boolean;
+      tracked?: boolean;
+      palmUp?: boolean;
+      afterMs?: number;
+    } = {},
   ) => {
     if (change.at) Object.assign(frame.pinchPos, change.at);
     if (change.pinch !== undefined) frame.pinch = change.pinch;
     if (change.select !== undefined) frame.select = change.select;
     if (change.tracked !== undefined) frame.tracked = change.tracked;
     if (change.palmUp !== undefined) frame.palmNormal.y = change.palmUp ? 1 : -1;
-    timeMs += FRAME_MS;
+    timeMs += change.afterMs ?? FRAME_MS;
     machine.update(frame, timeMs, context);
     return timeMs;
   };
-  return { step, context, candidates, garden };
+  return { step, context, candidates, garden, machine };
 }
 
 const types = () => seen.map((event) => event.type);
 const last = () => seen[seen.length - 1];
+const names = () => heard.map((event) => event.name);
+const hovers = () => heard.filter((event) => event.name === 'target:hover');
+const lastHover = () => hovers()[hovers().length - 1];
+/** A point over ring 2 (0.21 m from the bed centre) at `rad` from step 0 toward step 1; the border is at pi / 16. */
+const onRing2 = (rad: number): Vec3 => ({
+  x: 0.21 * Math.cos(rad),
+  y: 0.76,
+  z: -0.45 + 0.21 * Math.sin(rad),
+});
+const BORDER_RAD = Math.PI / 16;
+/** Radians along ring 2 for a length of arc in metres. */
+const arc = (metres: number): number => metres / 0.21;
 
 describe('GestureMachine: which signal a pinch uses (TC-HND-01)', () => {
   it('a seed starts and ends on select, whatever the joint distance does meanwhile', () => {
@@ -215,7 +252,9 @@ describe('GestureMachine: carry, plant and press (TC-HND-04 subset, TC-HND-05)',
       cell: SNAPPED,
       dy: null,
     });
-    expect(r.garden.asked).toEqual([SNAPPED]); // garden is asked once, at the release, about the snapped cell
+    // Garden is asked on every sample over the bed (the other hand may fill the cell), always about that cell.
+    expect(r.garden.asked).toHaveLength(21);
+    expect(r.garden.asked.every((cell) => cell.ring === 2 && cell.step === 0)).toBe(true);
   });
 
   it('the committed cell is the nearest free one when the cell under the hand is taken', () => {
@@ -304,18 +343,194 @@ describe('GestureMachine: carry, plant and press (TC-HND-04 subset, TC-HND-05)',
   });
 });
 
-describe('GestureMachine: an untracked hand (the grace and the revert are T-116)', () => {
-  it('nothing starts, ends or commits on an untracked sample; the gesture goes on when the hand is back', () => {
+describe('GestureMachine: tracking loss (TC-HND-07, FR-HND-15)', () => {
+  // Each held state the machine has: where the pinch starts, the signal it rides on, and what its release is.
+  const HELD = [
+    { name: 'CARRYING', at: SEED_AT, signal: 'select', held: SEED, gesture: 'carry' },
+    { name: 'PINCHED (a plant)', at: PLANT_AT, signal: 'pinch', held: PLANT, gesture: 'none' },
+    { name: 'PRESSED', at: ORB_AT, signal: 'select', held: ORB, gesture: 'press' },
+    { name: 'PINCHED (nothing)', at: NOWHERE, signal: 'select', held: null, gesture: 'none' },
+  ] as const;
+
+  for (const { name, at, signal, held, gesture } of HELD) {
+    it(`${name}: lost for 199 ms the gesture goes on; hands:lost at once and hands:found, once each`, () => {
+      const { step } = rig();
+      step({ at });
+      step({ [signal]: true });
+      step({ tracked: false });
+      expect(heard.filter((event) => event.name !== 'target:hover')).toEqual([
+        { name: 'hands:lost', hand: 'right', held }, // at the first untracked sample, before any grace
+      ]);
+      for (let i = 0; i < 9; i++) step({ afterMs: 20 }); // 180 ms out of view
+      step({ tracked: true, afterMs: 19 }); // back 199 ms after it was lost
+      expect(names().filter((n) => n !== 'target:hover')).toEqual(['hands:lost', 'hands:found']);
+      expect(types()).toEqual(['gesture:pinchStart']); // still held: nothing ended
+      step({ [signal]: false });
+      expect(last()).toMatchObject({ type: 'gesture:release', gesture, target: held });
+    });
+
+    it(`${name}: lost for 200 ms it is reverted: gesture:trackingLost, idle, and no release ever`, () => {
+      const { step } = rig();
+      step({ at });
+      step({ [signal]: true });
+      step({ tracked: false });
+      for (let i = 0; i < 9; i++) step({ afterMs: 20 });
+      expect(names()).not.toContain('gesture:trackingLost');
+      step({ afterMs: 20 }); // 200 ms after it was lost
+      expect(heard.filter((event) => event.name === 'gesture:trackingLost')).toEqual([
+        { name: 'gesture:trackingLost', hand: 'right' },
+      ]);
+      for (let i = 0; i < 50; i++) step(); // still away: nothing more
+      step({ tracked: true }); // back, the pinch still closed: that starts nothing
+      step({ [signal]: false });
+      expect(types()).toEqual(['gesture:pinchStart']); // nothing was committed (NFR-REL-02)
+      expect(names().filter((n) => n !== 'target:hover')).toEqual([
+        'hands:lost',
+        'gesture:trackingLost',
+        'hands:found',
+      ]);
+      step({ [signal]: true }); // idle again: a new closing is a new pinch
+      expect(types()).toEqual(['gesture:pinchStart', 'gesture:pinchStart']);
+    });
+  }
+
+  it('an empty hand that is lost emits hands:lost and hands:found, and no gesture:trackingLost', () => {
+    const { step } = rig('left');
+    step({ at: NOWHERE });
+    for (let i = 0; i < 40; i++) step({ tracked: false }); // 560 ms
+    step({ tracked: true });
+    expect(heard).toEqual([
+      { name: 'hands:lost', hand: 'left', held: null },
+      { name: 'hands:found', hand: 'left' },
+    ]);
+    expect(seen).toEqual([]);
+  });
+
+  it('a first sighting is not a return: no hands:found without a hands:lost before it', () => {
+    const { step } = rig();
+    step({ at: NOWHERE, tracked: false });
+    step({ tracked: true });
+    expect(heard).toEqual([]);
+  });
+
+  it('the hover is frozen during the grace and cleared when it runs out', () => {
+    const r = rig();
+    r.step({ at: SEED_AT });
+    r.step({ select: true });
+    r.step({ at: ON_BED });
+    expect(lastHover()).toMatchObject({ target: null, cell: SNAPPED });
+    const before = hovers().length;
+    r.garden.free = { ring: 3, step: 0 }; // the cell fills while the hand is away: not looked at
+    for (let i = 0; i < 14; i++) r.step({ tracked: false }); // 182 ms after the first untracked sample
+    expect(hovers()).toHaveLength(before);
+    r.step({ afterMs: 18 });
+    expect(heard.slice(-2)).toEqual([
+      { name: 'gesture:trackingLost', hand: 'right' },
+      { name: 'target:hover', hand: 'right', target: null, cell: null },
+    ]);
+  });
+
+  it("an idle hand's hover is cleared the moment it is lost", () => {
+    const { step } = rig();
+    step({ at: PLANT_AT });
+    expect(hovers()).toEqual([{ name: 'target:hover', hand: 'right', target: PLANT, cell: null }]);
+    step({ tracked: false });
+    expect(heard.slice(-2)).toEqual([
+      { name: 'hands:lost', hand: 'right', held: null },
+      { name: 'target:hover', hand: 'right', target: null, cell: null },
+    ]);
+  });
+
+  it('a page that was paused: the first sample after the grace is a tracked one, and it reverts first', () => {
     const { step } = rig();
     step({ at: SEED_AT });
     step({ select: true });
-    step({ at: ON_BED });
-    for (let i = 0; i < 30; i++) step({ tracked: false, select: false }); // 420 ms out of view
-    expect(types()).toEqual(['gesture:pinchStart']);
-    step({ tracked: true, select: true }); // back, still pinched: still carried
-    expect(types()).toEqual(['gesture:pinchStart']);
+    step({ tracked: false });
+    step({ tracked: true, afterMs: 3000 }); // no sample in between; the pinch is still closed
+    expect(names().filter((n) => n !== 'target:hover')).toEqual([
+      'hands:lost',
+      'gesture:trackingLost',
+      'hands:found',
+    ]);
+    step({ select: false });
+    expect(types()).toEqual(['gesture:pinchStart']); // the seed was not picked up again, and nothing is released
+  });
+
+  it('lost and found again in the next sample: one of each, and the seed is still carried', () => {
+    const { step } = rig();
+    step({ at: SEED_AT });
+    step({ select: true });
+    step({ tracked: false });
+    step({ tracked: true, at: ON_BED });
+    expect(names().filter((n) => n !== 'target:hover')).toEqual(['hands:lost', 'hands:found']);
     step({ select: false });
     expect(last()).toMatchObject({ gesture: 'carry', zone: 'bed', cell: SNAPPED });
+  });
+
+  it('both hands lost at once: each has its own grace and its own events', () => {
+    const left = rig('left');
+    const right = rig('right');
+    for (const r of [left, right]) {
+      r.step({ at: SEED_AT });
+      r.step({ select: true });
+      r.step({ tracked: false });
+    }
+    expect(heard.filter((event) => event.name === 'hands:lost')).toEqual([
+      { name: 'hands:lost', hand: 'left', held: SEED },
+      { name: 'hands:lost', hand: 'right', held: SEED },
+    ]);
+    left.step({ tracked: true, afterMs: 100 }); // the left hand is back in time
+    right.step({ afterMs: TRACKING_GRACE_MS }); // the right one is not
+    expect(heard.filter((event) => event.name !== 'hands:lost' && event.name !== 'target:hover')).toEqual([
+      { name: 'hands:found', hand: 'left' },
+      { name: 'gesture:trackingLost', hand: 'right' },
+    ]);
+    left.step({ select: false });
+    expect(last()).toMatchObject({ hand: 'left', gesture: 'carry', target: SEED });
+  });
+
+  it('reset during the grace (the session ended): reverted once, no hands:found, and nothing is left over', () => {
+    const { step, machine } = rig();
+    step({ at: SEED_AT });
+    step({ select: true });
+    step({ tracked: false });
+    machine.reset();
+    machine.reset(); // a second one finds nothing to do
+    expect(names().filter((n) => n !== 'target:hover')).toEqual(['hands:lost', 'gesture:trackingLost']);
+    heard.length = 0;
+    for (let i = 0; i < 30; i++) step(); // the old grace does not fire in the next session
+    step({ tracked: true, select: false, at: NOWHERE });
+    expect(heard).toEqual([]); // and its first sighting is not a return
+    step({ at: SEED_AT });
+    step({ select: true });
+    expect(types()).toEqual(['gesture:pinchStart', 'gesture:pinchStart']);
+  });
+
+  it('reset forgets the edges too: a hand first seen pinching in the next session starts a pinch, as on a new machine', () => {
+    // Without that, a signal still down from before the session ended would be "the last pinch" for good, and
+    // the first pinch of the next session would do nothing. One case per signal.
+    const onSelect = rig();
+    onSelect.step({ at: SEED_AT });
+    onSelect.step({ select: true }); // carries the seed
+    onSelect.machine.reset(); // the session ends with the pinch held
+    onSelect.step(); // the next session's first sample: at the seed, pinched
+    expect(types()).toEqual(['gesture:pinchStart', 'gesture:pinchStart']);
+
+    seen.length = 0;
+    const onPinch = rig();
+    onPinch.step({ at: PLANT_AT });
+    onPinch.step({ pinch: true }); // holds the plant
+    onPinch.machine.reset();
+    onPinch.step();
+    expect(types()).toEqual(['gesture:pinchStart', 'gesture:pinchStart']);
+  });
+
+  it('reset of a tracked, idle hand clears its hover and says nothing else', () => {
+    const { step, machine } = rig();
+    step({ at: PLANT_AT });
+    heard.length = 0;
+    machine.reset();
+    expect(heard).toEqual([{ name: 'target:hover', hand: 'right', target: null, cell: null }]);
   });
 
   it('a pinch that opened while the hand was away is an ordinary release at the new sample', () => {
@@ -334,6 +549,116 @@ describe('GestureMachine: an untracked hand (the grace and the revert are T-116)
     expect(seen).toEqual([]);
     step({ tracked: true }); // seen pinching for the first time: that is the edge
     expect(types()).toEqual(['gesture:pinchStart']);
+  });
+});
+
+describe('GestureMachine: the hover (TC-HND-08, TC-HND-05, FR-HND-16)', () => {
+  it('target:hover fires on a change only: one per move to a neighbour, none in 100 unchanged frames', () => {
+    const { step } = rig();
+    step({ at: NOWHERE });
+    expect(heard).toEqual([]); // nothing in range, and nothing was hovered: no event
+    step({ at: PLANT_AT });
+    for (let i = 0; i < 100; i++) step();
+    step({ at: ORB_AT });
+    for (let i = 0; i < 100; i++) step();
+    step({ at: NOWHERE });
+    expect(heard).toEqual([
+      { name: 'target:hover', hand: 'right', target: PLANT, cell: null },
+      { name: 'target:hover', hand: 'right', target: ORB, cell: null },
+      { name: 'target:hover', hand: 'right', target: null, cell: null },
+    ]);
+  });
+
+  it('a pinch starts on the hovered target, not on one that came 0.3 cm nearer since', () => {
+    const { step, candidates } = rig();
+    candidates.push({
+      target: { kind: 'orb', id: 'other' },
+      radius: 0.04,
+      pos: { x: 0.04, y: 0.76, z: -0.45 },
+    });
+    step({ at: ORB_AT }); // hovers the Listen orb, at x = 0
+    step({ at: { x: 0.0215, y: 0.76, z: -0.45 } }); // 2.15 cm from it, 1.85 cm from the other one
+    step({ select: true });
+    expect(last()).toMatchObject({ type: 'gesture:pinchStart', target: ORB });
+    expect(hovers()).toHaveLength(1);
+  });
+
+  it('a press is kept while the hover is, up to 4.5 cm from the target, and cancelled beyond', () => {
+    const { step } = rig();
+    step({ at: ORB_AT });
+    step({ select: true });
+    step({ at: { x: 0.044, y: 0.76, z: -0.45 } }); // past the 4 cm radius, inside the dead band
+    step({ select: false });
+    expect(last()).toMatchObject({ gesture: 'press', target: ORB });
+    step({ at: ORB_AT });
+    step({ select: true });
+    step({ at: { x: 0.046, y: 0.76, z: -0.45 } });
+    step({ select: false });
+    expect(last()).toMatchObject({ gesture: 'press', target: null });
+  });
+
+  it('a carried seed hovers the cell a release would commit, and no target', () => {
+    const r = rig();
+    r.step({ at: SEED_AT });
+    r.step({ select: true });
+    r.step({ at: ON_BED });
+    expect(lastHover()).toEqual({ name: 'target:hover', hand: 'right', target: null, cell: SNAPPED });
+    r.garden.free = { ring: 3, step: 0 }; // the other hand planted there: the cue moves, the hand did not
+    r.step();
+    expect(lastHover()).toMatchObject({ cell: { ring: 3, step: 0 } });
+    r.garden.free = null; // a full bed
+    r.step();
+    expect(lastHover()).toMatchObject({ target: null, cell: null });
+    r.garden.free = 'same'; // room again
+    r.step();
+    expect(lastHover()).toMatchObject({ cell: SNAPPED });
+    const count = hovers().length;
+    r.step({ at: OFF_BED });
+    expect(lastHover()).toMatchObject({ target: null, cell: null });
+    r.step({ at: IN_HOLE }); // still no cell: no second event
+    expect(hovers()).toHaveLength(count + 1);
+    r.step({ at: ON_BED });
+    r.context.bedPose = null; // the bed is taken away under the hand
+    r.step();
+    expect(lastHover()).toMatchObject({ target: null, cell: null });
+    expect(hovers()).toHaveLength(count + 3);
+  });
+
+  it('at the border of two cells the cue does not flicker, and it follows a real move', () => {
+    const r = rig();
+    r.step({ at: SEED_AT });
+    r.step({ select: true });
+    r.step({ at: onRing2(BORDER_RAD - arc(0.001)) }); // 1 mm on the side of step 0
+    const before = hovers().length;
+    expect(lastHover()).toMatchObject({ cell: { ring: 2, step: 0 } });
+    for (let i = 0; i < 50; i++) r.step({ at: onRing2(BORDER_RAD + (i % 2 ? -1 : 1) * arc(0.001)) }); // jitter over it
+    expect(hovers()).toHaveLength(before);
+    r.step({ at: onRing2(BORDER_RAD + arc(0.004)) }); // 4 mm past: its centre is 8 mm nearer than step 0's
+    expect(hovers()).toHaveLength(before + 1);
+    expect(lastHover()).toMatchObject({ cell: { ring: 2, step: 1 } });
+    r.step({ at: onRing2(BORDER_RAD) }); // back on the border: the memory is now step 1
+    expect(hovers()).toHaveLength(before + 1);
+  });
+
+  it('release.cell is the hovered cell, not a fresh snap of the release point (TC-HND-05)', () => {
+    const r = rig();
+    r.step({ at: SEED_AT });
+    r.step({ select: true });
+    r.step({ at: onRing2(0) });
+    const past = onRing2(BORDER_RAD + arc(0.001)); // a fresh snap here is step 1
+    r.step({ at: past });
+    r.step({ select: false });
+    expect(lastHover()).toMatchObject({ cell: { ring: 2, step: 0 } });
+    expect(last()).toMatchObject({ gesture: 'carry', zone: 'bed', cell: { ring: 2, step: 0 }, pos: past });
+    expect(HOVER_DEAD_BAND_M).toBe(0.005);
+  });
+
+  it('a held plant hovers no cell: its release commits none until the drag exists (T-146)', () => {
+    const { step } = rig();
+    step({ at: PLANT_AT });
+    step({ pinch: true });
+    step({ at: ON_BED });
+    expect(hovers()).toEqual([{ name: 'target:hover', hand: 'right', target: PLANT, cell: null }]);
   });
 });
 
@@ -448,4 +773,77 @@ describe('GestureMachine: no allocation per frame', () => {
     expect(count.palmUps).toBeGreaterThan(0);
     expect(keeper.kept).not.toBeNull();
   }, 30_000); // a heap measurement: not to fail on the default 5 s on a loaded machine or under coverage
+
+  it('the paths of T-116 create nothing: a cell hovered on the ring, a loss, the grace, the revert', () => {
+    const ROUNDS = 100_000;
+    const PERIOD = 400;
+    // The bed centre is at (0, 1, -1); the seed lies 2 m to its right. Unlike the test above, the hand is at
+    // fractions here: a carried seed over the ring cannot be at whole metres.
+    const context: GestureContext = {
+      candidates: [{ target: { kind: 'seed', id: 's' }, radius: 0.04, pos: { x: 2.01, y: 1, z: -1 } }],
+      bedPose: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, -1, 1],
+      nearestFreeCell: (cell) => cell,
+    };
+    const machine = new GestureMachine('right');
+    const frame = createHandFrame('right');
+    // Two points on ring 2, either side of the border of steps 0 and 1 and inside the dead band: the memory
+    // measures both centres on every frame. The points exist before the loop and the frame is pointed at one of
+    // them: a fraction written into the frame inside the loop would be boxed there, by the test (40 bytes a
+    // frame, measured with the machine left out).
+    const atSeed: Vec3 = { x: 2, y: 1, z: -1 };
+    const overRing: Vec3[] = [BORDER_RAD - arc(0.001), BORDER_RAD + arc(0.001)].map((rad) => ({
+      x: 0.21 * Math.cos(rad),
+      y: 1,
+      z: -1 + 0.21 * Math.sin(rad),
+    }));
+    let timeMs = 0;
+    // One period of 400 frames, 10 ms each: the seed is picked up and carried over the ring; the hand is lost
+    // for 150 ms and comes back; it is lost again for 500 ms, so the grace runs out; then an empty hand is lost.
+    const updateAll = (): void => {
+      for (let i = 0; i < ROUNDS; i++) {
+        const k = i % PERIOD;
+        timeMs += 10;
+        frame.tracked = !((k >= 100 && k < 115) || (k >= 150 && k < 200) || (k >= 300 && k < 350));
+        frame.select = k >= 1 && k < 201;
+        frame.pinchPos = k < 2 || k > 201 ? atSeed : overRing[k % 2]!;
+        machine.update(frame, timeMs, context);
+      }
+    };
+    unsubscribe.forEach((off) => off());
+    const count = { lost: 0, held: 0, found: 0, reverted: 0, cells: 0, released: 0 };
+    const off = [
+      bus.on('hands:lost', (event) => {
+        count.lost++;
+        if (event.held !== null) count.held++;
+      }),
+      bus.on('hands:found', () => {
+        count.found++;
+      }),
+      bus.on('gesture:trackingLost', () => {
+        count.reverted++;
+      }),
+      bus.on('target:hover', (event) => {
+        if (event.cell !== null) count.cells++;
+      }),
+      bus.on('gesture:release', () => {
+        count.released++;
+      }),
+    ];
+    updateAll(); // warm up: the JIT's own allocations happen here
+    updateAll();
+    // The best of five rounds: the JIT may still finish a compile during one of them.
+    const costs = Array.from({ length: 5 }, () => heapCost(updateAll));
+    off.forEach((stop) => stop());
+    const clean = costs.filter((cost) => cost.gcs === 0 && cost.grewBytes < PROBE_BYTES);
+    expect(clean.length, JSON.stringify(costs)).toBeGreaterThan(0);
+    const periods = (7 * ROUNDS) / PERIOD;
+    expect(count).toEqual({
+      lost: 3 * periods,
+      held: 2 * periods, // the two losses with the seed in the hand
+      found: 3 * periods,
+      reverted: periods, // the 500 ms one
+      cells: periods, // one cell per carry: the jitter over the border never moved the cue
+      released: 0, // the reverted carry ends with no release
+    });
+  }, 30_000);
 });

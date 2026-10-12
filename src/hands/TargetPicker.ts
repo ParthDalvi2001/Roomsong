@@ -1,6 +1,9 @@
 // What a pinch would act on (FR-HND-04, LLD §4 Hover). Pure functions with no ECS in them: HandSystem turns the
-// Interactable entities into candidates. The hover cue's memory (dead band, `target:hover`) is T-116.
-import { snapToCell } from '../garden/index.js';
+// Interactable entities into candidates. The hover's memory (FR-HND-16) comes in as an argument, `kept`: the
+// gesture machine holds what these functions returned last.
+import { cellCentre, snapToCell } from '../garden/index.js';
+
+import { HOVER_DEAD_BAND_M } from './config.js';
 
 import type { Mat4, Vec2, Vec3 } from '../core/index.js';
 import type { Cell } from '../garden/index.js';
@@ -18,8 +21,17 @@ export interface PickCandidate {
   readonly pos: Vec3;
 }
 
-/** FR-HND-04: the nearest candidate that has `pos` within its own hit radius; null when none has. Creates nothing. */
-export function pickTarget(pos: Vec3, candidates: readonly PickCandidate[]): TargetRef | null {
+/**
+ * FR-HND-04: the nearest candidate that has `pos` within its own hit radius; null when none has. Creates nothing.
+ * `kept` is the hover memory (FR-HND-16): the candidate of that kind and id counts as HOVER_DEAD_BAND_M nearer
+ * than it is, so another takes over only when it is that much closer, and the kept one lasts that far past its
+ * radius. The highlight then cannot flicker between two neighbours or at the edge of a radius.
+ */
+export function pickTarget(
+  pos: Vec3,
+  candidates: readonly PickCandidate[],
+  kept: TargetRef | null = null,
+): TargetRef | null {
   let best: TargetRef | null = null;
   let bestM = Infinity;
   for (let i = 0; i < candidates.length; i++) {
@@ -27,7 +39,9 @@ export function pickTarget(pos: Vec3, candidates: readonly PickCandidate[]): Tar
     const dx = candidate.pos.x - pos.x;
     const dy = candidate.pos.y - pos.y;
     const dz = candidate.pos.z - pos.z;
-    const distM = Math.sqrt(dx * dx + dy * dy + dz * dz); // not Math.hypot: it allocates on every call in V8
+    let distM = Math.sqrt(dx * dx + dy * dy + dz * dz); // not Math.hypot: it allocates on every call in V8
+    const { target } = candidate;
+    if (kept !== null && target.kind === kept.kind && target.id === kept.id) distM -= HOVER_DEAD_BAND_M;
     if (distM <= candidate.radius && distM < bestM) {
       best = candidate.target;
       bestM = distM;
@@ -51,11 +65,24 @@ export function toBedLocal(bedPose: Mat4, world: Vec3, out: Vec2): Vec2 {
   return out;
 }
 
+const centre: Vec2 = { x: 0, y: 0 };
+
 /**
- * FR-HND-16: the cell a release at `bedLocal` would commit: the snapped cell resolved to the nearest free one.
- * null off the bed or when the bed is full. `nearestFreeCell` is garden's, on the latest garden state.
+ * FR-HND-16: `snapToCell` with the hover memory. `kept`, the cell this returned last, stays until the centre of
+ * the newly snapped cell is at least HOVER_DEAD_BAND_M nearer to the point than its own, so a hand resting on the
+ * border of two cells does not flicker between them. null off the bed, whatever `kept` is. Creates nothing.
  */
-export function hoverCell(bedLocal: Vec2, nearestFreeCell: (cell: Cell) => Cell | null): Cell | null {
+export function stickyCell(bedLocal: Vec2, kept: Cell | null): Cell | null {
   const cell = snapToCell(bedLocal);
-  return cell === null ? null : nearestFreeCell(cell);
+  if (cell === null || kept === null) return cell;
+  if (cell.ring === kept.ring && cell.step === kept.step) return kept;
+  // Both distances are worked out here: a helper that returned one had V8 box it, 16 bytes a call (measured).
+  cellCentre(kept, centre);
+  let dx = centre.x - bedLocal.x;
+  let dy = centre.y - bedLocal.y;
+  const keptM = Math.sqrt(dx * dx + dy * dy);
+  cellCentre(cell, centre);
+  dx = centre.x - bedLocal.x;
+  dy = centre.y - bedLocal.y;
+  return keptM - Math.sqrt(dx * dx + dy * dy) < HOVER_DEAD_BAND_M ? kept : cell;
 }

@@ -121,7 +121,8 @@ export class HandSampler implements InputSource {
 
   /**
    * Fills `out` for this frame and never throws. Creates no objects; V8 may still box numbers (measured in
-   * HandSampler.test.ts). An untracked sample leaves the four vectors as they were and keeps `pinch` as held.
+   * HandSampler.test.ts). An untracked sample leaves the four vectors as they were and keeps `pinch` and `select`
+   * as held; the select events that arrive meanwhile count at the first tracked sample.
    */
   sample(hand: Hand, timeMs: number, out: HandFrame): void {
     const track = hand === 'left' ? this.left : this.right;
@@ -139,7 +140,9 @@ export class HandSampler implements InputSource {
     track.tracked = tracked;
     out.tracked = tracked;
     out.pinch = track.pinch.isPinching;
-    out.select = this.selectOf(track, timeMs);
+    // Held while untracked, as `pinch` is: a platform that ends the select when the input source drops for a
+    // frame must not release what the hand still holds when it is back (FR-HND-15). Not seen on a headset.
+    out.select = tracked ? this.selectOf(track, timeMs) : track.select;
   }
 
   private jointsOf(hand: Hand): XRHand | null {

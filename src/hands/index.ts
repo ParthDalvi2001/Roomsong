@@ -2,6 +2,8 @@
 // files inside the folder (CODING_GUIDELINES §3). The module's events are declared in ./events.ts (API_SPEC §2).
 export {
   DRAG_DEAD_ZONE_M,
+  HAND_HINT_KEY,
+  HAND_HINT_MAX_MS,
   HIT_RADIUS_M,
   HOVER_DEAD_BAND_M,
   ONE_EURO_BETA,
@@ -20,7 +22,9 @@ export {
 export { createHandFrame } from './InputSource.js';
 export type { HandFrame, InputSource } from './InputSource.js';
 export { HandSampler } from './HandSampler.js';
+export { HandState } from './HandState.js';
+export { HandSystem } from './HandSystem.js';
 export { GestureMachine } from './GestureMachine.js';
 export type { GestureContext, GestureEvent, HeldGesture } from './GestureMachine.js';
-export { hoverCell, pickTarget, toBedLocal } from './TargetPicker.js';
+export { pickTarget, stickyCell, toBedLocal } from './TargetPicker.js';
 export type { PickCandidate, TargetRef } from './TargetPicker.js';

@@ -12,7 +12,7 @@ import type { Settings } from './settings.js';
  *                                                    // without one the block does not compile
  *     declare module '../core/index.js' {
  *       interface EventMap {
- *         'hands:lost': { hand: Hand };
+ *         'hands:found': { hand: Hand };
  *         'listen:enter': Record<string, never>; // an empty payload; emit it with `{}`
  *       }
  *     }

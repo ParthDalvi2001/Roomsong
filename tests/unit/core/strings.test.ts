@@ -29,8 +29,13 @@ describe('core/strings', () => {
     }
   });
 
+  it('holds the hand hint of FR-HND-15 under the key hands/ raises it by', () => {
+    expect(STRINGS.handOutOfView).toBe('Hand out of view');
+  });
+
   it('keys the message of a failure by its error code', () => {
     expect(STRINGS.E_SAVE_FAILED).toBe('Saving unavailable');
-    for (const [key] of entries.filter(([k]) => !k.startsWith('ripple'))) expect(key).toMatch(/^E_[A-Z_]+$/);
+    const failures = entries.filter(([k]) => !k.startsWith('ripple') && k !== 'handOutOfView');
+    for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);
   });
 });

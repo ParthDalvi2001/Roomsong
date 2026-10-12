@@ -97,7 +97,10 @@ describe('core/ dependency direction (API_SPEC §1)', () => {
     ]);
     expect(core.Caption.id).toBe('Caption');
     expect(Object.keys(core.Caption.schema)).toEqual(['key', 'expiresAt']);
-    // Registered in the manifest the runtime and the editor load (src/components.ts).
-    expect(Array.from(manifest)).toEqual([core.BedAnchor, core.Interactable, core.Caption]);
+    // Registered in the manifest the runtime and the editor load (src/components.ts). Core's three are in it;
+    // a module's own component (HandState of hands/) is pinned by that module's tests.
+    expect(Array.from(manifest)).toEqual(
+      expect.arrayContaining([core.BedAnchor, core.Interactable, core.Caption]),
+    );
   });
 });

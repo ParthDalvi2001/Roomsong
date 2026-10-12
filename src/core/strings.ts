@@ -5,6 +5,8 @@ export const STRINGS = {
   rippleTableColour: 'Table: colour.',
   rippleWalls: 'Walls: colour.',
   rippleCeiling: 'Ceiling: scale.',
+  // The hand hint of FR-HND-15 (D-030): hands/ raises it by this key (HAND_HINT_KEY) until ui/Hints draws the icon.
+  handOutOfView: 'Hand out of view',
   // The message of a user-facing failure has its error code (ErrorCode, API_SPEC §5) as its key (LLD §8).
   E_SAVE_FAILED: 'Saving unavailable',
 } as const;

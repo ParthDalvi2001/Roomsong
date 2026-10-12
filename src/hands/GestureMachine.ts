@@ -1,16 +1,17 @@
 // The gesture state machine, v1 (LLD §4): what one hand's pinch starts on, and the one event that commits.
 // Built: IDLE, CARRYING (a seed), PINCHED (a plant, or nothing) and PRESSED (orb, undo petal, panel control);
-// PLANT is the release of a carried seed over the bed. Pull, drag and remove are T-146; the tracking-loss grace,
-// the revert and the hover cue are T-116.
+// PLANT is the release of a carried seed over the bed; the hover (FR-HND-16) and the tracking-loss grace with
+// its revert (FR-HND-15). Pull, drag and remove are T-146.
 import { bus } from '../core/index.js';
 import { bedZone } from '../garden/index.js';
 
+import { TRACKING_GRACE_MS } from './config.js';
 import { PalmUpHold } from './poses/palmUp.js';
-import { hoverCell, pickTarget, toBedLocal } from './TargetPicker.js';
+import { pickTarget, stickyCell, toBedLocal } from './TargetPicker.js';
 
 import type { HandFrame } from './InputSource.js';
 import type { PickCandidate, TargetRef } from './TargetPicker.js';
-import type { Hand, Mat4, Vec2, Vec3 } from '../core/index.js';
+import type { EventMap, Hand, Mat4, Vec2, Vec3 } from '../core/index.js';
 import type { BedZone, Cell } from '../garden/index.js';
 
 /** What the pinch had become when it ended. 'none' = it never left the dead zone, or it started on nothing. */
@@ -57,9 +58,14 @@ function copy(out: Vec3, from: Vec3): void {
   out.z = from.z;
 }
 
+function isSame(a: TargetRef | null, b: TargetRef | null): boolean {
+  return a === null || b === null ? a === b : a.kind === b.kind && a.id === b.id;
+}
+
 /**
- * One hand's gestures. Emits `gesture:palmUp`, `gesture:pinchStart` and `gesture:release` on the bus. The
- * payload objects are reused from one event to the next (API_SPEC §1.4): a handler copies what it keeps.
+ * One hand's gestures. Emits `gesture:palmUp`, `gesture:pinchStart`, `gesture:release`, `gesture:trackingLost`,
+ * `hands:lost`, `hands:found` and `target:hover` on the bus. The payload objects are reused from one event to
+ * the next (API_SPEC §1.4): a handler copies what it keeps.
  */
 export class GestureMachine {
   private state: State = 'IDLE';
@@ -70,11 +76,22 @@ export class GestureMachine {
   private holdsTarget = false;
   /** Our own copy of what the pinch started on: a candidate's ref is the caller's object and may be reused. */
   private readonly held: TargetRef = { kind: 'seed', id: '' };
+  private wasTracked = false;
+  /** When the hand was lost (FR-HND-15: the grace runs from here); NaN while it is not lost. */
+  private lostAtMs = Number.NaN;
+  /** Our own copy of the hovered target, for the same reason as `held`. `hoverEvent` is the hover itself. */
+  private readonly hovered: TargetRef = { kind: 'seed', id: '' };
+  /** The cell under a carried seed, as `stickyCell` returned it last: its memory. */
+  private snapped: Cell | null = null;
   private readonly palmUp = new PalmUpHold();
   private readonly local: Vec2 = { x: 0, y: 0 };
   private readonly palmUpEvent: GesturePayload<'gesture:palmUp'>;
   private readonly startEvent: GesturePayload<'gesture:pinchStart'>;
   private readonly releaseEvent: GesturePayload<'gesture:release'>;
+  private readonly trackingLostEvent: GesturePayload<'gesture:trackingLost'>;
+  private readonly lostEvent: EventMap['hands:lost'];
+  private readonly foundEvent: EventMap['hands:found'];
+  private readonly hoverEvent: EventMap['target:hover'];
 
   constructor(hand: Hand) {
     this.palmUpEvent = { type: 'gesture:palmUp', hand };
@@ -89,28 +106,115 @@ export class GestureMachine {
       cell: null,
       dy: null,
     };
+    this.trackingLostEvent = { type: 'gesture:trackingLost', hand };
+    this.lostEvent = { hand, held: null };
+    this.foundEvent = { hand };
+    this.hoverEvent = { hand, target: null, cell: null };
   }
 
-  /** One sample of this machine's hand. Nothing starts, ends or commits on an untracked sample. */
+  /**
+   * One sample of this machine's hand; `timeMs` never goes back. Nothing starts, ends or commits on an untracked
+   * sample. On a tracked one the hover is worked out first, so a pinch starts and ends on what was shown.
+   */
   update(frame: HandFrame, timeMs: number, context: GestureContext): void {
     if (!frame.tracked) {
-      // shortcut: a held gesture waits for the hand with no time limit; the 200 ms grace and the revert of
-      // FR-HND-15 are T-116
-      this.palmUp.reset(); // LLD §4: pose timers restart when a hand is lost
+      if (this.wasTracked) this.lose(timeMs);
+      else if (this.isGraceOver(timeMs)) this.revert();
       return;
     }
-    if (this.state === 'IDLE') this.idle(frame, timeMs, context);
+    if (!this.wasTracked) this.find(timeMs);
+    this.hover(frame, context);
+    if (this.state === 'IDLE') this.idle(frame, timeMs);
     else if (!(this.endsOnPinch ? frame.pinch : frame.select)) this.release(frame, context);
     this.wasPinch = frame.pinch;
     this.wasSelect = frame.select;
   }
 
-  private idle(frame: HandFrame, timeMs: number, context: GestureContext): void {
+  /**
+   * On `xr:sessionEnd`: a held gesture is reverted as if its grace had run out, so no consumer keeps a preview,
+   * then everything is forgotten. A lost hand gets no `hands:found`: it was not seen again.
+   */
+  reset(): void {
+    if (this.state !== 'IDLE') this.revert();
+    this.setHover(null, null);
+    this.wasTracked = this.wasPinch = this.wasSelect = false;
+    this.lostAtMs = Number.NaN;
+    this.palmUp.reset();
+  }
+
+  /** FR-HND-15: the first untracked sample. A held gesture freezes with its hover; an idle hand's hover clears. */
+  private lose(timeMs: number): void {
+    this.wasTracked = false;
+    this.lostAtMs = timeMs;
+    this.palmUp.reset(); // LLD §4: pose timers restart when a hand is lost
+    this.lostEvent.held = this.state !== 'IDLE' && this.holdsTarget ? this.held : null;
+    bus.emit('hands:lost', this.lostEvent);
+    if (this.state === 'IDLE') this.setHover(null, null);
+  }
+
+  /** The first tracked sample. A first sighting is not a return: `hands:found` only answers a `hands:lost`. */
+  private find(timeMs: number): void {
+    if (this.isGraceOver(timeMs)) this.revert(); // no sample came in time to end the grace (a paused page)
+    this.wasTracked = true;
+    if (Number.isNaN(this.lostAtMs)) return;
+    this.lostAtMs = Number.NaN;
+    bus.emit('hands:found', this.foundEvent);
+  }
+
+  private isGraceOver(timeMs: number): boolean {
+    return this.state !== 'IDLE' && timeMs - this.lostAtMs >= TRACKING_GRACE_MS;
+  }
+
+  /**
+   * FR-HND-15: the held gesture ends with no release, so nothing is committed. What reverts the preview hangs
+   * on this event: a carried seed's way back to the supply (garden), a dragged plant's glide to its cell (T-146).
+   */
+  private revert(): void {
+    this.state = 'IDLE';
+    bus.emit('gesture:trackingLost', this.trackingLostEvent);
+    this.setHover(null, null);
+  }
+
+  /** FR-HND-16: what a pinch, or the release of this one, would act on. */
+  private hover(frame: HandFrame, context: GestureContext): void {
+    if (this.state !== 'CARRYING') {
+      // A held plant hovers no cell: its release commits none until the drag exists (T-146).
+      this.snapped = null;
+      this.setHover(pickTarget(frame.pinchPos, context.candidates, this.hoverEvent.target), null);
+      return;
+    }
+    this.snapped =
+      context.bedPose === null
+        ? null
+        : stickyCell(toBedLocal(context.bedPose, frame.pinchPos, this.local), this.snapped);
+    // Garden is asked on every sample: the other hand may fill the cell while this one hovers it.
+    this.setHover(null, this.snapped === null ? null : context.nearestFreeCell(this.snapped));
+  }
+
+  /** Stores the hover and emits `target:hover`, on a change only. */
+  private setHover(target: TargetRef | null, cell: Cell | null): void {
+    const event = this.hoverEvent;
+    const sameCell =
+      cell === null
+        ? event.cell === null
+        : event.cell !== null && event.cell.ring === cell.ring && event.cell.step === cell.step;
+    if (isSame(event.target, target) && sameCell) return;
+    if (target === null) event.target = null;
+    else {
+      this.hovered.kind = target.kind;
+      this.hovered.id = target.id;
+      event.target = this.hovered;
+    }
+    event.cell = cell;
+    bus.emit('target:hover', event);
+  }
+
+  private idle(frame: HandFrame, timeMs: number): void {
     // Edges, not levels: a signal that is still down from the last pinch starts nothing.
     const pinchRose = frame.pinch && !this.wasPinch;
     const selectRose = frame.select && !this.wasSelect;
     if (pinchRose || selectRose) {
-      const target = pickTarget(frame.pinchPos, context.candidates);
+      const target = this.hoverEvent.target;
       // FR-HND-02: a plant is held on the joint distance and everything else is tapped on the platform's
       // select. What is under the hand picks the signal; the other one's edge does nothing (never OR-ed).
       const usesPinch = target !== null && target.kind === 'plant';
@@ -146,20 +250,14 @@ export class GestureMachine {
     // No bed placed: 'inner', the zone where a release commits nothing (API_SPEC §1.4).
     event.zone = local === null ? 'inner' : bedZone(local);
     event.gesture = state === 'CARRYING' ? 'carry' : state === 'PRESSED' ? 'press' : 'none';
-    // PLANT (FR-HND-16): the snapped cell resolved to a free one, worked out here until T-116 adds the hover.
-    const plants = state === 'CARRYING' && local !== null && event.zone === 'bed';
-    event.cell = plants ? hoverCell(local, context.nearestFreeCell) : null;
+    // PLANT (FR-HND-16): the hovered cell of this same sample, not a fresh snap. It is null off the bed.
+    event.cell = state === 'CARRYING' ? this.hoverEvent.cell : null;
     event.target = this.holdsTarget ? this.held : null;
-    // A press counts only when the hand is still on what it pressed; moving off it first cancels.
-    if (state === 'PRESSED' && !this.isHeld(pickTarget(frame.pinchPos, context.candidates)))
-      event.target = null;
+    // A press counts only when the hover is still on what was pressed; moving off it first cancels.
+    if (state === 'PRESSED' && !isSame(this.hoverEvent.target, this.held)) event.target = null;
     event.dy = null;
     copy(event.pos, frame.pinchPos);
     this.state = 'IDLE';
     bus.emit('gesture:release', event);
-  }
-
-  private isHeld(target: TargetRef | null): boolean {
-    return target !== null && target.kind === this.held.kind && target.id === this.held.id;
   }
 }

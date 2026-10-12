@@ -8,7 +8,9 @@
 import { defineComponents } from '@iwsdk/core';
 
 import { BedAnchor, Caption, Interactable } from './core/index.js';
+// Straight from its file: hands/index.ts also exports HandSystem, and this module stays free of systems.
+import { HandState } from './hands/HandState.js';
 
 // Component manifest (iwsdk.config.json `components.module`). A component must be listed here before
 // a scene can author it; keep this module free of systems, DOM and renderer imports.
-export default defineComponents([BedAnchor, Interactable, Caption]);
+export default defineComponents([BedAnchor, Interactable, Caption, HandState]);

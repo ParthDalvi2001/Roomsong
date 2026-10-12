@@ -313,6 +313,25 @@ describe('HandSampler: a hand that is lost and found', () => {
     expect(sample().pinch).toBe(true); // one open sample either side of a loss is not two in a row
     expect(sample().pinch).toBe(false);
   });
+
+  it('holds select across a gap in which the platform ended it: back and still pinched, nothing was released', () => {
+    const { right, left, inputSources, fire, sample } = setup();
+    fire('selectstart', right);
+    expect(sample().select).toBe(true);
+    // The input source drops out for one frame, and the browser ends its select with it (not seen on a headset).
+    inputSources.length = 0;
+    fire('selectend', right);
+    expect(sample()).toMatchObject({ tracked: false, select: true });
+    inputSources.push(left, right);
+    fire('selectstart', right); // back 14 ms later, still pinched
+    expect(sample()).toMatchObject({ tracked: true, select: true });
+    // A pinch that did open while the hand was away is released at the first tracked sample, not before.
+    inputSources.length = 0;
+    fire('selectend', right);
+    expect(sample()).toMatchObject({ tracked: false, select: true });
+    inputSources.push(left, right);
+    expect(sample()).toMatchObject({ tracked: true, select: false });
+  });
 });
 
 describe('HandSampler: the session', () => {

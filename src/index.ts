@@ -9,7 +9,8 @@ import { World, XRInputVisualAdapter } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 
 import { bus, log } from './core/index.js';
-import { mountLanding } from './ui/index.js';
+import { HandSystem } from './hands/index.js';
+import { CaptionSystem, mountLanding } from './ui/index.js';
 
 // No input models (T-111, Golden Rules 8 and 9). IWSDK 1.0.1 downloads a hand or controller model from
 // cdn.jsdelivr.net whenever an input source joins the session, and no project option turns that off.
@@ -47,6 +48,9 @@ const landing = mountLanding(document.getElementById('landing') as HTMLElement);
 // emulator's). Each module registers its systems here as it lands (LLD §1).
 void World.create(document.getElementById('scene-container') as HTMLDivElement, projectOptions).then(
   (world) => {
+    // Priorities as in LLD §3. HandSystem attaches its sampler on `xr:sessionStart` and detaches it on
+    // `xr:sessionEnd` itself, so it is registered before either can be emitted.
+    world.registerSystem(HandSystem, { priority: 20 }).registerSystem(CaptionSystem, { priority: 60 });
     // Either way in ends here. `xr:visibility` (API_SPEC §2) has no consumer yet: T-128 adds it.
     // A handler of `xr:sessionStart` takes the session from `xr.getSession()`: IWSDK sets `world.session` later.
     const xr = world.renderer.xr;

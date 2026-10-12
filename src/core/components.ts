@@ -30,6 +30,7 @@ export const Interactable = createComponent('Interactable', {
     default: 'plant',
   },
   id: { type: Types.String, default: '' },
+  // hands reads the radius once, when the component is added: to change it, remove the component and add it again
   radius: { type: Types.Float32, default: 0 }, // metres; the attacher sets it (hands/config.ts HIT_RADIUS_M)
   worldPos: { type: Types.Vec3, default: [0, 0, 0] }, // read and write through entity.getVectorView
 });

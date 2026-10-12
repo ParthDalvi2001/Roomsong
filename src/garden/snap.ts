@@ -39,7 +39,8 @@ export function bedZone(bedLocal: Vec2): BedZone {
 /** The nearest cell to a bed-local point (FR-MUS-01); null when bedZone is not 'bed'. It has no memory. */
 export function snapToCell(bedLocal: Vec2): Cell | null {
   if (bedZone(bedLocal) !== 'bed') return null;
-  const t = (Math.sqrt(bedLocal.x * bedLocal.x + bedLocal.y * bedLocal.y) - BED_INNER) / (BED_OUTER - BED_INNER);
+  const t =
+    (Math.sqrt(bedLocal.x * bedLocal.x + bedLocal.y * bedLocal.y) - BED_INNER) / (BED_OUTER - BED_INNER);
   const ring = Math.round(Math.min(1, Math.max(0, t)) * (RINGS - 1));
   const turn = Math.round(Math.atan2(bedLocal.y, bedLocal.x) / STEP_RAD); // -8..8
   return cellAt(ring, (turn + STEPS) % STEPS);
