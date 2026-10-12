@@ -5,9 +5,9 @@
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 39
 
 > **Read first this session:** `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions), `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) and `specs/07-workflow/SPRINT_PLAN.md` v2.1.
-> **ONE DRIVER, UP TO 7 AGENTS (D-032, D-035, 2026-10-11):** one Claude session drives the repository. On Parth's word up to 7 agents run at once, one per module, each in its own worktree; shared files and the contract are edited only by the driving session. Agent ids for resuming after a restart are in `.tmp/agents.json`. After any restart: list Claude processes, stop leftover copies (parent pid 1), then resume the agents by id. The tracking page (port 4180), the sound preview (port 4173) and the dev server with the emulator (port 8081) run detached.
+> **ONE DRIVER, UP TO 10 AGENTS (D-032, D-035, D-036):** one Claude session drives the repository. On Parth's word up to 10 agents run at once, one per module, each in its own worktree; shared files and the contract are edited only by the driving session. Agent ids for resuming after a restart are in `.tmp/agents.json`. After any restart: list Claude processes, stop leftover copies (parent pid 1), then resume the agents by id. The tracking page (port 4180), the sound preview (port 4173) and the dev server with the emulator (port 8081) run detached.
 > **Live tracking page (Parth, 21:00 IST):** http://127.0.0.1:4180/ shows phases, every task, charts of target against done, agents, decisions and what needs Parth; click a task to see if it is done or pending and what was done. It sends Mac notifications (something needs Parth, a task is done, a decision is made, Claude stopped working). It lives in its own folder, `tracker/`, apart from the app (moved 2026-10-11). Start it with `python3 tracker/server.py` if it is down. It reads this file, SPRINT_PLAN, DECISIONS_LOG, BUG_LOG, git and the agent logs, so keeping those current keeps the page current.
-> **Push hold (Parth, 2026-10-10 19:15 IST):** no pushes to GitHub, `develop` included, until Phase 0 is finished **and** Parth has been told and says go. Commit and merge locally only. Last pushed commit: `118657b`.
+> **Pushed (2026-10-12 08:21 IST, D-036):** `develop` is on GitHub up to 8355341 on Parth's word; the first CI run on GitHub started with it. Later pushes are asked again unless Parth says to push after every merge. `main` is pushed by Parth only (go-live steps: item 3 below).
 > **This folder is the master copy.** The PM (Chinmay) works on a copy; his proposals go to `PM_PROPOSALS.md`, never into spec files.
 
 ---
@@ -102,6 +102,9 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 | — | | | | | |
 
 ## Stand-ups
+### 2026-10-12
+- **08:23 IST — develop pushed, cap 10 (D-036).** The Mac was asleep from about 14:45 on Oct 11 to 08:20; no leftover copy of Claude. Six agents resumed by id (fix passes T-125 and T-126, T-117, T-144, the T-161 review, T-140). Two new tasks that touch no code started: the headset-day script (the writing half of T-129) and UX answers to seven open design questions. Five more tasks unlock when the garden visuals and the landing page merge.
+
 ### 2026-10-10
 - **14:36 IST (Oct 11) — T-161 garden half built** (branch only; verify green); independent review started, with dates and time zones as its main target. T-140 room measurements started in the slot the room merge freed. T-117 coverage gate handed in: sent back for one tidy-up (the browser-only database code gets its own file so the 80 % rule holds for all four modules).
 - **14:34 IST (Oct 11) — T-141 room signature merged:** 689 unit tests, verify green, the audio render spec re-run. SRS FR-ROOM-11 now says the scale, not the echo, is the least stable output.
