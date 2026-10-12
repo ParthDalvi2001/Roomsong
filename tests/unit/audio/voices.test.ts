@@ -1,10 +1,29 @@
-// The three Phase-0 voices and the note record they fill (LLD §7, §7.1; API_SPEC §1.2 Voice). A voice builds a
-// note's single-use sources and its envelope into the channel input it is handed, and nothing else.
+// The five voices and the note record they fill (LLD §7, §7.1; API_SPEC §1.2 Voice). A voice builds a note's
+// single-use sources and its envelope into the channel input it is handed, and nothing else.
 import { describe, expect, it } from 'vitest';
 
 import {
+  BASS_ATTACK_S,
+  BASS_CUTOFF_MUL,
+  BASS_FILTER_Q,
+  BASS_HOLD_MUL,
+  BASS_PARTIALS,
+  BASS_RELEASE_TAU_DIV,
+  BASS_TAIL_TAUS,
   BELL_ATTACK_S,
   BELL_FM_RATIO,
+  CHOIR_ATTACK_S,
+  CHOIR_FORMANT_Q,
+  CHOIR_FORMANTS_HZ,
+  CHOIR_HOLD_MUL,
+  CHOIR_PULSE_DUTY,
+  CHOIR_PULSE_LEVEL,
+  CHOIR_PULSE_PARTIALS,
+  CHOIR_RELEASE_TAU_DIV,
+  CHOIR_TAIL_TAUS,
+  CHOIR_VIBRATO_CENTS,
+  CHOIR_VIBRATO_HZ,
+  HEIGHT_GAIN_DB_MIN,
   PAD_ATTACK_S,
   PAD_SAW_LEVEL,
   PLUCK_BUFFER_S,
@@ -12,10 +31,12 @@ import {
   STEAL_FADE_S,
   STEAL_FADE_TAUS,
 } from '../../../src/audio/config.js';
-import { hueToCutoffMul } from '../../../src/audio/mapping.js';
+import { dbToGain, heightToReleaseS, hueToCutoffMul, voiceParamsFor } from '../../../src/audio/mapping.js';
 import { hzForRing } from '../../../src/audio/theory.js';
+import { Bass, bassPartials } from '../../../src/audio/voices/Bass.js';
 import { Bell } from '../../../src/audio/voices/Bell.js';
-import { Note, type NoteRef, type VoiceParams } from '../../../src/audio/voices/note.js';
+import { Choir, choirPartials } from '../../../src/audio/voices/Choir.js';
+import { Note, type NoteRef, type Voice, type VoiceParams } from '../../../src/audio/voices/note.js';
 import { Pad } from '../../../src/audio/voices/Pad.js';
 import { Pluck } from '../../../src/audio/voices/Pluck.js';
 import { RINGS } from '../../../src/garden/index.js';
@@ -216,4 +237,293 @@ describe('Pluck (Karplus-Strong strings, cached per pitch and damping step)', ()
     };
     expect(late(0.9)).toBeGreaterThan(late(0.1));
   });
+});
+
+describe('Bass (one oscillator on a soft-clipped sine + 2nd harmonic, through a low-pass)', () => {
+  it('builds one oscillator on the bass wave, one low-pass and one envelope into `out`, and fills the note', () => {
+    const { ctx, ref, out } = setup();
+    const bass = new Bass(ctx.audio, ref);
+    bass.trigger(1, params({ hz: 65, detune: 4, cutoffMul: 2 }), asNode(out));
+
+    const osc = ctx.of('oscillator')[0] as FakeNode;
+    const filter = ctx.of('biquad')[0] as FakeNode;
+    const env = last(ctx.of('gain'));
+    expect(ctx.nodes.map((n) => n.kind).sort()).toEqual(['biquad', 'gain', 'gain', 'oscillator']); // with `out`
+    expect(osc.wave).toBe(ctx.waves[0]);
+    expect(osc.frequency.value).toBe(65);
+    expect(osc.detune.value).toBe(4);
+    expect(filter.type).toBe('lowpass');
+    expect(filter.frequency.value).toBeCloseTo(65 * BASS_CUTOFF_MUL * 2, 9);
+    expect(filter.Q.value).toBe(BASS_FILTER_Q);
+    expect(osc.outputs).toHaveLength(1);
+    expect(osc.outputs[0]).toBe(filter);
+    expect(filter.outputs[0]).toBe(env);
+    expect(env.outputs[0]).toBe(out);
+    expect(out.inputs).toHaveLength(1);
+    expect(ctx.destination.inputs).toHaveLength(0); // only into the channel, so only through the limiter
+    expect(osc.startedAt).toBe(1);
+    expect(ref.note.startTime).toBe(1);
+    expect(ref.note.endTime).toBe(osc.stoppedAt);
+
+    bass.trigger(2, params(), asNode(out));
+    expect(ctx.waves).toHaveLength(1); // the wave is made once, with the voice: a trigger makes nodes only
+  });
+
+  it('envelope: a 10 ms attack to the gain, a hold of release × 0.2, then a decay with τ = release / 25', () => {
+    const { ctx, ref, out } = setup();
+    new Bass(ctx.audio, ref).trigger(1, params({ gain: 0.5, release: 1 }), asNode(out));
+    const releaseAt = 1 + BASS_ATTACK_S + BASS_HOLD_MUL;
+    const tau = 1 / BASS_RELEASE_TAU_DIV;
+    expect([BASS_ATTACK_S, BASS_HOLD_MUL, BASS_RELEASE_TAU_DIV]).toEqual([0.01, 0.2, 25]);
+    expect(last(ctx.of('gain')).gain.events).toEqual([
+      { type: 'set', value: 0, time: 1, tau: 0 },
+      { type: 'linear', value: 0.5, time: 1 + BASS_ATTACK_S, tau: 0 },
+      { type: 'target', value: 0, time: releaseAt, tau },
+    ]);
+    // What the pool compares: full level through the attack and the hold, then the same decay.
+    expect(ref.note.levelAt(1)).toBe(0.5);
+    expect(ref.note.levelAt(releaseAt)).toBe(0.5);
+    expect(ref.note.levelAt(releaseAt + tau)).toBeCloseTo(0.5 / Math.E, 9);
+    expect(ref.note.endTime).toBeCloseTo(releaseAt + BASS_TAIL_TAUS * tau, 9);
+  });
+
+  it('its length follows height (FR-MUS-05): about 0.6 s for a new plant (LLD §7), shorter below, longer above', () => {
+    const { ctx, ref, out } = setup();
+    const bass = new Bass(ctx.audio, ref);
+    const lengthAt = (height: number): number => {
+      bass.trigger(0, params({ release: heightToReleaseS(height) }), asNode(out));
+      return ref.note.endTime;
+    };
+    const fresh = lengthAt(0.55); // the height a plant starts at (API_SPEC §1.1)
+    expect(fresh).toBeGreaterThan(0.55);
+    expect(fresh).toBeLessThan(0.7);
+    expect(lengthAt(0)).toBeLessThan(fresh);
+    expect(lengthAt(1)).toBeGreaterThan(fresh);
+  });
+
+  it('the wave can be heard on a small speaker: a strong 2nd harmonic and a 3rd, under a fundamental that leads', () => {
+    const wave = bassPartials();
+    const level = (k: number): number =>
+      20 * Math.log10(Math.abs(wave[k] as number) / Math.abs(wave[1] as number));
+    const energyFrom = (first: number): number => {
+      let part = 0;
+      let all = 0;
+      for (let k = 1; k <= BASS_PARTIALS; k++) {
+        const e = (wave[k] as number) ** 2;
+        all += e;
+        if (k >= first) part += e;
+      }
+      return part / all;
+    };
+    expect(wave).toHaveLength(BASS_PARTIALS + 1);
+    expect(wave[0]).toBe(0);
+    for (let k = 2; k <= BASS_PARTIALS; k++) expect(level(k), `harmonic ${k}`).toBeLessThan(0);
+    expect(level(2)).toBeGreaterThan(-6);
+    expect(level(3)).toBeGreaterThan(-18);
+    expect(level(2)).toBeCloseTo(-2.5, 1);
+    expect(level(3)).toBeCloseTo(-14.4, 1);
+    expect(level(4)).toBeCloseTo(-8.0, 1);
+    expect(wave[BASS_PARTIALS]).not.toBe(0);
+    // A speaker that plays nothing under 120 Hz loses the fundamental of a bass note (55–147 Hz, LLD §7). What it
+    // keeps: the 2nd harmonic and up, and for the one note whose 2nd harmonic is under 120 Hz too (A1, 55 Hz),
+    // the 3rd and up.
+    expect(energyFrom(2)).toBeGreaterThan(0.4);
+    expect(energyFrom(3)).toBeGreaterThan(0.1);
+  });
+
+  it('the oscillator plays that wave: sine terms only, scaled to full level by the browser', () => {
+    const { ctx, ref } = setup();
+    new Bass(ctx.audio, ref);
+    const wave = ctx.waves[0];
+    expect(wave?.imag).toEqual(bassPartials());
+    expect(wave?.real).toEqual(new Float32Array(BASS_PARTIALS + 1));
+    expect(wave?.disableNormalization).toBe(false);
+  });
+
+  it('hue moves the low-pass one octave each way, and never under the 4th harmonic', () => {
+    const { ctx, ref, out } = setup();
+    const bass = new Bass(ctx.audio, ref);
+    for (const hue of [0, 0.5, 1])
+      bass.trigger(0, params({ hz: 55, cutoffMul: hueToCutoffMul(hue) }), asNode(out));
+    const cutoffs = ctx.of('biquad').map((f) => f.frequency.value / 55);
+    expect(cutoffs[0]).toBeCloseTo(BASS_CUTOFF_MUL / 2, 9);
+    expect(cutoffs[1]).toBeCloseTo(BASS_CUTOFF_MUL, 9);
+    expect(cutoffs[2]).toBeCloseTo(BASS_CUTOFF_MUL * 2, 9);
+    expect(cutoffs[0]).toBeGreaterThanOrEqual(4);
+  });
+
+  it('a stolen bass is held at its level, faded over 20 ms and its source stopped when the fade ends', () => {
+    const { ctx, ref, out } = setup();
+    new Bass(ctx.audio, ref).trigger(1, params(), asNode(out));
+    const env = last(ctx.of('gain'));
+
+    ref.note.steal(1.1);
+
+    expect(env.gain.last('hold')).toMatchObject({ time: 1.1 });
+    expect(last(env.gain.events)).toMatchObject({ type: 'target', value: 0, time: 1.1 });
+    expect(ctx.of('oscillator')[0]?.stoppedAt).toBeCloseTo(1.1 + STEAL_FADE_S, 9);
+    expect(ref.note.endTime).toBeCloseTo(1.1 + STEAL_FADE_S, 9);
+  });
+});
+
+describe('Choir (a pulse through three formant band-passes, with a slow vibrato)', () => {
+  /** The oscillator that plays the pulse, and the one that moves its pitch. */
+  const oscillators = (ctx: FakeAudioContext): { source: FakeNode; lfo: FakeNode } => ({
+    source: ctx.of('oscillator').find((o) => o.wave !== null) as FakeNode,
+    lfo: ctx.of('oscillator').find((o) => o.wave === null) as FakeNode,
+  });
+
+  it('builds the pulse oscillator, three band-passes, a vibrato pair and one envelope into `out`', () => {
+    const { ctx, ref, out } = setup();
+    const choir = new Choir(ctx.audio, ref);
+    choir.trigger(1, params({ hz: 220, detune: -3 }), asNode(out));
+
+    const { source, lfo } = oscillators(ctx);
+    const formants = ctx.of('biquad');
+    const env = out.inputs[0] as FakeNode;
+    const depth = lfo.outputs[0] as FakeNode;
+    expect(ctx.count('oscillator')).toBe(2);
+    expect(ctx.count('gain')).toBe(3); // out (made by the test), the vibrato depth and the envelope
+    expect(source.wave).toBe(ctx.waves[0]);
+    expect(source.frequency.value).toBe(220);
+    expect(source.detune.value).toBe(-3);
+    expect(formants.map((f) => f.type)).toEqual(['bandpass', 'bandpass', 'bandpass']);
+    expect(formants.map((f) => f.frequency.value)).toEqual([...CHOIR_FORMANTS_HZ]);
+    expect(formants.map((f) => f.Q.value)).toEqual([CHOIR_FORMANT_Q, CHOIR_FORMANT_Q, CHOIR_FORMANT_Q]);
+    // In parallel: each formant is fed by the pulse and feeds the envelope.
+    for (const formant of formants) {
+      expect(formant.inputs).toHaveLength(1);
+      expect(formant.inputs[0]).toBe(source);
+      expect(formant.outputs[0]).toBe(env);
+    }
+    expect(env.inputs).toHaveLength(3);
+    expect(env.outputs[0]).toBe(out);
+    expect(out.inputs).toHaveLength(1);
+    expect(ctx.destination.inputs).toHaveLength(0); // only into the channel, so only through the limiter
+    // The vibrato moves the pulse's pitch in cents, around the detune the hue gave it.
+    expect(lfo.type).toBe('sine');
+    expect(lfo.frequency.value).toBe(CHOIR_VIBRATO_HZ);
+    expect(depth.gain.value).toBe(CHOIR_VIBRATO_CENTS);
+    expect(depth.outputs[0]).toBe(source.detune);
+    expect([source.startedAt, lfo.startedAt]).toEqual([1, 1]);
+    expect([source.stoppedAt, lfo.stoppedAt]).toEqual([ref.note.endTime, ref.note.endTime]);
+    expect(ref.note.startTime).toBe(1);
+
+    choir.trigger(2, params(), asNode(out));
+    expect(ctx.waves).toHaveLength(1); // the pulse is made once, with the voice
+  });
+
+  it('envelope: a 0.25 s swell to the gain, a hold of release × 0.5, then a decay with τ = release / 4', () => {
+    const { ctx, ref, out } = setup();
+    new Choir(ctx.audio, ref).trigger(1, params({ gain: 0.5, release: 1 }), asNode(out));
+    const releaseAt = 1 + CHOIR_ATTACK_S + CHOIR_HOLD_MUL;
+    const tau = 1 / CHOIR_RELEASE_TAU_DIV;
+    expect([CHOIR_ATTACK_S, CHOIR_HOLD_MUL, CHOIR_RELEASE_TAU_DIV]).toEqual([0.25, 0.5, 4]);
+    expect((out.inputs[0] as FakeNode).gain.events).toEqual([
+      { type: 'set', value: 0, time: 1, tau: 0 },
+      { type: 'linear', value: 0.5, time: 1 + CHOIR_ATTACK_S, tau: 0 },
+      { type: 'target', value: 0, time: releaseAt, tau },
+    ]);
+    expect(ref.note.levelAt(1)).toBe(0.5); // the swell counts as full level
+    expect(ref.note.levelAt(releaseAt)).toBe(0.5);
+    expect(ref.note.levelAt(releaseAt + tau)).toBeCloseTo(0.5 / Math.E, 9);
+    expect(ref.note.endTime).toBeCloseTo(releaseAt + CHOIR_TAIL_TAUS * tau, 9);
+  });
+
+  it('hue moves the three formants together, half an octave each way: the vowel changes, the pitch does not', () => {
+    const { ctx, ref, out } = setup();
+    const choir = new Choir(ctx.audio, ref);
+    choir.trigger(0, params({ cutoffMul: hueToCutoffMul(0) }), asNode(out));
+    choir.trigger(0, params({ cutoffMul: hueToCutoffMul(1) }), asNode(out));
+    const centres = ctx.of('biquad').map((f) => f.frequency.value);
+    CHOIR_FORMANTS_HZ.forEach((hz, i) => {
+      expect(centres[i]).toBeCloseTo(hz * Math.SQRT1_2, 6);
+      expect(centres[i + 3]).toBeCloseTo(hz * Math.SQRT2, 6);
+    });
+    expect(
+      ctx
+        .of('oscillator')
+        .filter((o) => o.wave !== null)
+        .map((o) => o.frequency.value),
+    ).toEqual([440, 440]);
+  });
+
+  it('the pulse: every harmonic up to its first gap, and the gap is above the two formants that make the vowel', () => {
+    const pulse = choirPartials();
+    const gap = Math.round(1 / CHOIR_PULSE_DUTY);
+    expect(pulse).toHaveLength(CHOIR_PULSE_PARTIALS + 1);
+    expect(pulse[0]).toBe(0);
+    for (let k = 1; k < gap; k++) expect(pulse[k], `harmonic ${k}`).toBeGreaterThan(0);
+    expect(Math.abs(pulse[gap] as number)).toBeLessThan(1e-6);
+    expect(pulse[1]).toBeCloseTo(
+      ((2 * CHOIR_PULSE_LEVEL) / Math.PI) * Math.sin(Math.PI * CHOIR_PULSE_DUTY),
+      6,
+    );
+    // The lowest choir note (A2, ring 0 in the key of A) with the brightest hue: its gap is still above F2.
+    const lowest = hzForRing({ keyRoot: -3, mode: 'majorPent' }, 0, 'choir');
+    expect(lowest).toBeCloseTo(110, 6);
+    expect(gap * lowest).toBeGreaterThan((CHOIR_FORMANTS_HZ[1] as number) * Math.SQRT2);
+    // And the partials reach the brightest F3 on that note.
+    expect(CHOIR_PULSE_PARTIALS * lowest).toBeGreaterThan((CHOIR_FORMANTS_HZ[2] as number) * Math.SQRT2);
+  });
+
+  it('the oscillator plays that pulse: cosine terms only, at the level the code gave them', () => {
+    const { ctx, ref } = setup();
+    new Choir(ctx.audio, ref);
+    const wave = ctx.waves[0];
+    expect(wave?.real).toEqual(choirPartials());
+    expect(wave?.imag).toEqual(new Float32Array(CHOIR_PULSE_PARTIALS + 1));
+    expect(wave?.disableNormalization).toBe(true);
+  });
+
+  it('a stolen choir is held, faded over 20 ms, and both of its sources stop when the fade ends', () => {
+    const { ctx, ref, out } = setup();
+    new Choir(ctx.audio, ref).trigger(1, params(), asNode(out));
+    const env = out.inputs[0] as FakeNode;
+
+    ref.note.steal(1.1); // still in its swell
+
+    expect(env.gain.last('hold')).toMatchObject({ time: 1.1 });
+    expect(last(env.gain.events)).toMatchObject({ type: 'target', value: 0, time: 1.1 });
+    expect(ctx.of('oscillator').map((o) => o.stoppedAt)).toEqual([1.12, 1.12]);
+    expect(ref.note.endTime).toBeCloseTo(1.1 + STEAL_FADE_S, 9);
+  });
+});
+
+describe('height → level and length, for each of the five voices (FR-MUS-05, TC-AUD-03)', () => {
+  const makers: [string, (ctx: AudioContext, ref: NoteRef) => Voice][] = [
+    ['bell', (ctx, ref) => new Bell(ctx, ref)],
+    ['pad', (ctx, ref) => new Pad(ctx, ref)],
+    ['pluck', (ctx, ref) => new Pluck(ctx, ref)],
+    ['bass', (ctx, ref) => new Bass(ctx, ref)],
+    ['choir', (ctx, ref) => new Choir(ctx, ref)],
+  ];
+
+  it.each(makers)(
+    '%s: a taller plant is louder and never shorter; height 0 is 24 dB under height 1',
+    (_, make) => {
+      const { ctx, ref, out } = setup();
+      const voice = make(ctx.audio, ref);
+      const p = params();
+      const noteAt = (height: number): { level: number; end: number } => {
+        voiceParamsFor(
+          { id: 'p', voice: 'bell', cell: { ring: 0, step: 0 }, height, hue: 0.5, plantedAt: 0 },
+          220,
+          p,
+        );
+        voice.trigger(0, p, asNode(out));
+        return { level: ref.note.levelAt(0), end: ref.note.endTime };
+      };
+      const notes = [0, 0.25, 0.5, 0.75, 1].map(noteAt);
+      const low = notes[0] as { level: number; end: number };
+      let prev = low;
+      for (const next of notes.slice(1)) {
+        expect(next.level).toBeGreaterThan(prev.level);
+        expect(next.end).toBeGreaterThanOrEqual(prev.end);
+        prev = next;
+      }
+      expect(prev.end).toBeGreaterThan(low.end);
+      expect(low.level / prev.level).toBeCloseTo(dbToGain(HEIGHT_GAIN_DB_MIN), 9);
+    },
+  );
 });

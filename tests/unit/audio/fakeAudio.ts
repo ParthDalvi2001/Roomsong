@@ -101,6 +101,8 @@ export class FakeNode {
   oversample = 'none';
   curve: Float32Array | null = null;
   buffer: FakeBuffer | null = null;
+  /** The wave given to setPeriodicWave(), or null. */
+  wave: FakeWave | null = null;
   /** Audio time passed to start() and stop(); `scheduledAt` is the context time when start() was called. */
   startedAt: number | null = null;
   stoppedAt: number | null = null;
@@ -129,6 +131,19 @@ export class FakeNode {
     if (this.startedAt === null) throw new Error('InvalidStateError: cannot call stop without calling start');
     this.stoppedAt = time;
   }
+
+  /** As the real oscillator: its type reads 'custom' from then on (MDN: OscillatorNode.setPeriodicWave). */
+  setPeriodicWave(wave: FakeWave): void {
+    this.wave = wave;
+    this.type = 'custom';
+  }
+}
+
+/** What createPeriodicWave() was asked for: the cosine and sine terms, and whether the browser may rescale them. */
+export interface FakeWave {
+  real: Float32Array;
+  imag: Float32Array;
+  disableNormalization: boolean;
 }
 
 export interface FakeBuffer {
@@ -154,9 +169,10 @@ export class FakeAudioContext {
     upY: new FakeParam(1),
     upZ: new FakeParam(0),
   };
-  /** Every node and every buffer made, in order. */
+  /** Every node, every buffer and every periodic wave made, in order. */
   readonly nodes: FakeNode[] = [];
   readonly buffers: FakeBuffer[] = [];
+  readonly waves: FakeWave[] = [];
   readonly resume = vi.fn(() => {
     this.state = 'running';
     return Promise.resolve();
@@ -186,6 +202,18 @@ export class FakeAudioContext {
     };
     this.buffers.push(buffer);
     return buffer;
+  }
+
+  /** As the real API (MDN: BaseAudioContext.createPeriodicWave): two arrays of one length, at least 2 long. */
+  createPeriodicWave(
+    real: Float32Array,
+    imag: Float32Array,
+    constraints?: { disableNormalization?: boolean },
+  ): FakeWave {
+    if (real.length !== imag.length || real.length < 2) throw new Error('IndexSizeError: real and imag');
+    const wave: FakeWave = { real, imag, disableNormalization: constraints?.disableNormalization ?? false };
+    this.waves.push(wave);
+    return wave;
   }
 
   /** The rendered Pluck strings (one channel each; the reverb impulse responses have two). */

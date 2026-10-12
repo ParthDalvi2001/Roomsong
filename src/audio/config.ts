@@ -152,3 +152,42 @@ export const STRING_T60_SHORT_S = 0.4;
 /** Click-free edges of the rendered string. */
 export const STRING_FADE_IN_SAMPLES = 48;
 export const STRING_FADE_OUT_S = 0.005;
+
+// Bass and Choir (T-144). The LLD fixes the method; these values are first choices that nobody has heard yet
+// (sound pass T-164, device audio test T-129).
+
+/** Bass (LLD §7): a sine plus this much 2nd harmonic, soft-clipped by tanh at this drive. */
+export const BASS_SECOND_HARMONIC = 0.8;
+export const BASS_DRIVE = 3;
+/** Harmonics kept of the clipped cycle, and the points it is computed at. */
+export const BASS_PARTIALS = 12;
+export const BASS_CYCLE_SAMPLES = 256;
+/** Low-pass cutoff as a multiple of the note at the middle hue: at the darkest hue it is the 4th harmonic. */
+export const BASS_CUTOFF_MUL = 8;
+/** For a low-pass, Q is the peak at the cutoff in dB (MDN: BiquadFilterNode): none. */
+export const BASS_FILTER_Q = 0;
+export const BASS_ATTACK_S = 0.01;
+/** Hold = release × this, then τ = release / the divisor: a new plant's bass lasts about 0.6 s (LLD §7). */
+export const BASS_HOLD_MUL = 0.2;
+export const BASS_RELEASE_TAU_DIV = 25;
+/** The source stops 6 τ after the release starts (about −52 dB). */
+export const BASS_TAIL_TAUS = 6;
+
+/** Choir (LLD §7): a pulse this wide, as a fraction of the period; its first missing harmonic is 1 / this. */
+export const CHOIR_PULSE_DUTY = 1 / 16;
+export const CHOIR_PULSE_PARTIALS = 40;
+/** Height of the pulse: three band-passes keep little of it, and at this height no note peaks above its envelope. */
+export const CHOIR_PULSE_LEVEL = 2;
+/** The three formants of a sung "ah" at the middle hue, and their shared Q (centre / bandwidth). */
+export const CHOIR_FORMANTS_HZ: readonly number[] = [650, 1080, 2650];
+export const CHOIR_FORMANT_Q = 5;
+/** Of the hue's ±1 octave (FR-MUS-05) the formants move this much: further is no longer a vowel. */
+export const CHOIR_FORMANT_HUE_OCTAVES = 0.5;
+/** Slow vibrato (LLD §7): rate, and depth each way in cents. */
+export const CHOIR_VIBRATO_HZ = 4.5;
+export const CHOIR_VIBRATO_CENTS = 10;
+export const CHOIR_ATTACK_S = 0.25;
+/** Hold = release × this, then τ = release / the divisor; the sources stop 6 τ later (about −52 dB). */
+export const CHOIR_HOLD_MUL = 0.5;
+export const CHOIR_RELEASE_TAU_DIV = 4;
+export const CHOIR_TAIL_TAUS = 6;

@@ -13,6 +13,11 @@ import {
 } from '../../../src/audio/config.js';
 import { Spatializer } from '../../../src/audio/Spatializer.js';
 import { VoicePool } from '../../../src/audio/VoicePool.js';
+import { Bass } from '../../../src/audio/voices/Bass.js';
+import { Bell } from '../../../src/audio/voices/Bell.js';
+import { Choir } from '../../../src/audio/voices/Choir.js';
+import { Pad } from '../../../src/audio/voices/Pad.js';
+import { Pluck } from '../../../src/audio/voices/Pluck.js';
 
 import { FakeAudioContext, asNode, type FakeNode } from './fakeAudio.js';
 
@@ -273,6 +278,74 @@ describe('VoicePool: the fade ends when the new note starts', () => {
     expect(env.gain.events.slice(-1)).toMatchObject([{ type: 'cancel', time: 0 }]);
     expect(env.gain.value).toBe(0);
     expect(voice.sources[0]?.stoppedAt).toBeCloseTo(0.98, 9); // before its own start at 0.99
+  });
+});
+
+describe('VoicePool with the five real voices: the cap and the order hold in a mixed bed (T-144)', () => {
+  /** 24 notes at time 0, the five voices in turn (a bass is every 5th, from the 4th), one gain and release. */
+  function mixedBed(): {
+    ctx: FakeAudioContext;
+    pool: VoicePool;
+    bell: (time: number) => boolean;
+    stolen: () => number[];
+  } {
+    const ctx = new FakeAudioContext();
+    const space = new Spatializer(ctx.audio, asNode(ctx.createGain()), asNode(ctx.createGain()));
+    const pool = new VoicePool(ctx.audio, space);
+    const voices: Voice[] = [
+      new Bell(ctx.audio, pool.ref),
+      new Pad(ctx.audio, pool.ref),
+      new Pluck(ctx.audio, pool.ref),
+      new Bass(ctx.audio, pool.ref),
+      new Choir(ctx.audio, pool.ref),
+    ];
+    const p = note(0.5, 1);
+    for (let i = 0; i < VOICE_CAP; i++) pool.play(voices[i % 5] as Voice, 0, p, 0, 0, 0, null);
+    const inputs = space.inputs as unknown as FakeNode[];
+    return {
+      ctx,
+      pool,
+      bell: (time) => pool.play(voices[0] as Voice, time, p, 0, 0, 0, null),
+      // One envelope per note, in play order: the gains that feed a channel input.
+      stolen: () =>
+        ctx
+          .of('gain')
+          .filter((g) => inputs.includes(g.outputs[0] as FakeNode))
+          .flatMap((env, i) =>
+            env.gain.events.some((e) => e.type === 'hold' || e.type === 'cancel') ? [i] : [],
+          ),
+    };
+  }
+
+  it('each voice is judged by its own envelope: at 0.3 s the basses are in their release, so they go first, then a bell', () => {
+    const { ctx, pool, bell, stolen } = mixedBed();
+    expect(pool.active(0.3)).toBe(VOICE_CAP);
+    ctx.currentTime = 0.2;
+
+    expect(bell(0.3)).toBe(true);
+    expect(stolen()).toEqual([3]); // the first bass: 0.05 against a bell's 0.11, a pad's 0.2, a pluck's 0.45, a choir's 0.5
+    for (let i = 0; i < 4; i++) bell(0.3);
+    expect(stolen()).toEqual([3, 8, 13, 18, 23]); // the five basses, and never a note of the same instant
+    bell(0.3);
+    expect(stolen()).toEqual([0, 3, 8, 13, 18, 23]); // then the quietest that is left: the first bell
+    expect(pool.active(0.3)).toBe(VOICE_CAP);
+
+    // The stolen bass was held 20 ms ahead and its source stops as the new note starts.
+    const bass = ctx.of('oscillator').find((o) => o.type === 'custom') as FakeNode;
+    const env = (bass.outputs[0] as FakeNode).outputs[0] as FakeNode;
+    expect(env.gain.last('hold')).toMatchObject({ time: 0.3 - STEAL_FADE_S });
+    expect(bass.stoppedAt).toBeCloseTo(0.3, 9);
+  });
+
+  it('a short voice gives its channel back: at 0.5 s the basses have ended, and five new notes steal nothing', () => {
+    const { ctx, pool, bell, stolen } = mixedBed();
+    ctx.currentTime = 0.4;
+    expect(pool.active(0.5)).toBe(VOICE_CAP - 5);
+    for (let i = 0; i < 5; i++) expect(bell(0.5)).toBe(true);
+    expect(stolen()).toEqual([]);
+    expect(pool.active(0.5)).toBe(VOICE_CAP);
+    bell(0.5);
+    expect(stolen()).toEqual([0]); // full again: the first bell is the quietest by now
   });
 });
 

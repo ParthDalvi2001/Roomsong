@@ -44,7 +44,9 @@ import { Scheduler } from './Scheduler.js';
 import { Spatializer } from './Spatializer.js';
 import { hzForRing, VOICE_OCTAVE } from './theory.js';
 import { VoicePool } from './VoicePool.js';
+import { Bass } from './voices/Bass.js';
 import { Bell } from './voices/Bell.js';
+import { Choir } from './voices/Choir.js';
 import { Pad } from './voices/Pad.js';
 import { Pluck } from './voices/Pluck.js';
 
@@ -102,6 +104,8 @@ interface Graph {
   bell: Bell;
   pad: Pad;
   pluck: Pluck;
+  bass: Bass;
+  choir: Choir;
 }
 
 function onBed(cell: Cell): boolean {
@@ -334,6 +338,8 @@ export class Engine implements AudioEngine {
       bell: new Bell(ctx, pool.ref),
       pad: new Pad(ctx, pool.ref),
       pluck: new Pluck(ctx, pool.ref),
+      bass: new Bass(ctx, pool.ref),
+      choir: new Choir(ctx, pool.ref),
     };
     this.g = g;
     scheduler.start(START_DELAY_S);
@@ -419,8 +425,9 @@ export class Engine implements AudioEngine {
   /** Work out everything a trigger needs: voice, pitch, level, string and world position. */
   private tune(g: Graph, record: PlantRecord): void {
     const plant = record.plant;
-    // Bass, Choir and Shimmer have no synth yet (T-144): until then they ring as bells, at their own octave.
-    record.voice = plant.voice === 'pad' ? g.pad : plant.voice === 'pluck' ? g.pluck : g.bell;
+    // Shimmer has no synth yet (Should S5): until then it rings as a bell, at its own octave.
+    const own = plant.voice === 'shimmer' ? 'bell' : plant.voice;
+    record.voice = g[own];
     voiceParamsFor(plant, hzForRing(this.key, plant.cell.ring, plant.voice), record.params);
     record.params.gain *= dbToGain(MIX_DB[plant.voice]);
     if (record.voice === g.pluck) g.pluck.prepare(record.params);

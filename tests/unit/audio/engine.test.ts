@@ -188,6 +188,40 @@ describe('graph shape (NFR-PERF-10, TC-PERF-09)', () => {
     expect(held.length).toBeGreaterThan(100);
   });
 
+  it('a full bed of all five voices for 13 bars: voices never pass 24, stolen notes fade, every source gets a stop', async () => {
+    const { ctx, engine, run } = await start();
+    const fixed = ctx.nodes.length;
+    const bed: Plant[] = [];
+    const voices: VoiceType[] = ['bell', 'pad', 'pluck', 'bass', 'choir'];
+    for (let ring = 0; ring < RINGS; ring++) {
+      for (let step = 0; step < STEPS; step++) {
+        // Five rings, five voices: every step plays one note of each.
+        bed.push(plant(`${ring}-${step}`, voices[(ring + step) % 5] as VoiceType, ring, step));
+      }
+    }
+    engine.syncPlants(bed, BED);
+    let most = 0;
+    run(13 * BAR_S, () => {
+      most = Math.max(most, engine.stats.voices);
+    });
+
+    // A note has one envelope and it feeds a channel input: count the notes there, whatever their voice.
+    const envelopes = ctx.of('panner').flatMap((p) => (p.inputs[0] as FakeNode).inputs);
+    expect(envelopes.length).toBeGreaterThanOrEqual(1000);
+    expect(most).toBe(VOICE_CAP);
+    expect(ctx.count('panner')).toBe(VOICE_CAP);
+    expect(ctx.count('convolver')).toBe(1);
+    expect(ctx.count('compressor')).toBe(1);
+    expect(ctx.count('waveShaper')).toBe(1);
+    expect(ctx.waves).toHaveLength(2); // the bass wave and the choir pulse: made in init(), never in the tick
+    const perNote = new Set(ctx.nodes.slice(fixed).map((n) => n.kind));
+    expect([...perNote].sort()).toEqual(['biquad', 'bufferSource', 'gain', 'oscillator']);
+    expect(envelopes.filter((n) => n.gain.last('hold') !== undefined).length).toBeGreaterThan(100);
+    // No source is left to run on: each has its stop time, its own end or the end of a steal fade.
+    const sources = [...ctx.of('oscillator'), ...ctx.of('bufferSource')];
+    expect(sources.filter((s) => s.stoppedAt === null)).toHaveLength(0);
+  });
+
   it('a second init() builds nothing', async () => {
     const { ctx, engine } = await start();
     const fixed = ctx.nodes.length;
@@ -427,18 +461,51 @@ describe('syncPlants: diff-based and idempotent (API_SPEC §1.2)', () => {
     expect(ctx.count('oscillator')).toBe(0);
   });
 
-  it('pad and pluck have their own voices; a voice with no synth yet rings as a bell at its own octave', async () => {
+  it('pad, pluck, bass and choir have their own voices; shimmer has no synth yet and rings as a bell at its own octave', async () => {
     const { ctx, engine, run } = await start();
     engine.syncPlants(
-      [plant('pad', 'pad', 0, 0), plant('pluck', 'pluck', 0, 4), plant('bass', 'bass', 0, 8)],
+      [
+        plant('pad', 'pad', 0, 0),
+        plant('pluck', 'pluck', 0, 2),
+        plant('bass', 'bass', 0, 4),
+        plant('choir', 'choir', 0, 6),
+        plant('shimmer', 'shimmer', 0, 8),
+      ],
       BED,
     );
     run(12 * STEP_S);
     const oscs = ctx.of('oscillator');
-    expect(oscs.map((o) => o.type)).toEqual(['sawtooth', 'sawtooth', 'sawtooth', 'sine', 'sine']);
-    expect(oscs[0]?.frequency.value).toBeCloseTo(130.8128, 3); // pad: C3
-    expect(oscs[3]?.frequency.value).toBeCloseTo(65.4064, 3); // bass: C2
-    expect(ctx.count('bufferSource')).toBe(1);
+    const hz = (type: string): number[] => oscs.filter((o) => o.type === type).map((o) => o.frequency.value);
+    expect(hz('sawtooth')).toHaveLength(3); // the pad
+    expect(hz('sawtooth')[0]).toBeCloseTo(130.8128, 3); // C3
+    expect(ctx.count('bufferSource')).toBe(1); // the pluck
+    // Bass and choir each play their own wave, in step order: C2, then C3.
+    expect(hz('custom')).toHaveLength(2);
+    expect(hz('custom')[0]).toBeCloseTo(65.4064, 3);
+    expect(hz('custom')[1]).toBeCloseTo(130.8128, 3);
+    expect(ctx.count('biquad')).toBe(5); // the pad's low-pass, the bass's, the choir's three formants
+    // Sines: the choir's vibrato, then the shimmer's bell (carrier at C5 and its modulator).
+    expect(hz('sine')).toHaveLength(3);
+    expect(hz('sine')[1]).toBeCloseTo(523.2511, 3);
+  });
+
+  it('bass and choir play the note of their ring in the key and mode in force, at C2 and C3 (LLD §5.2)', async () => {
+    const { ctx, engine, run } = await start((e) => e.setSignature(HALL)); // A sus pentatonic: A B D E G
+    engine.syncPlants(
+      Array.from({ length: 2 * RINGS }, (_, i) => plant(`p${i}`, i < RINGS ? 'bass' : 'choir', i % RINGS, i)),
+      BED,
+    );
+    run(12 * STEP_S);
+    const played = ctx
+      .of('oscillator')
+      .filter((o) => o.type === 'custom')
+      .map((o) => o.frequency.value);
+    const a1 = [55, 61.7354, 73.4162, 82.4069, 97.9989]; // A1 B1 D2 E2 G2
+    expect(played).toHaveLength(2 * RINGS);
+    a1.forEach((expected, ring) => {
+      expect(played[ring]).toBeCloseTo(expected, 3);
+      expect(played[RINGS + ring]).toBeCloseTo(2 * expected, 3);
+    });
   });
 });
 
