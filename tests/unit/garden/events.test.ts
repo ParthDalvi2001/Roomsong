@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import type { EventMap } from '../../../src/core/index.js';
+import type { EventMap, Hand } from '../../../src/core/index.js';
 import type { GardenState, GrowthDelta, RoomSignature, Seed, UndoToken } from '../../../src/garden/index.js';
 
 describe('garden/events (API_SPEC §2)', () => {
@@ -22,6 +22,11 @@ describe('garden/events (API_SPEC §2)', () => {
     }>();
     expectTypeOf<EventMap['garden:grown']>().toEqualTypeOf<{ deltas: readonly GrowthDelta[] }>();
     expectTypeOf<EventMap['garden:seedArrived']>().toEqualTypeOf<{ seed: Seed }>();
+    expectTypeOf<EventMap['garden:seedOut']>().toEqualTypeOf<{ seed: Seed; hand: Hand }>();
+    expectTypeOf<EventMap['garden:seedBack']>().toEqualTypeOf<{
+      seedId: string;
+      reason: 'offBed' | 'full' | 'lost' | 'reset';
+    }>();
     expectTypeOf<EventMap['room:signature']>().toEqualTypeOf<{
       signature: RoomSignature;
       starterSeeds: boolean;

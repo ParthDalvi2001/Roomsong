@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { BED_ANCHOR_INNER_M, BED_ANCHOR_OUTER_M } from '../../../src/core/config.js';
 import {
+  AUTOPLANT_CELL_STRIDE,
   BED_INNER,
   BED_OUTER,
   NEW_PLANT_HEIGHT,
   PULL_RANGE_M,
   RINGS,
   STEPS,
+  UNDO_LIFE_MS,
   ZONE_INNER_MARGIN_M,
   ZONE_OUTER_MARGIN_M,
 } from '../../../src/garden/config.js';
@@ -47,6 +49,18 @@ describe('garden/config', () => {
 
   it('a new plant starts at height 0.55 (API_SPEC §1.1)', () => {
     expect(NEW_PLANT_HEIGHT).toBe(0.55);
+  });
+
+  it('a removed plant can be brought back for 5 s (FR-MUS-12)', () => {
+    expect(UNDO_LIFE_MS).toBe(5000);
+  });
+
+  it('the autoplant stride shares no factor with the 80 cells, so no cell comes twice (LLD §3.2)', () => {
+    const cells = new Set(
+      Array.from({ length: 80 }, (_, n) => (AUTOPLANT_CELL_STRIDE * n) % (RINGS * STEPS)),
+    );
+    expect(AUTOPLANT_CELL_STRIDE).toBe(7);
+    expect(cells.size).toBe(80);
   });
 });
 

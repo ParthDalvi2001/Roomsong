@@ -106,3 +106,10 @@ export const NO_SEED_DATE = '1970-01-01';
 export const LAST_YEAR = 9999;
 /** API_SPEC §1.1 (applyVisit): real zones lie between UTC−12 and UTC+14; an offset beyond 16 hours is no visit. */
 export const TZ_OFFSET_MAX_MIN = 960;
+
+// The state holder (GardenSystem.ts).
+
+/** FR-MUS-12: how long a removed plant can be brought back, in milliseconds on core's clock. */
+export const UNDO_LIFE_MS = 5000;
+/** LLD §3.2 (the autoplant flag, API_SPEC §3): plant n goes to cell (seed + 7n) mod 80; 7 shares no factor with 80. */
+export const AUTOPLANT_CELL_STRIDE = 7;

@@ -9,7 +9,7 @@ import * as garden from '../../../src/garden/index.js';
 const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../../src');
 const GARDEN_DIR = join(SRC_DIR, 'garden');
 const CORE_INDEX = join(SRC_DIR, 'core', 'index.js');
-// API_SPEC §1: the one garden file that is an ECS system; it may load core's bus, log and flags.
+// API_SPEC §1: the garden's state holder, a plain class; it may load core's bus, clock, flags, log and settings.
 const SYSTEM_FILE = 'GardenSystem.ts';
 
 /** Every module a source file imports or re-exports from, and whether the whole statement is type-only. */
@@ -37,7 +37,7 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
   );
   const read = (file: string): string => readFileSync(join(GARDEN_DIR, file), 'utf8');
 
-  it('no file under src/garden/ loads anything from outside the folder; core gives it types only', () => {
+  it('garden/ loads nothing from outside the folder: core gives types only, and GardenSystem.ts alone may load core/index.js', () => {
     expect(files.length).toBeGreaterThanOrEqual(6);
     for (const file of files) expect(violations(file, read(file)), file).toEqual([]);
   });
@@ -113,6 +113,7 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
         'BED_HEIGHT_OFFSET_MAX_M',
         'BED_INNER',
         'BED_OUTER',
+        'GardenSystem',
         'MODE_DEGREES',
         'PULL_RANGE_M',
         'REVERB_RT60_DEFAULT_S',
@@ -122,6 +123,7 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
         'RINGS',
         'SEED_SUPPLY_MAX',
         'STEPS',
+        'UNDO_LIFE_MS',
         'WANDERER',
         'applyVisit',
         'bedZone',
