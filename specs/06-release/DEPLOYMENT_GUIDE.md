@@ -49,7 +49,7 @@ Read the files: they are short and commented. This section says what they do, no
 - **A manual run builds the branch chosen in the Run workflow box,** which opens on the default branch, `main`. The `deploy` job publishes only when the run is on `main` (`if: github.ref == 'refs/heads/main'`); a run from another branch builds and publishes nothing. The `github-pages` environment's branch rule is a second guard (§1.1 step 6).
 - A manual run is a **rebuild** of that commit: the same `commit`, a new `builtAt`.
 - The Pages upload drops dotfiles, so a `.well-known/` folder would not ship.
-- Published with the app, from the same build: the device test pages `/Roomsong/proto/pinch/` (TC-DEV-00) and `/Roomsong/proto/spike/` (TC-DEV-0A). Their device scripts are `proto/pinch/README.md` and `proto/spike/README.md`.
+- Published with the app, from the same build: the device test pages `/Roomsong/proto/pinch/` (TC-DEV-00) and `/Roomsong/proto/spike/` (TC-DEV-0A). Their device scripts are `proto/pinch/README.md` and `proto/spike/README.md`. The garden preview `/Roomsong/proto/bed/` (T-125) is published the same way; it is a flat page for looking at the bed, plants and tide, not a device test.
 - *Superseded (T-108):* the YAML that stood here (checkout and setup-node `@v4`, Node 22, a `v*` tag trigger, `scripts/size-check.mjs`, a `/staging/` build), and `scripts/deploy.mjs` with the `deploy:staging` / `deploy:prod` npm scripts, which are deleted.
 
 ## 3. Staging (superseded by T-108: there is no hosted staging)

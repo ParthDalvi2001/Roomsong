@@ -1,8 +1,8 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-10-10 18:30 IST (plan v2.1; implementation running as an ultracode workflow run on Opus 5.5, D-024)
+**Last updated:** 2026-10-12 09:40 IST (plan v2.1; one driving session with role agents in worktrees, D-038)
 **Phase:** 0 Prove (Oct 10–17) · **Next gate:** G0 Oct 17 (D-023) · **Headset gate H1:** Oct 20 · **Plan:** v2.1
-**Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 39
+**Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 37 on 2026-10-12
 
 > **Read first this session:** `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions), `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) and `specs/07-workflow/SPRINT_PLAN.md` v2.1.
 > **ONE DRIVER, UP TO 4 HEAVY AGENTS ON THIS MAC (D-038; Parth's ceiling is 10, D-036):** one Claude session drives the repository. On Parth's word up to 4 agents that build or test run at once, plus agents that only write documents, one per module, each in its own worktree; shared files and the contract are edited only by the driving session. Agent ids for resuming after a restart are in `.tmp/agents.json`. After any restart: list Claude processes, stop leftover copies (parent pid 1), then resume the agents by id. The tracking page (port 4180), the sound preview (port 4173) and the dev server with the emulator (port 8081) run detached.
@@ -70,8 +70,6 @@
 20. **FYI, say if you disagree (D-033):** if two saved gardens ever exist, the older one is shown and the newer one is kept as a backup.
 
 21. **Know this about "the room tunes the song" (from the T-141 review); no action yet:** the scale comes from ceiling height, with steps at 2.60 m and 2.90 m. By arithmetic about 1 room in 5 has a ceiling within the measuring error (5 cm) of a step, so such a room could get a different scale on another visit; a rough model says about 1 visit in 14 at worst, about 1 in 70 if the headset measures five times better than assumed. The key and the echo have the same kind of risk, smaller. Nothing is decided: the headset test (T-129) will measure the real drift, and only then do we choose between keeping it, remembering the last result, or wording the promise more softly.
-
-21. ~~Claude's file tools were refused~~ — cleared on 2026-10-12 08:43 when Parth reloaded the window; a leftover copy of the previous session was still running and was stopped.
 
 22. **Headset day: five questions (the script is ready: `specs/05-testing/DEVICE_SCRIPT_S1.md`).** (a) Which room and table will you use (a table at least 75 cm deep; round or not), and is there a second room without Space Setup in Wi-Fi reach? (b) Your own headset or a borrowed one (the script has a full 3-hour version and a 1-hour version), and Quest 3 or 3S? (c) Will GitHub Pages be live before the headset arrives? Only that route gives the real start-up time. (d) Results back by mail from the headset browser, or by USB? (e) Can you keep the headset overnight, to repeat one block the next day?
 
