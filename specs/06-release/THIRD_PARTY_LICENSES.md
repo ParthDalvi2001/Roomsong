@@ -29,6 +29,7 @@ Transitive runtime packages pulled by @iwsdk/core (not declared by us; listed so
 | @iwsdk/cli · @iwsdk/vite-plugin-dev · @iwsdk/reference | 1.0.1 | MIT |
 | vite | 7.3.7 | MIT |
 | vitest | 5.0.3 | MIT |
+| @vitest/coverage-v8 (+ 11 packages it pulls in: @babel/parser, @babel/types, two @babel helpers, @bcoe/v8-coverage, two @vitest/istanbul-lib packages, ast-v8-to-istanbul, js-tokens, magicast, tinyrainbow) | 5.0.3 | MIT (all twelve); development only, not in the built page (T-117) |
 | @playwright/test (+ playwright, playwright-core) | 1.64.0 | Apache-2.0 |
 | typescript | 5.9.3 | Apache-2.0 |
 | eslint · @eslint/js | 9.39.5 | MIT |

@@ -1,5 +1,5 @@
 // TC-PER-01, TC-PER-02, TC-PER-04: the store over an in-memory Backend. Nothing here runs IndexedDB itself:
-// the adapter in Store.ts (openIndexedDb) is run in a browser by tests/e2e/10-persistence.spec.ts.
+// the adapter in idb.ts (openIndexedDb) is run in a browser by tests/e2e/10-persistence.spec.ts.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { log } from '../../../src/core/index.js';

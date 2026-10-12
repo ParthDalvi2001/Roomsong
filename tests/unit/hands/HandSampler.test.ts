@@ -422,5 +422,5 @@ describe('HandSampler: no object per frame', () => {
     expect(frames.right).toMatchObject({ tracked: true, pinchPos: { x: 0, y: 1, z: -1 } });
     const now = [frames.right.pinchPos, frames.right.palmPos, frames.right.palmNormal, frames.right.velocity];
     now.forEach((vector, i) => expect(vector).toBe(kept[i])); // the same four objects as before the first sample
-  });
+  }, 30_000); // a heap measurement: not to fail on the default 5 s on a loaded machine or under coverage
 });

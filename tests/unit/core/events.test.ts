@@ -167,7 +167,7 @@ describe('core/events', () => {
     expect(Math.min(gcsDuring(emitAll), gcsDuring(emitAll), gcsDuring(emitAll))).toBe(0);
     expect(calls).toBe(4 * 8 * ROUNDS);
     expect(kept).toEqual({ i: ROUNDS - 1 });
-  });
+  }, 30_000); // four million emits: over the default 5 s on a loaded machine and under coverage
 
   it('with the eventLog flag every emit is logged at debug level; without it, none is', () => {
     const debug = vi.spyOn(log, 'debug').mockImplementation(() => {});

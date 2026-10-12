@@ -136,7 +136,7 @@ Schema in `04-development/API_SPEC.md` §4. Storage budget ≤ 200 KB.
 | NFR-PRIV-01 | No PII, no identifiers, no telemetry | I |
 | NFR-ACC-01 | WCAG-inspired: contrast ≥ 4.5:1 normal, 7:1 in high-contrast; no flashing above the FR-UI-11 cap (3 luminance changes per second per element, half of what the three-flashes rule allows) | T |
 | NFR-COMP-01 | Content rating 10+; policy compliance per HACKATHON_RULES §4 | I |
-| NFR-MAINT-01 | `npm run verify` green on every commit; unit coverage ≥ 80% for `audio/`, `garden/`, `persistence/`, `room/` logic (enforced from T-117; not set up before it) | T |
+| NFR-MAINT-01 | `npm run verify` green on every commit; unit coverage ≥ 80 % (lines, functions, statements, branches; per folder) for `audio/`, `garden/`, `persistence/`, `room/` logic, enforced by `npm run test:coverage` in CI (T-117; one file excluded by name, the IndexedDB adapter `persistence/idb.ts`, which the emulator suite runs) | T |
 | NFR-FOV-01 | Essential UI inside ±25°H/±20°V; verified with the FoV simulation overlay in dev builds | T, I |
 | NFR-I18N-01 | All user-facing strings in one `strings.ts` file; English only | I |
 

@@ -29,6 +29,9 @@ jobs:
       - run: npm ci
       # typecheck, lint, unit tests, build, check-dist (page policy, remote URL strings), check-size (4 MB)
       - run: npm run verify
+      # Coverage gate (NFR-MAINT-01, T-117): fails when garden/, audio/, persistence/ or room/ is under its
+      # threshold in vitest.config.ts. A second unit run: verify's own stays without coverage (reason there).
+      - run: npm run test:coverage
       # Emulator e2e (tests/e2e/README.md): Playwright's headless Chromium, WebGL on SwiftShader (software).
       # --with-deps also installs the system libraries the browser needs on Linux.
       - run: npx playwright install --with-deps chromium

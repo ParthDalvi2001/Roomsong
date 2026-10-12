@@ -447,5 +447,5 @@ describe('GestureMachine: no allocation per frame', () => {
     expect(count.releases).toBe((5 * ROUNDS) / 80); // and every release read the zone from garden
     expect(count.palmUps).toBeGreaterThan(0);
     expect(keeper.kept).not.toBeNull();
-  });
+  }, 30_000); // a heap measurement: not to fail on the default 5 s on a loaded machine or under coverage
 });

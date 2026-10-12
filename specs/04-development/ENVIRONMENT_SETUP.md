@@ -68,6 +68,7 @@ Add scripts to `package.json`:
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-dist.mjs && node scripts/check-size.mjs",
     "audit": "npm audit --omit=dev --audit-level=high"
@@ -90,6 +91,7 @@ Add scripts to `package.json`:
 npm run dev            # IWSDK dev server + emulator, HTTPS: https://localhost:8081 (it prints the LAN URL, e.g. https://192.168.1.20:8081)
 npm run dev:runtime    # the same page from plain vite, no managed browser; another port: npm run dev:runtime -- --port 8082
 npm run verify         # typecheck, lint, unit tests, build, dist gates; green before every commit
+npm run test:coverage  # unit tests with the coverage gate (NFR-MAINT-01); about 15 s
 npm run test:e2e       # emulator suite (§6); E2E_PORT=8091 npm run test:e2e when 8081 is taken
 npm run build && npm run preview    # the production build on the LAN, HTTPS, port 4173 or the next free one
 python3 tracker/server.py        # team tracking page, http://127.0.0.1:4180/ (read-only; DASHBOARD_PORT changes the port)
@@ -131,7 +133,7 @@ No headset exists on the team as of 2026-10-10. The day one arrives:
 | **Immersive Web Emulator** (Chrome extension by Meta) | Same device profiles as IWER inside Chrome DevTools: hands/controllers, room planes, hit-test, headset movement | Reviewing a built site (`npm run preview` or the Pages site; *staging: superseded, T-108*) without the dev server; PM's reviews on Windows |
 | **Playwright e2e** (`npm run test:e2e`; *was "agent mode"*) | Playwright's headless Chromium (WebGL2 on SwiftShader, software) against plain `vite` with `IWSDK_DEV_OPEN=false` on `E2E_PORT` (default 8081), and the production build under `vite preview` on `E2E_PORT` + 1000. `tests/e2e/support/iwer.ts` loads the room fixtures (`tests/fixtures/rooms`: `table`, `counter`, `none`, `tiny`, `large`, `no-walls`) and plays the hand paths (`tests/fixtures/handPaths`: `pinch`, `palm-up`) through IWER's remote control | e2e suite (TEST_PLAN §4.5), agents' unattended checks, CI. Stop `npm run dev` in the same worktree first. *Superseded (T-107):* `iwsdk dev up --mode agent` and the `iwsdk-runtime` MCP as the e2e driver (no port option, a second managed browser) |
 
-Config in `playwright.config.ts`; scenarios, helper and fixture formats in `tests/e2e/README.md`; screenshots and traces of failures → `tests/e2e/__artifacts__/`, HTML report → `playwright-report/`. On 2026-10-11: 38 tests, about 6 min.
+Config in `playwright.config.ts`; scenarios, helper and fixture formats in `tests/e2e/README.md`; screenshots and traces of failures → `tests/e2e/__artifacts__/`, HTML report → `playwright-report/`. On 2026-10-11: 49 tests, about 5 min.
 - **The suite never leaves localhost and never reuses a running server.** The helper blocks and records every request to another host. One is answered locally: the dev emulator's room download (BUG-002, §3) gets the room fixture, so runs are the same online and offline.
 - **Emulator time limit: a session within 10 s of load** (`SESSION_ENTRY_LIMIT_MS`, BUG-003). On software rendering that time measures the host. The 5 s product limit (FR-SYS-06) is a device check, TC-DEV-01.
 
@@ -179,7 +181,8 @@ All versions in `package.json` are exact (no `^`/`~`); `package-lock.json` is co
 | three | 0.181.0 | installed as the `super-three` fork via npm alias `npm:super-three@0.181.0` + `overrides` (IWSDK requirement); `@types/three` 0.181.0 |
 | @pmndrs/uikit · uikit-horizon · uikit-lucide | 1.0.76 | declared by the scaffold so Vite `dedupe` resolves one copy; spatial UI |
 | vite | 7.3.7 | scaffold line (`^7.1.4`); Vite 8 exists but the IWSDK plugin targets 7 |
-| vitest | 5.0.3 | `vitest.config.ts`, node environment, `tests/unit/**/*.test.ts` |
+| vitest | 5.0.3 | `vitest.config.ts`, node environment, `tests/unit/**/*.test.ts`; 30 s per test |
+| @vitest/coverage-v8 | 5.0.3 | the coverage gate, `npm run test:coverage` (T-117) |
 | @playwright/test | 1.64.0 | chromium build 1248 (`npx playwright install chromium`); `playwright.config.ts` boots `vite` on 8081 |
 | typescript | 5.9.3 | **not 7.x**: typescript-eslint 8.71 supports `<6.1` only |
 | eslint | 9.39.5 | **not 10.x**: eslint-plugin-import 2.32 peers with `^9` only; flat config `eslint.config.mjs` |

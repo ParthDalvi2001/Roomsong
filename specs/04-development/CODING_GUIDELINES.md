@@ -63,7 +63,7 @@ Agents: read this fully before your first commit. Reviewers: reject PRs that vio
 ## 9. Testing rules (see TEST_PLAN for cases)
 - TDD for domain logic: write the failing test first (`agent-skills:test-driven-development`).
 - Unit tests: Vitest, deterministic, no timers (use fake timers), no randomness without a seed.
-- Coverage gates: `garden/`, `audio/theory`, `audio/Scheduler`, `persistence/`, `room/PlacementSolver` ≥ 80% (enforced from T-117; not set up before it).
+- Coverage gate: `npm run test:coverage` fails when `garden/`, `audio/`, `persistence/` or `room/` is under 80 % (lines, functions, statements, branches; the whole folder; thresholds and the one named exception in `vitest.config.ts`). Run it before handing back a task that touches one of the four folders; CI runs it on every push. Code that needs a real browser API goes in its own file and is excluded there by name with its reason, never by folder.
 - e2e: Playwright + IWER; each scenario ≤ 60 s; uses `?flags=` to force paths (`forceLevel`, `fakeDay`).
 - Never mark a device-only behaviour as verified without a human device report in PROGRESS.md.
 
