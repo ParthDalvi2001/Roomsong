@@ -39,7 +39,7 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
   const files = readdirSync(ROOM_DIR, { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.ts'));
 
   it('no file under src/room/ imports anything but its own folder and the index of core/ and garden/', () => {
-    expect(files.length).toBeGreaterThanOrEqual(8);
+    expect(files.length).toBeGreaterThanOrEqual(9);
     for (const file of files) expect(violations(file, read(file)), file).toEqual([]);
   });
 
@@ -72,12 +72,22 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
         'PLANE_LEVELS_TIMEOUT_MS',
         'PlacementSolver',
         'PlaneAdapter',
+        'RoomFeatureExtractor',
       ].sort(),
     );
   });
 
-  it('config.ts holds every placement number by value (FR-ROOM-01 and D-034, FR-ROOM-03 and D-020)', () => {
+  it('config.ts holds every placement and feature number by value (FR-ROOM-01, FR-ROOM-03, FR-ROOM-10)', () => {
     expect({ ...config }).toEqual({
+      FLOOR_MAX_OFFSET_M: 0.2,
+      CEILING_MIN_HEIGHT_M: 1.8,
+      WALL_MIN_HEIGHT_M: 1.5,
+      WALL_LINE_TOLERANCE_M: 0.1,
+      BED_SURFACE_MAX_GAP_M: 0.05,
+      GLOBAL_MESH_LABEL: 'global mesh',
+      ROOM_MAX_M: 100,
+      RIGID_TOLERANCE: 1e-3,
+      HULL_MAX_CORNERS: 1000,
       BED_CENTRE_DEFAULT_M: 0.45,
       BED_CENTRE_MIN_M: 0.35,
       BED_CENTRE_MAX_M: 0.45,

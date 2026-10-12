@@ -38,3 +38,30 @@ export const HIT_TEST_TIMEOUT_MS = 10_000;
 
 /** Below this a length has no direction worth dividing by. No requirement: a guard against dividing by zero. */
 export const EPSILON_M = 1e-6;
+
+// Room features (FR-ROOM-10, LLD §5.8). A plane is told apart by pose and size, never by its label.
+/** FR-ROOM-10: the floor is a level plane within this of y = 0, the floor of the local-floor space. */
+export const FLOOR_MAX_OFFSET_M = 0.2;
+/** FR-ROOM-10: a ceiling is a level plane at least this far above the floor; a shelf or a door top is lower. */
+export const CEILING_MIN_HEIGHT_M = 1.8;
+/** FR-ROOM-10 (`wallCount`, LLD §5.8): a wall is an upright plane at least this tall. */
+export const WALL_MIN_HEIGHT_M = 1.5;
+/**
+ * FR-ROOM-10: two upright planes are one wall when the centre of one is within this of the other's line on the
+ * floor plan (a door set in a wall, a wall reported twice). Twice the 5 cm length tolerance of LLD §5.8.
+ */
+export const WALL_LINE_TOLERANCE_M = 0.1;
+/** FR-ROOM-10, LLD §5.8: the bed surface is a level plane within this of the bed centre's height. */
+export const BED_SURFACE_MAX_GAP_M = 0.05;
+/** FR-ROOM-10 (`roomVolume`): the label of the mesh of the whole room, as the emulator gives it. */
+export const GLOBAL_MESH_LABEL = 'global mesh';
+/** FR-ROOM-10 (no made-up measurement): a plane or a mesh point farther out, or larger, than this is no room. */
+export const ROOM_MAX_M = 100;
+/** FR-ROOM-10: a pose is rigid when its axes are unit length and square to each other to within this. */
+export const RIGID_TOLERANCE = 1e-3;
+/**
+ * FR-ROOM-10 (inside one XR frame): a footprint with more hull corners than this is not measured. The rectangle
+ * search is quadratic in them: 2,000 corners took 26 ms, 5,000 134 ms, 10,000 733 ms and 20,000 3.4 s on the
+ * development Mac (2026-10-12). A room's plan has a few dozen.
+ */
+export const HULL_MAX_CORNERS = 1000;

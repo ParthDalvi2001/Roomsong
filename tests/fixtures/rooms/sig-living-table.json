@@ -1,0 +1,12 @@
+{
+  "description": "Signature room 3 (LLD 5.8, TC-SIG-03): a living room 6.0 x 7.0 m with the ceiling at 3.00 m, four walls, and a labelled table 1.2 x 0.8 m = 0.96 m2 at 0.75 m (placement level 1). The user sits off the room's centre. Expected: floor 42.00 m2, volume 126.00 m3, widest wall 7.0 m; A susPent, 2.0 s.",
+  "planes": [
+    { "label": "table", "facing": "+y", "center": [0, 0.75, -0.5], "size": [1.2, 0.8] },
+    { "label": "floor", "facing": "+y", "center": [0.5, 0, -1], "size": [6, 7] },
+    { "label": "ceiling", "facing": "-y", "center": [0.5, 3, -1], "size": [6, 7] },
+    { "label": "wall", "facing": "+z", "center": [0.5, 1.5, -4.5], "size": [6, 3] },
+    { "label": "wall", "facing": "-z", "center": [0.5, 1.5, 2.5], "size": [6, 3] },
+    { "label": "wall", "facing": "+x", "center": [-2.5, 1.5, -1], "size": [7, 3] },
+    { "label": "wall", "facing": "-x", "center": [3.5, 1.5, -1], "size": [7, 3] }
+  ]
+}

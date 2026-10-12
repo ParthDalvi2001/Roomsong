@@ -55,6 +55,11 @@ width × height for walls. Planes are axis-aligned rectangles.
 | `tiny` | table 0.8 × 0.6 at 0.72 m, floor 5 m², ceiling 2.2 m, 4 walls | Small table, short reverb |
 | `large` | table 2.4 × 2 at 0.75 m, 1.1 m away, floor 42 m², ceiling 3 m, 4 walls | Re-centre, long reverb |
 | `no-walls` | the `table` room's table and floor only | Halo without vines, missing surfaces |
+| `sig-small-desk` | table 1.4 × 0.7 at 0.74 m, floor 5.6 m², ceiling 2.4 m, 4 walls | Signature room: E minor pentatonic, 0.3 s echo (TC-SIG-03) |
+| `sig-kitchen-counter` | worktop 3.2 × 0.6 at 0.92 m labelled `other`, floor 15.12 m², ceiling 2.7 m, 4 walls | Signature room: D major pentatonic, 0.6 s echo; level 2 |
+| `sig-living-table` | table 1.2 × 0.8 at 0.75 m, floor 42 m², ceiling 3 m, 4 walls | Signature room: A suspended pentatonic, 2.0 s echo |
+
+The three `sig-*` rooms are read by the unit tests of `room/RoomFeatures` today. They are not in `ROOMS` in `support/iwer.ts`; `readRoom(name)` takes any name.
 
 **`handPaths/*.json`** — `hand`, `frames[]: { t, position, orientation, pinch }`. The hand moves in a straight line
 to each frame and arrives at `t` ms; `pinch` (0–1) is set on arrival; `orientation` is degrees, roll 0 = palm down.

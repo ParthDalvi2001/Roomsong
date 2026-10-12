@@ -1,0 +1,12 @@
+{
+  "description": "Signature room 2 (LLD 5.8, TC-SIG-03): a kitchen 3.6 x 4.2 m with the ceiling at 2.70 m, four walls, and a counter 3.2 x 0.6 m = 1.92 m2 at 0.92 m labelled other, so placement reaches level 2. Expected: floor 15.12 m2, volume 40.82 m3, widest wall 4.2 m; D majorPent, 0.6 s.",
+  "planes": [
+    { "label": "other", "facing": "+y", "center": [0, 0.92, -0.45], "size": [3.2, 0.6] },
+    { "label": "floor", "facing": "+y", "center": [0, 0, 1.35], "size": [3.6, 4.2] },
+    { "label": "ceiling", "facing": "-y", "center": [0, 2.7, 1.35], "size": [3.6, 4.2] },
+    { "label": "wall", "facing": "+z", "center": [0, 1.35, -0.75], "size": [3.6, 2.7] },
+    { "label": "wall", "facing": "-z", "center": [0, 1.35, 3.45], "size": [3.6, 2.7] },
+    { "label": "wall", "facing": "+x", "center": [-1.8, 1.35, 1.35], "size": [4.2, 2.7] },
+    { "label": "wall", "facing": "-x", "center": [1.8, 1.35, 1.35], "size": [4.2, 2.7] }
+  ]
+}

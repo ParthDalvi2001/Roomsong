@@ -1,0 +1,12 @@
+{
+  "description": "Signature room 1 (LLD 5.8, TC-SIG-03): a box room 2.0 x 2.8 m with the ceiling at 2.40 m, four walls, and a desk 1.4 x 0.7 m = 0.98 m2 at 0.74 m against the front wall. The desk is labelled table (the emulator has no desk label), so placement reaches level 1. Expected: floor 5.60 m2, volume 13.44 m3, widest wall 2.8 m; E minorPent, 0.3 s.",
+  "planes": [
+    { "label": "table", "facing": "+y", "center": [0, 0.74, -0.5], "size": [1.4, 0.7] },
+    { "label": "floor", "facing": "+y", "center": [0, 0, 0.55], "size": [2, 2.8] },
+    { "label": "ceiling", "facing": "-y", "center": [0, 2.4, 0.55], "size": [2, 2.8] },
+    { "label": "wall", "facing": "+z", "center": [0, 1.2, -0.85], "size": [2, 2.4] },
+    { "label": "wall", "facing": "-z", "center": [0, 1.2, 1.95], "size": [2, 2.4] },
+    { "label": "wall", "facing": "+x", "center": [-1, 1.2, 0.55], "size": [2.8, 2.4] },
+    { "label": "wall", "facing": "-x", "center": [1, 1.2, 0.55], "size": [2.8, 2.4] }
+  ]
+}

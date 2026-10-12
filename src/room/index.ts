@@ -11,4 +11,5 @@ export { HitTestAdapter } from './HitTestAdapter.js';
 export { MeshAdapter } from './MeshAdapter.js';
 export { PlacementSolver } from './PlacementSolver.js';
 export { PlaneAdapter } from './PlaneAdapter.js';
+export { RoomFeatureExtractor } from './RoomFeatures.js';
 export type { BedPlacement, RoomMesh, RoomPlane, RoomSurfaces, SurfaceRef } from './types.js';
