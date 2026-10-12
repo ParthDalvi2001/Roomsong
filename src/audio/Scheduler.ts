@@ -71,7 +71,9 @@ export class Scheduler {
       // Counted before the listener runs: a listener that throws loses its step, not the clock (it would otherwise
       // be handed the same step on every tick from then on).
       this.nextIndex = i + 1;
-      this.listener(i % STEPS, t, Math.floor(i / STEPS));
+      // The bar as an integer (| 0), not Math.floor: a float handed to a listener the engine could not inline
+      // was put on the heap, 16 bytes a step (measured under coverage, T-143). Exact up to 2^31 bars.
+      this.listener(i % STEPS, t, (i / STEPS) | 0);
       t = this.timeOf(this.nextIndex);
     }
   }

@@ -95,6 +95,16 @@ export const IR_FADE_IN_S = 0.001;
 /** Noise seed of the left reverb channel; the right channel uses the next one (CODING_GUIDELINES §9). */
 export const IR_SEED = 1000;
 
+/**
+ * Render work one tick may do, so that a re-tune or a restored garden never holds a frame (NFR-PERF-05: JS ≤ 6 ms
+ * a frame; FR-ROOM-13; T-143). A tick renders strings, or else one slice of a new impulse response, never both.
+ * Measured in Node on a laptop (2026-10-12): 2 strings take 0.5 ms and 8 000 response samples 0.3 ms, so the 20
+ * strings of a key take 10 ticks and a 2.0 s stereo response 24. No test pins a time: the tests pin these two
+ * counts. Not measured on a headset (T-129).
+ */
+export const PLUCK_STRINGS_PER_TICK = 2;
+export const IR_SAMPLES_PER_TICK = 8000;
+
 /** Weight of the newest tick in the moving average behind `stats.cpuEstimate`. */
 export const TICK_EMA = 0.05;
 

@@ -9,7 +9,10 @@
 //
 // Everything in the diagram but the note is built once, in init(). Hot path = tick(): Scheduler → triggerStep →
 // VoicePool.play → Voice.trigger. A trigger makes a note's own nodes (sources are single-use in Web Audio) and
-// nothing else; the tick's own code makes no object, array or closure (engine.test.ts measures the heap).
+// nothing else; a tick with nothing to render makes no object, array or closure (engine.test.ts measures the heap).
+// The one costly work, rendering Pluck strings and the reverb's impulse response, is never done in the call that
+// asks for it (setSignature, syncPlants, setReverb): the tick does a bounded slice of it (renderSlice, T-143).
+// The call makes the buffers, empty; the tick only fills them, and puts no sample on the heap while it does.
 import {
   cellCentre,
   MODE_DEGREES,
@@ -20,11 +23,13 @@ import {
 } from '../garden/index.js';
 
 import {
+  IR_SAMPLES_PER_TICK,
   IR_SEED,
   LATE_DROP_S,
   MIX_DB,
   MUTE_TAU_S,
   PARAM_SMOOTH_S,
+  PLUCK_STRINGS_PER_TICK,
   REVERB_SEND,
   REVERB_SMALL_RT60_S,
   REVERB_SWAP_DELAY_S,
@@ -39,7 +44,7 @@ import {
 } from './config.js';
 import { createLimiter } from './limiter.js';
 import { dbToGain, voiceParamsFor } from './mapping.js';
-import { impulseLength, renderImpulseResponse } from './Reverb.js';
+import { impulseLength, impulseRenderer } from './Reverb.js';
 import { Scheduler } from './Scheduler.js';
 import { Spatializer } from './Spatializer.js';
 import { hzForRing, VOICE_OCTAVE } from './theory.js';
@@ -62,7 +67,10 @@ export interface AudioEngine {
   setVolume(v: number): void;
   /** The one shared reverb: 'auto' follows the signature's reverbRt60, 'small' is a fixed 0.6 s, 'off' mutes the send. */
   setReverb(mode: 'auto' | 'small' | 'off'): void;
-  /** Re-tunes all plants in place (key, mode); the reverb decay follows it while 'auto'. Never the tempo (D-021). */
+  /**
+   * Re-tunes all plants in place (key, mode); the reverb decay follows it while 'auto'. Never the tempo (D-021).
+   * It renders nothing itself: the tick does, a slice at a time. The same signature again does nothing.
+   */
   setSignature(sig: RoomSignature): void;
   /** The listener is the user's head: called every frame with the viewer's world matrix. Allocation-free. */
   setListenerPose(head: Mat4): void;
@@ -108,6 +116,13 @@ interface Graph {
   choir: Choir;
 }
 
+/** An impulse response on its way into the convolver: `step` renders a slice and returns true once `ir` is whole. */
+interface ReverbResponse {
+  ir: AudioBuffer;
+  rt60: number;
+  step: (samples: number) => boolean;
+}
+
 function onBed(cell: Cell): boolean {
   const { ring, step } = cell;
   return (
@@ -141,9 +156,15 @@ export class Engine implements AudioEngine {
   private reverbMode: 'auto' | 'small' | 'off' = 'auto';
   /** Decay of the signature: the default until the first one, like the Wanderer tuning above. */
   private signatureRt60 = REVERB_RT60_DEFAULT_S;
-  /** The decay the convolver holds or is about to hold; 0 = none yet. */
+  /** The decay asked for last: the one the convolver holds, or the one on its way to it. 0 = none yet. */
   private reverbRt60 = 0;
-  private pendingIr: AudioBuffer | null = null;
+  /** The decay of the response the convolver holds; 0 = none yet. */
+  private heldRt60 = 0;
+  /** The response being rendered, a slice a tick. Null = none. */
+  private rendering: ReverbResponse | null = null;
+  /** The response that is whole and waits, the return muted for it, for the tick that swaps it in. Null = none. */
+  private pending: ReverbResponse | null = null;
+  /** Audio time from which that tick may swap: the mute of the return has faded by then. */
   private swapAt = 0;
 
   /** Audio time at which the tick suspends the context; Infinity = nobody asked. */
@@ -186,6 +207,7 @@ export class Engine implements AudioEngine {
     // A NaN pitch would make an oscillator throw in the tick, at every step.
     if (MODE_DEGREES[sig.mode] === undefined || !Number.isFinite(sig.keyRoot)) return;
     const retune = sig.keyRoot !== this.key.keyRoot || sig.mode !== this.key.mode;
+    if (!retune && sig.reverbRt60 === this.signatureRt60) return; // the same signature again: nothing to do
     this.key = sig;
     this.signatureRt60 = sig.reverbRt60;
     this.applyReverb();
@@ -193,11 +215,9 @@ export class Engine implements AudioEngine {
     if (!retune || g === null) return;
     // Notes that sound or are scheduled were tuned to the old key: they fade out and never ring over the new one.
     g.pool.releaseAll(g.ctx.currentTime);
+    // The strings of the old key go, with any that were still waiting to be rendered. The plants ask for those of
+    // the new key and the tick renders them (renderSlice): nothing is rendered in this call.
     g.pluck.dispose();
-    // shortcut: every string of the new key is rendered here, at once, and so is the impulse response in
-    // applyReverb() when the decay changes (at most 20 strings and one 2.0 s stereo response: about 23 ms in Node
-    // on a laptop, not measured on a headset). Spread them over ticks as LLD §7 describes if a re-tune stalls a
-    // frame (T-143).
     this.applyPlants();
   }
 
@@ -267,17 +287,21 @@ export class Engine implements AudioEngine {
     if (this.timer === null) await g.ctx.suspend();
   }
 
-  /** The 25 ms tick: schedule the steps that are due, then cheap bookkeeping on the audio clock. */
+  /** The 25 ms tick: one slice of render work, the steps that are due, then cheap bookkeeping on the audio clock. */
   readonly tick = (): void => {
     const g = this.g;
     if (g === null) return;
     const t0 = performance.now();
+    // Before the scheduler: a string asked for since the last tick is then ready for the first note that needs it.
+    this.renderSlice(g, IR_SAMPLES_PER_TICK);
     g.scheduler.tick();
     const now = g.ctx.currentTime;
-    if (this.pendingIr !== null && now >= this.swapAt) {
-      g.convolver.buffer = this.pendingIr;
+    const pending = this.pending;
+    if (pending !== null && now >= this.swapAt) {
+      g.convolver.buffer = pending.ir;
+      this.heldRt60 = pending.rt60;
       g.wet.gain.setTargetAtTime(WET_RETURN, now, PARAM_SMOOTH_S);
-      this.pendingIr = null;
+      this.pending = null;
     }
     if (now >= this.suspendAt) {
       if (this.timer !== null) clearInterval(this.timer);
@@ -344,6 +368,11 @@ export class Engine implements AudioEngine {
     this.g = g;
     scheduler.start(START_DELAY_S);
     this.applyReverb();
+    // init() runs in the Enter gesture, before any frame of the session, so both renderers run once here: the
+    // first response whole, so the first notes are not dry, and one string to no buffer, so its loop is compiled
+    // before a tick needs it (Pluck.warmUp). The strings of the plants wait for the tick.
+    while (this.rendering !== null) this.renderSlice(g, Infinity);
+    g.pluck.warmUp();
     this.applyPlants();
     return g;
   }
@@ -357,7 +386,10 @@ export class Engine implements AudioEngine {
     settle?.(result);
   }
 
-  /** Point the one reverb at the decay in force. Renders an impulse response when the decay changes; never in the tick. */
+  /**
+   * Point the one reverb at the decay in force. A new decay starts the render of its impulse response and renders
+   * none of it: renderSlice does. The last decay asked for wins over whatever was on its way.
+   */
   private applyReverb(): void {
     const g = this.g;
     if (g === null) return;
@@ -369,18 +401,39 @@ export class Engine implements AudioEngine {
       REVERB_RT60_MAX_S,
     );
     if (off || !(rt60 > 0) || rt60 === this.reverbRt60) return;
-    const first = this.reverbRt60 === 0;
     this.reverbRt60 = rt60;
+    // What was on its way is outdated. A response still being rendered is dropped. One that was whole and waited
+    // for its swap never goes in: the return, muted for it, opens again on the response that is still in place.
+    this.rendering = null;
+    if (this.pending !== null) {
+      this.pending = null;
+      g.wet.gain.setTargetAtTime(WET_RETURN, now, PARAM_SMOOTH_S);
+    }
+    if (rt60 === this.heldRt60) return; // the convolver holds this response already: no render and no swap
     const sr = g.ctx.sampleRate;
     const ir = g.ctx.createBuffer(2, impulseLength(sr, rt60), sr);
-    for (let ch = 0; ch < 2; ch++) renderImpulseResponse(ir.getChannelData(ch), sr, rt60, IR_SEED + ch);
-    if (first) {
-      g.convolver.buffer = ir; // the convolver was silent until now: nothing to cut off
+    this.rendering = { ir, rt60, step: impulseRenderer(ir, rt60, IR_SEED) };
+  }
+
+  /**
+   * One slice of the render work a re-tune, a new plant or a new decay left behind (T-143): up to
+   * PLUCK_STRINGS_PER_TICK strings, or else, when no string is waiting, up to `samples` of the impulse response.
+   * With nothing to render it costs two comparisons and allocates nothing.
+   */
+  private renderSlice(g: Graph, samples: number): void {
+    if (g.pluck.render(PLUCK_STRINGS_PER_TICK)) return; // strings came first, and are all this tick renders
+    const response = this.rendering;
+    if (response === null || !response.step(samples)) return;
+    this.rendering = null;
+    if (this.heldRt60 === 0) {
+      g.convolver.buffer = response.ir; // the convolver was silent until now: nothing to cut off
+      this.heldRt60 = response.rt60;
       return;
     }
     // Swapping a ConvolverNode's buffer resets its state: mute the return first and swap in a later tick.
+    const now = g.ctx.currentTime;
     g.wet.gain.setTargetAtTime(0, now, MUTE_TAU_S);
-    this.pendingIr = ir;
+    this.pending = response;
     this.swapAt = now + REVERB_SWAP_DELAY_S;
   }
 

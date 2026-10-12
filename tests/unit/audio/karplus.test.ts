@@ -99,6 +99,28 @@ describe('renderKarplusStrong', () => {
     expect(hardTail).toBeLessThan(softTail);
   });
 
+  it('the string itself is pinned: three sums over the samples of two strings', () => {
+    // The strings of T-121 (measured 2026-10-12, before T-143 touched the excitation loop). A change to the noise,
+    // to the loop or to the damping moves these by far more than the 4 decimals asked for. Listen before changing them.
+    const sums = (hz: number, damping: number, seed: number): number[] => {
+      const out = new Float32Array(SR * 1.6);
+      renderKarplusStrong(out, SR, hz, damping, seed);
+      let sum = 0;
+      let energy = 0;
+      let weighted = 0; // by position, so that the same samples in another order do not pass
+      for (let i = 0; i < out.length; i++) {
+        const v = out[i] as number;
+        sum += v;
+        energy += v * v;
+        weighted += v * (i % 97);
+      }
+      return [sum, energy, weighted];
+    };
+    const near = (values: number[]): unknown[] => values.map((v): unknown => expect.closeTo(v, 4));
+    expect(sums(440, 0.5, 7)).toEqual(near([56.183075, 200.209547, 2838.394608]));
+    expect(sums(220, 0.3125, 883)).toEqual(near([-15.031086, 344.767502, 134.861289]));
+  });
+
   it('starts from silence at sample 0 (no click) and finishes near silence', () => {
     const out = new Float32Array(SR * 1.5);
     renderKarplusStrong(out, SR, 440, 0.5, 3);

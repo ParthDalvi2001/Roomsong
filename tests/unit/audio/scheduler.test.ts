@@ -3,9 +3,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { LOOK_AHEAD_S, TICK_MS } from '../../../src/audio/config.js';
-import { mulberry32 } from '../../../src/audio/prng.js';
 import { Scheduler, type StepListener } from '../../../src/audio/Scheduler.js';
 import { STEPS } from '../../../src/garden/index.js';
+
+import { mulberry32 } from './prng.js';
 
 interface Ev {
   step: number;

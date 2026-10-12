@@ -3,8 +3,10 @@
 // FR-ROOM-06 is not audio's: garden/ owns it with the room signature (T-141).
 import { describe, expect, it } from 'vitest';
 
-import { REVERB_IR_MAX_S, REVERB_SEND, REVERB_SMALL_RT60_S } from '../../../src/audio/config.js';
-import { impulseLength, renderImpulseResponse } from '../../../src/audio/Reverb.js';
+import { IR_SEED, REVERB_IR_MAX_S, REVERB_SEND, REVERB_SMALL_RT60_S } from '../../../src/audio/config.js';
+import { impulseLength, impulseRenderer, renderImpulseResponse } from '../../../src/audio/Reverb.js';
+
+import { FakeAudioContext } from './fakeAudio.js';
 
 const SR = 48000;
 
@@ -101,5 +103,54 @@ describe('renderImpulseResponse', () => {
     const onset = zcr(0, Math.floor(SR * 0.05));
     const tail = zcr(Math.floor(SR * 1.0), Math.floor(SR * 1.2));
     expect(tail).toBeLessThan(onset);
+  });
+});
+
+describe('impulseRenderer: a response a slice at a time (T-143)', () => {
+  it('renders at most the samples asked for per call, is done only when whole, and gives the same samples as one render', () => {
+    const decayS = 0.5;
+    const ir = new FakeAudioContext().audio.createBuffer(2, impulseLength(SR, decayS), SR);
+    const step = impulseRenderer(ir, decayS, 7);
+    const filled = (): number =>
+      [0, 1].reduce((n, ch) => n + ir.getChannelData(ch).filter((v) => v !== 0).length, 0);
+
+    expect(filled()).toBe(0); // making the renderer renders nothing
+    expect(step(1000)).toBe(false);
+    expect(filled()).toBeGreaterThan(900);
+    expect(filled()).toBeLessThanOrEqual(1000);
+    let calls = 1;
+    for (let done = false; !done; calls++) done = step(1000);
+    expect(calls).toBe((2 * ir.length) / 1000); // 24 slices a channel, the left one first
+    expect(step(1000)).toBe(true); // a call too many changes nothing: the samples below are not scaled twice
+
+    for (let ch = 0; ch < 2; ch++) {
+      const whole = new Float32Array(ir.length);
+      renderImpulseResponse(whole, SR, decayS, 7 + ch); // the right channel has the next seed
+      expect(ir.getChannelData(ch)).toEqual(whole);
+    }
+  });
+
+  it('the response itself is pinned: three sums over the samples of the default 0.9 s response, left and right', () => {
+    // Sliced and whole run the same code, so the test above pins no sound. These numbers are the response of
+    // T-121 (measured 2026-10-12, before T-143 touched the loop): a change to the noise, to the low-pass or to
+    // the decay moves them by far more than the 4 decimals asked for. Listen before changing them.
+    const ir = new FakeAudioContext().audio.createBuffer(2, impulseLength(SR, 0.9), SR);
+    const step = impulseRenderer(ir, 0.9, IR_SEED);
+    while (!step(8000));
+    const sums = (samples: Float32Array): number[] => {
+      let sum = 0;
+      let energy = 0;
+      let weighted = 0; // by position, so that the same samples in another order do not pass
+      for (let i = 0; i < samples.length; i++) {
+        const v = samples[i] as number;
+        sum += v;
+        energy += v * v;
+        weighted += v * (i % 97);
+      }
+      return [sum, energy, weighted];
+    };
+    const near = (values: number[]): unknown[] => values.map((v): unknown => expect.closeTo(v, 4));
+    expect(sums(ir.getChannelData(0))).toEqual(near([24.667248, 882.745704, 2568.069268]));
+    expect(sums(ir.getChannelData(1))).toEqual(near([50.538513, 912.130053, 2026.11167]));
   });
 });

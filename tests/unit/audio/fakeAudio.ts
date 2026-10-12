@@ -216,9 +216,13 @@ export class FakeAudioContext {
     return wave;
   }
 
-  /** The rendered Pluck strings (one channel each; the reverb impulse responses have two). */
+  /**
+   * The rendered Pluck strings: the one-channel buffers that hold sound. The reverb impulse responses have two
+   * channels, and a string's buffer is made empty when the string is asked for and filled when it is rendered.
+   */
   get strings(): number {
-    return this.buffers.filter((b) => b.numberOfChannels === 1).length;
+    const rendered = (b: FakeBuffer): boolean => b.getChannelData(0).some((v) => v !== 0);
+    return this.buffers.filter((b) => b.numberOfChannels === 1 && rendered(b)).length;
   }
 
   of(kind: NodeKind): FakeNode[] {

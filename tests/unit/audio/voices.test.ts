@@ -1,5 +1,7 @@
 // The five voices and the note record they fill (LLD §7, §7.1; API_SPEC §1.2 Voice). A voice builds a note's
 // single-use sources and its envelope into the channel input it is handed, and nothing else.
+import { GCProfiler } from 'node:v8';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -189,20 +191,29 @@ describe('Pluck (Karplus-Strong strings, cached per pitch and damping step)', ()
     expect(ref.note.endTime).toBe(src.stoppedAt);
   });
 
-  it('renders a string once per pitch and damping step, and a trigger after prepare() renders nothing', () => {
+  it('prepare() asks for a string and renders nothing; render() renders them oldest first, one per pitch and damping step', () => {
     const { ctx, ref, out } = setup();
     const pluck = new Pluck(ctx.audio, ref);
-    const a = pluck.prepare(params({ hz: 440, cutoffMul: hueToCutoffMul(0.3) }));
-    expect(pluck.prepare(params({ hz: 440, cutoffMul: hueToCutoffMul(0.3) }))).toBe(a);
-    expect(pluck.prepare(params({ hz: 440, cutoffMul: hueToCutoffMul(0.45) }))).toBe(a); // same step of four
-    expect(ctx.strings).toBe(1);
+    pluck.prepare(params({ hz: 440, cutoffMul: hueToCutoffMul(0.3) }));
+    pluck.prepare(params({ hz: 440, cutoffMul: hueToCutoffMul(0.3) })); // asked for already
+    pluck.prepare(params({ hz: 440, cutoffMul: hueToCutoffMul(0.45) })); // the same step of four
+    pluck.prepare(params({ hz: 440, cutoffMul: hueToCutoffMul(0.8) })); // another step
+    pluck.prepare(params({ hz: 330, cutoffMul: hueToCutoffMul(0.3) })); // another pitch
+    expect(ctx.strings).toBe(0);
 
-    expect(pluck.prepare(params({ hz: 440, cutoffMul: hueToCutoffMul(0.8) }))).not.toBe(a); // another step
-    expect(pluck.prepare(params({ hz: 330, cutoffMul: hueToCutoffMul(0.3) }))).not.toBe(a); // another pitch
+    expect(pluck.render(2)).toBe(true);
+    expect(ctx.strings).toBe(2);
+    expect(pluck.render(2)).toBe(true); // the one that was left
     expect(ctx.strings).toBe(3);
+    expect(pluck.render(2)).toBe(false); // none is waiting
+    pluck.prepare(params({ hz: 330, cutoffMul: hueToCutoffMul(0.3) })); // rendered: not asked for again
+    expect(pluck.render(2)).toBe(false);
 
     pluck.trigger(0, params({ hz: 330, cutoffMul: hueToCutoffMul(0.3) }), asNode(out));
     expect(ctx.strings).toBe(3);
+    const src = ctx.of('bufferSource')[0] as FakeNode;
+    expect(src.buffer).toBe(ctx.buffers[2]); // the last one asked for was the last one rendered
+    expect(src.playbackRate.value).toBe(1);
   });
 
   it('a full bed of plucks in one key needs at most 5 pitches × 4 damping steps = 20 strings (LLD §7)', () => {
@@ -214,15 +225,20 @@ describe('Pluck (Karplus-Strong strings, cached per pitch and damping step)', ()
         pluck.prepare(params({ hz: hzForRing(key, ring, 'pluck'), cutoffMul: hueToCutoffMul(i / 100) }));
       }
     }
+    pluck.render(Infinity);
     expect(ctx.strings).toBe(RINGS * PLUCK_DAMPING_BUCKETS);
   });
 
-  it('dispose() drops the cache, so the next key renders its own strings', () => {
+  it('dispose() drops the strings and forgets the ones still asked for, so the next key renders only its own', () => {
     const { ctx, ref } = setup();
     const pluck = new Pluck(ctx.audio, ref);
     pluck.prepare(params());
+    pluck.render(1);
+    pluck.prepare(params({ hz: 330 }));
     pluck.dispose();
+    expect(pluck.render(1)).toBe(false); // the 330 Hz string of the old key is never rendered
     pluck.prepare(params());
+    pluck.render(1);
     expect(ctx.strings).toBe(2);
   });
 
@@ -230,12 +246,113 @@ describe('Pluck (Karplus-Strong strings, cached per pitch and damping step)', ()
     const { ctx, ref } = setup();
     const pluck = new Pluck(ctx.audio, ref);
     const late = (hue: number): number => {
-      const data = pluck.prepare(params({ cutoffMul: hueToCutoffMul(hue) })).getChannelData(0);
+      pluck.prepare(params({ cutoffMul: hueToCutoffMul(hue) }));
+      pluck.render(1);
+      const data = last(ctx.buffers).getChannelData(0);
       let energy = 0;
       for (let i = 24000; i < 48000; i++) energy += (data[i] as number) ** 2;
       return energy;
     };
     expect(late(0.9)).toBeGreaterThan(late(0.1));
+  });
+
+  it('a note whose string is not rendered yet plays the nearest ready one at its own pitch (LLD §7, T-143)', () => {
+    const { ctx, ref, out } = setup();
+    const pluck = new Pluck(ctx.audio, ref);
+    const dark = hueToCutoffMul(0.1);
+    const bright = hueToCutoffMul(0.9);
+    const play = (hz: number, cutoffMul: number): FakeNode => {
+      pluck.trigger(0, params({ hz, cutoffMul }), asNode(out));
+      return last(ctx.of('bufferSource'));
+    };
+    // Rendered, in this order: 220 Hz dark, 330 Hz dark, 330 Hz bright.
+    pluck.prepare(params({ hz: 220, cutoffMul: dark }));
+    pluck.prepare(params({ hz: 330, cutoffMul: dark }));
+    pluck.prepare(params({ hz: 330, cutoffMul: bright }));
+    pluck.render(3);
+    pluck.prepare(params({ hz: 270, cutoffMul: bright })); // asked for, and still waiting
+
+    // Nearest in pitch is a ratio: 270 Hz is 50 Hz from 220 and 60 Hz from 330, but 330 is the smaller interval.
+    // Of the two 330 Hz strings it takes the one of its own damping step.
+    const high = play(270, bright);
+    expect(high.buffer).toBe(ctx.buffers[2]);
+    expect(high.playbackRate.value).toBeCloseTo(270 / 330, 12); // the buffer's pitch × the rate = the note's pitch
+    expect(play(270, dark).buffer).toBe(ctx.buffers[1]);
+    const low = play(240, bright); // no bright string near: the pitch decides before the damping step
+    expect(low.buffer).toBe(ctx.buffers[0]);
+    expect(low.playbackRate.value).toBeCloseTo(240 / 220, 12);
+    expect(ctx.strings).toBe(3); // a trigger rendered nothing
+
+    pluck.render(1); // its own string is ready: no more stand-in
+    const own = play(270, bright);
+    expect(own.buffer).toBe(ctx.buffers[3]);
+    expect(own.playbackRate.value).toBe(1);
+  });
+
+  it('with no string ready at all a trigger renders its own on the spot, and its turn in the queue renders it no second time', () => {
+    const { ctx, ref, out } = setup();
+    const pluck = new Pluck(ctx.audio, ref);
+    pluck.prepare(params({ hz: 330 }));
+    pluck.trigger(0, params({ hz: 330 }), asNode(out));
+    expect(ctx.strings).toBe(1);
+    expect(ctx.of('bufferSource')[0]?.playbackRate.value).toBe(1);
+    pluck.render(1);
+    expect(ctx.strings).toBe(1);
+  });
+
+  // Two more tries, as for the heap tests of engine.test.ts: a collection already due can fall in every reading.
+  it(
+    'rendering a string makes no object: its buffer was made when it was asked for (NFR-PERF-08)',
+    { retry: 2 },
+    () => {
+      const { ctx, ref } = setup();
+      const pluck = new Pluck(ctx.audio, ref);
+      const STRINGS = 20;
+      /**
+       * Twenty new strings, asked for and then rendered 2 at a time as the tick does: heap bytes a string. Low
+       * strings (55 to 110 Hz), whose first period of noise is long: 440 to 870 samples.
+       */
+      const bytesAString = (set: number): number => {
+        pluck.dispose();
+        for (let i = 0; i < STRINGS; i++) pluck.prepare(params({ hz: 55 * 2 ** (i / STRINGS) + set }));
+        const made = ctx.buffers.length;
+        const profiler = new GCProfiler();
+        profiler.start();
+        const before = process.memoryUsage().heapUsed;
+        for (let i = 0; i < STRINGS / 2; i++) pluck.render(2);
+        const grown = process.memoryUsage().heapUsed - before;
+        const collected = profiler.stop()?.statistics.length !== 0;
+        expect(ctx.buffers).toHaveLength(made); // no buffer is made while rendering
+        // A heap that shrank was swept meanwhile: as unreadable as one that was collected.
+        return collected || grown < 0 ? Infinity : grown / STRINGS;
+      };
+      bytesAString(0); // warm up: the render loop is compiled here
+      // Measured 250 to 365 bytes a string (2026-10-12), at these pitches and two octaves higher alike: the lists
+      // of rendered strings growing, and the probe. With the noise from a generator called once per sample the
+      // same strings read 4 700 to 6 000 bytes (the break check of the T-143 review fix).
+      expect(Math.min(bytesAString(1), bytesAString(2), bytesAString(3))).toBeLessThan(1000);
+      expect(ctx.strings).toBe(4 * STRINGS);
+    },
+  );
+
+  it('a re-pitched string is stopped at the faded end of its buffer: later when it plays slower, sooner when faster', () => {
+    const { ctx, ref, out } = setup();
+    const pluck = new Pluck(ctx.audio, ref);
+    pluck.prepare(params({ hz: 440 }));
+    pluck.render(1);
+    // Full height: the envelope (release 2.5 s) outlasts the 1.6 s buffer, so the buffer's end decides.
+    const stopAt = (hz: number, detune = 0): number => {
+      pluck.trigger(10, params({ hz, release: 2.5, detune }), asNode(out));
+      expect(ref.note.endTime).toBe(last(ctx.of('bufferSource')).stoppedAt);
+      return ref.note.endTime - 10;
+    };
+    expect(stopAt(440)).toBeCloseTo(PLUCK_BUFFER_S, 9);
+    // An octave down the buffer plays at half speed: stopped at 1.6 s it would be cut in its middle, where the
+    // string still sounds, and not at the fade that ends it.
+    expect(stopAt(220)).toBeCloseTo(2 * PLUCK_BUFFER_S, 9);
+    expect(stopAt(880)).toBeCloseTo(PLUCK_BUFFER_S / 2, 9);
+    // The few cents of a hue count too: 8 cents flat is 7 ms more, the fade at the buffer's end among them.
+    expect(stopAt(440, -8)).toBeCloseTo(PLUCK_BUFFER_S * 2 ** (8 / 1200), 9);
   });
 });
 

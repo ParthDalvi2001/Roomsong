@@ -27,6 +27,11 @@ interface Scene {
   bypassLimiter?: boolean;
   /** Key root of the major pentatonic, in semitones from C (−3 = A, the lowest key). Default: C. */
   keyRoot?: 0 | -3;
+  /**
+   * A signature set after init(), before the first tick: a re-tune of the running garden (T-143). The plants were
+   * synced in C major; the ticks render the strings of the new key and the response of the new decay in slices.
+   */
+  retune?: { keyRoot: 0 | -3; reverbRt60: number };
   /** Also measure the share of the energy above this frequency. */
   splitHz?: number;
 }
@@ -84,17 +89,17 @@ function render(page: Page, scene: Scene): Promise<Rendered> {
       engine.setTempo(scene.bpm);
       engine.setVolume(1);
       engine.setReverb(scene.reverb);
-      if (scene.keyRoot !== undefined) {
+      const tune = (keyRoot: 0 | -3, reverbRt60: number) =>
         engine.setSignature({
-          keyRoot: scene.keyRoot,
+          keyRoot,
           mode: 'majorPent',
           tempo: scene.bpm,
-          reverbRt60: 0.9,
+          reverbRt60,
           reverbSize: 'medium',
           starterVoices: ['bell', 'pad', 'pluck'],
           paletteSeed: 0,
         });
-      }
+      if (scene.keyRoot !== undefined) tune(scene.keyRoot, 0.9);
       engine.syncPlants(
         scene.plants.map((p, i) => ({
           id: `p${i}`,
@@ -107,6 +112,7 @@ function render(page: Page, scene: Scene): Promise<Rendered> {
         bed,
       );
       await engine.init(ctx as unknown as AudioContext);
+      if (scene.retune !== undefined) tune(scene.retune.keyRoot, scene.retune.reverbRt60);
       engine.setListenerPose(head);
 
       let maxVoices = 0;
@@ -345,6 +351,36 @@ test('T-144 TC-AUD-05 bass and choir render with sound, under the ceiling and on
   expect(bell.aboveSplit).toBeGreaterThan(0.99);
   expect(bassC.aboveSplit).toBeGreaterThan(0.4);
   expect(bassA.aboveSplit).toBeGreaterThan(0.1);
+
+  // T-143, a re-tune of the running garden (FR-ROOM-13): the key and the decay are set after init(), with the
+  // scheduler running. The ticks render the three pluck strings of the new key and the 2.0 s response in slices,
+  // and the response is swapped in during the render; the plucks are on step 8, which sounds after this render
+  // ends. The bell on ring 0 is the probe. It was synced as C4 (262 Hz), all of it above a 240 Hz split, and
+  // must sound as A3: its carrier, 220 Hz, is under the split and its sidebands are above.
+  const probe: Scene = {
+    plants: [
+      { voice: 'bell', ring: 0, step: 0 },
+      { voice: 'pluck', ring: 1, step: 8 },
+      { voice: 'pluck', ring: 2, step: 8 },
+      { voice: 'pluck', ring: 3, step: 8 },
+    ],
+    seconds: 1,
+    bpm: 120,
+    reverb: 'auto',
+    splitHz: 240,
+  };
+  const inC = await render(page, probe);
+  const retuned = await render(page, { ...probe, retune: { keyRoot: -3, reverbRt60: 2 } });
+  console.log(line('bell C4 with the scheduler, no re-tune', inC, 'T-143'));
+  console.log(line('the same, re-tuned to A with a 2.0 s decay after init()', retuned, 'T-143'));
+  console.log(
+    `T-143 energy above 240 Hz: bell as synced ${share(inC)}, bell re-tuned ${share(retuned)} (desktop Chromium)`,
+  );
+  expectBounded(inC);
+  expectBounded(retuned);
+  // Measured 99.8 % and 5.8 % (2026-10-12).
+  expect(inC.aboveSplit).toBeGreaterThan(0.95);
+  expect(retuned.aboveSplit).toBeLessThan(0.5);
 
   expect(pageErrors).toEqual([]);
   expect(offHost).toEqual([]);

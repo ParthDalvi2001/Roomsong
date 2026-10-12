@@ -9,27 +9,38 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Engine, type AudioEngine } from '../../../src/audio/AudioEngine.js';
 import {
   CEILING_DBFS,
+  CENTS_PER_OCTAVE,
+  IR_SAMPLES_PER_TICK,
   LATE_DROP_S,
   LOOK_AHEAD_S,
   MIX_DB,
+  MUTE_TAU_S,
   PARAM_SMOOTH_S,
+  PLUCK_DAMPING_BUCKETS,
+  PLUCK_STRINGS_PER_TICK,
   REVERB_IR_MAX_S,
   REVERB_SEND,
   REVERB_SMALL_RT60_S,
   REVERB_SWAP_DELAY_S,
   START_DELAY_S,
+  STEAL_FADE_S,
   SUSPEND_FADE_S,
   TICK_MS,
   VOICE_CAP,
   WET_RETURN,
 } from '../../../src/audio/config.js';
-import { dbToGain } from '../../../src/audio/mapping.js';
+import { renderKarplusStrong } from '../../../src/audio/karplus.js';
+import { dbToGain, hueToDetuneCents } from '../../../src/audio/mapping.js';
 import { Scheduler } from '../../../src/audio/Scheduler.js';
+import { hzForRing } from '../../../src/audio/theory.js';
 import { REVERB_RT60_MAX_S, RINGS, STEPS, WANDERER } from '../../../src/garden/index.js';
 
-import { FakeAudioContext, last, type FakeNode } from './fakeAudio.js';
+import { FakeAudioContext, last, type FakeBuffer, type FakeNode } from './fakeAudio.js';
 
 import type { Plant, RoomSignature, VoiceType } from '../../../src/garden/index.js';
+
+// The string renderer is watched, not replaced: a test can then ask at which pitch a buffer was rendered.
+vi.mock('../../../src/audio/karplus.js', { spy: true });
 
 const BPM = 84;
 const STEP_S = Scheduler.stepDurationFor(BPM);
@@ -45,6 +56,13 @@ const HALL: RoomSignature = {
   mode: 'susPent',
   reverbRt60: 2.0,
   reverbSize: 'large',
+};
+const DEN: RoomSignature = {
+  ...WANDERER,
+  keyRoot: 4,
+  mode: 'minorPent',
+  reverbRt60: 0.3,
+  reverbSize: 'small',
 };
 
 const plant = (
@@ -65,9 +83,48 @@ const plant = (
 /** One pluck on every step: one buffer source per note, so notes are easy to count. */
 const sixteenPlucks = (): Plant[] =>
   Array.from({ length: STEPS }, (_, s) => plant(`p${s}`, 'pluck', s % RINGS, s));
+/** 80 plucks, every ring in each of the four damping steps: the 20 strings a key can need (LLD §7). */
+const pluckBed = (): Plant[] => {
+  const bed: Plant[] = [];
+  for (let ring = 0; ring < RINGS; ring++) {
+    for (let step = 0; step < STEPS; step++) {
+      const hue = ((step % PLUCK_DAMPING_BUCKETS) + 0.5) / PLUCK_DAMPING_BUCKETS;
+      bed.push(plant(`${ring}-${step}`, 'pluck', ring, step, { hue }));
+    }
+  }
+  return bed;
+};
+const KEY_STRINGS = RINGS * PLUCK_DAMPING_BUCKETS;
 /** Audio time of absolute step `i` when the engine was started at time 0. */
 const stepTime = (i: number): number => START_DELAY_S + i * STEP_S;
+/** The step of the bar, 0..15, that sounds at audio time `time`. */
+const stepAt = (time: number): number => Math.round((time - START_DELAY_S) / STEP_S) % STEPS;
 const starts = (ctx: FakeAudioContext): number[] => ctx.of('bufferSource').map((n) => n.startedAt as number);
+/** The pitch a pluck is heard at: the pitch its buffer was rendered at × the rate the source plays it at. */
+const heardHz = (source: FakeNode): number => {
+  const data = source.buffer?.getChannelData(0);
+  const render = vi.mocked(renderKarplusStrong).mock.calls.find((call) => call[0] === data);
+  return (render?.[2] as number) * source.playbackRate.value;
+};
+/** The pitch a pluck plant has in a key: its ring's note, moved by the few cents its hue detunes it (FR-MUS-05). */
+const pluckHz = (p: Plant, key: RoomSignature): number =>
+  hzForRing(key, p.cell.ring, 'pluck') * Math.pow(2, hueToDetuneCents(p.hue) / CENTS_PER_OCTAVE);
+/** Sorted, and rounded to a millionth of a hertz: two lists of pitches compare whatever their order. */
+const pitches = (hz: number[]): number[] => hz.map((v) => Math.round(v * 1e6) / 1e6).sort((a, b) => a - b);
+/** The impulse responses made so far: the buffers of two channels (a string's buffer has one). */
+const responses = (ctx: FakeAudioContext): FakeBuffer[] =>
+  ctx.buffers.filter((b) => b.numberOfChannels === 2);
+/** Samples of a buffer rendered so far. A response is filled from its start and its noise is never exactly 0. */
+const filled = (buffer: FakeBuffer): number => {
+  let samples = 0;
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    const data = buffer.getChannelData(ch);
+    let end = data.length;
+    while (end > 0 && data[end - 1] === 0) end--;
+    samples += end;
+  }
+  return samples;
+};
 /** Notes built so far: a pluck is one buffer source, a pad one filter and three saws, a bell two sines. */
 const notes = (ctx: FakeAudioContext): number =>
   ctx.count('bufferSource') + ctx.count('biquad') + (ctx.count('oscillator') - 3 * ctx.count('biquad')) / 2;
@@ -126,6 +183,7 @@ beforeEach(() => vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] }))
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.mocked(renderKarplusStrong).mockClear(); // its record holds every string a test rendered
 });
 
 describe('graph shape (NFR-PERF-10, TC-PERF-09)', () => {
@@ -323,26 +381,31 @@ describe('the tick builds nothing but the notes it schedules', () => {
     expect(ctx.strings).toBe(0);
   });
 
-  it('one pluck: two nodes per note (source and envelope), no string rendered in the tick', async () => {
+  it('one pluck: two nodes per note (source and envelope); its string is rendered once, by the tick after the sync', async () => {
     const { ctx, engine, run } = await start();
     engine.syncPlants([plant('a', 'pluck', 0, 0)], BED);
-    expect(ctx.strings).toBe(1); // rendered here, on sync
+    expect(ctx.strings).toBe(0); // asked for: a sync renders nothing (T-143)
     const fixed = ctx.nodes.length;
     run(2 * BAR_S);
     expect(starts(ctx)).toHaveLength(3); // steps 0, 16 and 32
     expect(ctx.nodes.slice(fixed).map((n) => n.kind)).toEqual(Array(3).fill(['bufferSource', 'gain']).flat());
     expect(ctx.strings).toBe(1);
+    // The tick renders before it schedules, so even the first note plays its own string, as it was rendered.
+    expect(ctx.of('bufferSource').map((n) => n.playbackRate.value)).toEqual([1, 1, 1]);
   });
 
   const ROUNDS = 1_000_000;
-  /** Heap growth while `work` ran, in bytes per round; Infinity when a garbage collection made it unreadable. */
-  const bytesPerRound = (work: () => void): number => {
+  /**
+   * Heap growth while `work` ran, in bytes per round; Infinity when it is unreadable: a garbage collection ran, or
+   * the heap shrank (it was swept meanwhile), which would otherwise read as the least of three rounds.
+   */
+  const bytesPerRound = (work: () => void, rounds = ROUNDS): number => {
     const profiler = new GCProfiler();
     profiler.start();
     const before = process.memoryUsage().heapUsed;
     work();
     const grown = process.memoryUsage().heapUsed - before;
-    return profiler.stop()?.statistics.length === 0 ? grown / ROUNDS : Infinity;
+    return profiler.stop()?.statistics.length === 0 && grown >= 0 ? grown / rounds : Infinity;
   };
   // Two more tries: on a loaded machine a collection hit all three rounds and both tests read Infinity
   // (2026-10-12). A real allocation fails every try.
@@ -383,6 +446,7 @@ describe('the tick builds nothing but the notes it schedules', () => {
       const { ctx, engine } = await start();
       const plants = sixteenPlucks();
       engine.syncPlants(plants, BED);
+      for (let i = 0; i < RINGS; i++) engine.tick(); // more than enough ticks to render their five strings
       const frameAll = (): void => {
         for (let i = 0; i < ROUNDS; i++) {
           engine.setListenerPose(HEAD);
@@ -397,15 +461,47 @@ describe('the tick builds nothing but the notes it schedules', () => {
       expect(ctx.strings).toBe(RINGS); // and nothing was rendered again
     },
   );
+
+  it(
+    'a tick that renders a slice of a response puts no sample on the heap: under 8 000 bytes for its 8 000 samples',
+    LOADED,
+    async () => {
+      const { ctx, engine } = await start();
+      const tick = (): void => {
+        ctx.currentTime += TICK_S;
+        engine.tick();
+      };
+      const SLICES = 20;
+      /** A new response of 20 slices or more: the heap growth of 20 of its slices, in bytes a slice. */
+      const slices = (reverbRt60: number): number => {
+        engine.setSignature({ ...WANDERER, reverbRt60 });
+        const bytes = bytesPerRound(() => {
+          for (let i = 0; i < SLICES; i++) tick();
+        }, SLICES);
+        for (let i = 0; i < SLICES; i++) tick(); // the rest of it, and the swap
+        return bytes;
+      };
+      slices(2.0); // warm up
+      slices(1.6);
+      // A number put on the heap for every sample reads as 128 000 bytes or more (measured 321 000 with the noise
+      // generator as a closure, T-143 review), or as a collection. Measured without: 1 000 to 1 400 bytes a slice,
+      // none of it growing with the samples. The same check for a string is in voices.test.ts, where no note plays.
+      expect(Math.min(slices(2.0), slices(1.6), slices(2.0))).toBeLessThan(8000);
+      expect(graph(ctx).convolver.buffer?.length).toBe(48000 * 2); // they were rendered, and the last one is in
+    },
+  );
 });
 
 describe('syncPlants: diff-based and idempotent (API_SPEC §1.2)', () => {
   it('the same plants again change nothing: no string is rendered twice', async () => {
-    const { ctx, engine } = await start();
+    const { ctx, engine, run } = await start();
     const plants = [plant('a', 'pluck', 0, 0), plant('b', 'pluck', 1, 4, { hue: 0.9 })];
     engine.syncPlants(plants, BED);
     engine.syncPlants(plants, BED);
     engine.syncPlants([...plants], BED); // a new array holding the same plant objects
+    run(1);
+    engine.syncPlants([...plants], BED); // and once more, now that the strings are rendered
+    run(1);
     expect(ctx.strings).toBe(2);
   });
 
@@ -551,7 +647,9 @@ describe('setSignature: re-tune in place (FR-ROOM-13)', () => {
     expect(ctx.strings).toBe(1);
     engine.setSignature(HALL);
     expect(env.gain.last('hold')).toMatchObject({ time: ctx.currentTime });
-    expect(ctx.strings).toBe(2); // the string of the new key, rendered here and not in the tick
+    expect(ctx.strings).toBe(1); // the string of the new key is asked for: the call renders nothing (T-143)
+    run(TICK_S);
+    expect(ctx.strings).toBe(2);
   });
 
   it('a signature with a mode or key that is not valid is ignored: the garden keeps its tuning', async () => {
@@ -561,6 +659,254 @@ describe('setSignature: re-tune in place (FR-ROOM-13)', () => {
     engine.setSignature({ ...WANDERER, keyRoot: Number.NaN as RoomSignature['keyRoot'] });
     run(STEP_S);
     expect(ctx.of('oscillator')[0]?.frequency.value).toBeCloseTo(261.6256, 3);
+  });
+});
+
+describe('a re-tune is spread over ticks, and the garden stays in tune meanwhile (LLD §7, NFR-PERF-05, T-143)', () => {
+  /**
+   * Every step with a pluck built since note `from` played each of its plants once, at the plant's pitch in `key`.
+   * Returns those steps (0..15), in the order they sounded.
+   */
+  const expectInKey = (
+    ctx: FakeAudioContext,
+    from: number,
+    plants: Plant[],
+    key: RoomSignature,
+  ): number[] => {
+    const byTime = new Map<number, FakeNode[]>();
+    for (const source of ctx.of('bufferSource').slice(from)) {
+      const time = source.startedAt as number;
+      byTime.set(time, [...(byTime.get(time) ?? []), source]);
+    }
+    for (const [time, sources] of byTime) {
+      const onStep = plants.filter((p) => p.cell.step === stepAt(time));
+      expect(pitches(sources.map(heardHz)), `step at ${time} s`).toEqual(
+        pitches(onStep.map((p) => pluckHz(p, key))),
+      );
+    }
+    return [...byTime.keys()].map(stepAt);
+  };
+  /** A note that plays another string than its own: its rate is more than the few cents a hue detunes it. */
+  const isStandIn = (source: FakeNode): boolean => Math.abs(Math.log2(source.playbackRate.value)) > 0.01;
+
+  it('the call renders nothing; each tick after it renders at most 2 strings or one slice of the response, never both', async () => {
+    const { ctx, engine, run } = await start();
+    engine.syncPlants(pluckBed(), BED);
+    run(1);
+    expect(ctx.strings).toBe(KEY_STRINGS); // C major, rendered 2 a tick since the sync
+
+    const made = ctx.buffers.length;
+    engine.setSignature(HALL);
+    const response = last(responses(ctx)); // made in the call, and still empty
+    expect(response.length).toBe(48000 * 2);
+    expect(filled(response)).toBe(0);
+    expect(ctx.strings).toBe(KEY_STRINGS);
+    // Every buffer is made in the call, empty: the response and the 20 strings of the new key. A tick makes none.
+    expect(ctx.buffers).toHaveLength(made + 1 + KEY_STRINGS);
+
+    const perTick: { strings: number; samples: number }[] = [];
+    let strings = ctx.strings;
+    let samples = 0;
+    run(1, () => {
+      perTick.push({ strings: ctx.strings - strings, samples: filled(response) - samples });
+      strings = ctx.strings;
+      samples = filled(response);
+    });
+    // The two sizes themselves: they were chosen by measurement (config.ts), and a larger one is a longer tick.
+    expect(PLUCK_STRINGS_PER_TICK).toBe(2);
+    expect(IR_SAMPLES_PER_TICK).toBe(8000);
+    for (const tick of perTick) {
+      expect(tick.strings).toBeLessThanOrEqual(PLUCK_STRINGS_PER_TICK);
+      expect(tick.samples).toBeLessThanOrEqual(IR_SAMPLES_PER_TICK);
+      expect(tick.strings === 0 || tick.samples === 0).toBe(true);
+    }
+    // All of it was done, the strings first: 10 ticks of strings, then 24 of the 2.0 s stereo response.
+    expect(ctx.strings).toBe(2 * KEY_STRINGS);
+    expect(filled(response)).toBe(2 * response.length);
+    const work = perTick.map((t) => (t.strings > 0 ? 's' : t.samples > 0 ? 'r' : '-')).join('');
+    const stringTicks = KEY_STRINGS / PLUCK_STRINGS_PER_TICK;
+    const responseTicks = (2 * response.length) / IR_SAMPLES_PER_TICK;
+    expect(work).toBe(('s'.repeat(stringTicks) + 'r'.repeat(responseTicks)).padEnd(perTick.length, '-'));
+    expect(graph(ctx).convolver.buffer).toBe(response);
+    expect(ctx.buffers).toHaveLength(made + 1 + KEY_STRINGS);
+  });
+
+  it('init() runs the string renderer once, to no buffer: its loop is compiled in the Enter gesture, not in a tick', async () => {
+    const { ctx, engine, run } = await start();
+    // The first string of a process is rendered by code that is not compiled yet: 4 to 5 ms in Node on a laptop,
+    // against 0.3 ms for the next ones. A unit test cannot time that; it pins that the render happens here.
+    expect(vi.mocked(renderKarplusStrong)).toHaveBeenCalledTimes(1);
+    expect(ctx.strings).toBe(0);
+    expect(ctx.buffers).toHaveLength(1); // the impulse response alone
+    engine.syncPlants([plant('a', 'pluck', 0, 0)], BED);
+    run(TICK_S);
+    expect(vi.mocked(renderKarplusStrong)).toHaveBeenCalledTimes(2);
+    expect(ctx.strings).toBe(1);
+  });
+
+  it('the tick renders before it schedules: a plant added between two ticks plays its own string on its first note', async () => {
+    const { ctx, engine, run } = await start();
+    const a = plant('a', 'pluck', 0, 0);
+    engine.syncPlants([a], BED);
+    // Up to the last tick before the one that schedules step 8: a's string is long rendered, and it has sounded.
+    const before = Math.floor((stepTime(8) - LOOK_AHEAD_S) / TICK_S);
+    run(before * TICK_S);
+    engine.syncPlants([a, plant('b', 'pluck', 2, 8)], BED);
+    run(TICK_S);
+    const first = last(ctx.of('bufferSource'));
+    expect(first.startedAt).toBe(stepTime(8));
+    expect(first.buffer).toBe(last(ctx.buffers)); // b's string, rendered in this same tick
+    expect(first.playbackRate.value).toBe(1); // and not a's string at another rate
+  });
+
+  it('from the call on every pluck is heard at its pitch in the new key, once a step; a string not rendered yet is stood in for by a ready one', async () => {
+    const { ctx, engine, run } = await start();
+    const bed = pluckBed();
+    engine.syncPlants(bed, BED);
+    run(BAR_S);
+    const old = ctx.of('bufferSource');
+    expect(expectInKey(ctx, 0, bed, WANDERER).length).toBeGreaterThanOrEqual(STEPS);
+
+    const at = ctx.currentTime;
+    engine.setSignature(HALL);
+    run(BAR_S);
+    // One step was inside the look-ahead at the call: its notes were dropped, and it is not played a second time.
+    expect(expectInKey(ctx, old.length, bed, HALL).length).toBeGreaterThanOrEqual(STEPS - 1);
+
+    // The first steps come before their strings: those notes play a ready string of the new key at another rate.
+    const after = ctx.of('bufferSource').slice(old.length);
+    const spread = (KEY_STRINGS / PLUCK_STRINGS_PER_TICK) * TICK_S;
+    const standIns = after.filter(isStandIn);
+    expect(standIns.length).toBeGreaterThan(0);
+    for (const note of standIns) expect(note.startedAt).toBeLessThan(at + spread + LOOK_AHEAD_S);
+    expect(ctx.strings).toBe(2 * KEY_STRINGS); // and no note rendered a string for itself
+
+    // The old key ends without a click: a note that sounded is held and faded over the steal fade, and one that
+    // was scheduled and had not started is dropped whole. A note that had already been stolen for a note of the
+    // dropped step keeps the fade it had: it ends when that step would have begun, inside the look-ahead.
+    for (const source of old) {
+      const envelope = (source.outputs[0] as FakeNode).gain;
+      expect(source.stoppedAt).toBeLessThan(at + LOOK_AHEAD_S);
+      if ((source.startedAt as number) >= at) expect(envelope.value).toBe(0);
+      else if (source.stoppedAt === at + STEAL_FADE_S) expect(envelope.last('hold')?.time).toBe(at);
+    }
+    expect(old.some((s) => (s.startedAt as number) >= at)).toBe(true); // there was a step inside the look-ahead
+    expect(old.some((s) => s.stoppedAt === at + STEAL_FADE_S)).toBe(true); // and notes that were sounding
+  });
+
+  it('the same signature again does nothing: no note is faded, nothing is rendered and no parameter is touched', async () => {
+    const { ctx, engine, run } = await start();
+    engine.syncPlants(pluckBed(), BED);
+    engine.setSignature(HALL);
+    run(BAR_S);
+    const state = (): number[] => [
+      ctx.nodes.length,
+      ctx.buffers.length,
+      ctx.nodes.reduce((n, node) => n + node.gain.events.length, 0),
+    ];
+    const before = state();
+    engine.setSignature({ ...HALL });
+    expect(state()).toEqual(before);
+    const response = graph(ctx).convolver.buffer;
+    run(BAR_S);
+    expect(ctx.strings).toBe(KEY_STRINGS); // C major was dropped before one of its strings was rendered
+    expect(graph(ctx).convolver.buffer).toBe(response);
+  });
+
+  it('two signatures in a row: the second wins, and what the first still had to render is dropped', async () => {
+    const { ctx, engine, run } = await start();
+    const bed = pluckBed();
+    engine.syncPlants(bed, BED);
+    run(1);
+    /** The pitch of every string rendered so far, in order. */
+    const rendered = (): number[] => vi.mocked(renderKarplusStrong).mock.calls.map((call) => call[2]);
+    const ringsOf = (key: RoomSignature): number[] =>
+      pitches(Array.from({ length: RINGS }, (_, ring) => hzForRing(key, ring, 'pluck')));
+
+    // The first is cut short in its strings: 6 of its 20 are rendered, its response not begun.
+    engine.setSignature(HALL);
+    const hallResponse = last(responses(ctx));
+    run(3 * TICK_S);
+    const strings = rendered().length;
+    expect(ctx.strings).toBe(KEY_STRINGS + 3 * PLUCK_STRINGS_PER_TICK);
+    const sources = ctx.count('bufferSource');
+    engine.setSignature(DEN);
+    run(BAR_S);
+    expect(rendered().length - strings).toBe(KEY_STRINGS); // the 20 of the second key, not one more of the first
+    expect(pitches([...new Set(rendered().slice(strings))])).toEqual(ringsOf(DEN));
+    expect(filled(hallResponse)).toBe(0);
+    expect(graph(ctx).convolver.buffer?.length).toBe(Math.floor(48000 * DEN.reverbRt60));
+    expectInKey(ctx, sources, bed, DEN);
+
+    // The next is cut short in its response: 2 of its 24 slices are rendered and it never reaches the convolver.
+    engine.setSignature(HALL);
+    const cut = last(responses(ctx));
+    run((KEY_STRINGS / PLUCK_STRINGS_PER_TICK + 2) * TICK_S);
+    expect(filled(cut)).toBe(2 * IR_SAMPLES_PER_TICK);
+    engine.setSignature(WANDERER);
+    run(BAR_S);
+    expect(filled(cut)).toBe(2 * IR_SAMPLES_PER_TICK);
+    expect(graph(ctx).convolver.buffer?.length).toBe(Math.floor(48000 * WANDERER.reverbRt60));
+    expect(filled(graph(ctx).convolver.buffer as FakeBuffer)).toBe(
+      2 * Math.floor(48000 * WANDERER.reverbRt60),
+    );
+  });
+
+  it('plants added and removed while it is spread: the new one plays in the new key from its next step, the removed one never again', async () => {
+    const { ctx, engine, run } = await start();
+    const bed = pluckBed().filter((p) => p.cell.step !== 15); // step 15 is free
+    engine.syncPlants(bed, BED);
+    run(1);
+    engine.setSignature(HALL);
+    run(2 * TICK_S); // 4 of the 20 strings are rendered
+    const sources = ctx.count('bufferSource');
+    const changed = [...bed.filter((p) => p.id !== '0-0'), plant('new', 'pluck', 4, 15)];
+    expect(() => engine.syncPlants(changed, BED)).not.toThrow();
+    run(2 * BAR_S);
+
+    // Step 0 plays its four other plants and step 15 its one new plant: expectInKey compares each step with `changed`.
+    const heard = expectInKey(ctx, sources, changed, HALL);
+    expect(heard.length).toBeGreaterThanOrEqual(2 * STEPS - 1);
+    expect(heard).toContain(0);
+    expect(heard).toContain(15);
+    expect(ctx.strings).toBe(2 * KEY_STRINGS); // the new plant shares a string of its ring: none was added
+  });
+
+  it('before init() the last signature is the one the garden starts in: one response, made whole in init()', async () => {
+    const bed = sixteenPlucks();
+    const { ctx, run } = await start((engine) => {
+      engine.syncPlants(bed, BED);
+      engine.setSignature(HALL);
+      engine.setSignature(DEN);
+    });
+    expect(responses(ctx)).toHaveLength(1);
+    expect(graph(ctx).convolver.buffer?.length).toBe(Math.floor(48000 * DEN.reverbRt60));
+    expect(filled(graph(ctx).convolver.buffer as FakeBuffer)).toBe(2 * Math.floor(48000 * DEN.reverbRt60));
+    run(BAR_S);
+    expect(expectInKey(ctx, 0, bed, DEN).length).toBeGreaterThanOrEqual(STEPS);
+    expect(ctx.strings).toBe(RINGS);
+  });
+
+  it('while the context is suspended a re-tune waits: nothing is rendered until the tick runs again, then the garden plays the new key', async () => {
+    const { ctx, engine, run } = await start();
+    const bed = sixteenPlucks();
+    engine.syncPlants(bed, BED);
+    run(1);
+    const suspended = engine.suspend();
+    run(SUSPEND_FADE_S + TICK_S);
+    await suspended;
+    const sources = ctx.count('bufferSource');
+
+    expect(() => engine.setSignature(HALL)).not.toThrow();
+    expect(vi.getTimerCount()).toBe(0); // no tick: nothing can render
+    expect(ctx.strings).toBe(RINGS);
+    expect(filled(last(responses(ctx)))).toBe(0);
+
+    await engine.resume();
+    run(BAR_S);
+    expect(ctx.strings).toBe(2 * RINGS);
+    expect(expectInKey(ctx, sources, bed, HALL).length).toBeGreaterThanOrEqual(STEPS - 1);
+    expect(graph(ctx).convolver.buffer?.length).toBe(48000 * 2);
   });
 });
 
@@ -655,12 +1001,26 @@ describe('volume and reverb', () => {
     expect(ctx.buffers).toHaveLength(1);
 
     engine.setSignature({ ...WANDERER, reverbRt60: 5 });
-    // A change is a swap: the return is muted first, and the new impulse response goes in a little later.
-    expect(wet.gain.last('target')).toMatchObject({ value: 0 });
+    // The new response is rendered a slice a tick (T-143). Until it is whole the old one stays in, and open.
+    const slices = (2 * 48000 * REVERB_IR_MAX_S) / IR_SAMPLES_PER_TICK;
+    run((slices - 1) * TICK_S);
+    expect(wet.gain.events).toEqual([]);
     expect(convolver.buffer?.length).toBe(Math.floor(48000 * 0.9));
-    run(REVERB_SWAP_DELAY_S + TICK_S);
+    // The same mode again while it renders starts nothing over: the settings are re-applied on every change of one.
+    engine.setReverb('auto');
+    expect(ctx.buffers).toHaveLength(2);
+    // Whole: a change is a swap. The return is muted first, and the new impulse response goes in a little later.
+    run(TICK_S);
+    expect(wet.gain.last('target')).toMatchObject({ value: 0, time: ctx.currentTime, tau: MUTE_TAU_S });
+    expect(convolver.buffer?.length).toBe(Math.floor(48000 * 0.9));
+    run(REVERB_SWAP_DELAY_S - TICK_S); // the mute has not faded yet: not before the swap delay is over
+    expect(convolver.buffer?.length).toBe(Math.floor(48000 * 0.9));
+    run(TICK_S);
     expect(convolver.buffer?.length).toBe(48000 * REVERB_IR_MAX_S);
+    expect(filled(convolver.buffer as FakeBuffer)).toBe(2 * 48000 * REVERB_IR_MAX_S); // all of it, both channels
     expect(wet.gain.last('target')).toMatchObject({ value: WET_RETURN });
+    run(1);
+    expect(wet.gain.events).toHaveLength(2); // the mute and the opening, once each: a swap is done once
     expect(ctx.count('convolver')).toBe(1);
     // The decay itself was capped at garden's maximum, not only the buffer: 2.0 s is no change now.
     engine.setSignature({ ...WANDERER, reverbRt60: REVERB_RT60_MAX_S });
@@ -676,7 +1036,7 @@ describe('volume and reverb', () => {
     expect(convolver.buffer?.length).toBe(48000 * 2);
 
     engine.setReverb('small');
-    run(REVERB_SWAP_DELAY_S + TICK_S);
+    run(1); // the slices of the render, then the swap
     expect(REVERB_SMALL_RT60_S).toBe(0.6);
     expect(convolver.buffer?.length).toBe(Math.floor(48000 * 0.6));
 
@@ -688,8 +1048,40 @@ describe('volume and reverb', () => {
 
     engine.setReverb('auto');
     expect(send.gain.last('target')).toMatchObject({ value: REVERB_SEND });
-    run(REVERB_SWAP_DELAY_S + TICK_S);
+    run(1);
     expect(convolver.buffer?.length).toBe(Math.floor(48000 * 1.2));
+  });
+
+  it('a newer decay while a whole response waits for its swap: that response never goes in, and the return opens again', async () => {
+    const { ctx, engine, run } = await start();
+    const { convolver, wet } = graph(ctx);
+    const held = convolver.buffer;
+    engine.setSignature({ ...WANDERER, reverbRt60: 2.0 });
+    run(((2 * 48000 * 2.0) / IR_SAMPLES_PER_TICK) * TICK_S); // whole: the return is muted and the swap waits
+    run(TICK_S);
+    engine.setReverb('small');
+    // The response in the convolver is still the old one: the return opens on it again, at once.
+    expect(wet.gain.last('target')).toMatchObject({ value: WET_RETURN, time: ctx.currentTime });
+    run(REVERB_SWAP_DELAY_S + TICK_S); // past the time the outdated swap was due
+    expect(convolver.buffer).toBe(held);
+    run(1);
+    expect(convolver.buffer?.length).toBe(Math.floor(48000 * REVERB_SMALL_RT60_S));
+    // One swap in all, the small one's: muted for the 2.0 s one, opened again, muted, swapped and opened.
+    expect(wet.gain.events.map((e) => e.value)).toEqual([0, WET_RETURN, 0, WET_RETURN]);
+  });
+
+  it('back to the decay the convolver holds before the other one is whole: nothing more is rendered, nothing is swapped', async () => {
+    const { ctx, engine, run } = await start();
+    const { convolver, wet } = graph(ctx);
+    const held = convolver.buffer; // the default 0.9 s
+    engine.setReverb('small');
+    run(TICK_S);
+    engine.setReverb('auto'); // a double tap in Settings
+    expect(ctx.buffers).toHaveLength(2); // no third response: the one asked for is in the convolver
+    run(1);
+    expect(convolver.buffer).toBe(held);
+    expect(wet.gain.events).toEqual([]); // no dropout
+    expect(filled(last(responses(ctx)))).toBe(IR_SAMPLES_PER_TICK); // the small one was dropped where it stood
   });
 
   it('a decay that is not above 0 is ignored: the reverb keeps the one it has', async () => {
