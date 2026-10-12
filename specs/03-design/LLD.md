@@ -78,19 +78,26 @@ src/
 │   ├── Store.ts                IndexedDB + localStorage fallback behind one four-call key-value interface; backup
 │   └── PersistenceSystem.ts    the debounce: a plain class that listens to no event; src/index.ts calls save() and flush()
 ├── render/
-│   ├── config.ts               FLASH_CAP_PER_S, FLASH_MIN_DELTA (API_SPEC §1.8); tuning-ripple timeline (§5.8)
-│   ├── BedRenderer.ts          ring/step guides, beat ring
-│   ├── PlantRenderer.ts        InstancedMesh per voice; per-instance attrs (height, hue, age, glow)
-│   ├── TideRenderer.ts
+│   ├── config.ts               FLASH_CAP_PER_S, FLASH_MIN_DELTA, FOVEATION_MEDIUM (API_SPEC §1.8), every size, colour and timing of the
+│   │                           renderers; tuning-ripple timeline (§5.8)
+│   ├── events.ts               perf:sample (API_SPEC §2)
+│   ├── BedRenderer.ts          the glass with its five ring lines (one shader) and the 80 cell markers (one InstancedMesh): 2 draw calls.
+│   │                           The beat ring is not in it yet
+│   ├── PlantRenderer.ts        one InstancedMesh per silhouette: bell, pad, pluck (bass borrows bell, choir borrows pad, shimmer borrows
+│   │                           pluck, until theirs are drawn). Instance matrix = cell, turn and stem height; instance colour = the hue's
+│   │                           colour × the brightness FlashGuard hands out (the glow). No age attribute yet
+│   ├── TideRenderer.ts         the wedge of light, turned by audio's barPhase; one FlashGuard element for its showing and hiding (§5.9)
 │   ├── TuningRipple.ts         surface sweep (table → wall → ceiling) synced to chord tones (FR-ROOM-12)
 │   ├── HaloRenderer.ts         aurora halo over the bed in Listen mode (Must)
 │   ├── VineRenderer.ts         spline tube along wall plane (Could C4, D-021)
 │   ├── Particles.ts            GPU-instanced petals/sparks
 │   ├── ListenLighting.ts       dim + glow transitions
 │   ├── FlashGuard.ts           caps every animated element at FLASH_CAP_PER_S = 3 luminance changes per second; reports maxFlashPerS (FR-UI-11, §5.9)
-│   ├── shaders/                plant.vert/frag, tide, ripple, halo, vine, glowSprite (GLSL)
-│   ├── PerfHud.ts
-│   └── RenderSystems.ts
+│   ├── shaders/                not a folder yet: the GLSL of the bed and the plants is inline in their renderer files (T-125). Planned
+│   │                           here: ripple, halo, vine, glowSprite
+│   ├── PerfHud.ts              PerfSampler (perf:sample once a second) and the HUD panel (flag perfHud)
+│   └── RenderSystems.ts        written by the integration task T-128, which also declares PlantView and attaches the Interactable
+│                               of each plant (§3). T-125 delivered the renderers as plain classes (API_SPEC §1.8)
 ├── ui/                         as built in T-126 (API_SPEC §1.9); Hints.ts and Panel.ts are not built yet
 │   ├── config.ts               the FoV box (25 and 20 degrees) and the caption's size, distance, font and colours
 │   ├── strings.ts              the 2D page's copy (LANDING); captions are in core/strings.ts
@@ -147,6 +154,7 @@ Panel controls are direct pinch targets (T-151: "large pinch targets over ray UI
 CaptionSystem (`ui/Captions.ts`, API_SPEC §1.9) is the ui system built so far; Hints and Panel bring their own with T-151. It runs after every system that raises a caption, so a caption raised in a frame is on screen in that frame.
 RoomSystem is also the producer of `room:features` → (GardenSystem computes) `room:signature`; AudioSystem applies the signature before the first scheduled step so the garden never sounds in the wrong key.
 The garden window (§11) registers the same systems in the same order; only the `InputSource` given to HandSystem and the camera differ.
+**Who writes render's systems (T-125 review).** `PlantRenderSystem`, `TideRenderSystem` and `PerfHudSystem` (`render/RenderSystems.ts`), the `PlantView` component and the `Interactable` on each plant are written by the integration task T-128. Until then hands cannot pick a plant. T-125 delivered the bed, plant and tide renderers, the perf sampler and the HUD as plain classes (API_SPEC §1.8); those systems drive them: `setState` on `garden:changed`, `update` with audio's `barPhase` each frame, `PerfSampler.frame` after the render. `PlantRenderer` keeps a slot per plant id itself, so `PlantView.instanceIndex` may not be needed.
 
 ## 4. Gesture state machine (`hands/GestureMachine.ts`)
 
@@ -366,8 +374,8 @@ A missing surface skips its sweep and its caption, but its note still rings at t
 
 ### 5.9 Flash cap (`render/FlashGuard.ts`, FR-UI-11)
 No element changes luminance more than 3 times per second. The terms, with constants in `render/config.ts` (API_SPEC §1.8):
-- **Element** = one drawn instance whose brightness is animated: one plant, one cell marker or ghost, one beat-ring tick, one ripple quad, the halo, the tide crest. A shape that moves at constant brightness is not changing luminance; what it lights up is counted on the element it lights (the trigger flash, on that plant).
-- **One luminance change** = one swing of the element's brightness factor (0–1, the multiplier its material applies) in one direction, of at least `FLASH_MIN_DELTA` = 0.10. It is counted when the direction reverses or the swing stops. A flash, up and back, is two changes. A slow fade counts once, like a fast one.
+- **Element** = one drawn instance whose brightness is animated: one plant, one cell marker or ghost, one beat-ring tick, one ripple quad, the halo, the tide crest (its showing and hiding; its sweep keeps one brightness and relies on a continuous phase, API_SPEC §1.8). A shape that moves at constant brightness is not changing luminance; what it lights up is counted on the element it lights (the trigger flash, on that plant).
+- **One luminance change** = one swing of the element's brightness factor (0–1, the multiplier its material applies) in one direction, of at least `FLASH_MIN_DELTA` = 0.10, measured from where the last swing ended. It is counted when it starts, the moment it can still be refused. A swing ends only when the brightness comes back at least `FLASH_MIN_DELTA` from its far end: a pause or a smaller step back does not end it (design no stairs). Before its first swing an element may move less than half of `FLASH_MIN_DELTA` from its claimed brightness. A refused swing holds the element where it is. A flash, up and back, is two changes. A slow fade counts once, like a fast one.
 - **Cap** = at most `FLASH_CAP_PER_S` = 3 changes of one element in any sliding 1 s window. That is at most 1.5 full flashes per second, half of what WCAG's three-flashes rule allows (a flash there is a pair of opposing changes of 10 % or more), so NFR-ACC-01 holds with margin.
 
 **Enforcement.** Animation code does not write a brightness directly; it asks FlashGuard to start a swing for an element. FlashGuard grants it when the element's window has room and otherwise holds the element at its current brightness until it has. FlashGuard counts from the values it hands out, so its report does not depend on the callers. `perf:sample.maxFlashPerS` is the largest count any element reached in the last second; TC-E2E-15 asserts it never exceeds 3 with `autoplant=80` in Listen mode. The beat ring (`access/`) and the hover cue go through the same guard; `access/` and `ui/` may import `render/`.

@@ -10,9 +10,12 @@ import { existsSync } from 'node:fs';
 import { iwsdkDev } from '@iwsdk/vite-plugin-dev';
 import { defineConfig, type Plugin } from 'vite';
 
-// Device test pages (T-104 capability spike, T-105 pinch accuracy). Each one that exists is built to
-// dist/<same path>, so a headset opens it at <site>/proto/spike/ or <site>/proto/pinch/.
-const PROTO_PAGES = ['proto/spike/index.html', 'proto/pinch/index.html'].filter((page) => existsSync(page));
+// Device test pages (T-104 capability spike, T-105 pinch accuracy) and the bed preview (T-125). Each one that
+// exists is built to dist/<same path>, so a headset opens it at <site>/proto/spike/, <site>/proto/pinch/ or
+// <site>/proto/bed/.
+const PROTO_PAGES = ['proto/spike/index.html', 'proto/pinch/index.html', 'proto/bed/index.html'].filter(
+  (page) => existsSync(page),
+);
 
 // Content Security Policy for every built page (T-109; SECURITY_PLAN §5, NFR-SEC-01, Golden Rule 9). No remote
 // host anywhere. Each relaxation is here because the built page reports a violation without it (headless

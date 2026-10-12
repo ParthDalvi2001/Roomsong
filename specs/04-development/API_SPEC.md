@@ -1,6 +1,6 @@
 # API Specification — Internal Module Contracts, Event Bus, Storage Schema, URL Flags
 
-**Status:** Living · **Owner:** software-architect · **Version:** 1.2.8 (2026-10-12, T-126: the ui contract as built and reviewed, new §1.9, see the Changelog; v1.2.7 was T-141, the room signature as built and reviewed; v1.2.6 was T-123, the room contract as built and reviewed, with the reach rule of D-034; v1.2.5 was T-122, the persistence contract as built and reviewed; v1.2.4 was T-121, the audio contract as built and reviewed; v1.2.3 was T-124, the hands contract as built and reviewed; v1.2.2 was T-120 and D-029/D-031, the garden contract as built and reviewed; on plan v2.1 of 2026-10-10: PLAN_AMENDMENT_2026-10-10 §6; D-020, D-021, D-025; v1.2.1 added core's runtime surface as built in T-106)
+**Status:** Living · **Owner:** software-architect · **Version:** 1.2.9 (2026-10-12, T-125: the render contract as built and reviewed, see the Changelog; v1.2.8 was T-126, the ui contract as built and reviewed, new §1.9; v1.2.7 was T-141, the room signature as built and reviewed; v1.2.6 was T-123, the room contract as built and reviewed, with the reach rule of D-034; v1.2.5 was T-122, the persistence contract as built and reviewed; v1.2.4 was T-121, the audio contract as built and reviewed; v1.2.3 was T-124, the hands contract as built and reviewed; v1.2.2 was T-120 and D-029/D-031, the garden contract as built and reviewed; on plan v2.1 of 2026-10-10: PLAN_AMENDMENT_2026-10-10 §6; D-020, D-021, D-025; v1.2.1 added core's runtime surface as built in T-106)
 Roomsong has **no HTTP API** (static app, no backend). This document is the contract **between modules**.
 Rule: change this file first, then the code, in the same PR. Breaking changes bump the section's version note.
 
@@ -388,8 +388,45 @@ Exports `PointerSource` (implements `InputSource`, §1.4: a mouse, pen or touch 
 ```ts
 export const FLASH_CAP_PER_S = 3;      // FR-UI-11: luminance changes of one element in any 1 s window (sheet 6.2)
 export const FLASH_MIN_DELTA = 0.10;   // a brightness swing smaller than 10 % of full scale is not counted as a change
+export const FOVEATION_MEDIUM = 2 / 3; // NFR-PERF-09: fixed foveation "medium", as renderer.xr.setFoveation takes it (0 none .. 1 high); src/index.ts sets it
+export class FlashGuard {              // one per page, built by src/index.ts and handed to every module that animates a brightness (LLD §5.9)
+  claim(count: number, brightness?: number): number; // set-up only (it allocates): `count` elements at `brightness` (default 0); returns the id of the first.
+                                       // Elements are never released
+  reset(element: number, brightness: number): void;  // set-up only: a new thing drawn on a reused element (a new plant on a freed slot) starts at `brightness`
+                                       // with no swing in progress. The element's changes of the last second stay counted
+  request(element: number, target: number, nowMs: number): number; // per frame, creates no objects: the brightness to draw. ONE call per element per frame:
+                                       // a caller with two effects on one element combines them first. `target` is clamped to 0..1; one that is not a number
+                                       // returns the current brightness. `nowMs` is the frame's time and never goes back (a clock that does freezes the
+                                       // element); with one that is not finite nothing changes. An element id that was never claimed gets 0, always
+  takePeak(): number;                  // the most changes any one element had inside one second, since the last call. It resets: only PerfSampler calls it
+}
+export class BedRenderer { constructor(parent: Object3D); dispose(): void } // static: the glass with its five ring lines, and 80 cell markers. 2 draw calls
+export class PlantRenderer {           // one InstancedMesh per silhouette: at most 3 draw calls (LLD §1)
+  constructor(parent: Object3D, guard: FlashGuard);
+  setState(state: Pick<GardenState, 'plants'>): void; // on garden:changed, not per frame: it rewrites every instance. The same array reference again is no
+                                       // work. Left out, as in syncPlants (§1.2): a plant whose cell is not on the bed or whose voice is not a VoiceType
+  update(barPhase: number, nowMs: number): void; // per frame, creates no objects: each plant glows as the tide passes its step (FR-UI-07), through the guard.
+                                       // barPhase = AudioEngine.clock.barPhase() (0..1, 0 = on step 0); one that is not finite = no tide, every plant at rest
+  dispose(): void;
+}
+export class TideRenderer {            // the wedge of light: 1 draw call, and one FlashGuard element for its showing and hiding
+  constructor(parent: Object3D, guard: FlashGuard);
+  update(barPhase: number, nowMs: number): void; // per frame, creates no objects. A finite barPhase shows the wedge with its crest there; one that is not
+                                       // finite hides it and leaves it where it was. Showing and hiding are fades through the guard, so the wedge cannot
+                                       // blink. The sweep itself is not guarded: barPhase must be continuous (a jump of the phase is a jump of the light)
+  dispose(): void;
+}
+export class PerfSampler {
+  constructor(info: { render: { calls: number; triangles: number } } /* WebGLRenderer.info */, guard: FlashGuard);
+  frame(nowMs: number, jsMs: number, voices?: number): void; // once per frame, after the render. jsMs = the main-thread time of that frame (the updates plus
+                                       // the render call); voices = AudioEngine.stats.voices (default 0). Emits perf:sample (§2) every 1000 ms
+}
+export interface PerfHud { readonly mesh: Mesh; dispose(): void } // the read-out panel; a type only: createPerfHud is the way to get one
+export function createPerfHud(parent: Object3D, flags?: Flags): PerfHud | null; // the panel when Flags.perfHud is on (§3), else null. It shows each perf:sample;
+                                       // the caller places `.mesh` and calls dispose()
 ```
-One luminance change = one swing of an element's brightness in one direction of at least `FLASH_MIN_DELTA`; a flash (up and back) is two changes. An element = one drawn instance (one plant, one cell marker, one beat-ring tick, one ripple quad, the halo). The cap is half of what WCAG's three-flashes rule allows, so NFR-ACC-01 holds with margin. Enforcement and its consequences: LLD §5.9. `perf:sample.maxFlashPerS` (§2) reports the worst element.
+`parent` is the Object3D that carries the bed's pose: the renderers draw in the bed frame of D-029 (§1.0), in metres. None of them adds a light, a shadow or a render target (NFR-PERF-09), and none reads a clock: time comes in as an argument.
+One luminance change = one swing of an element's brightness in one direction of at least `FLASH_MIN_DELTA`; a flash (up and back) is two changes. An element = one drawn instance (one plant, one cell marker, one beat-ring tick, one ripple quad, the halo, the tide wedge). The cap is half of what WCAG's three-flashes rule allows, so NFR-ACC-01 holds with margin. Enforcement and its consequences: LLD §5.9. `perf:sample.maxFlashPerS` (§2) reports the worst element.
 
 ### 1.9 `ui/` (T-126: landing page, captions, FoV guard; Hints and Panel join in T-151)
 ```ts
@@ -444,7 +481,7 @@ A consumer never imports the emitter to name a payload: it writes `EventMap['ges
 | `garden:seedArrived` | `{ seed }` | garden → render, onboarding |
 | `listen:enter` / `listen:exit` | `{}` | garden → audio, render, ui |
 | `onboarding:step` | `{ step }` | onboarding → ui |
-| `perf:sample` | `{ fps, draws, tris, jsMs, voices, maxFlashPerS }` | render → perf hud, tests (`maxFlashPerS` = the most luminance changes any one element made in the last second; must stay ≤ `FLASH_CAP_PER_S` = 3: FR-UI-11, TC-E2E-15; §1.8) |
+| `perf:sample` | `{ fps, draws, tris, jsMs, voices, maxFlashPerS }` | render (`PerfSampler`, once a second; the object is reused, so a handler copies what it keeps) → perf hud, tests. `fps` and the mean `jsMs` over the last second; `draws` and `tris` of the frame the sample was taken on; `voices` as the caller hands it in; `maxFlashPerS` = the peak since the previous sample: the most luminance changes any one element had inside one second. It must stay ≤ `FLASH_CAP_PER_S` = 3: FR-UI-11, TC-E2E-15; §1.8 |
 
 **Settings and saving (v1.2.1, v1.2.5).** The `settings` store of `core/` is the live value, and it saves nothing. `PersistenceSystem` (§1.5) listens to no event: `src/index.ts` drives it. On `garden:changed`, and on `settings:changed` with the last state it saw, `src/index.ts` hands it the state with the live settings in it, `save({ ...state, settings: settings.get() })`; garden's reducers never change `GardenState.settings`, so without that step a settings change is never saved. It calls `flush()` on `xr:visibility { visible: false }`, on `xr:sessionEnd` and on the page's `visibilitychange` to hidden, and it raises the `E_SAVE_FAILED` caption from `onSaveFailed`. After `Store.load()`, `src/index.ts` seeds the store with `settings.set(validateSettings(state.settings))`.
 
@@ -482,3 +519,4 @@ Module interface changes: note here under a "Changelog" entry with date, PR, and
 - 2026-10-11 — v1.2.6 (2026-10-11, T-123 and D-034; the room contract as built and reviewed). **room (§1.3), added:** `PLANE_LEVELS_TIMEOUT_MS`, `RoomPlane`, `RoomMesh`, `PlaneAdapter`, `MeshAdapter`, `HitTestAdapter`, and `PlacementSolver` as a class (`run`, `cancel`, `update`, `confirm`) with what each call promises; forward is the level direction square to the head's right vector and distances are measured level. **Events (§2):** `room:placementLevel` fires once for each level the chain tries; the last one is the bed's level. **Errors (§1.0, §5):** `E_PLACEMENT_TIMEOUT` is non-fatal and logged at warn. **Rule (SRS FR-ROOM-01, D-034):** a plane counts by reach (its point nearest the default bed position is in front and at most 0.75 m away), not by its centre; a surface less than 0.25 m below the eyes is not used, nor a pinch-placed spot lower than 0.5 m above the floor.
 - 2026-10-11 — v1.2.7 (2026-10-11, T-141; the room signature as built and reviewed; no signature changed). **garden (§1.1):** `roomSignature`, `chordDegrees`, `WANDERER` and the four reverb constants are built; `WANDERER` and every returned signature are frozen (`starterVoices` is a readonly tuple), and the Wanderer cases return `WANDERER` itself, also for a level that is not 1 or 2 and for a missing argument. **audio (§1.2):** audio imports `REVERB_RT60_MAX_S` and `REVERB_RT60_DEFAULT_S` from garden and has no floor of its own (0.3 s is the smallest step `roomSignature` returns); `REVERB_IR_MAX_S` is the buffer cap and may not be below garden's maximum.
 - 2026-10-12 — v1.2.8 (2026-10-12, T-126; the ui contract as built and reviewed; additions only). **ui (new §1.9):** `FovElement`, `clampToFov` (the 25 by 20 degree view box, applied to an element's edges), `CaptionSystem` (registered by `src/index.ts` at priority 60), `Landing` (`ready`, `granted`, `failed`) and `mountLanding`, with the rules for raising and withdrawing a caption and for the Enter click. **core (§1.0):** `STRINGS` is the caption table (everything a `Caption.key` may name, at most six words each); the 2D page's copy lives in `ui/strings.ts`; no user-facing text anywhere else except the page title and the `<noscript>` line.
+- 2026-10-12 — v1.2.9 (2026-10-12, T-125; the render contract as built and reviewed; additions only). **render (§1.8):** `FOVEATION_MEDIUM`, `FlashGuard` (`claim`, `reset`, `request`, `takePeak`: one request per element per frame; an element that has not swung yet may move less than half of `FLASH_MIN_DELTA`; a time that is not finite and an id that was never claimed are refused), `BedRenderer`, `PlantRenderer` (one InstancedMesh per silhouette; a plant with an unknown voice or a cell off the bed is left out), `TideRenderer` (takes the guard: its showing and hiding is a capped fade; its sweep relies on a continuous bar phase), `PerfSampler`, `PerfHud` and `createPerfHud`. **Events (§2):** what each field of `perf:sample` measures.

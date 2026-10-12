@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const SCANNED = ['src', 'tests', 'scripts', 'public', 'proto/spike', 'proto/pinch'];
+const SCANNED = ['src', 'tests', 'scripts', 'public', 'proto/spike', 'proto/pinch', 'proto/bed'];
 const ROOT_FILE = /^(index\.html|.+\.config\.\w+)$/; // at the repository root: the page and the tool configs
 const SELF = 'tests/unit/policy/todo.test.ts';
 const TEXT_FILE = /\.(ts|tsx|js|jsx|mjs|cjs|json|html|css|md|sh|py|glsl|frag|vert|svg)$/;
