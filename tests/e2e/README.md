@@ -104,7 +104,9 @@ Where the emulator differs from what the app should expect on a headset (all of 
 4. **Hands never jitter or lose single joints**, and the emulated hand source also carries a gamepad with one
    pinch button. Tracking loss can only be emulated for a whole hand.
 5. **Persistent handles restored every time here.** To exercise a failed restore (FR-ROOM-07), a test has to
-   store an unknown handle or clear IWER's `localStorage` key before the session starts.
+   store an unknown handle or clear IWER's `localStorage` key before the session starts. `deletePersistentAnchor`
+   leaves the anchor in IWER's `localStorage`: a deleted handle restores again after a reload, and in the next
+   session of the same page, so `AnchorStore.clear()` cannot be used to force a failed restore (T-162).
 
 ## Network guard (Golden Rule 9)
 

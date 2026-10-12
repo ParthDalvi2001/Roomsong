@@ -63,6 +63,8 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
   it('index.ts exports the public surface, and nothing else', () => {
     expect(Object.keys(room).sort()).toEqual(
       [
+        'ANCHOR_RESTORE_TIMEOUT_MS',
+        'AnchorStore',
         'BED_CENTRE_DEFAULT_M',
         'BED_CENTRE_MAX_M',
         'BED_CENTRE_MIN_M',
@@ -77,8 +79,10 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
     );
   });
 
-  it('config.ts holds every placement and feature number by value (FR-ROOM-01, FR-ROOM-03, FR-ROOM-10)', () => {
+  it('config.ts holds every placement, anchor and feature number by value (FR-ROOM-01, 03, 07, 10)', () => {
     expect({ ...config }).toEqual({
+      ANCHOR_RESTORE_TIMEOUT_MS: 4000,
+      ANCHOR_CALL_TIMEOUT_MS: 4000,
       FLOOR_MAX_OFFSET_M: 0.2,
       CEILING_MIN_HEIGHT_M: 1.8,
       WALL_MIN_HEIGHT_M: 1.5,
@@ -104,6 +108,7 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
     // index.ts hands on the same values, not copies of its own
     expect(room.BED_FAR_EDGE_MAX_M).toBe(config.BED_FAR_EDGE_MAX_M);
     expect(room.PLANE_LEVELS_TIMEOUT_MS).toBe(config.PLANE_LEVELS_TIMEOUT_MS);
+    expect(room.ANCHOR_RESTORE_TIMEOUT_MS).toBe(config.ANCHOR_RESTORE_TIMEOUT_MS);
   });
 });
 

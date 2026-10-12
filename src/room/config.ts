@@ -36,6 +36,18 @@ export const PLANE_LEVELS_TIMEOUT_MS = 3000;
 /** FR-ROOM-01: level 3 waits this long for the pinch that confirms. */
 export const HIT_TEST_TIMEOUT_MS = 10_000;
 
+/**
+ * FR-ROOM-07: a saved anchor that has given no pose after this long is given up, and the chain places the bed.
+ * The caller passes it to `restore()`.
+ */
+export const ANCHOR_RESTORE_TIMEOUT_MS = 4000;
+/**
+ * FR-ROOM-07 (the new anchor is made in the background and its failure is no error): `create()` gives up after
+ * this long, and nothing waits longer than this for an old anchor to be deleted. No requirement gives the
+ * number: it is the time FR-ROOM-07 gives a restore. How long a headset takes is unverified (T-129).
+ */
+export const ANCHOR_CALL_TIMEOUT_MS = 4000;
+
 /** Below this a length has no direction worth dividing by. No requirement: a guard against dividing by zero. */
 export const EPSILON_M = 1e-6;
 

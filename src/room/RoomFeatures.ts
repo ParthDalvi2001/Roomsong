@@ -38,7 +38,7 @@ interface Wall {
 }
 
 /** A pose of 16 numbers whose axes are unit length and square to each other, within ROOM_MAX_M of the origin. */
-function isRigid(m: Mat4): boolean {
+export function isRigid(m: Mat4): boolean {
   if (m.length !== 16) return false;
   for (let i = 0; i < 3; i++) {
     const a = 4 * i;
