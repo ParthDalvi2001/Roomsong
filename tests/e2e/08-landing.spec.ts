@@ -11,11 +11,12 @@ import { openApp, readRoom, SESSION_ENTRY_LIMIT_MS, xrFrames } from './support/i
 const WORLD_READY_MS = 15_000; // the Enter button waits for the world; software rendering takes a few seconds
 const HANDS_OFF =
   'The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking.';
-const NO_AR = 'Roomsong needs immersive AR. Open this page in the browser of a Meta Quest 3 or 3S.';
+const NO_AR =
+  'Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S.';
 const LOAD_FAILED = 'The garden could not load. Reload the page.';
 const TOGGLES = [
   ['One hand', 'oneHand'],
-  ['Eyes only (gaze)', 'gazeDwell'],
+  ['No hands: look and hold', 'gazeDwell'],
   ['High contrast', 'highContrast'],
   ['Reduce motion', 'reducedMotion'],
 ] as const;
@@ -30,6 +31,7 @@ interface Device {
   remote: { dispatch(method: string, params?: object): Promise<unknown> };
 }
 type Core = typeof import('../../src/core/index');
+type Components = typeof import('../../src/core/components');
 type Ui = typeof import('../../src/ui/index');
 /** IWSDK 1.0.1 puts its dev runtime on the page in a dev build; the app's world is a field of it. */
 interface DevPage {
@@ -99,11 +101,18 @@ test('landing page: name, Enter, device support, toggles and Help, all by keyboa
   await expect(status(page)).toHaveText('');
   // Before a session only immersive AR can be known; the page says so for the rest.
   await expect(deviceRows(page)).toHaveText([
-    'Immersive AR: supported.',
+    'Mixed reality: supported.',
     'Hand tracking: checked when you enter. Roomsong cannot start without it.',
-    'Plane detection: checked when you enter. Without it you place the garden yourself.',
-    'Anchors: checked when you enter. Without them the garden is placed again on each visit.',
+    'Table detection: checked when you enter. Without it the garden asks you where to put it, or floats in front of you.',
+    'Saved position: checked when you enter. Without it the garden is placed again on each visit.',
   ]);
+  // The other words UX §9.7 changed: the heading of the toggles, the last two Help steps, the privacy line.
+  await expect(landing(page).getByRole('group', { name: 'Accessibility' })).toBeVisible();
+  await expect(
+    landing(page).getByText(
+      'Your garden is saved in this browser, on this device only. What the headset shares about your room and your hands stays on the device: nothing is sent anywhere.',
+    ),
+  ).toBeVisible();
 
   // Keyboard: Enter, then the four toggles, then Help, in reading order, each with a visible focus ring.
   await enterButton(page).focus();
@@ -156,7 +165,7 @@ test('landing page: each access toggle changes core settings, and follows them',
   });
   await expect(landing(page).getByLabel('One hand')).toBeChecked();
   await expect(landing(page).getByLabel('High contrast')).toBeChecked();
-  await expect(landing(page).getByLabel('Eyes only (gaze)')).not.toBeChecked();
+  await expect(landing(page).getByLabel('No hands: look and hold')).not.toBeChecked();
   // TODO(T-128): the toggles survive a reload once persistence saves `settings:changed` and src/index.ts seeds the
   // store from the save. Core's store itself saves nothing (API_SPEC §2), so there is no reload case here yet.
   expect(errors).toEqual([]);
@@ -204,10 +213,10 @@ test('landing page: Enter starts an immersive-ar session, the page steps aside a
   expect(await heard.jsonValue()).toEqual({ starts: 1, ends: 1 });
   // The emulator grants everything the app asks for.
   await expect(deviceRows(page)).toHaveText([
-    'Immersive AR: supported.',
+    'Mixed reality: supported.',
     'Hand tracking: on.',
-    'Plane detection: on. The garden looks for your table.',
-    'Anchors: on. The garden can come back to the same place.',
+    'Table detection: on. The garden looks for your table.',
+    'Saved position: on. The garden can come back to the same spot.',
   ]);
 
   // In again and out again: still one of each per session.
@@ -307,7 +316,7 @@ test('landing page, built: without immersive AR it says so and offers no Enter; 
 
   await expect(status(page)).toHaveText(NO_AR);
   await expect(enterButton(page)).toBeDisabled();
-  await expect(deviceRows(page).first()).toHaveText('Immersive AR: not supported. Roomsong needs it.');
+  await expect(deviceRows(page).first()).toHaveText('Mixed reality: not supported. Roomsong needs it.');
   await expect(landing(page).getByLabel('High contrast')).toBeEnabled(); // the toggles do not need a headset
   // The style sheet got through the policy: the page is laid out, not a bare list.
   await expect(enterButton(page)).toHaveCSS('border-radius', '24px');
@@ -328,17 +337,22 @@ test('TC-E2E-11 a caption is drawn in the scene and stays inside 25 by 20 degree
   const offHost = await openApp(page, readRoom('table'));
   const d = await enterFromLanding(page);
 
-  // Nothing registers CaptionSystem in src/index.ts before T-128, so the test does it, on the app's own world
-  // (IWSDK's dev-build hook), and raises a caption the way any module does: an entity with a Caption component.
+  // The app's own CaptionSystem (src/app.ts registers it at 60), on the app's own world (IWSDK's dev-build
+  // hook). The test raises a caption the way any module does: an entity with a Caption component.
   const probe = await page.evaluateHandle(async () => {
-    const [coreUrl, uiUrl] = ['/src/core/index.ts', '/src/ui/index.ts'];
+    const [coreUrl, componentsUrl, uiUrl] = [
+      '/src/core/index.ts',
+      '/src/core/components.ts',
+      '/src/ui/index.ts',
+    ];
     const core = (await import(/* @vite-ignore */ coreUrl)) as Core;
+    const { Caption } = (await import(/* @vite-ignore */ componentsUrl)) as Components;
     const ui = (await import(/* @vite-ignore */ uiUrl)) as Ui;
     const { world } = (window as unknown as DevPage).FRAMEWORK_MCP_RUNTIME;
-    if (!world.hasSystem(ui.CaptionSystem)) world.registerSystem(ui.CaptionSystem, { priority: 60 });
+    if (!world.hasSystem(ui.CaptionSystem)) throw new Error('src/app.ts did not register CaptionSystem');
     const raise = () => {
       const expiresAt = core.clock.now() + 50_000;
-      world.createEntity().addComponent(core.Caption, { key: 'rippleCeiling', expiresAt });
+      world.createEntity().addComponent(Caption, { key: 'rippleCeiling', expiresAt });
     };
     const held: CaptionProbe = {
       captions: world.getSystem(ui.CaptionSystem) as CaptionProbe['captions'],

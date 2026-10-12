@@ -1,5 +1,7 @@
 // Public API of the `core` module (API_SPEC §1.0, LLD §1). Other modules import from here only, never from files
 // inside the folder (CODING_GUIDELINES §3). core/ imports no other Roomsong module.
+// One exception: the three shared ECS components are imported from ./components.js by every importer. That file
+// loads @iwsdk/core, and this one is in the landing page's chunk, which must not (API_SPEC §1.10 rule 1).
 export type { Hand, Mat4, Vec2, Vec3 } from './types.js';
 export { CAPTION_MIN_MS, DEFAULT_TEMPO_BPM, MS_PER_DAY } from './config.js';
 export { bus } from './events.js';
@@ -15,4 +17,3 @@ export type { StringKey } from './strings.js';
 export { log } from './log.js';
 export type { ErrorCode, LogEntry } from './log.js';
 export { Pool } from './pool.js';
-export { BedAnchor, Caption, Interactable } from './components.js';

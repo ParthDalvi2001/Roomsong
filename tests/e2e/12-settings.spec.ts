@@ -21,6 +21,7 @@ interface Device {
   remote: { dispatch(method: string, params?: object): Promise<unknown> };
 }
 type Core = typeof import('../../src/core/index');
+type Components = typeof import('../../src/core/components');
 type Ui = typeof import('../../src/ui/index');
 type Hands = typeof import('../../src/hands/index');
 type Garden = typeof import('../../src/garden/index');
@@ -100,6 +101,7 @@ function probePanel(page: Page): Promise<JSHandle<Probe>> {
   return page.evaluateHandle(async () => {
     const load = <T>(url: string) => import(/* @vite-ignore */ url) as Promise<T>;
     const core = await load<Core>('/src/core/index.ts');
+    const { Interactable } = await load<Components>('/src/core/components.ts');
     const ui = await load<Ui>('/src/ui/index.ts');
     const hands = await load<Hands>('/src/hands/index.ts');
     const garden = await load<Garden>('/src/garden/index.ts');
@@ -158,12 +160,12 @@ function probePanel(page: Page): Promise<JSHandle<Probe>> {
       heard,
       targets: () =>
         entities
-          .filter((entity) => entity.hasComponent(core.Interactable))
+          .filter((entity) => entity.hasComponent(Interactable))
           .map((entity) => ({
-            id: entity.getValue(core.Interactable, 'id') ?? '',
-            kind: entity.getValue(core.Interactable, 'kind') ?? '',
-            radius: entity.getValue(core.Interactable, 'radius') ?? 0,
-            pos: point(entity.getVectorView(core.Interactable, 'worldPos')),
+            id: entity.getValue(Interactable, 'id') ?? '',
+            kind: entity.getValue(Interactable, 'kind') ?? '',
+            radius: entity.getValue(Interactable, 'radius') ?? 0,
+            pos: point(entity.getVectorView(Interactable, 'worldPos')),
           })),
       pinchPos,
       atRest: (hand) =>

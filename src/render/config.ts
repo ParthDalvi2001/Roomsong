@@ -20,6 +20,9 @@ export const PERF_HUD_WIDTH_M = 0.16;
 export const PERF_HUD_HEIGHT_M = 0.08;
 export const PERF_HUD_PX_PER_M = 1600;
 export const PERF_HUD_TEXT_SHARE = 0.7;
+/** Where the app shows the panel, from the head (x right, y up, -z ahead), chosen in T-128a: 0.5 m ahead, low and
+ *  left, its far edges 19.8 degrees to the side and 18.3 down, inside the view box of NFR-FOV-01 (25 by 20). */
+export const PERF_HUD_HEAD_OFFSET_M = [-0.1, -0.125, -0.5] as const;
 
 /** UX §5 palette. */
 export const CREAM = 0xfff8e7;

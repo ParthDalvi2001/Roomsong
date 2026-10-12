@@ -7,7 +7,7 @@
 
 import { defineComponents } from '@iwsdk/core';
 
-import { BedAnchor, Caption, Interactable } from './core/index.js';
+import { BedAnchor, Caption, Interactable } from './core/components.js';
 // Straight from its file: hands/index.ts also exports HandSystem, and this module stays free of systems.
 import { HandState } from './hands/HandState.js';
 

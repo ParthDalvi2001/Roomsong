@@ -5,7 +5,8 @@
 import { Matrix4, Vector3 } from '@iwsdk/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { bus, DEFAULT_SETTINGS, Interactable, log, settings } from '../../../src/core/index.js';
+import { Interactable } from '../../../src/core/components.js';
+import { bus, DEFAULT_SETTINGS, log, settings } from '../../../src/core/index.js';
 import { HandState, HIT_RADIUS_M } from '../../../src/hands/index.js';
 import {
   CAPTION_BACKDROP,

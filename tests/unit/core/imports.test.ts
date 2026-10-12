@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import manifest from '../../../src/components.js';
+import * as components from '../../../src/core/components.js';
 import * as core from '../../../src/core/index.js';
 
 const CORE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../../src/core');
@@ -50,15 +51,13 @@ describe('core/ dependency direction (API_SPEC §1)', () => {
     expect(violations('events.ts', "import { log } from './log.js';")).toEqual([]);
   });
 
+  // Not the three components: index.ts is in the landing page's chunk, and they load the SDK (API_SPEC §1.10 rule 1).
   it('index.ts exports the public surface, and nothing else', () => {
     expect(Object.keys(core).sort()).toEqual(
       [
-        'BedAnchor',
         'CAPTION_MIN_MS',
-        'Caption',
         'DEFAULT_SETTINGS',
         'DEFAULT_TEMPO_BPM',
-        'Interactable',
         'MS_PER_DAY',
         'Pool',
         'STRINGS',
@@ -76,32 +75,21 @@ describe('core/ dependency direction (API_SPEC §1)', () => {
     expect(core.CAPTION_MIN_MS).toBe(1200);
   });
 
-  it('declares the three shared components with the fields of LLD §3', () => {
-    expect(core.BedAnchor.id).toBe('BedAnchor');
-    expect(Object.keys(core.BedAnchor.schema)).toEqual(['inner', 'outer', 'heightOffset', 'source']);
-    expect(Object.keys(core.BedAnchor.schema.source.enum)).toEqual([
-      'table',
-      'surface',
-      'hittest',
-      'floating',
-    ]);
-    expect(core.BedAnchor.schema.inner).toEqual({ type: 'Float64', default: 0.12 });
-    expect(core.BedAnchor.schema.outer).toEqual({ type: 'Float64', default: 0.3 });
-    expect(core.Interactable.id).toBe('Interactable');
-    expect(Object.keys(core.Interactable.schema)).toEqual(['kind', 'id', 'radius', 'worldPos']);
-    expect(Object.keys(core.Interactable.schema.kind.enum)).toEqual([
-      'plant',
-      'seed',
-      'orb',
-      'undo',
-      'panel',
-    ]);
-    expect(core.Caption.id).toBe('Caption');
-    expect(Object.keys(core.Caption.schema)).toEqual(['key', 'expiresAt']);
+  it('components.ts declares the three shared components with the fields of LLD §3', () => {
+    const { BedAnchor, Caption, Interactable } = components;
+    expect(Object.keys(components).sort()).toEqual(['BedAnchor', 'Caption', 'Interactable']);
+    expect(BedAnchor.id).toBe('BedAnchor');
+    expect(Object.keys(BedAnchor.schema)).toEqual(['inner', 'outer', 'heightOffset', 'source']);
+    expect(Object.keys(BedAnchor.schema.source.enum)).toEqual(['table', 'surface', 'hittest', 'floating']);
+    expect(BedAnchor.schema.inner).toEqual({ type: 'Float64', default: 0.12 });
+    expect(BedAnchor.schema.outer).toEqual({ type: 'Float64', default: 0.3 });
+    expect(Interactable.id).toBe('Interactable');
+    expect(Object.keys(Interactable.schema)).toEqual(['kind', 'id', 'radius', 'worldPos']);
+    expect(Object.keys(Interactable.schema.kind.enum)).toEqual(['plant', 'seed', 'orb', 'undo', 'panel']);
+    expect(Caption.id).toBe('Caption');
+    expect(Object.keys(Caption.schema)).toEqual(['key', 'expiresAt']);
     // Registered in the manifest the runtime and the editor load (src/components.ts). Core's three are in it;
     // a module's own component (HandState of hands/) is pinned by that module's tests.
-    expect(Array.from(manifest)).toEqual(
-      expect.arrayContaining([core.BedAnchor, core.Interactable, core.Caption]),
-    );
+    expect(Array.from(manifest)).toEqual(expect.arrayContaining([BedAnchor, Interactable, Caption]));
   });
 });

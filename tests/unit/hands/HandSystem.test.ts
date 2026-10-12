@@ -4,7 +4,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import manifest from '../../../src/components.js';
-import { BedAnchor, bus, Caption, clock, Interactable } from '../../../src/core/index.js';
+import { BedAnchor, Caption, Interactable } from '../../../src/core/components.js';
+import { bus, clock } from '../../../src/core/index.js';
 import { HAND_HINT_KEY, HAND_HINT_MAX_MS, HIT_RADIUS_M } from '../../../src/hands/config.js';
 import { GestureMachine } from '../../../src/hands/GestureMachine.js';
 import { HandState } from '../../../src/hands/HandState.js';

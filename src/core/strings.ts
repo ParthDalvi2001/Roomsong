@@ -9,6 +9,8 @@ export const STRINGS = {
   handOutOfView: 'Hand out of view',
   // The message of a user-facing failure has its error code (ErrorCode, API_SPEC §5) as its key (LLD §8).
   E_SAVE_FAILED: 'Saving unavailable',
+  // A session with no sound (API_SPEC §1.10 rule 2): src/app.ts raises it. The garden still works, silent.
+  E_AUDIO_CONTEXT: 'Sound unavailable',
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

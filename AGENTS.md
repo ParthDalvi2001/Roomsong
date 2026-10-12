@@ -178,7 +178,8 @@ JSON, a 3D model, a UIKitML panel, or a physics body, invoke the owning skill.
 
 ```
 iwsdk.config.json      project authority: scene, assets, components, world, dev
-src/index.ts|js        World.create() + explicit system registration
+src/index.ts|js        the boot: landing page, then import('./app.js'); no SDK import
+src/app.ts             World.create() + register(world, System, priority, configData?)
 src/assets.ts|js       defineAssets() — shared runtime/editor catalog
 src/components.ts|js   defineComponents() — shared runtime/editor catalog
 src/scene-assets/      *.scene-asset.ts|js — parentless Object3D prototypes

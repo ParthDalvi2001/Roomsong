@@ -11,7 +11,12 @@ const UI_DIR = join(SRC_DIR, 'ui');
 // API_SPEC §1: ui/ may import the modules named before it, each through its index.ts. Not access/, onboarding/
 // or window/ (named after it), and never src/index.ts.
 const BELOW = ['core', 'garden', 'room', 'hands', 'audio', 'persistence', 'render'];
-const ALLOWED_INDEXES = BELOW.map((module) => join(SRC_DIR, module, 'index.js'));
+// The one file beside the indexes: the three shared components, which core/index.ts does not export, so that the
+// landing page's chunk loads no SDK code (API_SPEC §1, §1.10 rule 1).
+const ALLOWED_INDEXES = [
+  ...BELOW.map((module) => join(SRC_DIR, module, 'index.js')),
+  join(SRC_DIR, 'core', 'components.js'),
+];
 // Three.js comes through IWSDK's re-exports, so the app has one copy of it (vite.config.ts `dedupe`).
 const ALLOWED_PACKAGES = ['@iwsdk/core'];
 
@@ -55,6 +60,7 @@ describe('ui/ dependency direction (API_SPEC §1)', () => {
     expect(caught("import { Text } from '@pmndrs/uikit';")).toBe(true);
 
     expect(violations('Captions.ts', "import { bus, STRINGS } from '../core/index.js';")).toEqual([]);
+    expect(violations('Captions.ts', "import { Caption } from '../core/components.js';")).toEqual([]);
     expect(violations('Captions.ts', "import type { Cell } from '../garden/index.js';")).toEqual([]);
     expect(violations('Captions.ts', "import { HIT_RADIUS_M } from '../hands/index.js';")).toEqual([]);
     expect(violations('Captions.ts', "import { clampToFov } from './FovGuard.js';")).toEqual([]);

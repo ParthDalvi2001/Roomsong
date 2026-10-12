@@ -2,7 +2,8 @@
 
 | Path | What | Owner |
 |---|---|---|
-| `src/index.ts` | IWSDK entry: `World.create`, register systems | software-architect |
+| `src/index.ts` | The boot: mounts the landing page, then loads `src/app.ts`. No SDK import | software-architect |
+| `src/app.ts` | The wiring: `World.create`, `register(...)` for every system with its circuit breaker, the session events (LLD §3) | software-architect |
 | `src/core/` | event bus, clock, settings, flags, strings, log, pool | software-architect |
 | `src/room/` | placement chain L1–L4, plane/mesh/hit-test adapters, anchors, room features | fullstack-dev |
 | `src/hands/` | hand sampling, 1€ filter, poses, gesture machine, target picker | frontend-dev |

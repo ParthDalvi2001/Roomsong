@@ -14,6 +14,7 @@ import { HAND_HINT_KEY, TRACKING_GRACE_MS } from '../../src/hands/config';
 import { enterXR, openApp, readRoom, xrFrames } from './support/iwer';
 
 type Core = typeof import('../../src/core/index');
+type Components = typeof import('../../src/core/components');
 type Ui = typeof import('../../src/ui/index');
 type Hand = 'left' | 'right';
 
@@ -76,15 +77,20 @@ test('TC-E2E-16 a hand lost while it carries a seed: hint, revert after the grac
   const offHost = await openApp(page, readRoom('table'));
   await enterXR(page);
 
-  // The app's own world and systems (src/index.ts registered them); the test only listens, and adds one seed that
+  // The app's own world and systems (src/app.ts registered them); the test only listens, and adds one seed that
   // any pinch reaches: nothing in the app delivers a seed before T-127.
   const probe = await page.evaluateHandle(async (seedId) => {
-    const [coreUrl, uiUrl] = ['/src/core/index.ts', '/src/ui/index.ts'];
+    const [coreUrl, componentsUrl, uiUrl] = [
+      '/src/core/index.ts',
+      '/src/core/components.ts',
+      '/src/ui/index.ts',
+    ];
     const core = (await import(/* @vite-ignore */ coreUrl)) as Core;
+    const { Interactable } = (await import(/* @vite-ignore */ componentsUrl)) as Components;
     const ui = (await import(/* @vite-ignore */ uiUrl)) as Ui;
     const { world } = (window as unknown as DevPage).FRAMEWORK_MCP_RUNTIME;
     const captions = world.getSystem(ui.CaptionSystem);
-    if (captions === undefined) throw new Error('src/index.ts did not register CaptionSystem');
+    if (captions === undefined) throw new Error('src/app.ts did not register CaptionSystem');
     const heard: Heard[] = [];
     const note = (name: string, hand: Hand, id: string | null) =>
       heard.push({ name, hand, id, atMs: core.clock.now() });
@@ -96,10 +102,8 @@ test('TC-E2E-16 a hand lost while it carries a seed: hint, revert after the grac
     );
     core.bus.on('gesture:release', (event) => note('gesture:release', event.hand, event.target?.id ?? null));
     // A radius of 5 m around the user's chest: wherever the emulated hand pinches, it pinches this seed.
-    const seed = world
-      .createEntity()
-      .addComponent(core.Interactable, { kind: 'seed', id: seedId, radius: 5 });
-    seed.getVectorView(core.Interactable, 'worldPos').set([0, 1, -0.3]);
+    const seed = world.createEntity().addComponent(Interactable, { kind: 'seed', id: seedId, radius: 5 });
+    seed.getVectorView(Interactable, 'worldPos').set([0, 1, -0.3]);
     const held: Probe = { heard, captions };
     return held;
   }, SEED_ID);

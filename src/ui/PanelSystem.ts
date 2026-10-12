@@ -17,7 +17,8 @@ import {
   type MeshBasicMaterialParameters,
 } from '@iwsdk/core';
 
-import { bus, Interactable, log, settings } from '../core/index.js';
+import { Interactable } from '../core/components.js';
+import { bus, log, settings } from '../core/index.js';
 import { HandState, HIT_RADIUS_M } from '../hands/index.js';
 
 import {

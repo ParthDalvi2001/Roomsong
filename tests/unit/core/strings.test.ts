@@ -35,6 +35,7 @@ describe('core/strings', () => {
 
   it('keys the message of a failure by its error code', () => {
     expect(STRINGS.E_SAVE_FAILED).toBe('Saving unavailable');
+    expect(STRINGS.E_AUDIO_CONTEXT).toBe('Sound unavailable'); // a session with no sound (API_SPEC §1.10 rule 2)
     const failures = entries.filter(([k]) => !k.startsWith('ripple') && k !== 'handOutOfView');
     for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);
   });

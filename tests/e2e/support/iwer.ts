@@ -229,26 +229,34 @@ export async function xrFrames(page: Page, count: number): Promise<void> {
   }, count);
 }
 
+/** The page's Enter button waits for the world; on software rendering that takes a few seconds. */
+export const WORLD_READY_MS = 15_000;
+
 /**
- * Enter the immersive session the way a user does in the emulator: press its "Enter XR" button, the
- * stand-in for the browser's own prompt for the session the app offers. Hands are selected first by default
- * because the app is hands-only; 'controller' is how IWER starts, and what a user holding controllers gets.
- * Resolves on the first XR frame with IWER's session status; fails if the session is not active
- * SESSION_ENTRY_LIMIT_MS after the press.
+ * Enter the immersive session the way a user does: press the page's own "Enter the garden" button. It is the
+ * only way in (`xr.offer` is "none", API_SPEC §1.10 rule 2: no session is offered, so the emulator's own
+ * "Enter XR" button has nothing to grant), and the click is what starts the sound. Hands are selected first by
+ * default because the app is hands-only; 'controller' is how IWER starts, and what a user holding controllers
+ * gets. The press waits for the world (WORLD_READY_MS). Resolves on the first XR frame with IWER's session
+ * status; fails if the session is not active SESSION_ENTRY_LIMIT_MS after the press.
  */
 export async function enterXR(
   page: Page,
   input: IwerDevice['primaryInputMode'] = 'hand',
 ): Promise<SessionStatus> {
   const device = await iwer(page);
-  await page.waitForFunction((d) => d.sessionOffered, device);
   await device.evaluate((d, input) => {
     d.primaryInputMode = input;
   }, input);
-  await page.getByRole('button', { name: 'Enter XR' }).click();
+  const enter = page.getByRole('main').getByRole('button', { name: 'Enter the garden' });
+  await enter.click({ timeout: WORLD_READY_MS });
   await page.waitForFunction((d) => d.activeSession !== undefined, device, {
     timeout: SESSION_ENTRY_LIMIT_MS,
   });
+  // Checked at every entry (LLD §3.5 a2): with the world ready and a session up, an offer would be pending.
+  if (await device.evaluate((d) => d.sessionOffered)) {
+    throw new Error('the app offered a session: xr.offer must be "none" in iwsdk.config.json');
+  }
   await xrFrames(page, 1);
   return device.evaluate((d) => d.remote.dispatch('get_session_status') as Promise<SessionStatus>);
 }

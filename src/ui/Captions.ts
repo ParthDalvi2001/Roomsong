@@ -12,16 +12,8 @@ import {
   type Entity,
 } from '@iwsdk/core';
 
-import {
-  bus,
-  Caption,
-  CAPTION_MIN_MS,
-  clock,
-  log,
-  settings,
-  STRINGS,
-  type StringKey,
-} from '../core/index.js';
+import { Caption } from '../core/components.js';
+import { bus, CAPTION_MIN_MS, clock, log, settings, STRINGS, type StringKey } from '../core/index.js';
 
 import {
   CAPTION_BACKDROP,

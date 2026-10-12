@@ -56,7 +56,7 @@ Queries take `required`, `excluded` and `where` (value predicates via `eq`, `ne`
 entities in a transient state — e.g. excluding `Grabbed` so a held object is left
 alone.
 
-Register explicitly in `src/index.ts` with `world.registerSystem(MySystem)`.
+Register in `src/app.ts` with `register(world, MySystem, priority, configData?)`, in ascending priority, before `breakOtherSystems(world)`. `src/index.ts` is the boot: it imports no SDK and registers nothing.
 
 Read fields with `entity.getValue(Component, 'field')`. For vector fields use
 `entity.getVectorView(Component, 'field')` — it returns a `Float32Array` view with

@@ -62,7 +62,12 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
 
   it('the renderers read no clock and no random source: time comes in as an argument', () => {
     const impure = /\bDate\.now\b|\bnew Date\b|\bMath\.random\b|\bperformance\.now\b|\bcurrentTime\b/;
-    for (const file of files) expect(impure.test(read(file)), file).toBe(false);
+    for (const file of files) {
+      // One exception, by name and for one call: PerfSystem measures the script time of a frame (NFR-PERF-05),
+      // which only a clock gives. API_SPEC §1.8 words the rule for the renderers, and none is in that file.
+      const code = file === 'RenderSystems.ts' ? read(file).replace(/performance\.now\(\)/g, '') : read(file);
+      expect(impure.test(code), file).toBe(false);
+    }
   });
 
   it('nothing in render/ adds a light, a shadow, a render target or a post-processing pass (NFR-PERF-09)', () => {
@@ -82,6 +87,7 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
         'FOVEATION_MEDIUM',
         'FlashGuard',
         'PerfSampler',
+        'PerfSystem',
         'PlantRenderer',
         'TideRenderer',
         'createPerfHud',

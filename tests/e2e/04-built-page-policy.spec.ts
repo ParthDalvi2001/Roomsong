@@ -1,7 +1,8 @@
 // NFR-SEC-01 (SECURITY_PLAN §5, T-109): the BUILT page under its Content Security Policy. Every other spec runs
 // on the dev server, which carries no policy, so this is the one run that goes red when the policy blocks
 // something the app needs. The build has no emulator: the test adds IWER from node_modules as an init script
-// (init scripts are not subject to the page's policy) and grants the session the app offers.
+// (init scripts are not subject to the page's policy) and presses the page's own Enter button, the only way in
+// (`xr.offer` is "none", API_SPEC §1.10 rule 2). That click also starts the audio context, under the policy.
 // The same run covers the pinch-test page (T-105), which is built into dist/ beside the app.
 // Emulator result: says nothing about a headset.
 import { fileURLToPath } from 'node:url';
@@ -10,7 +11,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { BUILT_PAGE_URL } from '../../playwright.config';
 
-import { xrFrames } from './support/iwer';
+import { WORLD_READY_MS, xrFrames } from './support/iwer';
 
 const IWER_BUILD = fileURLToPath(new URL('../../node_modules/iwer/build/iwer.min.js', import.meta.url));
 const SESSION_FRAMES = 30; // input sources join and the app's systems run within the session's first frames
@@ -21,7 +22,6 @@ interface EmulatedDevice {
   sessionOffered: boolean;
   activeSession?: object;
   installRuntime(options: { forceInstall: boolean }): void;
-  grantOfferedSession(): void;
 }
 /** What the init scripts put on the page. */
 interface BuiltPage {
@@ -72,10 +72,13 @@ test('NFR-SEC-01 the built page loads and enters XR with no policy violation and
 }) => {
   const errors = await openBuilt(page);
   const device = await page.evaluateHandle(() => (window as unknown as BuiltPage).IWER_DEVICE);
-  await page.waitForFunction((d) => d.sessionOffered, device);
-  await device.evaluate((d) => d.grantOfferedSession());
+  const enter = page.getByRole('main').getByRole('button', { name: 'Enter the garden' });
+  await enter.click({ timeout: WORLD_READY_MS });
   await page.waitForFunction((d) => d.activeSession !== undefined, device);
+  expect(await device.evaluate((d) => d.sessionOffered)).toBe(false); // the built page offers no session either
   await xrFrames(page, SESSION_FRAMES);
+  // The test hook is behind the dev gate (API_SPEC §1.10 rule 14): a production build without `dev=1` has none.
+  expect(await page.evaluate(() => window.__roomsong)).toBeUndefined();
   await expectClean(page, errors);
 });
 

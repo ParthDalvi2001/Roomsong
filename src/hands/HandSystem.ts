@@ -4,7 +4,8 @@
 // hand hint for a hand that held something when it was lost (FR-HND-15, D-030).
 import { createSystem, Vector3, type Entity } from '@iwsdk/core';
 
-import { BedAnchor, bus, Caption, clock, Interactable } from '../core/index.js';
+import { BedAnchor, Caption, Interactable } from '../core/components.js';
+import { bus, clock } from '../core/index.js';
 import { nearestFreeCell } from '../garden/index.js';
 
 import { HAND_HINT_KEY, HAND_HINT_MAX_MS, HIT_RADIUS_M } from './config.js';
