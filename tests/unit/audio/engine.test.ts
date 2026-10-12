@@ -344,46 +344,59 @@ describe('the tick builds nothing but the notes it schedules', () => {
     const grown = process.memoryUsage().heapUsed - before;
     return profiler.stop()?.statistics.length === 0 ? grown / ROUNDS : Infinity;
   };
+  // Two more tries: on a loaded machine a collection hit all three rounds and both tests read Infinity
+  // (2026-10-12). A real allocation fails every try.
+  const LOADED = { retry: 2 };
 
-  it('the tick makes no object of its own: a million ticks over an empty bed grow the heap by under 4 bytes a tick', async () => {
-    const { ctx, engine } = await start();
-    const tickAll = (): void => {
-      for (let i = 0; i < ROUNDS; i++) {
-        ctx.currentTime += TICK_S; // steps come due: the scheduler loop and the step table are walked
-        engine.tick();
-      }
-    };
-    let kept: unknown = null;
-    const allocateAll = (): void => {
-      for (let i = 0; i < ROUNDS; i++) kept = { i };
-    };
-    tickAll(); // warm up: the JIT's own allocations happen here
-    // The control shows the probe works: one small object per round reads as 16 bytes or more, or as a collection.
-    expect(bytesPerRound(allocateAll)).toBeGreaterThanOrEqual(16);
-    // Measured 2.24 bytes a tick at 84 BPM, 1.60 at 60 and 3.20 at 120: 16 bytes per scheduled step, which is V8
-    // boxing the step's time as it is handed to the listener. No object, array or closure: the smallest of those
-    // once a tick would read 16 or more. The least of three rounds, because a collection already due can hit one.
-    expect(Math.min(bytesPerRound(tickAll), bytesPerRound(tickAll), bytesPerRound(tickAll))).toBeLessThan(4);
-    expect(kept).toEqual({ i: ROUNDS - 1 });
-  }, 30_000); // four million ticks: over the default 5 s when other agents load the machine
+  it(
+    'the tick makes no object of its own: a million ticks over an empty bed grow the heap by under 4 bytes a tick',
+    LOADED,
+    async () => {
+      const { ctx, engine } = await start();
+      const tickAll = (): void => {
+        for (let i = 0; i < ROUNDS; i++) {
+          ctx.currentTime += TICK_S; // steps come due: the scheduler loop and the step table are walked
+          engine.tick();
+        }
+      };
+      let kept: unknown = null;
+      const allocateAll = (): void => {
+        for (let i = 0; i < ROUNDS; i++) kept = { i };
+      };
+      tickAll(); // warm up: the JIT's own allocations happen here
+      // The control shows the probe works: one small object per round reads as 16 bytes or more, or as a collection.
+      expect(bytesPerRound(allocateAll)).toBeGreaterThanOrEqual(16);
+      // Measured 2.24 bytes a tick at 84 BPM, 1.60 at 60 and 3.20 at 120: 16 bytes per scheduled step, which is V8
+      // boxing the step's time as it is handed to the listener. No object, array or closure: the smallest of those
+      // once a tick would read 16 or more. The least of three rounds, because a collection already due can hit one.
+      expect(Math.min(bytesPerRound(tickAll), bytesPerRound(tickAll), bytesPerRound(tickAll))).toBeLessThan(
+        4,
+      );
+      expect(kept).toEqual({ i: ROUNDS - 1 });
+    },
+  );
 
-  it('the per-frame calls make no object: setListenerPose, and syncPlants when nothing changed', async () => {
-    const { ctx, engine } = await start();
-    const plants = sixteenPlucks();
-    engine.syncPlants(plants, BED);
-    const frameAll = (): void => {
-      for (let i = 0; i < ROUNDS; i++) {
-        engine.setListenerPose(HEAD);
-        engine.syncPlants(plants, BED);
-      }
-    };
-    frameAll(); // warm up
-    expect(Math.min(bytesPerRound(frameAll), bytesPerRound(frameAll), bytesPerRound(frameAll))).toBeLessThan(
-      1,
-    );
-    expect(ctx.listener.positionY.value).toBe(1.2);
-    expect(ctx.strings).toBe(RINGS); // and nothing was rendered again
-  });
+  it(
+    'the per-frame calls make no object: setListenerPose, and syncPlants when nothing changed',
+    LOADED,
+    async () => {
+      const { ctx, engine } = await start();
+      const plants = sixteenPlucks();
+      engine.syncPlants(plants, BED);
+      const frameAll = (): void => {
+        for (let i = 0; i < ROUNDS; i++) {
+          engine.setListenerPose(HEAD);
+          engine.syncPlants(plants, BED);
+        }
+      };
+      frameAll(); // warm up
+      expect(
+        Math.min(bytesPerRound(frameAll), bytesPerRound(frameAll), bytesPerRound(frameAll)),
+      ).toBeLessThan(1);
+      expect(ctx.listener.positionY.value).toBe(1.2);
+      expect(ctx.strings).toBe(RINGS); // and nothing was rendered again
+    },
+  );
 });
 
 describe('syncPlants: diff-based and idempotent (API_SPEC §1.2)', () => {
