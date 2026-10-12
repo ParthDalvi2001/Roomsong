@@ -63,9 +63,48 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
     expect(violations('model.ts', "export type VoiceType = 'bell' | 'pad';")).toEqual([]);
   });
 
-  it('the pure files read no clock and no random source: time and seeds come in as arguments', () => {
-    const impure = /\bDate\.now\b|\bnew Date\b|\bMath\.random\b|\bperformance\.now\b/;
-    for (const file of files) if (file !== SYSTEM_FILE) expect(impure.test(read(file)), file).toBe(false);
+  // The one use of Date that passes is the exact text `new Date(localMs)`: the calendar of a time that was passed
+  // in, read with the UTC getters (growth.ts). Every other construction is taken for the clock, and the readers
+  // of the host's time zone are banned by name. The guard catches accidents, not intent. It knowingly misses
+  // `Date()` without `new`, `Reflect.construct(Date, [])`, `new (Date)()`, `new globalThis.Date()`, an alias of
+  // Date, a value named localMs that came from a clock, and toString() or toDateString() on a Date, which print
+  // local time.
+  const IMPURE =
+    /\bDate\.(?:now|parse)\b|\bnew Date\b(?!\(localMs\))|\bMath\.random\b|\bperformance\.now\b|getTimezoneOffset|\.get(?:FullYear|Year|Month|Date|Day|Hours|Minutes)\(|toLocale|\bIntl\./;
+
+  it('the pure files read no clock, no random source and no host time zone: all come in as arguments', () => {
+    for (const file of files) if (file !== SYSTEM_FILE) expect(IMPURE.test(read(file)), file).toBe(false);
+  });
+
+  it('the check does catch the clock, the random source and the readers of the host zone', () => {
+    const caught = [
+      'new Date()',
+      'new Date( )',
+      'new Date;',
+      'Date.now()',
+      'performance.now()',
+      'Math.random()',
+      'new Date(...[])',
+      'new Date(/* now */)',
+      'new Date(// now\n)',
+      'new Date(ms).getDate()',
+      'new Date(y, m, d)',
+      'new Date (localMs)',
+      'new Date(localMs, 1)',
+      'new Date(localMs).getDate()',
+      'new Date(localMs).getHours()',
+      'x.toLocaleDateString()',
+      'x.getTimezoneOffset()',
+      "Date.parse('2026-10-11T10:00')",
+      'new Intl.DateTimeFormat()',
+    ];
+    for (const source of caught) expect(IMPURE.test(source), source).toBe(true);
+    const passes = [
+      'new Date(localMs).getUTCFullYear()',
+      'new Date(localMs).toISOString().slice(0, 10)',
+      'Date.UTC(2026, 9, 11)',
+    ];
+    for (const source of passes) expect(IMPURE.test(source), source).toBe(false);
   });
 
   it('index.ts exports the public surface, and nothing else', () => {
@@ -80,20 +119,24 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
         'REVERB_RT60_MIN_S',
         'REVERB_RT60_STEPS_S',
         'RINGS',
+        'SEED_SUPPLY_MAX',
         'STEPS',
         'WANDERER',
+        'applyVisit',
         'bedZone',
         'cellCentre',
         'chordDegrees',
         'heightAfterPull',
         'movePlant',
         'nearestFreeCell',
+        'newGarden',
         'plantSeed',
         'removePlant',
         'roomSignature',
         'setAnchor',
         'setHeight',
         'snapToCell',
+        'stageFor',
         'undoRemove',
       ].sort(),
     );

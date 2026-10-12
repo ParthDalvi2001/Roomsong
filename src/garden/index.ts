@@ -9,8 +9,10 @@ export {
   REVERB_RT60_MIN_S,
   REVERB_RT60_STEPS_S,
   RINGS,
+  SEED_SUPPLY_MAX,
   STEPS,
 } from './config.js';
+export { applyVisit, newGarden, stageFor } from './growth.js';
 export { MODE_DEGREES } from './model.js';
 export type {
   BedZone,

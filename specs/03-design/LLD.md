@@ -48,8 +48,8 @@ src/
 │   │                           the signature constants (§5.8) join it with signature.ts
 │   ├── model.ts                types: Cell, Seed, Plant, GardenState, RoomFeatures, RoomSignature, ModeId, UndoToken, Result + MODE_DEGREES
 │   ├── rules.ts                pure functions: plant, move, grow, removePlant, undoRemove
-│   ├── growth.ts               age → stage; offline growth (Should)
-│   ├── seeds.ts                starter seeds (Must) + daily seed supply (Should)
+│   ├── growth.ts               the stage rule (stageFor), applyVisit (growth while away, Should; the seed supply: starter seeds Must,
+│   │                           daily seed Should) and newGarden (§5.4)
 │   ├── signature.ts            roomSignature(features) v1 — pure, quantised (§5.8); Wanderer default; chordDegrees(mode)
 │   ├── snap.ts                 bed-local pos ↔ (ring, step) on the annulus; bed zone
 │   └── GardenSystem.ts         applies gesture events → model → emits garden:changed
@@ -252,7 +252,8 @@ Base octaves: Bass C2, Pad/Choir C3, Pluck/Bell C4, Shimmer C5.
 As built (T-121): step times are computed from an anchor, not summed, so they do not drift; a tempo change keeps the time of the next unscheduled step and does not move the tide phase. A step is counted before its listener runs, so a trigger that throws loses that step and not the clock. **Late steps:** after a stalled or throttled tick the scheduler walks every missed step, and the engine plays only those less than `LATE_DROP_S` = 0.1 s late; the older ones are skipped instead of sounding in one burst.
 
 ### 5.4 Growth (`garden/growth.ts`)
-`ageDays = (now − plantedAt) / 86400e3`; stage = 0 (<1), 1 (<3), 2 (<7), 3 (≥7). Overnight: on load, compute stage per plant; emit `garden:grown` with deltas for the bloom animation. Octave shimmer gain = `min(1, (ageDays − 3) / 4)` for ≥3 days.
+`ageDays = (state.lastVisitAt − plantedAt) / 86400e3`; stage = 0 (<1), 1 (<3), 2 (<7), 3 (≥7), a boundary belonging to the higher stage (`stageFor`). A plant's age is read from `lastVisitAt`, not from the live clock, so it changes only on a visit: `applyVisit` (API_SPEC §1.1) sets `lastVisitAt = max(now, lastVisitAt)` and returns one delta per plant whose stage rose, and GardenSystem emits `garden:grown` with them for the bloom animation. `lastVisitAt` never goes back, so a clock set back shrinks nothing. Octave shimmer gain = `min(1, (ageDays − 3) / 4)` for ≥3 days, from the same age.
+The same call issues the seeds (FR-MUS-08): the starters on the first visit (`visits` 0, a garden from `newGarden`), afterwards one seed per local day visited, while the supply is below `SEED_SUPPLY_MAX`. The local date comes from `now` and the zone offset GardenSystem passes in; `garden/` reads no clock and no zone.
 
 ### 5.5 Placement (`room/PlacementSolver.ts`)
 Returns `Promise<BedPlacement>` (API_SPEC §1.3); runs levels with timeouts (L1+L2 3 s combined, L3 10 s, L4 immediate). Each level emits `room:placementLevel` for UI and logging. Clamp (FR-ROOM-03, D-020; constants in `room/config.ts`): the bed centre targets `BED_CENTRE_DEFAULT_M` = 0.45 m forward of the head, which puts the far edge (centre + R_OUT) exactly on the `BED_FAR_EDGE_MAX_M` = 0.75 m reach cap. The centre may sit nearer, down to `BED_CENTRE_MIN_M` = 0.35 m, when the surface does not reach 0.45 m; it never sits beyond `BED_CENTRE_MAX_M` = 0.45 m. If the chosen surface point is outside 0.35–0.45 m, move it along the head→point vector into the range, to 0.45 m when beyond and to 0.35 m when nearer, while staying on the surface polygon when possible. L4 floating: 0.45 m forward, 0.25 m below eye height. (The v2 default of 0.40 m is replaced, D-020.)

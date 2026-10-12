@@ -81,3 +81,25 @@ export const STARTER_SETS: readonly RoomSignature['starterVoices'][] = [
 ];
 // A signature hands one of these out: frozen, so no caller can change the set the next room gets.
 STARTER_SETS.forEach((set) => Object.freeze(set));
+
+// Growth and the seed supply (growth.ts).
+
+/** core/config.ts has the same day (the fakeDay offset); garden's pure files import no value from core/. */
+export const MS_PER_DAY = 86_400_000;
+export const MS_PER_MINUTE = 60_000;
+/** FR-MUS-09, LLD §5.4: the age in days at which a plant reaches growth stages 1, 2 and 3. */
+export const GROWTH_STAGE_DAYS = [1, 3, 7] as const;
+/** FR-MUS-08: unplanted seeds pile up to this many. persistence/ takes its bound from here (API_SPEC §4). */
+export const SEED_SUPPLY_MAX = 5;
+/** FR-MUS-08: a new garden starts with this many seeds, one per voice of the signature's starter set. */
+export const STARTER_SEEDS = 3;
+/** FR-MUS-08: the voice of the daily seed goes round these, one step a day: the Must voices of LLD §7 (no Shimmer, S5). */
+export const DAILY_VOICES = ['bell', 'pad', 'pluck', 'bass', 'choir'] as const;
+/** FR-MUS-05: seed hues are the places of one golden-ratio sequence, so that neighbouring places are far apart. */
+export const HUE_STEP = 0.618033988749895;
+/** API_SPEC §1.1 (newGarden): lastSeedDate before the first visit. The save's validator takes it; that visit replaces it. */
+export const NO_SEED_DATE = '1970-01-01';
+/** API_SPEC §4: the last year a YYYY-MM-DD date can hold; a time beyond it is no visit. */
+export const LAST_YEAR = 9999;
+/** API_SPEC §1.1 (applyVisit): real zones lie between UTC−12 and UTC+14; an offset beyond 16 hours is no visit. */
+export const TZ_OFFSET_MAX_MIN = 960;

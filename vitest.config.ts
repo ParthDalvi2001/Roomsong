@@ -16,6 +16,9 @@ export default defineConfig({
     // 30 s, not Vitest's 5 s: with several agents testing at once on one machine, sound tests timed out from load
     // alone (2026-10-11 and 12). A test that really hangs now takes 30 s to say so.
     testTimeout: 30_000,
+    // Four workers, not one per core: with agents testing side by side, eight node workers each pushed this
+    // 16 GB machine into swap until the editor was killed (2026-10-12).
+    maxWorkers: 4,
     include: ['tests/unit/**/*.test.ts'],
     exclude: ['tests/e2e/**', 'node_modules/**', 'dist/**'],
     coverage: {
