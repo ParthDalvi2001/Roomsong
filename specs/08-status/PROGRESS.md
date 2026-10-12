@@ -103,6 +103,7 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 
 ## Stand-ups
 ### 2026-10-12
+- **08:25 IST — session restart at 08:24**, three minutes after the last one; no leftover copy. All eight agents resumed by id.
 - **08:23 IST — develop pushed, cap 10 (D-036).** The Mac was asleep from about 14:45 on Oct 11 to 08:20; no leftover copy of Claude. Six agents resumed by id (fix passes T-125 and T-126, T-117, T-144, the T-161 review, T-140). Two new tasks that touch no code started: the headset-day script (the writing half of T-129) and UX answers to seven open design questions. Five more tasks unlock when the garden visuals and the landing page merge.
 
 ### 2026-10-10
