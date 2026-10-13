@@ -35,7 +35,7 @@ import { Scheduler } from '../../../src/audio/Scheduler.js';
 import { hzForRing } from '../../../src/audio/theory.js';
 import { REVERB_RT60_MAX_S, RINGS, STEPS, WANDERER } from '../../../src/garden/index.js';
 
-import { FakeAudioContext, last, type FakeBuffer, type FakeNode } from './fakeAudio.js';
+import { FakeAudioContext, last, type FakeBuffer, type FakeNode, type FakeParam } from './fakeAudio.js';
 
 import type { Plant, RoomSignature, VoiceType } from '../../../src/garden/index.js';
 
@@ -50,6 +50,8 @@ const TICK_S = TICK_MS / 1000;
 const BED = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1];
 /** A level head at 1.20 m over the origin, looking down −z at the bed. */
 const HEAD = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1.2, 0, 1];
+/** The same head turned 90° to its left. */
+const TURNED = [0, 0, -1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1.2, 0, 1];
 const HALL: RoomSignature = {
   ...WANDERER,
   keyRoot: -3,
@@ -95,6 +97,17 @@ const pluckBed = (): Plant[] => {
   return bed;
 };
 const KEY_STRINGS = RINGS * PLUCK_DAMPING_BUCKETS;
+/** All 80 cells, five rings and five voices: every step plays one note of each. */
+const fiveVoiceBed = (): Plant[] => {
+  const voices: VoiceType[] = ['bell', 'pad', 'pluck', 'bass', 'choir'];
+  const bed: Plant[] = [];
+  for (let ring = 0; ring < RINGS; ring++) {
+    for (let step = 0; step < STEPS; step++) {
+      bed.push(plant(`${ring}-${step}`, voices[(ring + step) % 5] as VoiceType, ring, step));
+    }
+  }
+  return bed;
+};
 /** Audio time of absolute step `i` when the engine was started at time 0. */
 const stepTime = (i: number): number => START_DELAY_S + i * STEP_S;
 /** The step of the bar, 0..15, that sounds at audio time `time`. */
@@ -249,15 +262,7 @@ describe('graph shape (NFR-PERF-10, TC-PERF-09)', () => {
   it('a full bed of all five voices for 13 bars: voices never pass 24, stolen notes fade, every source gets a stop', async () => {
     const { ctx, engine, run } = await start();
     const fixed = ctx.nodes.length;
-    const bed: Plant[] = [];
-    const voices: VoiceType[] = ['bell', 'pad', 'pluck', 'bass', 'choir'];
-    for (let ring = 0; ring < RINGS; ring++) {
-      for (let step = 0; step < STEPS; step++) {
-        // Five rings, five voices: every step plays one note of each.
-        bed.push(plant(`${ring}-${step}`, voices[(ring + step) % 5] as VoiceType, ring, step));
-      }
-    }
-    engine.syncPlants(bed, BED);
+    engine.syncPlants(fiveVoiceBed(), BED);
     let most = 0;
     run(13 * BAR_S, () => {
       most = Math.max(most, engine.stats.voices);
@@ -278,6 +283,29 @@ describe('graph shape (NFR-PERF-10, TC-PERF-09)', () => {
     // No source is left to run on: each has its stop time, its own end or the end of a steal fade.
     const sources = [...ctx.of('oscillator'), ...ctx.of('bufferSource')];
     expect(sources.filter((s) => s.stoppedAt === null)).toHaveLength(0);
+  });
+
+  it('the same bed: a panner moves only when nothing sounds through it, so a stolen channel never jumps under a tail', async () => {
+    const { ctx, engine, run } = await start();
+    engine.syncPlants(fiveVoiceBed(), BED);
+    run(13 * BAR_S);
+
+    /** The sources a note is heard from: every node upstream of its envelope that was started. */
+    const upstream = (node: FakeNode): FakeNode[] => node.inputs.flatMap((n) => [n, ...upstream(n)]);
+    const moved: number[] = [];
+    const underATail: string[] = [];
+    for (const panner of ctx.of('panner')) {
+      const sources = upstream(panner).filter((n) => n.startedAt !== null);
+      for (const { time } of panner.positionX.events) {
+        moved.push(time);
+        for (const s of sources) {
+          const sounding = (s.startedAt as number) < time && (s.stoppedAt as number) > time;
+          if (sounding) underATail.push(`${s.kind} ${s.startedAt}–${s.stoppedAt} under a move at ${time}`);
+        }
+      }
+    }
+    expect(moved.length).toBeGreaterThan(1000);
+    expect(underATail).toEqual([]);
   });
 
   it('a second init() builds nothing', async () => {
@@ -444,12 +472,22 @@ describe('the tick builds nothing but the notes it schedules', () => {
     LOADED,
     async () => {
       const { ctx, engine } = await start();
+      // The fake keeps each parameter event as an object; what is measured here is the engine's own allocation.
+      let glides = 0;
+      for (const p of Object.values(ctx.listener)) {
+        p.setTargetAtTime = (): FakeParam => {
+          glides++;
+          return p;
+        };
+      }
       const plants = sixteenPlucks();
       engine.syncPlants(plants, BED);
       for (let i = 0; i < RINGS; i++) engine.tick(); // more than enough ticks to render their five strings
+      engine.setListenerPose(HEAD); // the first pose is set; every one after it glides
       const frameAll = (): void => {
         for (let i = 0; i < ROUNDS; i++) {
-          engine.setListenerPose(HEAD);
+          ctx.currentTime += 0.014;
+          engine.setListenerPose(i % 2 ? HEAD : TURNED);
           engine.syncPlants(plants, BED);
         }
       };
@@ -457,7 +495,7 @@ describe('the tick builds nothing but the notes it schedules', () => {
       expect(
         Math.min(bytesPerRound(frameAll), bytesPerRound(frameAll), bytesPerRound(frameAll)),
       ).toBeLessThan(1);
-      expect(ctx.listener.positionY.value).toBe(1.2);
+      expect(glides).toBe(4 * ROUNDS * 9); // nine glides a call: position, forward and up
       expect(ctx.strings).toBe(RINGS); // and nothing was rendered again
     },
   );
@@ -967,11 +1005,19 @@ describe('pan: a plant sounds at its world position (FR-MUS-06, TC-AUD-05)', () 
     expect(pannerOf(ctx.of('bufferSource')[0] as FakeNode).positionX.last('set')?.value).toBeCloseTo(0.3, 9);
   });
 
-  it('setListenerPose puts the listener at the head', async () => {
+  it('setListenerPose puts the listener at the head, then glides it after the head from the audio clock', async () => {
     const { ctx, engine } = await start();
     engine.setListenerPose(HEAD);
     expect(ctx.listener.positionY.value).toBe(1.2);
     expect(ctx.listener.forwardZ.value).toBe(-1);
+    ctx.currentTime = 1;
+    engine.setListenerPose(TURNED);
+    expect(ctx.listener.forwardX.last('target')).toEqual({
+      type: 'target',
+      value: -1,
+      time: 1,
+      tau: PARAM_SMOOTH_S,
+    });
   });
 });
 

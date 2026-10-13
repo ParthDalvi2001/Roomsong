@@ -1241,6 +1241,13 @@ The documents give no number. Parth's ratings decide two things: whether the shi
 
 ---
 
+
+### Also, the sound as you move (T-145)
+1. Let a full garden play and turn your head fast left and right for 30 seconds. Listen for buzz, grain or crackles that are not there when you hold still. Write down: none, a little, a lot.
+2. Turn quickly and stop: does the sound trail behind your head? Write down: yes or no.
+3. Listen to note starts in a full garden: any ticks? Write down: yes or no.
+4. With `?dev=1&flags=perfHud`, read the audio load while turning. Write down the highest number you see.
+
 ## Block 16 — The app: the garden comes back (35 min)
 
 **Needs: T-128e** (the garden is saved), on top of T-128c (the bed's place is saved with the headset). Every step of this block is **(from the plan)**.

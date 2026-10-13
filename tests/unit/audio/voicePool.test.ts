@@ -1,12 +1,15 @@
 // TC-AUD-04 (FR-MUS-07, NFR-PERF-10, LLD §7.1): 24 voice channels, one pooled equal-power panner each. A request
 // that finds no free channel steals the oldest-quietest note: the lowest envelope level at the steal time, the
 // oldest on a tie; a note of the same instant is never stolen; the stolen note has faded when the new one starts.
-// TC-PERF-09: the listener follows the head.
+// The panners are k-rate, so a channel's panner moves at the render-quantum start at or before its note, and the
+// channel is silent from there. TC-PERF-09: the listener follows the head.
 import { describe, expect, it } from 'vitest';
 
 import {
   PAN_REF_DISTANCE_M,
   PAN_ROLLOFF,
+  PARAM_SMOOTH_S,
+  RENDER_QUANTUM,
   STEAL_FADE_S,
   STEAL_FADE_TAUS,
   VOICE_CAP,
@@ -19,7 +22,7 @@ import { Choir } from '../../../src/audio/voices/Choir.js';
 import { Pad } from '../../../src/audio/voices/Pad.js';
 import { Pluck } from '../../../src/audio/voices/Pluck.js';
 
-import { FakeAudioContext, asNode, type FakeNode } from './fakeAudio.js';
+import { FakeAudioContext, asNode, type FakeNode, type FakeParam, type ParamEvent } from './fakeAudio.js';
 
 import type { NoteRef, Voice, VoiceParams } from '../../../src/audio/voices/note.js';
 
@@ -115,23 +118,65 @@ describe('Spatializer: the 24 pooled channel strips (NFR-PERF-10)', () => {
     expect(p2.positionX.events).toEqual([]);
   });
 
-  it('the listener follows the head: position = translation, forward = −Z axis, up = Y axis of the matrix', () => {
+  /** Column-major, as THREE.Matrix4.elements: a level head at 1.2 m over the origin, looking down −z. */
+  const LEVEL = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1.2, 0, 1];
+  /** The listener's nine values: position, forward, up. */
+  const pose = (l: FakeAudioContext['listener']): number[] =>
+    [l.positionX, l.positionY, l.positionZ, l.forwardX, l.forwardY, l.forwardZ, l.upX, l.upY, l.upZ].map(
+      (p) => p.value,
+    );
+  const events = (l: FakeAudioContext['listener']): ParamEvent[] =>
+    [l.positionX, l.positionY, l.positionZ, l.forwardX, l.forwardY, l.forwardZ, l.upX, l.upY, l.upZ].flatMap(
+      (p: FakeParam) => p.events,
+    );
+
+  it('the first pose is set, not glided: before it the listener sits on the floor, with nothing to glide from', () => {
     const { ctx, space } = setup();
-    // Column-major, as THREE.Matrix4.elements: a head at (0.1, 1.2, 0.3), turned 90° to its left (yaw +90°).
-    const head = [0, 0, -1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0.1, 1.2, 0.3, 1];
-    space.setListenerPose(head);
-    const l = ctx.listener;
-    expect([l.positionX.value, l.positionY.value, l.positionZ.value]).toEqual([0.1, 1.2, 0.3]);
-    expect([l.forwardX.value, l.forwardY.value, l.forwardZ.value]).toEqual([-1, -0, -0]);
-    expect([l.upX.value, l.upY.value, l.upZ.value]).toEqual([0, 1, 0]);
-    expect(l.positionX.events).toEqual([]); // written as values: nothing piles up in a timeline at 72 calls a second
+    space.setListenerPose(LEVEL);
+    expect(pose(ctx.listener)).toEqual([0, 1.2, 0, -0, -0, -1, 0, 1, 0]);
+    expect(events(ctx.listener)).toEqual([]);
+  });
+
+  it('then the listener glides to the head: position = translation, forward = −Z axis, up = Y axis of the matrix', () => {
+    const { ctx, space } = setup();
+    space.setListenerPose(LEVEL);
+    ctx.currentTime = 2;
+    // A head at (0.1, 1.2, 0.3), turned 90° to its left (yaw +90°).
+    space.setListenerPose([0, 0, -1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0.1, 1.2, 0.3, 1]);
+    const glide = (value: number): ParamEvent => ({ type: 'target', value, time: 2, tau: PARAM_SMOOTH_S });
+    expect(events(ctx.listener)).toEqual([0.1, 1.2, 0.3, -1, -0, -0, 0, 1, 0].map(glide));
+    // Never a step: a value written once a frame steps all 24 pans 72 times a second, a zipper on a held note
+    // (09-audio.spec.ts measures it). The glide starts from wherever the last one had got to.
+    expect(pose(ctx.listener)).toEqual([0, 1.2, 0, -0, -0, -1, 0, 1, 0]);
+  });
+
+  it('the listener and the 24 panners are k-rate: a glide moves the pans once a render quantum, not sample by sample', () => {
+    // Chromium pans every sample of every panner while an a-rate listener or panner parameter is automated, which
+    // made the graph cost about three times as much while the head moved (T-145 review, measured in 09-audio).
+    const { ctx } = setup();
+    const params = [
+      ...Object.values(ctx.listener),
+      ...ctx
+        .of('panner')
+        .flatMap((p) => [
+          p.positionX,
+          p.positionY,
+          p.positionZ,
+          p.orientationX,
+          p.orientationY,
+          p.orientationZ,
+        ]),
+    ];
+    expect(params).toHaveLength(9 + 24 * 6);
+    expect(params.filter((p) => p.automationRate !== 'k-rate')).toEqual([]);
   });
 
   it('a matrix with a value that is not finite is ignored: the listener keeps its pose and nothing throws', () => {
     const { ctx, space } = setup();
     const head = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, Number.NaN, 1.2, 0, 1];
     expect(() => space.setListenerPose(head)).not.toThrow();
-    expect(ctx.listener.positionY.value).toBe(0);
+    expect(pose(ctx.listener)).toEqual([0, 0, 0, 0, 0, -1, 0, 1, 0]);
+    expect(events(ctx.listener)).toEqual([]);
   });
 
   it('a browser whose listener has no AudioParams (Firefox) gets setPosition and setOrientation', () => {
@@ -164,13 +209,26 @@ describe('VoicePool: 24 channels', () => {
     expect(stolen(voice)).toEqual([]);
   });
 
-  it('a channel whose note has ended by the new start is reused without a steal', () => {
+  it('a panner moves at the render-quantum start at or before its note: a k-rate position changes only there', () => {
+    const { ctx, play, voice } = setup();
+    expect(RENDER_QUANTUM).toBe(128);
+    play(1.5); // 562.5 quanta of 128 samples at 48 kHz: the panner moves 64 samples before the note
+    const panner = ctx.of('panner')[0] as FakeNode;
+    expect(panner.positionX.last('set')?.time).toBe((562 * 128) / 48000);
+    expect(voice.sources[0]?.startedAt).toBe(1.5);
+  });
+
+  it('a channel whose note has ended by the quantum its panner moves at is reused without a steal', () => {
     const { voice, play, ctx } = setup(0.5);
     for (let i = 0; i < 24; i++) play(1); // all end at 1.5
-    ctx.currentTime = 1.4; // still sounding now, silent by 1.5
-    expect(play(1.5)).toBe(true);
+    ctx.currentTime = 1.4; // still sounding now, silent from 1.5
+    // A note at 1.5 would move its panner at 1.4987, under the last samples of a note: it steals instead.
+    const next = (563 * 128) / 48000 + 0.0001; // its quantum starts at 1.5013
+    expect(play(next)).toBe(true);
     expect(stolen(voice)).toEqual([]);
-    expect(voice.sources[24]?.startedAt).toBe(1.5);
+    expect(voice.sources[24]?.startedAt).toBe(next);
+    expect(play(1.5)).toBe(true);
+    expect(stolen(voice)).toHaveLength(1);
   });
 
   it('never more than 24 at once: the 25th request steals exactly one note', () => {
@@ -257,14 +315,25 @@ describe('VoicePool: the fade ends when the new note starts', () => {
     expect(panner.positionX.last('set')).toMatchObject({ time: 1 }); // and its panner moves only then
   });
 
-  it('an immediate sound that has to steal starts 20 ms late, after the fade', () => {
+  it('a scheduler note in the middle of a quantum: the stolen note has faded by the quantum start before it', () => {
+    const { ctx, voice, play } = setup();
+    for (let i = 0; i < 24; i++) play(i * 0.01);
+    ctx.currentTime = 0.9;
+    play(1.0013); // 375.49 quanta: the panner moves at 1.0 (375 quanta), 62 samples before the note
+    expect(voice.envs[0]?.gain.last('hold')).toMatchObject({ time: 1 - STEAL_FADE_S });
+    expect(voice.sources[0]?.stoppedAt).toBeCloseTo(1, 9);
+    expect(voice.sources[24]?.startedAt).toBe(1.0013);
+  });
+
+  it('an immediate sound that has to steal starts 20 to 23 ms late, at a quantum start, after the whole fade', () => {
     const { ctx, voice, play } = setup();
     for (let i = 0; i < 24; i++) play(i * 0.01);
     ctx.currentTime = 2;
     play(2);
-    expect(voice.envs[0]?.gain.last('hold')).toMatchObject({ time: 2 });
-    expect(voice.sources[0]?.stoppedAt).toBeCloseTo(2 + STEAL_FADE_S, 9);
-    expect(voice.sources[24]?.startedAt).toBeCloseTo(2 + STEAL_FADE_S, 9);
+    const move = (758 * 128) / 48000; // the first quantum start at least 20 ms after now: 2.0213
+    expect(voice.envs[0]?.gain.last('hold')?.time).toBeCloseTo(move - STEAL_FADE_S, 9);
+    expect(voice.sources[0]?.stoppedAt).toBeCloseTo(move, 9);
+    expect(voice.sources[24]?.startedAt).toBeCloseTo(move, 9);
   });
 
   it('a stolen note that would only start during the fade is cancelled whole, never heard', () => {
@@ -330,11 +399,13 @@ describe('VoicePool with the five real voices: the cap and the order hold in a m
     expect(stolen()).toEqual([0, 3, 8, 13, 18, 23]); // then the quietest that is left: the first bell
     expect(pool.active(0.3)).toBe(VOICE_CAP);
 
-    // The stolen bass was held 20 ms ahead and its source stops as the new note starts.
+    // The stolen bass was held 20 ms ahead of the quantum start before the new note (0.3 s is 112.5 quanta), and its
+    // source stops there, where the panner moves.
     const bass = ctx.of('oscillator').find((o) => o.type === 'custom') as FakeNode;
     const env = (bass.outputs[0] as FakeNode).outputs[0] as FakeNode;
-    expect(env.gain.last('hold')).toMatchObject({ time: 0.3 - STEAL_FADE_S });
-    expect(bass.stoppedAt).toBeCloseTo(0.3, 9);
+    const move = (112 * 128) / 48000;
+    expect(env.gain.last('hold')?.time).toBeCloseTo(move - STEAL_FADE_S, 9);
+    expect(bass.stoppedAt).toBeCloseTo(move, 9);
   });
 
   it('a short voice gives its channel back: at 0.5 s the basses have ended, and five new notes steal nothing', () => {

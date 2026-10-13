@@ -1,7 +1,7 @@
 // The voice cap (FR-MUS-07, NFR-PERF-10, LLD §7.1): every sound takes one of the 24 voice channels, so no more
 // than 24 notes exist at once. A request that finds no free channel steals the oldest-quietest note. One note
 // record per channel, made once: playing a note allocates nothing here.
-import { STEAL_FADE_S, VOICE_CAP } from './config.js';
+import { RENDER_QUANTUM, STEAL_FADE_S, VOICE_CAP } from './config.js';
 import { Note, type NoteRef, type Voice, type VoiceParams } from './voices/note.js';
 
 import type { Spatializer } from './Spatializer.js';
@@ -39,16 +39,20 @@ export class VoicePool {
     const now = this.ctx.currentTime;
     const at = time > now ? time : now; // a late note sounds now
     let start = time;
-    let channel = this.freeAt(at);
+    // The panners are k-rate (LLD §7.1): one moves at the render-quantum start at or before its note, and the
+    // channel has to be silent from there.
+    let move = this.quantumStart(at);
+    let channel = this.freeAt(move);
     if (channel < 0) {
       channel = this.quietestAt(at, time);
       if (channel < 0) return false;
-      // The fade ends when the new note starts, so the channel and its panner are silent when they are reused:
-      // on time for a scheduler note (it is about 0.1 s ahead), 20 ms late for an immediate sound.
-      start = Math.max(time, now + STEAL_FADE_S);
-      (this.notes[channel] as Note).steal(start - STEAL_FADE_S);
+      // The stolen note's fade ends where the panner moves, and has its 20 ms from now: on time for a scheduler
+      // note (it is about 0.1 s ahead), 20 to 23 ms late for an immediate sound.
+      move = Math.max(move, this.quantumStart(now + STEAL_FADE_S + RENDER_QUANTUM / this.ctx.sampleRate));
+      start = Math.max(time, move);
+      (this.notes[channel] as Note).steal(move - STEAL_FADE_S);
     }
-    this.space.place(channel, x, y, z, start);
+    this.space.place(channel, x, y, z, move);
     this.ref.note = this.notes[channel] as Note;
     this.owners[channel] = owner;
     voice.trigger(start, p, this.space.inputs[channel] as GainNode);
@@ -71,6 +75,12 @@ export class VoicePool {
     let n = 0;
     for (let i = 0; i < VOICE_CAP; i++) if ((this.notes[i] as Note).endTime > now) n++;
     return n;
+  }
+
+  /** The audio time of the render-quantum start at or before `t`. */
+  private quantumStart(t: number): number {
+    const sr = this.ctx.sampleRate;
+    return (Math.floor((t * sr) / RENDER_QUANTUM) * RENDER_QUANTUM) / sr;
   }
 
   /** A channel that is silent at `at`, or −1. */

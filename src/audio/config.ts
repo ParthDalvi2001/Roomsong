@@ -73,6 +73,11 @@ export const SUSPEND_FADE_TAUS = 5;
 /** Panner distance curve (LLD §7.1, NFR-PERF-10): gain 1 up to 40 cm from the head, about −6 dB at 80 cm. */
 export const PAN_REF_DISTANCE_M = 0.4;
 export const PAN_ROLLOFF = 1;
+/**
+ * Sample frames in a Web Audio render quantum. The panners and the listener are k-rate (NFR-PERF-06, T-145): a
+ * position changes only at a quantum's start, so a panner is moved at the one at or before its note.
+ */
+export const RENDER_QUANTUM = 128;
 
 /** Longest impulse response of the one shared reverb (NFR-PERF-10). */
 export const REVERB_IR_MAX_S = 2.0;

@@ -34,6 +34,11 @@ interface Scene {
   retune?: { keyRoot: 0 | -3; reverbRt60: number };
   /** Also measure the share of the energy above this frequency. */
   splitHz?: number;
+  /**
+   * setListenerPose once a frame, as GardenAudioSystem will (T-145), with HEAD held still or turning and swaying
+   * (TURN). Without it the head is posed once, before the first tick.
+   */
+  posedHead?: 'still' | 'turning';
 }
 
 interface Rendered {
@@ -48,6 +53,17 @@ interface Rendered {
   /** Main-thread milliseconds of one engine tick in this page: the mean and the worst. 0 with `allAtS`. */
   tickMeanMs: number;
   tickWorstMs: number;
+  /**
+   * The largest click (T-145): the biggest sample-to-sample jump, either channel, less the larger of the two jumps
+   * on each side of it. A step in the signal is one jump far above its neighbours; a loud high note is not.
+   */
+  worstJump: number;
+  worstJumpS: number;
+  /** Main-thread milliseconds of one setListenerPose call with `posedHead`: the mean and the worst; 0 without. */
+  poseMeanMs: number;
+  poseWorstMs: number;
+  /** Wall-clock milliseconds the render took per second of audio: a desktop figure for the graph's cost. */
+  renderMsPerS: number;
 }
 
 const SAMPLE_RATE = 48000;
@@ -61,11 +77,17 @@ const CENTRED_DB = 0.5;
 const BED = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1];
 /** A level head at 1.20 m over the origin, looking down −z at the bed. */
 const HEAD = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1.2, 0, 1];
+/**
+ * The turning head of T-145: HEAD turned up to 60° to each side and swayed 5 cm, at 0.5 Hz (a brisk turn, up to
+ * 190° a second), posed once a frame. A frame is 5 render quanta (75 fps): a suspend must fall on a quantum, and
+ * two on the same one would throw.
+ */
+const TURN = { yawRad: Math.PI / 3, swayM: 0.05, hz: 0.5, frameS: (5 * 128) / SAMPLE_RATE };
 
 /** Renders one scene in the page and measures it. */
 function render(page: Page, scene: Scene): Promise<Rendered> {
   return page.evaluate(
-    async ({ scene, sampleRate, tickS, bed, head }) => {
+    async ({ scene, sampleRate, tickS, bed, head, turn }) => {
       const engineUrl = '/src/audio/AudioEngine.ts';
       const { Engine } = (await import(
         /* @vite-ignore */ engineUrl
@@ -131,6 +153,35 @@ function render(page: Page, scene: Scene): Promise<Rendered> {
         for (let step = 0; step < 16; step++) engine.triggerStep(step, scene.allAtS);
       } else {
         tick();
+      }
+      let poses = 0;
+      let poseTotalMs = 0;
+      let poseWorstMs = 0;
+      if (scene.posedHead !== undefined) {
+        // One suspend a frame, and the engine's ticks in the frames they fall in.
+        const moving = scene.posedHead === 'turning' ? 1 : 0;
+        let nextTickS = tickS;
+        for (let k = 1; k * turn.frameS < scene.seconds; k++) {
+          const t = k * turn.frameS;
+          void ctx.suspend(t).then(() => {
+            const angle = moving * turn.yawRad * Math.sin(2 * Math.PI * turn.hz * t);
+            const [c, s] = [Math.cos(angle), Math.sin(angle)];
+            const sway = moving * turn.swayM * Math.sin(2 * Math.PI * turn.hz * t);
+            const pose = [c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, sway, head[13] ?? 0, head[14] ?? 0, 1];
+            const t0 = performance.now();
+            engine.setListenerPose(pose);
+            const ms = performance.now() - t0;
+            poses++;
+            poseTotalMs += ms;
+            poseWorstMs = Math.max(poseWorstMs, ms);
+            for (; scene.allAtS === undefined && nextTickS <= t; nextTickS += tickS) {
+              tick();
+              maxVoices = Math.max(maxVoices, engine.stats.voices);
+            }
+            void ctx.resume();
+          });
+        }
+      } else if (scene.allAtS === undefined) {
         for (let k = 1; k * tickS < scene.seconds; k++) {
           void ctx.suspend(k * tickS).then(() => {
             tick();
@@ -140,8 +191,12 @@ function render(page: Page, scene: Scene): Promise<Rendered> {
         }
       }
 
+      const r0 = performance.now();
       const buffer = await ctx.startRendering();
+      const renderMsPerS = (performance.now() - r0) / scene.seconds;
       let peak = 0;
+      let worstJump = 0;
+      let worstJumpS = 0;
       const energy = [0, 0];
       for (let channel = 0; channel < 2; channel++) {
         const samples = buffer.getChannelData(channel);
@@ -152,6 +207,17 @@ function render(page: Page, scene: Scene): Promise<Rendered> {
           sum += v * v;
         }
         energy[channel] = sum;
+        const jump = new Float32Array(samples.length);
+        for (let i = 1; i < samples.length; i++)
+          jump[i] = Math.abs((samples[i] ?? 0) - (samples[i - 1] ?? 0));
+        for (let i = 3; i < samples.length - 2; i++) {
+          const around = Math.max(jump[i - 2] ?? 0, jump[i - 1] ?? 0, jump[i + 1] ?? 0, jump[i + 2] ?? 0);
+          const click = (jump[i] ?? 0) - around;
+          if (click > worstJump) {
+            worstJump = click;
+            worstJumpS = i / sampleRate;
+          }
+        }
       }
       const [left = 0, right = 0] = energy;
       let aboveSplit = Number.NaN;
@@ -192,9 +258,14 @@ function render(page: Page, scene: Scene): Promise<Rendered> {
         aboveSplit,
         tickMeanMs: ticks > 0 ? tickTotalMs / ticks : 0,
         tickWorstMs,
+        worstJump,
+        worstJumpS,
+        poseMeanMs: poses > 0 ? poseTotalMs / poses : 0,
+        poseWorstMs,
+        renderMsPerS,
       };
     },
-    { scene, sampleRate: SAMPLE_RATE, tickS: TICK_MS / 1000, bed: BED, head: HEAD },
+    { scene, sampleRate: SAMPLE_RATE, tickS: TICK_MS / 1000, bed: BED, head: HEAD, turn: TURN },
   );
 }
 
@@ -420,6 +491,71 @@ test('T-144 TC-AUD-04 TC-AUD-05 the cap and the limiter hold with all five voice
     expectBounded(limited);
     expect(raw.peakDbfs).toBeGreaterThan(0); // without the limiter this scene is over full scale
   }
+
+  expect(pageErrors).toEqual([]);
+  expect(offHost).toEqual([]);
+});
+
+/**
+ * T-145: the largest click a render may hold, as `worstJump` measures it, in full-scale units. Measured 2026-10-14
+ * with the k-rate listener and panners: the bed 0.0088 to 0.0092 (the same with the head still), the pads 0.0020
+ * still and 0.0065 to 0.0071 turning. Broken on purpose, the same renders read: a k-rate panner placed at its note
+ * instead of the quantum start 0.051, the listener stepped instead of glided 0.014 in the bed and 0.012 in the
+ * pads; with the a-rate panners of 2026-10-13, a steal with no fade 0.15 and a panner moved 20 ms early 0.041.
+ */
+const BED_CLICK_MAX = 0.012;
+const PADS_CLICK_MAX = 0.008;
+
+test('T-145 TC-AUD-04 no clicks at 24 voices: a bed that steals all the way, and 24 held pads, under a turning head', async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(String(error)));
+  const offHost = await openApp(page, readRoom('none'));
+
+  // Every cell, 120 BPM: more notes than channels, so nearly every note steals one. No pluck: its string starts
+  // with a burst of noise (Karplus-Strong), whose own jumps reach 0.14 by this measure and would hide any click.
+  // Its notes steal and are stolen through the same note record as the other four (voices/note.ts).
+  const bedVoices: Voice[] = ['bell', 'pad', 'bass', 'choir'];
+  const fullBed: Scene['plants'] = [];
+  for (let ring = 0; ring < 5; ring++) {
+    for (let step = 0; step < 16; step++) {
+      fullBed.push({ voice: bedVoices[(ring + step) % bedVoices.length] ?? 'bell', ring, step });
+    }
+  }
+  const bed = await render(page, {
+    plants: fullBed,
+    seconds: 4.5,
+    bpm: 120,
+    reverb: 'auto',
+    posedHead: 'turning',
+  });
+  // 24 pads held for the whole render: the smoothest sound the garden makes, where a stepped pan shows most.
+  const pads: Scene = {
+    plants: Array.from({ length: VOICE_CAP }, (_, i) => ({ voice: 'pad', ring: i % 5, step: i % 16 })),
+    seconds: 3,
+    bpm: 120,
+    reverb: 'auto',
+    allAtS: 0.05,
+  };
+  const still = await render(page, { ...pads, posedHead: 'still' });
+  const turning = await render(page, { ...pads, posedHead: 'turning' });
+  // The page's clock counts in steps of 0.1 ms, so a call reads 0 or 100 µs and only the mean says anything.
+  const clicks = (name: string, r: Rendered) =>
+    `T-145 ${name}: worst click ${r.worstJump.toFixed(4)} at ${r.worstJumpS.toFixed(3)} s, voices ≤ ${r.maxVoices}, ` +
+    `render ${r.renderMsPerS.toFixed(0)} ms per audio second, ` +
+    `setListenerPose ${(1000 * r.poseMeanMs).toFixed(1)} µs mean (desktop Chromium)`;
+  console.log(clicks('bed of four voices, 80 plants, 120 BPM, turning head', bed));
+  console.log(clicks('24 held pads, still head', still));
+  console.log(clicks('24 held pads, turning head', turning));
+
+  expectBounded(bed);
+  expect(bed.maxVoices).toBe(VOICE_CAP);
+  expect(bed.worstJump).toBeLessThan(BED_CLICK_MAX);
+  expectBounded(still);
+  expect(still.worstJump).toBeLessThan(PADS_CLICK_MAX);
+  expectBounded(turning);
+  expect(turning.worstJump).toBeLessThan(PADS_CLICK_MAX);
 
   expect(pageErrors).toEqual([]);
   expect(offHost).toEqual([]);

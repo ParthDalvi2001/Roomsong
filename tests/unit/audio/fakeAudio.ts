@@ -18,6 +18,7 @@ function finite(...values: number[]): void {
 
 export class FakeParam {
   readonly events: ParamEvent[] = [];
+  automationRate: AutomationRate = 'a-rate';
   private current: number;
 
   constructor(value = 0) {
@@ -87,6 +88,9 @@ export class FakeNode {
   readonly positionX = new FakeParam(0);
   readonly positionY = new FakeParam(0);
   readonly positionZ = new FakeParam(0);
+  readonly orientationX = new FakeParam(1);
+  readonly orientationY = new FakeParam(0);
+  readonly orientationZ = new FakeParam(0);
   readonly threshold = new FakeParam(-24);
   readonly knee = new FakeParam(30);
   readonly ratio = new FakeParam(12);
