@@ -40,7 +40,7 @@ As built by T-109 (merged 2026-10-10, `develop` f3ac045). Checked on the built p
   - The dev server carries no policy, on purpose: its emulator needs inline scripts and a WebSocket.
   - *Superseded (T-109):* the draft policy that stood here (`style-src 'self' 'unsafe-inline'`, `worker-src 'self'`, `media-src 'self'`, "removed in T-014").
 - Not set: `Referrer-Policy` and `X-Content-Type-Options`. *Superseded (T-109):* "via meta where applicable". `X-Content-Type-Options` cannot be set from a meta tag and GitHub Pages lets a site set no response headers; no referrer meta tag is in the pages.
-- No `eval`: the policy blocks it, and `vite.config.ts` switches zod (inside IWSDK) to `jitless` so that it does not probe for it. No `innerHTML` with dynamic content: none in `src/` or the test pages today, kept by review, not by a gate. User-controlled text: none (no text input anywhere).
+- No `eval`: the policy blocks it, and no built file contains `eval` or `new Function` (zod, which probed for it, left the build with T-171). No `innerHTML` with dynamic content: none in `src/` or the test pages today, kept by review, not by a gate. User-controlled text: none (no text input anywhere).
 
 Gates (NFR-SEC-01, Golden Rule 9). `npm run verify` runs the first four; CI runs all seven (DEPLOYMENT_GUIDE §2).
 | Gate | Runs in | Fails when |

@@ -14,7 +14,7 @@ const APP_CHUNK = '**/src/app.ts*'; // what the boot's import('./app.js') asks t
 /** A request for SDK or Three.js code, as the dev server names its pre-bundled packages. */
 const isSdk = (url: string) => /@iwsdk_core|\/three\b|uikit/.test(url);
 /** What the built landing page may weigh before the app chunk, unzipped: under four times the 14 kB it is today.
- *  The SDK chunk is 5.9 MB, so one import of it into the boot cannot hide under this. */
+ *  The SDK chunk is 1.4 MB (5.9 MB before T-171), so one import of it into the boot cannot hide under this. */
 const BOOT_BUDGET_BYTES = 52_000;
 const FOVEATION_MEDIUM = 2 / 3; // NFR-PERF-09, pinned here on purpose (render/config.ts)
 const AUDIO_START_GRACE_MS = 3000; // LLD §3.3 B, pinned here on purpose (src/app.ts)

@@ -179,7 +179,7 @@ All versions in `package.json` are exact (no `^`/`~`); `package-lock.json` is co
 |---|---|---|
 | @iwsdk/core · @iwsdk/cli · @iwsdk/vite-plugin-dev · @iwsdk/reference | 1.0.1 | scaffolder `@iwsdk/create` 1.0.1; `reference` is optional (local API MCP; `npm run reference:warmup` downloads its model) |
 | three | 0.181.0 | installed as the `super-three` fork via npm alias `npm:super-three@0.181.0` + `overrides` (IWSDK requirement); `@types/three` 0.181.0 |
-| @pmndrs/uikit · uikit-horizon · uikit-lucide | 1.0.76 | declared by the scaffold so Vite `dedupe` resolves one copy; spatial UI |
+| @pmndrs/uikit · uikit-horizon · uikit-lucide | 1.0.76 | declared by the scaffold; `@pmndrs/uikit` is still deduped for IWSDK, the other two are no longer bundled or pre-bundled (T-171: IWSDK's spatial UI is off and `@drawcall/uikitml` is replaced by a stub) |
 | vite | 7.3.7 | scaffold line (`^7.1.4`); Vite 8 exists but the IWSDK plugin targets 7 |
 | vitest | 5.0.3 | `vitest.config.ts`, node environment, `tests/unit/**/*.test.ts`; 30 s per test |
 | @vitest/coverage-v8 | 5.0.3 | the coverage gate, `npm run test:coverage` (T-117) |

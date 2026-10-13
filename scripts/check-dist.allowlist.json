@@ -1,11 +1,5 @@
 {
-  "http://[": "Parse only, never requested: zod wraps a candidate IPv6 address in this and hands it to new URL() to validate it.",
-  "http://json-schema.org/draft-04/schema#": "Name only, never requested: JSON Schema dialect id that zod writes into a $schema field.",
-  "http://json-schema.org/draft-07/schema#": "Name only, never requested: JSON Schema dialect id that zod writes into a $schema field.",
   "http://www.w3.org/1999/xhtml": "Name only, never requested: XML namespace passed to createElementNS by three.js.",
-  "http://www.w3.org/1999/xlink": "Name only, never requested: XML namespace passed to getAttributeNS by the three.js SVG loader.",
-  "http://www.w3.org/2000/svg": "Name only, never requested: xmlns attribute of the icon SVG strings bundled from @pmndrs/uikit-lucide and @pmndrs/uikit-horizon.",
-  "https://api.dicebear.com/9.x/lorelei/png?seed=": "SDK default, never requested: default picture of the UIKit Avatar component (@pmndrs/uikit-horizon). The app uses no Avatar; the Content Security Policy would block the request.",
   "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0/dist/profiles": "SDK default, never requested: hand and controller models of @iwsdk/xr-input. src/index.ts turns input models off (D-027); tests/e2e/01-enter-xr.spec.ts fails on any request off localhost; the Content Security Policy would block the request.",
   "https://iwsdk.dev/api/core/variables/Interactable.html": "Text only, never requested: documentation link inside an IWSDK deprecation warning.",
   "https://iwsdk.dev/schemas/iwsdk.scene.v1.schema.json": "Name only, never requested: $id of the IWSDK scene document schema.",

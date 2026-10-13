@@ -3,18 +3,25 @@
 **Status:** Living · **Owner:** devops-engineer (packages) / ux-designer (assets)
 Contest rule: Meta may request proof of licence for any material. Every external item is logged here **before** it is added. Runtime policy: original or CC0/OFL/MIT/BSD/Apache/ISC only. No brands, no identifiable people.
 
-**Checked:** 2026-10-13, against `develop` at 85a06fc (T-170).
-- **What ships:** 65 packages are in the production tree (5 declared, 60 pulled in). Code of 20 of them is in the built app. The other 45 are installed but not built in.
-- **Licences:** 63 of the 65 have a clear permissive licence (46 MIT, 13 Apache-2.0, 3 BSD, 1 CC0). One more is a font package under Apache-2.0 and OFL-1.1; it is not in the build.
-- **Open:** one package with code in the build has no licence at all (§0: blocks submission). Two smaller gaps: licence texts missing from `LICENSES/` and from the built site (§1.3), and a scaffold header that points at a file that does not exist (§3).
+**Checked:** 2026-10-13, against `develop` at 85a06fc (T-170). **"In the build" re-checked** 2026-10-13 on a build of the T-171 branch (after the stub of §0).
+- **What ships:** 65 packages are in the production tree (5 declared, 60 pulled in). Code of 14 of them is in the built app (20 before T-171: `@drawcall/uikitml`, `@pmndrs/uikit-horizon`, `@pmndrs/uikit-lucide`, `zod`, `entities` and `comlink` left with the stub). The other 51 are installed but not built in. Two build tools also put a little code of their own into the build (§2: `vite`, `@iwsdk/vite-plugin-dev`).
+- **Licences:** 63 of the 65 have a clear permissive licence (46 MIT, 13 Apache-2.0, 3 BSD, 1 CC0). One more is a font package under Apache-2.0 and OFL-1.1; it is not in the build. The one with no licence, `@drawcall/uikitml`, is no longer in the build (§0, closed).
+- **Open:** a scaffold header points at a file that does not exist (§3). The licence texts now ship with the site (§1.3), including those of the libraries `three` carries inside itself (§1, note "Inside `three`").
 
-How it was checked: `package.json` and `npm ls --omit=dev --all` for the tree; each package's own `package.json` and licence file in `node_modules` for the licence; a text search of the last build (`dist/`) for what is really built in. Another session rebuilt `dist/` during the check (2026-10-13 00:36 IST); every search was run again on that build and gave the same answers as on the build of 2026-10-12 23:49. Built files are named by their prefix, because the hash in the name changes with each build. No build was run for this check. §2 was not re-checked.
+How it was checked: `package.json` and `npm ls --omit=dev --all` for the tree; each package's own `package.json` and licence file in `node_modules` for the licence; a text search of the built files (`dist/`, leaving out `dist/LICENSES/`, whose texts name many packages) for what is really built in. Built files are named by their prefix, because the hash in the name changes with each build. §2 was not re-checked, except the two build tools named above.
 
 ---
 
-## 0. Open: blocks submission
+## 0. Closed (T-171, 2026-10-13): the package with no licence is no longer in the build
 
-**`@drawcall/uikitml` 0.1.8 has no licence, and its code is in the built app.**
+**`@drawcall/uikitml` 0.1.8 has no licence. Since T-171 none of its code is in the built app** (way 3 below).
+
+What T-171 found and did:
+- **The feature flags alone do not drop it.** With `grabbing` and `spatialUI` set to `false` (the values `init/world-initializer.js` reads: `!!features.spatialUI`, default `true`), the build was the same size and still held the parser. The reason is in IWSDK's source: `init/world-initializer.js` imports `loadUIKitMLAsset` from `ui/uikitml.js` statically and only *calls* it behind the run-time flag; `ui/uikitml.js` imports `parse`, `instantiate` and `resolveKitComponentSets` from the package; three more files import it bare. The package declares no `sideEffects`, so the bundler keeps every module it reaches.
+- **A stub stands in for it.** `vite.config.ts` aliases `@drawcall/uikitml` to `build/stubs/uikitml.js` (dev server and build). The stub exports those three names; each throws `UIKitMLRemovedError`, saying why. Only IWSDK's UIKitML panels call them (a PanelUI component, a `.uikitml` asset, the spatialUI feature), and Roomsong uses none. This is the pattern IWSDK's own plugin uses for the physics engine and the fonts it leaves out.
+- **Measured** (`node scripts/check-size.mjs`, first load, gzip): 2004.5 kB before, 2004.5 kB with the flags off, 676.0 kB with the stub (696.1 kB with the licence texts of §1.3). `RenderSystems-*.js`: 5,962 kB raw before, 1,399 kB after. The package's three messages ("UIKitML requires exactly one root component.", "Expected a stylesheet selector before declaration block.", "Expected a bundled or @font-face font family") are in no file of `dist/`. "uikitml" is left only in IWSDK's own MIT code (asset kinds, its loader's messages) and in the stub's message.
+- **Guards.** `scripts/check-dist.mjs` (in `npm run verify`) fails if a built file holds the package's first two messages. `tests/unit/policy/uikitml-stub.test.ts` pins the alias, the error, and that the stub exports exactly the names `@iwsdk/core` imports. An IWSDK update that imports another name stops the build ("is not exported by build/stubs/uikitml.js").
+- **Still installed, not shipped.** The package stays in `node_modules` (IWSDK depends on it). Two development tools run it on this Mac: the IWSDK Vite plugin (to check `.uikitml` files in `public/`; there are none) and the `@iwsdk/reference` command line. Nothing of it is published.
 
 What is and is not there (installed copy, read 2026-10-13):
 - Its `package.json` has no `license` field. It names a repository: https://github.com/drawcall-ai/uikitml.
@@ -25,7 +32,7 @@ How it comes in:
 - `@iwsdk/core` 1.0.1 (MIT) depends on exactly this version. Four of its files import it: `ui/uikitml.js`, `transform/transform.js`, `grab/grab-system.js` and `level/level-component-applier.js`.
 - Nothing in `src/` or `proto/*/src` imports it. No `.uikitml` file is in the repository. The settings panel and the captions are drawn by our own canvas code.
 
-What is in the build. Three files of `dist/` contain the word "uikitml":
+What was in the build before T-171. Three files of `dist/` contained the word "uikitml":
 | Built file | What the mention is | Code of the package? |
 |---|---|---|
 | `assets/RenderSystems-*.js` (the main chunk; the page loads it on every start) | the package's own error messages: "UIKitML requires exactly one root component." (`parse.js`), "Expected a stylesheet selector before declaration block." (`css.js`), "Expected a bundled or @font-face font family" (`fonts.js`). A search of the installed `@iwsdk`, `@pmndrs` and `@drawcall` packages finds the first two only in this one | **yes**: its parser, its stylesheet reader and its font-name list are built in |
@@ -34,14 +41,9 @@ What is in the build. Three files of `dist/` contain the word "uikitml":
 
 Not in the build: the package's command-line tool, its feedback sender (the only code that loads `@sentry/node`) and its picture renderer (the only code that loads `playwright`). None of their text is in `dist/`, and no file of `dist/` contains "sentry".
 
-Why it blocks: with no licence, nothing gives us the right to copy or publish this code, and this list cannot show a licence for it if Meta asks (HACKATHON_RULES C3: every third-party asset is licensed and listed). What it is not: there is no sign of a restrictive licence, and the package is public and required by Meta's own SDK. Neither of those is a licence.
+Why it blocked: with no licence, nothing gives us the right to copy or publish this code, and this list could not show a licence for it if Meta asks (HACKATHON_RULES C3: every third-party asset is licensed and listed). There is no sign of a restrictive licence, and the package is required by Meta's own SDK; neither of those is a licence.
 
-Ways out. None is chosen here: the decision is the developer's.
-1. **Get a licence stated.** Ask the maintainer (the repository above; `@pmndrs/uikit`, which is MIT, names Bela Bohlender as its author) or the IWSDK team to declare one. Enough: a licence file in the repository, a `license` field in a new npm release, or a written statement we can keep. The answer is not in our hands.
-2. **Show that the code is not in the build.** Not possible today: the search above finds it. This way opens only if way 3 works.
-3. **Build without it.** The IWSDK feature that uses the package is `world.features.spatialUI` in `iwsdk.config.json` (on, kit "horizon"). The app does not use that feature. Not known: whether turning it off takes the code out, because three other IWSDK files import the package directly. It needs a trial build and the same search of `dist/`. Not tried in this check.
-
-Saying so in the submission text is not a fourth way out: the code would still have no licence, and C3 would stay unticked. Whether to submit like that is the developer's call.
+Ways out, as listed before T-171: (1) get a licence stated by the maintainer or the IWSDK team: not needed now, still welcome; (2) show that the code is not in the build: done, by (3) build without it: done, as above. Re-open this section if any `dist/` file again holds the package's text (check-dist says so), or if a feature that needs UIKitML panels is ever wanted.
 
 ---
 
@@ -54,14 +56,14 @@ Saying so in the submission text is not a fourth way out: the code would still h
 |---|---|---|---|---|---|
 | @iwsdk/core (Immersive Web SDK) | 1.0.1 | MIT — https://github.com/facebook/immersive-web-sdk | WebXR framework (ECS, XR session, input, scene). With `three`, the only package our code imports | yes: its messages are in `RenderSystems-*.js` and `world-initializer-*.js` | T-101 |
 | three (npm alias of `super-three`) | 0.181.0 | MIT — https://threejs.org/ | 3D rendering; the `super-three` fork is what IWSDK requires | yes: "THREE.WebGLRenderer" in `pinch-*.js` (a shared chunk); a second copy, with its MIT notice, is inside the locomotion worker (the 199 kB `worker-*.js`) | T-101 |
-| @pmndrs/uikit | 1.0.76 | MIT, from its LICENSE file (© 2024 Bela Bohlender; © 2023 Coconut Capital); `package.json` says "SEE LICENSE IN LICENSE" — https://github.com/pmndrs/uikit | IWSDK's panel toolkit. **Our code does not use it:** nothing in `src/` or `proto/*/src` imports it, and the settings panel and the captions are drawn on a canvas by our own code (`src/ui/PanelSystem.ts`, `src/ui/Captions.ts`). It comes in through `@iwsdk/core` and `@drawcall/uikitml` | yes: "Only pmndrs/uikit components can be added as children" in `RenderSystems-*.js` | T-101 (declared by the scaffold) |
-| @pmndrs/uikit-horizon | 1.0.76 | MIT, from its LICENSE file (© 2024 Bela Bohlender; © 2025 Meta Platforms LLC); `package.json` says "SEE LICENSE IN LICENSE" | panel widgets in the "horizon" style. Not used by our code; comes in through `@drawcall/uikitml` | yes: "the Avatar component can not have any children" in `RenderSystems-*.js` | T-101 (declared by the scaffold) |
-| @pmndrs/uikit-lucide | 1.0.76 | MIT, from its LICENSE file (© 2024 Bela Bohlender; © 2023 Coconut Capital); `package.json` says "SEE LICENSE IN LICENSE". The icon shapes are the Lucide set (ISC, by the Lucide project); the package does not carry that text, so this part is not verified from the installed files | icons for the panel toolkit. Not used or shown by our code; comes in through `@pmndrs/uikit-horizon` and `@drawcall/uikitml` | yes: the word "lucide" is in `RenderSystems-*.js` 3,189 times; the icon set is built in | T-101 (declared by the scaffold) |
+| @pmndrs/uikit | 1.0.76 | MIT, from its LICENSE file (© 2024 Bela Bohlender; © 2023 Coconut Capital); `package.json` says "SEE LICENSE IN LICENSE" — https://github.com/pmndrs/uikit | IWSDK's panel toolkit. **Our code does not use it:** nothing in `src/` or `proto/*/src` imports it, and the settings panel and the captions are drawn on a canvas by our own code (`src/ui/PanelSystem.ts`, `src/ui/Captions.ts`). It comes in through `@iwsdk/core`, which imports it statically | yes: "Only pmndrs/uikit components can be added as children" in `RenderSystems-*.js` (re-checked after T-171) | T-101 (declared by the scaffold) |
+| @pmndrs/uikit-horizon | 1.0.76 | MIT, from its LICENSE file (© 2024 Bela Bohlender; © 2025 Meta Platforms LLC); `package.json` says "SEE LICENSE IN LICENSE" | panel widgets in the "horizon" style. Not used by our code; comes in through `@drawcall/uikitml` | **no since T-171**: only the stubbed `@drawcall/uikitml` loaded it. "the Avatar component can not have any children" and "uikit-horizon" are in no built file | T-101 (declared by the scaffold) |
+| @pmndrs/uikit-lucide | 1.0.76 | MIT, from its LICENSE file (© 2024 Bela Bohlender; © 2023 Coconut Capital); `package.json` says "SEE LICENSE IN LICENSE". The icon shapes are the Lucide set (ISC, by the Lucide project); the package does not carry that text, so this part is not verified from the installed files | icons for the panel toolkit. Not used or shown by our code; comes in through `@pmndrs/uikit-horizon` and `@drawcall/uikitml` | **no since T-171** (3,189 mentions of "lucide" before): the word "lucide" is in no built file | T-101 (declared by the scaffold) |
 
 **1.2 Pulled in by those five (60).** Version and licence are from each package's own `package.json`.
 | Package | Version | License | Comes in through | In the build |
 |---|---|---|---|---|
-| @drawcall/uikitml | 0.1.8 | **FLAG: none declared** (§0) | @iwsdk/core (exact version) | **yes** (§0) |
+| @drawcall/uikitml | 0.1.8 | **FLAG: none declared** (§0) | @iwsdk/core (exact version) | **no since T-171**: `vite.config.ts` swaps it for `build/stubs/uikitml.js` (§0). "uikitml" is left only in IWSDK's own code and the stub's message |
 | @iwsdk/xr-input | 1.0.1 | MIT | @iwsdk/core | yes: "SimpleBatchedMesh: Maximum geometry count reached" in `RenderSystems-*.js` |
 | @iwsdk/locomotor | 1.0.1 | MIT | @iwsdk/core | yes: its worker is the 199 kB `worker-*.js`. Locomotion is off in `iwsdk.config.json`; the build still writes the file |
 | @iwsdk/scene-composition | 1.0.1 | MIT | @iwsdk/core | yes: "Canonical JSON input must be finite JSON data" in `RenderSystems-*.js` |
@@ -83,13 +85,13 @@ Saying so in the submission text is not a fourth way out: the code would still h
 | @tweenjs/tween.js | 23.1.3 | MIT | @types/three | name not found in dist |
 | fflate | 0.8.3 | MIT | @types/three | name not found in dist (`three` carries its own copy: see the note below) |
 | meshoptimizer | 0.22.0 | MIT | @types/three | no: name found, code not. "meshopt" in `RenderSystems-*.js` is the name of a glTF extension in three's loader; nothing loads this package |
-| @pmndrs/msdfonts | 1.0.76 | **FLAG: OFL-1.1** for 16 font families and Apache-2.0 for Roboto, from its LICENSE file; `package.json` says "SEE LICENSE IN LICENSE". OFL-1.1 is allowed by the policy line above | @pmndrs/uikit, @drawcall/uikitml | no: the IWSDK build plugin swaps all 17 fonts for a stub (`_virtual_iwsdk-disabled-bundled-fonts-*.js`). No font picture or font file is in dist |
+| @pmndrs/msdfonts | 1.0.76 | **FLAG: OFL-1.1** for 16 font families and Apache-2.0 for Roboto, from its LICENSE file; `package.json` says "SEE LICENSE IN LICENSE". OFL-1.1 is allowed by the policy line above | @pmndrs/uikit, @drawcall/uikitml | no: before T-171 the IWSDK build plugin swapped all 17 fonts for a stub (`_virtual_iwsdk-disabled-bundled-fonts-*.js`); since T-171 nothing built in imports them, and that file is gone too. No font picture or font file is in dist |
 | @pmndrs/uikit-pub-sub | 1.0.76 | MIT | @pmndrs/uikit | yes (by import): the toolkit's property class is built on it |
-| @zappar/msdf-generator | 1.2.4 | MIT. Its LICENSE file also lists Skia PathOps (BSD-3-Clause), msdfgen (MIT) and stb_truetype (MIT or public domain) | @pmndrs/uikit | yes: `msdf-worker-*.js` (with a WebAssembly binary), the 42 kB `worker-*.js` and one 7 kB `index-*.js`. These are separate files that load only if the panel toolkit asks for them |
-| comlink | 4.4.2 | Apache-2.0 | @zappar/msdf-generator | yes: "Comlink.proxy" in the same three files |
+| @zappar/msdf-generator | 1.2.4 | MIT. Its LICENSE file also lists Skia PathOps (BSD-3-Clause), msdfgen (MIT) and stb_truetype (MIT or public domain) | @pmndrs/uikit | yes, one file since T-171: the 42 kB `worker-*.js` (its worker source and the msdfgen loader, "createMSDFGenModule"). The build writes it, but no built file names it, so nothing loads it. Gone since T-171: `msdf-worker-*.js` (with its WebAssembly binary) and the 7 kB `index-*.js` |
+| comlink | 4.4.2 | Apache-2.0 | @zappar/msdf-generator | **no since T-171** ("Comlink.proxy" is in no built file): only its name is left, in an `import … from "comlink"` line at the top of that unused worker file |
 | yoga-layout | 3.2.1 | MIT (`package.json`; the package has no licence file) | @pmndrs/uikit | yes: its WebAssembly binary is inside `RenderSystems-*.js` (same first bytes as the package's file) |
-| zod | 4.6.5 | MIT | @pmndrs/uikit, @pmndrs/uikit-horizon, @drawcall/uikitml | yes: "ZodError" in `RenderSystems-*.js` |
-| entities | 6.0.1 | BSD-2-Clause | @drawcall/uikitml | yes: `missingSemicolonAfterCharacterReference` in `RenderSystems-*.js` |
+| zod | 4.6.5 | MIT | @pmndrs/uikit, @pmndrs/uikit-horizon, @drawcall/uikitml | **no since T-171**: "ZodError", "$ZodError" and `new Function` are in no built file |
+| entities | 6.0.1 | BSD-2-Clause | @drawcall/uikitml | **no since T-171**: `missingSemicolonAfterCharacterReference` is in no built file (the word "entities" is, as a common word) |
 | @sentry/node | 10.76.2 | MIT | @drawcall/uikitml | **no.** Re-checked 2026-10-13 on both builds: no file of `dist/` contains "sentry". It is an error-reporting package. Only the command `uikitml feedback` loads it (`feedback.js`), and the package's entry point does not load that file. It cannot send anything from the app: its code is not there |
 | @sentry/conventions | 0.16.0 | MIT | @sentry/node | name not found in dist |
 | @sentry/core | 10.76.2 | MIT | @sentry/node | name not found in dist |
@@ -125,25 +127,40 @@ Saying so in the submission text is not a fourth way out: the code would still h
 Notes to the table:
 - **Note A.** `debug`, `ms`, `moo` and `ret` are common words, so a name search proves nothing. They are counted as not built in because the only code that loads them is not: `debug` and `ms` come only through `@sentry/node`, `ret` only through `nearley`, and no file of `@drawcall/uikitml` 0.1.8 imports `moo` or `nearley`, although its `package.json` lists both.
 - **Not in the tree.** `npm ls` on this Mac also prints `@img/sharp-wasm32` 0.35.4 (**FLAG:** "Apache-2.0 AND LGPL-3.0-or-later AND MIT"), `@emnapi/runtime` 1.11.3 (MIT) and `tslib` 2.8.1 (0BSD) as "extraneous". They belong to `sharp`, a build-time picture tool (§2). None of the three names is in dist.
-- **Inside `three`.** The `three` package carries other people's libraries in `examples/jsm/libs`. The loaders that IWSDK uses import three of them: `zstddec` (its WebAssembly binary is in `RenderSystems-*.js`: same first bytes), `ktx-parse`, and `fflate` 0.8.2 (MIT, from its header). The `zstddec` and `ktx-parse` files state no licence. **Not verified:** their licences have to be read from their own projects.
+- **Inside `three`.** The `three` package carries other people's libraries in `examples/jsm/libs`. The loaders that IWSDK uses import three of them: `zstddec` (its WebAssembly binary is in `RenderSystems-*.js`: same first bytes), `ktx-parse`, and `fflate` 0.8.2 (MIT, from its header). The `zstddec` and `ktx-parse` files state no licence, and no package of either is installed: their rows and licences are in the table below.
+
+**Code that `three` carries inside itself** (in the build; not npm packages of the tree, so not counted in the 65). Re-checked after T-171. Upstream texts read 2026-10-13 through GitHub's licence API; each committed text is byte-for-byte that file.
+| Library | License | Text from | In the build |
+|---|---|---|---|
+| zstddec (`examples/jsm/libs/zstddec.module.js`) | MIT, © 2020 Don McCurdy | `LICENSES/zstddec.txt`: the `LICENSE` of `donmccurdy/zstddec` (now redirects to `donmccurdy/zstddec-wasm`), branch `main`, blob 20f1e36. The file also carries Zstandard's BSD licence | yes: "ZSTDDecoder" and its WebAssembly binary (same first bytes as three's file) in `RenderSystems-*.js` |
+| Zstandard (inside zstddec's WebAssembly binary) | BSD-3-Clause, © Meta Platforms. zstd is offered under BSD or GPLv2 (its `COPYING`); we use it under BSD | `LICENSES/zstd.txt`: the `LICENSE` of `facebook/zstd`, branch `dev`, blob 7580028 | yes: compiled into that binary |
+| ktx-parse (`examples/jsm/libs/ktx-parse.module.js`) | MIT, © 2020 Don McCurdy | `LICENSES/ktx-parse.txt`: the `LICENSE` of `donmccurdy/KTX-Parse`, branch `main`, blob 36d06b1 | yes: "Missing KTX 2.0 identifier." in `RenderSystems-*.js` |
+| fflate 0.8.2 (`examples/jsm/libs/fflate.module.js`) | MIT (its header) | `fflate.txt`, copied at build time from the installed `fflate` 0.8.3 (same author) | yes: "invalid zip data" in `RenderSystems-*.js` |
+
+Not checked: which zstd and which KTX-Parse versions three r181 carries. The texts are today's upstream ones.
 - Six packages say "SEE LICENSE IN LICENSE" in `package.json`. Each file was read: five are MIT, one is the font package.
 
-**1.3 Licence texts kept in `LICENSES/`.** MIT, BSD and Apache-2.0 all ask that the notice travels with every copy.
-| Text | State |
-|---|---|
-| `LICENSES/IWSDK-MIT.txt` | present. The same text as the LICENSE file of @iwsdk/core, @iwsdk/xr-input, @iwsdk/locomotor and @iwsdk/scene-composition (compared 2026-10-13). It also covers the scaffold-derived source (§3) |
-| three (MIT, © 2010-2025 three.js authors) | **missing** (declared dependency) |
-| @pmndrs/uikit, @pmndrs/uikit-horizon, @pmndrs/uikit-lucide (MIT; three different sets of copyright lines) | **missing** (declared dependencies). For the icons, also the Lucide project's ISC text, which the package does not carry |
-| elics, three-mesh-bvh, @preact/signals-core, @pmndrs/handle, @pmndrs/pointer-events, @pmndrs/uikit-pub-sub, zod (MIT) | **missing** (pulled in; code in the build) |
-| @zappar/msdf-generator (MIT, with the Skia PathOps, msdfgen and stb_truetype notices in the same file) | **missing** (pulled in; code in the build) |
-| comlink (Apache-2.0), entities (BSD-2-Clause) | **missing** (pulled in; code in the build) |
-| yoga-layout (MIT) | **missing**, and the package has no licence file: the text has to come from its source repository |
-| @drawcall/uikitml | no text exists (§0) |
+**1.3 Licence texts in the built site: `dist/LICENSES/` (since T-171).** MIT, BSD and Apache-2.0 all ask that the notice travels with every copy, and the build removes licence comments. The site publishes the texts at `<site>/LICENSES/`.
 
-`LICENSES/` is also not part of the built site: nothing copies it into `dist/`, and the build removes licence comments (a search of `dist/` for "@license", "copyright" or "SPDX" finds lines in 2 of its 18 script files). So the published app carries no licence texts today.
+How: the `licenseTexts` plugin in `vite.config.ts` writes, at each build, (a) the own licence file of every package in its `SHIPPED_PACKAGES` list, read from `node_modules`, and (b) every `.txt` committed in `LICENSES/`. Copied, not committed, so each text is always the one of the installed version, and a package with no licence file stops the build. Committed only where no package file exists. Each text is named after its package (`@scope/name` → `scope-name.txt`). **The list cannot drift unnoticed:** the build stops when a package (the folder after the last `node_modules/` of a module id) has code in a chunk and no text of that name. Worker bundles are built apart and not seen by that check (today they hold `@iwsdk/locomotor`, `three` and `three-mesh-bvh`, all listed). Code that a package carries inside itself counts as that package (zstddec counts as `three`), so such libraries are listed by hand, in the table above. `scripts/check-dist.mjs` fails a build with no `dist/LICENSES/*.txt`.
+| File in `dist/LICENSES/` | From | Covers |
+|---|---|---|
+| `iwsdk-core.txt`, `iwsdk-xr-input.txt`, `iwsdk-locomotor.txt`, `iwsdk-scene-composition.txt` | each package's LICENSE (MIT, © Meta Platforms) | the four IWSDK runtime packages |
+| `iwsdk-vite-plugin-dev.txt` | its LICENSE (MIT, © Meta Platforms) | the stand-in it writes for the left-out physics engine (`physics-runtime-*.js`, §2) |
+| `three.txt` | its LICENSE (MIT, © 2010-2025 three.js authors) | three |
+| `fflate.txt` | the installed `fflate` 0.8.3's LICENSE (MIT, Arjun Barrett) | three's built-in copy of fflate 0.8.2 (note "Inside `three`") |
+| `three-mesh-bvh.txt`, `elics.txt`, `preact-signals-core.txt` | each package's LICENSE (MIT) | those packages |
+| `pmndrs-uikit.txt`, `pmndrs-uikit-pub-sub.txt`, `pmndrs-handle.txt`, `pmndrs-pointer-events.txt` | each package's LICENSE (MIT) | those packages |
+| `zappar-msdf-generator.txt` | its LICENSE (MIT, with the Skia PathOps, msdfgen and stb_truetype notices) | its unused worker file |
+| `vite.txt` | its LICENSE.md (MIT; the file also lists the licences of Vite's own Node-side bundles, which do not ship) | Vite's module-preload polyfill and chunk preload helper (§2) |
+| `IWSDK-MIT.txt` | committed in `LICENSES/` (the same text as @iwsdk/core's LICENSE, compared 2026-10-13) | the scaffold-derived source (§3) |
+| `zstddec.txt`, `ktx-parse.txt`, `zstd.txt` | committed in `LICENSES/` (T-171 review), from the upstream repositories (note "Inside `three`") | three's built-in copies of zstddec (with its WebAssembly binary, built from Zstandard) and ktx-parse |
+| `yoga-layout.txt` | committed in `LICENSES/` (T-171). The package has no licence file; its `package.json` says MIT and its source files say "Copyright (c) Meta Platforms, Inc. and affiliates … licensed under the MIT license", so the text is the MIT text with that line (the same as `IWSDK-MIT.txt`). **Not compared** with the LICENSE of the yoga repository | yoga-layout |
+
+Not shipped, and why: `@pmndrs/uikit-horizon`, `@pmndrs/uikit-lucide` (and Lucide's ISC text), `zod`, `comlink`, `entities`: their code left the build with T-171. `@drawcall/uikitml`: no text exists, and its code is not built in (§0).
 
 ## 2. Build/dev dependencies (not shipped)
-Not re-checked on 2026-10-13.
+Not re-checked on 2026-10-13, except: two of these tools write a little code of their own into the build, and their licence texts ship (§1.3; checked in T-171). `vite`: the module-preload polyfill (`modulepreload-polyfill-*.js`) and the chunk preload helper (`__vite__mapDeps`, `vite:preloadError`). `@iwsdk/vite-plugin-dev`: the stand-in for the left-out physics engine ("Physics was excluded from this production build" in `physics-runtime-*.js`). No esbuild helper (`__defProp`, `__publicField`, `__toESM`) is in the build.
 | Package | Version | License |
 |---|---|---|
 | @iwsdk/cli · @iwsdk/vite-plugin-dev · @iwsdk/reference | 1.0.1 | MIT |
@@ -175,13 +192,13 @@ No picture, sound, font, model or video file is in the repository (checked 2026-
 | App icon / Devpost gallery images | none exist yet; to be captures of the app | entrant-built | original | submission |
 | `public/scenes/main.iwsdk.scene.json` | scene file (JSON, 14 lines); the only file in `public/`; copied as it is to `dist/scenes/` | the IWSDK project scaffold (commit 541235b, T-101). T-111 (28ddf1e) removed the scaffold's four sample nodes; what is left is the scaffold's own text | MIT, as the headers of the scaffold's source files state (text in `LICENSES/IWSDK-MIT.txt`); the scene file itself carries no notice | named by `iwsdk.config.json` as the scene. It holds: the format name `iwsdk.scene.v1`, the unit (metres), one component, `IBLGradient` (three colours and a strength for the ambient light), no resources and no nodes |
 | Scaffold-derived source code | code | the IWSDK project scaffold (commit 541235b, T-101) | MIT, © Meta Platforms, Inc. and affiliates (text in `LICENSES/IWSDK-MIT.txt`) | `vite.config.ts` (most of the scaffold's settings are still there), `src/assets.ts` and `src/components.ts` (the scaffold's two-line shape; the contents are ours). `src/index.ts` carries the same header but has held no scaffold code since T-128a (3a10e13); the scaffold's one call, `World.create`, is now in `src/app.ts`, which has no header. **Open:** all four headers say "the LICENSE file in the root directory", and no such file exists. The same commit added files with no header (`index.html`, `iwsdk.config.json`, `tsconfig.json`, `src/vite-env.d.ts`, the `iwsdk-*` guides under `.claude/`); which of their lines are the scaffold's was not traced |
-| IWSDK default hand and controller models (`cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0`) | glTF | immersive-web/webxr-input-profiles, `packages/assets` | MIT per that package's `LICENSE.md`; not shipped, not fetched | **nowhere** (closed in T-111, 2026-10-10). @iwsdk/xr-input 1.0.1 fetched one of these whenever a hand or controller joined a session; `src/app.ts` makes the SDK create no input model, so nothing is requested. `tests/e2e/01-enter-xr.spec.ts` fails on any request or WebSocket off localhost, with hands and with controllers (emulator evidence only). The URL is still a string inside the SDK code in `dist/` (`RenderSystems-*.js`, seen 2026-10-13), next to two other SDK defaults that nothing in the app triggers: `unpkg.com/three@0.181.0` (Draco/KTX2 decoders, only for a compressed glTF) and `api.dicebear.com` (UIKit `Avatar` default picture). Check again before G1 if a glTF file or a UIKit avatar is ever added |
+| IWSDK default hand and controller models (`cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0`) | glTF | immersive-web/webxr-input-profiles, `packages/assets` | MIT per that package's `LICENSE.md`; not shipped, not fetched | **nowhere** (closed in T-111, 2026-10-10). @iwsdk/xr-input 1.0.1 fetched one of these whenever a hand or controller joined a session; `src/app.ts` makes the SDK create no input model, so nothing is requested. `tests/e2e/01-enter-xr.spec.ts` fails on any request or WebSocket off localhost, with hands and with controllers (emulator evidence only). The URL is still a string inside the SDK code in `dist/` (`RenderSystems-*.js`, seen 2026-10-13), next to another SDK default that nothing in the app triggers: `unpkg.com/three@0.181.0` (Draco/KTX2 decoders, only for a compressed glTF). A third, `api.dicebear.com` (UIKit `Avatar` default picture), left the build with `@pmndrs/uikit-horizon` in T-171. Check again before G1 if a glTF file is ever added |
 | Mulberry32 PRNG (algorithm by Tommy Ettinger) | code, about 10 lines | public snippet | CC0 1.0: the header of the author's gist `mulberry32.c` ("Written in 2017 by Tommy Ettinger") dedicates it to the public domain worldwide and cites creativecommons.org/publicdomain/zero/1.0; re-read 2026-10-13 at gist.github.com/tommyettinger/46a874533244883189143505d203312c | shipped in the app: written out in `src/audio/Reverb.ts` and `src/audio/karplus.ts` (noise for the echo and the plucked strings, since T-121 and T-143). Shipped in a test page: `proto/pinch/src/trials.ts` (built to `dist/proto/pinch/`). Tests only: `tests/unit/audio/prng.ts` (the reference) and one test in `tests/unit/garden/rules.test.ts`. `three` has its own copy (`MathUtils.seededRandom`), under three's MIT licence |
 
 ## 4. Verification checklist (before submission)
-- [ ] §0 is closed
+- [x] §0 is closed (T-171; `scripts/check-dist.mjs` re-checks it on every build)
 - [ ] `npm ls --omit=dev --all` matches §1 (65 packages). The check is by hand: `scripts/licenses.mjs`, which this line used to name, does not exist
-- [ ] Every text listed as missing in §1.3 is in `LICENSES/`, and the built site carries them
+- [x] The built site carries a licence text for every "yes" row of §1, and for the libraries inside three (`dist/LICENSES/`, §1.3; T-171). The build stops if a package with code in a chunk has none
 - [ ] The four scaffold headers point at a file that exists (§3)
 - [ ] No file in `public/` or `src/` originates from a third party without a row above
 - [ ] Video contains only app footage, team VO, and app audio

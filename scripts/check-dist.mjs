@@ -4,6 +4,8 @@
 //    it is never requested. A string this script has not seen before fails the check.
 // 2. Every HTML page under dist/ must carry exactly EXPECTED_POLICY, the Content Security Policy that
 //    vite.config.ts adds, and must hold no inline script, event handler or style element (the policy blocks them).
+// 3. Licences (T-171, THIRD_PARTY_LICENSES.md): dist/LICENSES/ holds licence texts, and no file holds the code of
+//    @drawcall/uikitml, which has no licence (vite.config.ts swaps it for build/stubs/uikitml.js).
 // shortcut: a host joined from pieces inside SDK code shows only as its fixed head (down to a bare "https://"),
 // upgrade if the policy ever allows a remote host; until then the browser blocks the request itself.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -21,6 +23,13 @@ const CSP_META = /<meta http-equiv="Content-Security-Policy" content="([^"]*)"/;
 const EXPECTED_POLICY =
   "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' data:; style-src-attr 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'";
 
+const LICENSE_TEXT = /^LICENSES[/\\][^/\\]+\.txt$/; // a text the licenseTexts plugin in vite.config.ts writes
+// shortcut: two messages of @drawcall/uikitml 0.1.8 (parse.js, css.js), re-read them if IWSDK pins another version.
+const UNLICENSED_CODE = [
+  'UIKitML requires exactly one root component.',
+  'Expected a stylesheet selector before declaration block.',
+];
+
 const allowed = JSON.parse(readFileSync(ALLOWLIST, 'utf8'));
 const files = readdirSync(DIST, { recursive: true, encoding: 'utf8' }).filter((f) =>
   statSync(DIST + f).isFile(),
@@ -31,11 +40,14 @@ let pages = 0;
 
 for (const file of files) {
   const text = readFileSync(DIST + file, 'latin1'); // every file, binary ones too: URLs are ASCII
-  for (const [url] of text.matchAll(REMOTE_URL)) {
+  // A licence text is plain text that no page loads: its URLs are never requested.
+  for (const [url] of LICENSE_TEXT.test(file) ? [] : text.matchAll(REMOTE_URL)) {
     const entry = seen.get(url) ?? seen.set(url, { count: 0, files: new Set() }).get(url);
     entry.count += 1;
     entry.files.add(file);
   }
+  for (const marker of UNLICENSED_CODE)
+    if (text.includes(marker)) failures.push(`${file}: code of @drawcall/uikitml (no licence): "${marker}"`);
   if (!file.endsWith('.html')) continue;
   pages += 1;
   const policy = CSP_META.exec(text)?.[1].replaceAll('&#39;', "'"); // Vite writes ' as &#39;
@@ -48,8 +60,13 @@ for (const file of files) {
     failures.push(`${file}: inline <style> element, which the policy blocks: move it into a .css file`);
 }
 if (pages === 0) failures.push('no HTML page in dist/, so no policy was checked: run `npm run build` first');
+const licenses = files.filter((f) => LICENSE_TEXT.test(f)).length;
+if (licenses === 0)
+  failures.push('no licence text in dist/LICENSES/: the licenseTexts plugin in vite.config.ts writes them');
 
-console.log(`check-dist: ${files.length} files (${pages} HTML), ${seen.size} distinct remote URL strings`);
+console.log(
+  `check-dist: ${files.length} files (${pages} HTML, ${licenses} licence texts), ${seen.size} distinct remote URL strings`,
+);
 for (const [url, { count, files: where }] of [...seen].sort()) {
   const reason = allowed[url];
   console.log(

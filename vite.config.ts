@@ -5,7 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { iwsdkDev } from '@iwsdk/vite-plugin-dev';
 import { defineConfig, type Plugin } from 'vite';
@@ -52,31 +54,96 @@ const contentSecurityPolicy: Plugin = {
   ],
 };
 
+// Licence texts in the built site (T-171; THIRD_PARTY_LICENSES.md §1.3): MIT, BSD and Apache-2.0 want the notice
+// with every copy, and the minifier strips licence comments. dist/LICENSES/ gets the texts committed in LICENSES/
+// (the scaffold-derived code; yoga-layout, whose package has no licence file) and, read from node_modules at build
+// time, the own licence file of every package below. The list is §1's "in the build: yes" rows: keep them equal.
+// The build stops if a package has code in a chunk and no <name>.txt here; scripts/check-dist.mjs fails a build
+// without dist/LICENSES/.
+const ROOT = fileURLToPath(new URL('./', import.meta.url));
+const SHIPPED_PACKAGES = [
+  '@iwsdk/core',
+  '@iwsdk/xr-input',
+  '@iwsdk/locomotor',
+  '@iwsdk/scene-composition',
+  '@iwsdk/vite-plugin-dev', // its stand-in for the physics engine that the build leaves out
+  'three',
+  'fflate', // three's own copy (examples/jsm/libs, 0.8.2) is built in; the text is the installed 0.8.3's
+  'three-mesh-bvh',
+  'elics',
+  '@preact/signals-core',
+  '@pmndrs/uikit',
+  '@pmndrs/uikit-pub-sub',
+  '@pmndrs/handle',
+  '@pmndrs/pointer-events',
+  '@zappar/msdf-generator', // its font worker is written to dist/ (nothing loads it)
+  'vite', // the module-preload polyfill and the chunk preload helper
+];
+
+/** Where a package is installed, looked up as Node does: node_modules/<name> here or in a parent folder. */
+function packageDir(name: string): string {
+  for (let dir = ROOT; dir !== dirname(dir); dir = dirname(dir)) {
+    if (existsSync(join(dir, 'node_modules', name, 'package.json'))) return join(dir, 'node_modules', name);
+  }
+  throw new Error(`licence texts: ${name} is not installed`);
+}
+
+const textFile = (name: string): string => `${name.replace('@', '').replace('/', '-')}.txt`;
+const PACKAGE_OF = /.*node_modules\/((?:@[^/]+\/)?[^/]+)/; // the package after the last node_modules/ of a module id
+
+const licenseTexts: Plugin = {
+  name: 'roomsong-license-texts',
+  apply: 'build',
+  generateBundle(_options, bundle) {
+    const texts = readdirSync(join(ROOT, 'LICENSES'))
+      .filter((file) => file.endsWith('.txt'))
+      .map((file): [string, string] => [file, join(ROOT, 'LICENSES', file)]);
+    for (const name of SHIPPED_PACKAGES) {
+      const dir = packageDir(name);
+      const file = readdirSync(dir).find((f) => /^licen[cs]e/i.test(f));
+      if (file === undefined)
+        throw new Error(`licence texts: ${name} has no licence file (THIRD_PARTY_LICENSES.md)`);
+      texts.push([textFile(name), join(dir, file)]);
+    }
+    // Every package with code in a chunk has its text. shortcut: worker bundles are built apart and not seen here
+    // (today they hold @iwsdk/locomotor, three and three-mesh-bvh, all listed), upgrade if a worker brings another.
+    const have = new Set(texts.map(([file]) => file));
+    for (const chunk of Object.values(bundle)) {
+      for (const [id, { renderedLength }] of chunk.type === 'chunk' ? Object.entries(chunk.modules) : []) {
+        const name = renderedLength > 0 ? PACKAGE_OF.exec(id)?.[1] : undefined;
+        if (name !== undefined && !have.has(textFile(name)))
+          this.error(
+            `licence texts: ${name} has code in ${chunk.fileName} and no text: add it to SHIPPED_PACKAGES, or ` +
+              `commit LICENSES/${textFile(name)} if the package has no licence file (THIRD_PARTY_LICENSES.md)`,
+          );
+      }
+    }
+    for (const [file, path] of texts)
+      this.emitFile({ type: 'asset', fileName: `LICENSES/${file}`, source: readFileSync(path) });
+  },
+};
+
 export default defineConfig({
-  plugins: [iwsdkDev(), contentSecurityPolicy],
+  plugins: [iwsdkDev(), contentSecurityPolicy, licenseTexts],
   server: { host: '0.0.0.0', port: 8081, open: false },
   build: {
     outDir: 'dist',
     sourcemap: process.env.NODE_ENV !== 'production',
     target: 'esnext',
-    rollupOptions: {
-      input: ['./index.html', ...PROTO_PAGES],
-      // zod (inside IWSDK) tests for eval with `new Function('')` when its first schema is built; the policy
-      // blocks and reports that test. `jitless` is zod's switch for strict policies, and zod reads its config
-      // from this global (zod/v4/core/core.js), so it is set before any bundled module runs.
-      output: { intro: '(globalThis.__zod_globalConfig ??= {}).jitless = true;' },
-    },
+    rollupOptions: { input: ['./index.html', ...PROTO_PAGES] },
   },
   esbuild: { target: 'esnext' },
-  // @drawcall/uikitml otherwise pulls a second three/@pmndrs/uikit graph
-  // (three@0.185 vs app super-three@0.181). Duplicate Component classes break
-  // instanceof checks → "Only pmndrs/uikit components can be added as children".
   resolve: {
-    dedupe: ['three', '@pmndrs/uikit', '@pmndrs/uikit-horizon', '@pmndrs/uikit-lucide'],
+    // @drawcall/uikitml has no licence, and @iwsdk/core imports it statically even with spatialUI off: a stub that
+    // throws stands in for it, in dev and in the build (T-171; why and which names: the stub's header).
+    alias: { '@drawcall/uikitml': fileURLToPath(new URL('./build/stubs/uikitml.js', import.meta.url)) },
+    // One copy of each: duplicate Component classes break instanceof checks ("Only pmndrs/uikit components can be
+    // added as children").
+    dedupe: ['three', '@pmndrs/uikit'],
   },
   optimizeDeps: {
     exclude: ['@babylonjs/havok'],
-    include: ['three', '@pmndrs/uikit', '@pmndrs/uikit-horizon', '@pmndrs/uikit-lucide', '@drawcall/uikitml'],
+    include: ['three', '@pmndrs/uikit'],
     esbuildOptions: { target: 'esnext' },
   },
   publicDir: 'public',
