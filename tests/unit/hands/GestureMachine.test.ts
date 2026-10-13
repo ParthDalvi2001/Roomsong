@@ -1,11 +1,16 @@
-// TC-HND-01 (the two-signal rule), TC-HND-04 (the subset without T-146: plant, press, commit on release),
+// TC-HND-01 (the two-signal rule), TC-HND-04 (plant, press, pull, drag, the dominant axis, commit on release),
 // TC-HND-05 (release.cell is the hovered cell), TC-HND-07 (tracking loss), TC-HND-08 (the hover and its dead band)
 // and TC-HND-03 (palm up through the machine). Synthetic HandFrames, garden's own bedZone and snapToCell, and a
-// counted clock: no XR, no timers.
+// counted clock: no XR, no timers. What the garden does with a release (TC-HND-06) is in shaping.test.ts.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { bus } from '../../../src/core/index.js';
-import { HOVER_DEAD_BAND_M, PALM_UP_HOLD_MS, TRACKING_GRACE_MS } from '../../../src/hands/config.js';
+import {
+  DRAG_DEAD_ZONE_M,
+  HOVER_DEAD_BAND_M,
+  PALM_UP_HOLD_MS,
+  TRACKING_GRACE_MS,
+} from '../../../src/hands/config.js';
 import { GestureMachine } from '../../../src/hands/GestureMachine.js';
 import { createHandFrame } from '../../../src/hands/InputSource.js';
 
@@ -13,8 +18,8 @@ import { heapCost, PROBE_BYTES } from './heapCost.js';
 
 import type { EventMap, Hand, Vec3 } from '../../../src/core/index.js';
 import type { Cell } from '../../../src/garden/index.js';
-import type { GestureContext, GesturePayload } from '../../../src/hands/GestureMachine.js';
-import type { PickCandidate } from '../../../src/hands/TargetPicker.js';
+import type { GestureContext, GesturePayload, HeldGesture } from '../../../src/hands/GestureMachine.js';
+import type { PickCandidate, TargetRef } from '../../../src/hands/TargetPicker.js';
 
 const FRAME_MS = 14;
 const EMITTED = ['gesture:palmUp', 'gesture:pinchStart', 'gesture:release'] as const;
@@ -41,15 +46,22 @@ type Heard = {
   [K in (typeof HEARD)[number]]: { name: K } & Omit<EventMap[K], 'type'>;
 }[(typeof HEARD)[number]];
 
+// The previews of a held plant (T-146), kept apart for the same reason: `seen` stays the list of what commits.
+const SHOWN = ['gesture:pull', 'gesture:drag'] as const;
+type Shown = GesturePayload<(typeof SHOWN)[number]>;
+
 let seen: Emitted[];
 let heard: Heard[];
+let shown: Shown[];
 let unsubscribe: (() => void)[];
 beforeEach(() => {
   seen = [];
   heard = [];
+  shown = [];
   // The machine reuses its payload objects, so each one is copied as it arrives.
   unsubscribe = [
     ...EMITTED.map((type) => bus.on(type, (payload) => seen.push(structuredClone(payload)))),
+    ...SHOWN.map((type) => bus.on(type, (payload) => shown.push(structuredClone(payload)))),
     ...HEARD.map((name) =>
       bus.on(name, (payload) => {
         const copy = structuredClone(payload) as Record<string, unknown>;
@@ -63,8 +75,13 @@ afterEach(() => unsubscribe.forEach((off) => off()));
 
 /** One machine, one hand, the scene above, and a clock that advances 14 ms per sample. */
 function rig(hand: Hand = 'right') {
-  // Garden's state, as far as hands sees it: which cell is free, and which cells it was asked about.
-  const garden = { free: 'same' as Cell | null | 'same', asked: [] as Cell[] };
+  // Garden's state, as far as hands sees it: which cell is free, which cells it was asked about, and for each
+  // of those asks the plant whose own cell was to count as free.
+  const garden = {
+    free: 'same' as Cell | null | 'same',
+    asked: [] as Cell[],
+    ignored: [] as (string | undefined)[],
+  };
   const candidates: PickCandidate[] = [
     { target: { ...SEED }, radius: 0.04, pos: SEED_AT },
     { target: { ...PLANT }, radius: 0.04, pos: PLANT_AT },
@@ -73,8 +90,9 @@ function rig(hand: Hand = 'right') {
   const context: GestureContext = {
     candidates,
     bedPose: BED,
-    nearestFreeCell(cell) {
+    nearestFreeCell(cell, ignorePlantId) {
       garden.asked.push(cell);
+      garden.ignored.push(ignorePlantId);
       return garden.free === 'same' ? cell : garden.free;
     },
   };
@@ -120,6 +138,16 @@ const onRing2 = (rad: number): Vec3 => ({
 const BORDER_RAD = Math.PI / 16;
 /** Radians along ring 2 for a length of arc in metres. */
 const arc = (metres: number): number => metres / 0.21;
+/** `from` moved by `by`, in metres. */
+const moved = (from: Vec3, by: Partial<Vec3>): Vec3 => ({
+  x: from.x + (by.x ?? 0),
+  y: from.y + (by.y ?? 0),
+  z: from.z + (by.z ?? 0),
+});
+/** A travel in metres, to ten decimal places: the sums behind it are not exact. */
+const near = (metres: number): number => expect.closeTo(metres, 10) as number;
+const UP_5CM = moved(PLANT_AT, { y: 0.05 });
+const ALONG_5CM = moved(PLANT_AT, { x: 0.05 }); // 0.25 m from the bed centre: ring 3, step 0
 
 describe('GestureMachine: which signal a pinch uses (TC-HND-01)', () => {
   it('a seed starts and ends on select, whatever the joint distance does meanwhile', () => {
@@ -159,7 +187,7 @@ describe('GestureMachine: which signal a pinch uses (TC-HND-01)', () => {
     expect(last()).toEqual({
       type: 'gesture:release',
       hand: 'right',
-      gesture: 'none', // v1: pull and drag are T-146
+      gesture: 'none', // the hand never left the dead zone
       target: PLANT,
       pos: PLANT_AT,
       zone: 'bed',
@@ -343,20 +371,372 @@ describe('GestureMachine: carry, plant and press (TC-HND-04 subset, TC-HND-05)',
   });
 });
 
+describe('GestureMachine: pull and drag (TC-HND-04, FR-HND-08/10/11)', () => {
+  /** Pinches the plant, moves the hand to each point in turn, and lets go at the last one. */
+  function shapeTo(points: Vec3[], r = rig()) {
+    r.step({ at: PLANT_AT });
+    r.step({ pinch: true });
+    for (const at of points) r.step({ at });
+    r.step({ pinch: false });
+    return r;
+  }
+  // A second plant at coordinates a double holds exactly, and travel of 1/32 m (3.1 cm): a tie that is a tie.
+  const EXACT_AT: Vec3 = { x: 0.25, y: 0.75, z: -0.5 };
+  const EXACT = { kind: 'plant', id: 'exact' } as const;
+  const STEP = 1 / 32;
+  const LESS = STEP - 1 / 1024;
+  /** Pinches that plant, moves the hand by `by` in one sample and lets go; `bedPose`: another bed than the flat one. */
+  function exact(by: Partial<Vec3>, bedPose?: number[]) {
+    const r = rig();
+    if (bedPose) r.context.bedPose = bedPose;
+    r.candidates.push({ target: { ...EXACT }, radius: 0.04, pos: EXACT_AT });
+    r.step({ at: EXACT_AT });
+    r.step({ pinch: true });
+    r.step({ at: moved(EXACT_AT, by) });
+    r.step({ pinch: false });
+    return last();
+  }
+
+  it('inside the 2 cm dead zone nothing reacts: no preview, and the release is the none it was', () => {
+    expect(DRAG_DEAD_ZONE_M).toBe(0.02);
+    const inside: Partial<Vec3>[] = [
+      { y: 0.0199 },
+      { y: -0.0199 },
+      { x: 0.0199 },
+      { z: 0.0199 },
+      { x: 0.014, y: 0.014 }, // 1.98 cm on the diagonal
+    ];
+    for (const by of inside) {
+      shapeTo([moved(PLANT_AT, by)]);
+      expect(last(), JSON.stringify(by)).toMatchObject({
+        gesture: 'none',
+        target: PLANT,
+        cell: null,
+        dy: null,
+      });
+    }
+    expect(shown).toEqual([]);
+    expect(hovers().every((hover) => hover.cell === null)).toBe(true);
+  });
+
+  it('the first sample outside it decides, by the larger part of the travel: up or down a pull, level a drag', () => {
+    const outside: [Partial<Vec3>, HeldGesture][] = [
+      [{ y: 0.0201 }, 'pull'],
+      [{ y: -0.0201 }, 'pull'],
+      [{ x: 0.0201 }, 'drag'],
+      [{ z: -0.0201 }, 'drag'],
+      [{ x: 0.0142, y: 0.0145 }, 'pull'], // 2.03 cm on the diagonal, a little more up than along
+      [{ x: 0.0145, y: 0.0142 }, 'drag'],
+      // The level part is both level axes together: 1.2 cm each is 1.7 cm, more than the 1.65 cm of rise.
+      [{ x: 0.012, y: 0.0165, z: 0.012 }, 'drag'],
+    ];
+    for (const [by, gesture] of outside) {
+      shapeTo([moved(PLANT_AT, by)]);
+      expect(last(), JSON.stringify(by)).toMatchObject({ gesture, target: PLANT });
+    }
+  });
+
+  it('only a plant is pulled or dragged: a pinch on nothing that travels is still the none it was', () => {
+    const { step } = rig();
+    step({ at: NOWHERE });
+    step({ select: true, pinch: true }); // on nothing: held on select (the wake pinch, the level-3 confirm)
+    step({ at: moved(NOWHERE, { y: 0.1 }) });
+    step({ at: moved(NOWHERE, { x: 0.1, y: 0.1 }) });
+    step({ select: false, pinch: false });
+    expect(last()).toMatchObject({ gesture: 'none', target: null, cell: null, dy: null });
+    expect(shown).toEqual([]);
+  });
+
+  it('a tie is a pull, the gesture that cannot remove a plant', () => {
+    expect(exact({ x: STEP, y: STEP })).toMatchObject({ gesture: 'pull', target: EXACT, dy: STEP });
+    expect(exact({ x: STEP, y: -STEP })).toMatchObject({ gesture: 'pull', dy: -STEP });
+    expect(exact({ x: STEP, y: LESS })).toMatchObject({ gesture: 'drag', dy: null });
+  });
+
+  it('a bed that is not level: the pull is measured along its own up, and the tie rule still holds', () => {
+    // A restored anchor can give such a pose. A quarter turn about z keeps the numbers exact: this bed's up is
+    // the world's +x, so rising in the world is level travel for it.
+    const QUARTER = [0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1];
+    expect(exact({ x: STEP }, QUARTER)).toMatchObject({ gesture: 'pull', dy: STEP });
+    expect(exact({ y: STEP }, QUARTER)).toMatchObject({ gesture: 'drag', dy: null });
+    expect(exact({ x: STEP, y: STEP }, QUARTER)).toMatchObject({ gesture: 'pull', dy: STEP }); // the tie
+    expect(exact({ x: LESS, y: STEP }, QUARTER)).toMatchObject({ gesture: 'drag' });
+    // And one a table could have: tipped 10 degrees toward the user, 5 cm straight up is 4.92 cm along its up.
+    const [c, s] = [Math.cos(Math.PI / 18), Math.sin(Math.PI / 18)];
+    const TIPPED = [1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0.74, -0.45, 1];
+    expect(exact({ y: 0.05 }, TIPPED)).toMatchObject({ gesture: 'pull', dy: near(0.05 * c) });
+  });
+
+  it('the choice is latched until the release: a pull never becomes a drag, nor a drag a pull', () => {
+    const rise = moved(PLANT_AT, { y: 0.03 });
+    const pulled = shapeTo([rise, moved(PLANT_AT, { x: 0.05, y: 0.03 })]); // drifts over the next ring
+    expect(last()).toMatchObject({ gesture: 'pull', zone: 'bed', cell: null, dy: near(0.03) });
+    expect(pulled.garden.asked).toEqual([]); // a pull never asks for a cell: it cannot move the plant
+    shapeTo([rise, { ...OFF_BED, y: 0.79 }]); // and drifts off the bed: still no removal
+    expect(last()).toMatchObject({ gesture: 'pull', zone: 'outer', cell: null });
+
+    shapeTo([ALONG_5CM, moved(ALONG_5CM, { y: 0.1 })]); // a drag that rises 10 cm
+    expect(last()).toMatchObject({ gesture: 'drag', zone: 'bed', cell: { ring: 3, step: 0 }, dy: null });
+  });
+
+  it('a pull is previewed once per tracked sample from the one that decided, and commits on the release only', () => {
+    const r = rig();
+    r.step({ at: PLANT_AT });
+    r.step({ pinch: true });
+    r.step({ at: moved(PLANT_AT, { y: 0.01 }) });
+    expect(shown).toEqual([]);
+    r.step({ at: moved(PLANT_AT, { y: 0.03 }) }); // the sample that decides
+    r.step({ at: UP_5CM });
+    r.step(); // a hand at rest: still one per sample
+    r.step({ tracked: false }); // frozen: none
+    r.step({ tracked: true });
+    const pull = (dy: number) => ({
+      type: 'gesture:pull',
+      hand: 'right',
+      target: PLANT,
+      dy: near(dy),
+    });
+    expect(shown).toEqual([pull(0.03), pull(0.05), pull(0.05), pull(0.05)]);
+    expect(types()).toEqual(['gesture:pinchStart']); // previews only (FR-HND-16)
+    r.step({ pinch: false });
+    expect(shown).toHaveLength(4); // the sample of the release is the release
+    expect(last()).toEqual({
+      type: 'gesture:release',
+      hand: 'right',
+      gesture: 'pull',
+      target: PLANT,
+      pos: UP_5CM,
+      zone: 'bed',
+      cell: null, // always: a pull never moves a plant
+      dy: near(0.05), // the travel since the pinch began, never null
+    });
+    shapeTo([moved(PLANT_AT, { y: -0.05 })]);
+    expect(last()).toMatchObject({ gesture: 'pull', dy: near(-0.05) });
+  });
+
+  it('a drag is previewed the same way, with where the hand is and the zone it is over', () => {
+    const r = rig();
+    r.step({ at: PLANT_AT });
+    r.step({ pinch: true });
+    for (const at of [ALONG_5CM, OFF_BED, IN_HOLE]) r.step({ at });
+    const drag = (pos: Vec3, zone: string) => ({
+      type: 'gesture:drag',
+      hand: 'right',
+      target: PLANT,
+      pos,
+      zone,
+    });
+    expect(shown).toEqual([drag(ALONG_5CM, 'bed'), drag(OFF_BED, 'outer'), drag(IN_HOLE, 'inner')]);
+    expect(types()).toEqual(['gesture:pinchStart']);
+  });
+
+  it('reuses its preview payloads, as it does the others', () => {
+    const kept: unknown[] = [];
+    const off = SHOWN.map((type) => bus.on(type, (payload) => kept.push(payload)));
+    shapeTo([UP_5CM, UP_5CM]);
+    shapeTo([ALONG_5CM, ALONG_5CM]);
+    off.forEach((stop) => stop());
+    expect(kept).toHaveLength(4);
+    expect(kept[0]).toBe(kept[1]);
+    expect(kept[2]).toBe(kept[3]);
+  });
+
+  it('a drag released over the bed, beyond it and in the hole: the three zones at their boundaries', () => {
+    shapeTo([ALONG_5CM]);
+    expect(last()).toEqual({
+      type: 'gesture:release',
+      hand: 'right',
+      gesture: 'drag',
+      target: PLANT,
+      pos: ALONG_5CM,
+      zone: 'bed',
+      cell: { ring: 3, step: 0 },
+      dy: null,
+    });
+    // Metres from the bed centre, to the right: the bed zone is 0.09 to 0.35 m (FR-HND-10/11).
+    const edges: [number, string, Cell | null][] = [
+      [0.349, 'bed', { ring: 4, step: 0 }],
+      [0.351, 'outer', null], // removed by garden
+      [0.091, 'bed', { ring: 0, step: 0 }],
+      [0.089, 'inner', null], // nothing: the plant stays where it was
+    ];
+    for (const [radius, zone, cell] of edges) {
+      shapeTo([{ x: radius, y: 0.76, z: -0.45 }]);
+      expect(last(), String(radius)).toMatchObject({ gesture: 'drag', target: PLANT, zone, cell });
+    }
+  });
+
+  it('a dragged plant hovers the cell a release would fill, and its own cell counts as free', () => {
+    const r = rig();
+    r.step({ at: PLANT_AT });
+    r.step({ pinch: true });
+    expect(lastHover()).toMatchObject({ target: PLANT, cell: null });
+    r.step({ at: ALONG_5CM });
+    expect(lastHover()).toEqual({
+      name: 'target:hover',
+      hand: 'right',
+      target: null,
+      cell: { ring: 3, step: 0 },
+    });
+    r.step({ at: moved(PLANT_AT, { x: 0.021 }) }); // back over the cell it stands on
+    expect(lastHover()).toMatchObject({ target: null, cell: SNAPPED });
+    expect(r.garden.ignored).toEqual([PLANT.id, PLANT.id]); // garden is told whose cell to leave out
+    r.garden.free = { ring: 1, step: 0 }; // the other hand planted there meanwhile
+    r.step();
+    expect(lastHover()).toMatchObject({ cell: { ring: 1, step: 0 } });
+    r.step({ pinch: false });
+    expect(last()).toMatchObject({ gesture: 'drag', zone: 'bed', cell: { ring: 1, step: 0 } });
+    expect(lastHover()).toMatchObject({ cell: { ring: 1, step: 0 } }); // the release commits what was shown
+  });
+
+  it('a carried seed leaves no cell out', () => {
+    const r = rig();
+    r.step({ at: SEED_AT });
+    r.step({ select: true });
+    r.step({ at: ON_BED });
+    expect(r.garden.ignored).toEqual([undefined]);
+  });
+
+  it('a drag over a bed with no free cell, or with no bed, has no cell: nothing can commit', () => {
+    const full = rig();
+    full.garden.free = null; // the dragged plant was taken out by something else and its cell filled
+    shapeTo([ALONG_5CM], full);
+    expect(last()).toMatchObject({ gesture: 'drag', target: PLANT, zone: 'bed', cell: null });
+
+    const noBed = rig();
+    noBed.context.bedPose = null;
+    shapeTo([ALONG_5CM], noBed);
+    expect(last()).toMatchObject({ gesture: 'drag', zone: 'inner', cell: null });
+    expect(noBed.garden.asked).toEqual([]);
+    shapeTo([UP_5CM], noBed); // with no bed a pull is measured against the world's up
+    expect(last()).toMatchObject({ gesture: 'pull', zone: 'inner', dy: near(0.05) });
+  });
+
+  it('between two cells the cue of a dragged plant does not flicker, and the release commits the hovered one', () => {
+    const r = rig();
+    r.step({ at: PLANT_AT });
+    r.step({ pinch: true });
+    r.step({ at: onRing2(BORDER_RAD - arc(0.003)) }); // 3.9 cm along the ring: a drag, on the side of step 0
+    expect(lastHover()).toMatchObject({ cell: { ring: 2, step: 0 } });
+    const before = hovers().length;
+    for (let i = 0; i < 50; i++) r.step({ at: onRing2(BORDER_RAD + (i % 2 ? -1 : 1) * arc(0.001)) }); // jitter
+    expect(hovers()).toHaveLength(before);
+    const past = onRing2(BORDER_RAD + arc(0.001)); // a fresh snap here is step 1
+    r.step({ at: past });
+    r.step({ pinch: false });
+    expect(last()).toMatchObject({ gesture: 'drag', zone: 'bed', cell: { ring: 2, step: 0 }, pos: past });
+
+    r.step({ at: PLANT_AT });
+    r.step({ pinch: true });
+    r.step({ at: onRing2(BORDER_RAD - arc(0.003)) });
+    r.step({ at: onRing2(BORDER_RAD + arc(0.004)) }); // 4 mm past: its centre is 8 mm nearer than step 0's
+    expect(lastHover()).toMatchObject({ cell: { ring: 2, step: 1 } });
+    r.step({ at: onRing2(BORDER_RAD), pinch: false }); // back on the border: the memory is now step 1
+    expect(last()).toMatchObject({ gesture: 'drag', cell: { ring: 2, step: 1 } });
+  });
+
+  it('a pinched or pulled plant stays the hover however far the hand goes, and whatever comes nearer', () => {
+    const { step } = rig();
+    step({ at: PLANT_AT });
+    step({ pinch: true });
+    step({ at: moved(PLANT_AT, { y: 0.2 }) }); // 20 cm up: far outside its 4.5 cm
+    step({ at: ORB_AT }); // and then right onto another target
+    expect(hovers()).toEqual([{ name: 'target:hover', hand: 'right', target: PLANT, cell: null }]);
+    step({ pinch: false });
+    expect(last()).toMatchObject({ gesture: 'pull', target: PLANT });
+    step(); // the hand is empty again: now it hovers what a pinch would act on
+    expect(lastHover()).toMatchObject({ target: ORB, cell: null });
+  });
+
+  // The sample on which the pinch opens is not measured (T-146 review): what commits is what was shown.
+  it('a pinch that leaves the dead zone only on the sample where it opens is released as none', () => {
+    // A plant on ring 4, at 0.30 m: 7 cm further out is the zone that removes.
+    const r = rig();
+    const ring4: Vec3 = { x: 0.3, y: 0.76, z: -0.45 };
+    r.candidates.push({ target: { kind: 'plant', id: 'rim' }, radius: 0.04, pos: ring4 });
+    r.step({ at: ring4 });
+    r.step({ pinch: true });
+    r.step({ tracked: false }); // lost under the grace, and back 7 cm out with the fingers open
+    r.step({ tracked: true, pinch: false, at: moved(ring4, { x: 0.07 }), afterMs: 100 });
+    expect(last()).toMatchObject({ gesture: 'none', target: { kind: 'plant', id: 'rim' }, zone: 'outer' });
+    expect(last()).toMatchObject({ cell: null, dy: null });
+    expect(hovers().every((hover) => hover.target?.id === 'rim')).toBe(true); // never a cleared cue
+    // A tap whose opening throws the pinch point 3 cm up: no pull nobody made.
+    r.step({ at: PLANT_AT });
+    r.step({ pinch: true });
+    r.step({ pinch: false, at: moved(PLANT_AT, { y: 0.03 }) });
+    expect(last()).toMatchObject({ gesture: 'none', target: PLANT, dy: null });
+    expect(shown).toEqual([]);
+  });
+
+  it('a pull commits the travel of its last preview, not where the opening hand went', () => {
+    const r = rig();
+    r.step({ at: PLANT_AT });
+    r.step({ pinch: true });
+    r.step({ at: moved(PLANT_AT, { y: 0.1 }) });
+    expect(shown[shown.length - 1]).toMatchObject({ type: 'gesture:pull', dy: near(0.1) });
+    r.step({ pinch: false, at: moved(PLANT_AT, { y: 0.115 }) });
+    expect(last()).toMatchObject({ gesture: 'pull', target: PLANT, cell: null, dy: near(0.1) });
+  });
+
+  it('a drag commits the cell and zone hovered on the sample where it opens, as the hover showed', () => {
+    const r = rig();
+    r.step({ at: PLANT_AT });
+    r.step({ pinch: true });
+    r.step({ at: ALONG_5CM }); // ring 3
+    r.step({ pinch: false, at: { x: 0.3, y: 0.76, z: -0.45 } }); // ring 4 on the sample it opens
+    expect(lastHover()).toMatchObject({ target: null, cell: { ring: 4, step: 0 } });
+    expect(last()).toMatchObject({ gesture: 'drag', zone: 'bed', cell: { ring: 4, step: 0 }, dy: null });
+  });
+
+  it('the session ends mid-drag: reverted once, the hover cleared, no release, and the next session is clean', () => {
+    const { step, machine } = rig();
+    step({ at: PLANT_AT });
+    step({ pinch: true });
+    step({ at: ALONG_5CM });
+    heard.length = 0;
+    shown.length = 0;
+    machine.reset();
+    expect(heard).toEqual([
+      { name: 'gesture:trackingLost', hand: 'right' },
+      { name: 'target:hover', hand: 'right', target: null, cell: null },
+    ]);
+    step({ pinch: false, at: NOWHERE }); // the next session: the hand is open and somewhere else
+    step({ at: PLANT_AT });
+    step({ pinch: true });
+    step({ at: moved(PLANT_AT, { y: 0.019 }) }); // measured from this pinch, not from the old one
+    step({ pinch: false });
+    expect(shown).toEqual([]);
+    expect(types()).toEqual(['gesture:pinchStart', 'gesture:pinchStart', 'gesture:release']);
+    expect(last()).toMatchObject({ gesture: 'none', target: PLANT });
+  });
+});
+
 describe('GestureMachine: tracking loss (TC-HND-07, FR-HND-15)', () => {
-  // Each held state the machine has: where the pinch starts, the signal it rides on, and what its release is.
-  const HELD = [
+  // Each held state the machine has: where the pinch starts, the signal it rides on, where the hand goes next
+  // (a pull and a drag need the travel that decides them), and what its release is.
+  const HELD: readonly {
+    name: string;
+    at: Vec3;
+    signal: 'select' | 'pinch';
+    then?: Vec3;
+    held: TargetRef | null;
+    gesture: HeldGesture;
+  }[] = [
     { name: 'CARRYING', at: SEED_AT, signal: 'select', held: SEED, gesture: 'carry' },
     { name: 'PINCHED (a plant)', at: PLANT_AT, signal: 'pinch', held: PLANT, gesture: 'none' },
+    { name: 'PULLING', at: PLANT_AT, signal: 'pinch', then: UP_5CM, held: PLANT, gesture: 'pull' },
+    { name: 'DRAGGING', at: PLANT_AT, signal: 'pinch', then: ALONG_5CM, held: PLANT, gesture: 'drag' },
     { name: 'PRESSED', at: ORB_AT, signal: 'select', held: ORB, gesture: 'press' },
     { name: 'PINCHED (nothing)', at: NOWHERE, signal: 'select', held: null, gesture: 'none' },
-  ] as const;
+  ];
 
-  for (const { name, at, signal, held, gesture } of HELD) {
+  for (const { name, at, signal, then, held, gesture } of HELD) {
     it(`${name}: lost for 199 ms the gesture goes on; hands:lost at once and hands:found, once each`, () => {
       const { step } = rig();
       step({ at });
       step({ [signal]: true });
+      if (then) step({ at: then });
       step({ tracked: false });
       expect(heard.filter((event) => event.name !== 'target:hover')).toEqual([
         { name: 'hands:lost', hand: 'right', held }, // at the first untracked sample, before any grace
@@ -373,6 +753,7 @@ describe('GestureMachine: tracking loss (TC-HND-07, FR-HND-15)', () => {
       const { step } = rig();
       step({ at });
       step({ [signal]: true });
+      if (then) step({ at: then });
       step({ tracked: false });
       for (let i = 0; i < 9; i++) step({ afterMs: 20 });
       expect(names()).not.toContain('gesture:trackingLost');
@@ -389,10 +770,63 @@ describe('GestureMachine: tracking loss (TC-HND-07, FR-HND-15)', () => {
         'gesture:trackingLost',
         'hands:found',
       ]);
-      step({ [signal]: true }); // idle again: a new closing is a new pinch
+      step({ [signal]: true, at }); // idle again: a new closing, where the first one was, is a new pinch
       expect(types()).toEqual(['gesture:pinchStart', 'gesture:pinchStart']);
     });
   }
+
+  it('a held plant is frozen while its hand is away, and goes on with its latched choice from the new sample', () => {
+    const pull = rig();
+    pull.step({ at: PLANT_AT });
+    pull.step({ pinch: true });
+    pull.step({ at: UP_5CM });
+    for (let i = 0; i < 10; i++) pull.step({ tracked: false }); // 140 ms
+    expect(shown).toHaveLength(1); // no preview while it is away
+    pull.step({ tracked: true, at: moved(PLANT_AT, { x: 0.1, y: 0.08 }) }); // back, further up and well aside
+    expect(shown[1]).toMatchObject({ type: 'gesture:pull', dy: near(0.08) });
+    pull.step({ pinch: false });
+    expect(last()).toMatchObject({ gesture: 'pull', cell: null, dy: near(0.08) });
+
+    const drag = rig();
+    drag.step({ at: PLANT_AT });
+    drag.step({ pinch: true });
+    drag.step({ at: ALONG_5CM });
+    const before = hovers().length;
+    drag.garden.free = { ring: 4, step: 0 }; // the hovered cell fills while the hand is away: not looked at
+    for (let i = 0; i < 10; i++) drag.step({ tracked: false });
+    expect(hovers()).toHaveLength(before);
+    drag.step({ tracked: true }); // back: garden is asked again
+    expect(lastHover()).toMatchObject({ target: null, cell: { ring: 4, step: 0 } });
+    drag.step({ pinch: false });
+    expect(last()).toMatchObject({ gesture: 'drag', zone: 'bed', cell: { ring: 4, step: 0 } });
+  });
+
+  it('a pinch that left the dead zone while the hand was away is decided at the first sample it is back', () => {
+    const { step } = rig();
+    step({ at: PLANT_AT });
+    step({ pinch: true });
+    step({ tracked: false });
+    step({ tracked: true, at: ALONG_5CM, afterMs: 100 });
+    expect(shown).toMatchObject([{ type: 'gesture:drag', zone: 'bed' }]);
+    expect(lastHover()).toMatchObject({ target: null, cell: { ring: 3, step: 0 } });
+  });
+
+  it('a drag whose grace runs out: its hover is cleared after gesture:trackingLost, and its previews stop', () => {
+    const { step } = rig();
+    step({ at: PLANT_AT });
+    step({ pinch: true });
+    step({ at: ALONG_5CM });
+    step({ tracked: false });
+    step({ afterMs: TRACKING_GRACE_MS });
+    expect(heard.slice(-2)).toEqual([
+      { name: 'gesture:trackingLost', hand: 'right' },
+      { name: 'target:hover', hand: 'right', target: null, cell: null },
+    ]);
+    step({ tracked: true, at: OFF_BED }); // back, the pinch still closed, over the zone that removes
+    step({ pinch: false });
+    expect(shown).toHaveLength(1);
+    expect(types()).toEqual(['gesture:pinchStart']); // no release: the plant ends where it was (NFR-REL-02)
+  });
 
   it('an empty hand that is lost emits hands:lost and hands:found, and no gesture:trackingLost', () => {
     const { step } = rig('left');
@@ -653,11 +1087,11 @@ describe('GestureMachine: the hover (TC-HND-08, TC-HND-05, FR-HND-16)', () => {
     expect(HOVER_DEAD_BAND_M).toBe(0.005);
   });
 
-  it('a held plant hovers no cell: its release commits none until the drag exists (T-146)', () => {
+  it('a pinched plant hovers no cell before it is dragged: inside the dead zone it is its own hover', () => {
     const { step } = rig();
     step({ at: PLANT_AT });
     step({ pinch: true });
-    step({ at: ON_BED });
+    step({ at: moved(PLANT_AT, { x: 0.019 }) });
     expect(hovers()).toEqual([{ name: 'target:hover', hand: 'right', target: PLANT, cell: null }]);
   });
 });
@@ -846,4 +1280,6 @@ describe('GestureMachine: no allocation per frame', () => {
       released: 0, // the reverted carry ends with no release
     });
   }, 30_000);
+  // The paths of T-146 (the dead zone, a pull, a drag, their previews) are measured in
+  // GestureMachine.heap.test.ts: in this file they cannot be, and that file says why.
 });

@@ -59,8 +59,9 @@ export class HandSystem extends createSystem({
   private readonly context: GestureContext & { candidates: PickCandidate[] } = {
     candidates: this.candidates,
     bedPose: null,
-    // With no garden yet every cell is free.
-    nearestFreeCell: (cell) => (this.garden === null ? cell : nearestFreeCell(this.garden, cell)),
+    // With no garden yet every cell is free. A dragged plant's own cell counts as free (FR-HND-10).
+    nearestFreeCell: (cell, ignorePlantId) =>
+      this.garden === null ? cell : nearestFreeCell(this.garden, cell, ignorePlantId),
   };
 
   override init(): void {

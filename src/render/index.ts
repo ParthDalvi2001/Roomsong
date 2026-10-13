@@ -7,6 +7,7 @@ export { FlashGuard } from './FlashGuard.js';
 export { BedRenderer } from './BedRenderer.js';
 export { PlantRenderer } from './PlantRenderer.js';
 export { TideRenderer } from './TideRenderer.js';
+export { PetalRenderer } from './PetalRenderer.js';
 export { createPerfHud, PerfSampler } from './PerfHud.js';
 export type { PerfHud } from './PerfHud.js';
 // The module's ECS systems (LLD §3.2): the one file of render/ that imports @iwsdk/core.

@@ -112,3 +112,14 @@ export const PLANT_OUTLINE_FULL = 0.75;
 
 /** Radians per step: step s sits at angle s * STEP_RAD from +x toward +z (D-029). */
 export const STEP_RAD = (2 * Math.PI) / STEPS;
+
+/** UX §9.3, FR-MUS-12: the undo petal waits this far above the removed plant's own cell; it is drawn this wide
+ *  when the plant goes and this wide when its 5 s are over, shrinking in a straight line; and it fades out over
+ *  its last 300 ms, its one luminance change. Its brightness until then is a plant's at rest. */
+export const PETAL_LIFT_M = 0.03;
+export const PETAL_START_DIAMETER_M = 0.025;
+export const PETAL_END_DIAMETER_M = 0.01;
+export const PETAL_FADE_MS = 300;
+/** Chosen in T-146: a petal is an oval this much narrower than it is long, with this many edges. */
+export const PETAL_ASPECT = 0.6;
+export const PETAL_SEGMENTS = 12;

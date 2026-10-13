@@ -6,11 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import manifest from '../../../src/components.js';
 import { BedAnchor, Caption, Interactable } from '../../../src/core/components.js';
 import { bus, clock } from '../../../src/core/index.js';
+import { cellCentre } from '../../../src/garden/index.js';
 import { HAND_HINT_KEY, HAND_HINT_MAX_MS, HIT_RADIUS_M } from '../../../src/hands/config.js';
 import { GestureMachine } from '../../../src/hands/GestureMachine.js';
 import { HandState } from '../../../src/hands/HandState.js';
 import { HandSystem } from '../../../src/hands/HandSystem.js';
-import { garden, plant } from '../garden/fixtures.js';
+import { fullBedExcept, garden, plant } from '../garden/fixtures.js';
 
 import { heapCost, PROBE_BYTES } from './heapCost.js';
 
@@ -312,6 +313,7 @@ describe('HandSystem: one frame', () => {
     const free = r.context().nearestFreeCell(cell);
     expect(free).not.toBeNull();
     expect(free).not.toEqual(cell); // taken now: a neighbour
+    expect(r.context().nearestFreeCell(cell, 'a')).toEqual(cell); // for the plant that stands there it is free
     bus.emit('garden:changed', { state: garden(), diff });
     expect(r.context().nearestFreeCell(cell)).toEqual(cell);
     r.stop();
@@ -408,6 +410,31 @@ describe('HandSystem: the session', () => {
     r.hands.right.select = false;
     r.frame();
     expect(r.heard).toEqual(['hands:lost right', 'gesture:trackingLost right']);
+    r.stop();
+  });
+
+  it('a session that ends mid-drag: the dragged plant is reverted once, and nothing is released (T-146)', () => {
+    const r = rig();
+    const plantAt: Vec3 = { x: 0.25, y: 0.75, z: -0.5 };
+    r.targets.add(interactable('plant', 'p1', 0.04, plantAt));
+    r.hands.right.at = plantAt;
+    r.frame();
+    r.hands.right.pinch = true; // the joint distance: a plant is held on it
+    r.frame();
+    r.hands.right.at = { x: 0.125, y: 0.75, z: -0.5 }; // 12.5 cm toward the centre: a drag, over ring 0
+    const hovers: unknown[] = [];
+    const off = bus.on('target:hover', (event) => hovers.push({ ...event }));
+    r.frame();
+    bus.emit('xr:sessionEnd', { visible: false });
+    off();
+    expect(r.heard).toEqual(['gesture:trackingLost right']); // tracked all along: no hands:lost, no release
+    expect(hovers).toEqual([
+      { hand: 'right', target: null, cell: { ring: 0, step: 15 } }, // the cell a release would have filled
+      { hand: 'right', target: null, cell: null }, // cleared with the revert
+    ]);
+    r.hands.right.pinch = false;
+    r.frame(1000);
+    expect(r.heard).toEqual(['gesture:trackingLost right']);
     r.stop();
   });
 });
@@ -527,6 +554,81 @@ describe('HandSystem: no allocation per frame', () => {
     // It did the work: both hands' states were written on the last frame, with all 80 targets in the list.
     expect(r.entityOf('left').data.get(HandState)).toMatchObject({ tracked: true });
     expect(r.entityOf('right').data.get(HandState)).toMatchObject({ tracked: true });
+    expect(r.targets.entities.size).toBe(80);
+  }, 60_000);
+
+  it('update creates nothing while a plant is dragged over 80 targets and its hovered cell changes every frame', () => {
+    const ROUNDS = 50_000;
+    const r = rig();
+    vi.restoreAllMocks(); // as above: plain functions take the spies' place
+    clock.setSource(() => nowMs);
+    // The garden: every cell taken but ring 3, step 5. Its plants' targets stand where the wiring puts them, at
+    // their cell centres (API_SPEC §1.10 rule 7); with the orb that is 80 targets.
+    r.targets.remove(r.seed);
+    const plants = fullBedExcept([3 * 16 + 5]);
+    const worldOf = (cell: Cell, upM: number): Vec3 => {
+      const centre = cellCentre(cell, { x: 0, y: 0 });
+      return { x: centre.x, y: 0.74 + upM, z: -0.45 + centre.y };
+    };
+    for (const each of plants) r.targets.add(interactable('plant', each.id, 0.04, worldOf(each.cell, 0)));
+    bus.emit('garden:changed', { state: garden(plants), diff: { added: [], removed: [], changed: [] } });
+    // The right hand pinches the plant on ring 2, step 0 (p32) and drags it between two points: over the free
+    // cell, and over the taken cell beside its own, where garden's search answers with its own. So the hover
+    // changes on every frame, with a search behind every other one. The points exist before the loop and are
+    // at fractions; the frame is pointed at one of them (a fraction written into it here would be boxed here).
+    const onPlant = worldOf({ ring: 2, step: 0 }, 0.0003);
+    const dragged = [worldOf({ ring: 3, step: 5 }, 0.0131), worldOf({ ring: 2, step: 1 }, 0.0127)];
+    let phase: 'on' | 'pinched' | 'dragging' = 'on';
+    let samples = 0;
+    const { sampler } = r.system;
+    sampler.setFrame = () => {};
+    sampler.sample = (hand, _timeMs, out) => {
+      out.tracked = true;
+      out.hand = hand;
+      if (hand === 'left') return; // an empty hand, somewhere else
+      out.pinch = phase !== 'on';
+      out.pinchPos = phase === 'dragging' ? dragged[++samples & 1]! : onPlant;
+    };
+    const TIMES: unknown[] = [null]; // real-size frame times that exist before the loops, as in the test above
+    for (let i = 1; i <= 7 * ROUNDS + 2; i++) TIMES.push((FRAME_START_MS + i * 13.889) / 1000);
+    const count = { drags: 0, cells: 0, ended: 0 };
+    const off = [
+      bus.on('gesture:drag', (event) => {
+        if (event.zone === 'bed') count.drags++;
+      }),
+      bus.on('target:hover', (event) => {
+        if (event.hand === 'right' && event.cell !== null) count.cells++;
+      }),
+      bus.on('gesture:release', () => {
+        count.ended++;
+      }),
+      bus.on('gesture:trackingLost', () => {
+        count.ended++;
+      }),
+    ];
+    let frames = 0;
+    const next = (): void => r.system.update(0.014, TIMES[++frames] as number);
+    next();
+    phase = 'pinched';
+    next();
+    phase = 'dragging';
+    const round = (): void => {
+      for (let i = 0; i < ROUNDS; i++) next();
+    };
+    round(); // warm up: the JIT's own allocations happen here
+    round();
+    const startedMs = performance.now();
+    const costs = Array.from({ length: 5 }, () => heapCost(round));
+    const msPerFrame = (performance.now() - startedMs) / (5 * ROUNDS);
+    off.forEach((stop) => stop());
+    r.stop();
+    const clean = costs.filter((cost) => cost.gcs === 0 && cost.grewBytes < PROBE_BYTES);
+    expect(clean.length, JSON.stringify(costs)).toBeGreaterThan(0);
+    // 0.016 ms a frame on a laptop, and 616 bytes per 50 000 frames, which is the probe's own cost (2026-10-13,
+    // stand-in entities, other agents running): the same limit as above.
+    expect(msPerFrame).toBeLessThan(0.1);
+    // It did the work: a preview and a new hovered cell on every frame, and the drag never ended.
+    expect(count).toEqual({ drags: 7 * ROUNDS, cells: 7 * ROUNDS, ended: 0 });
     expect(r.targets.entities.size).toBe(80);
   }, 60_000);
 });

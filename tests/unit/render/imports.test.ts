@@ -88,6 +88,7 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
         'FlashGuard',
         'PerfSampler',
         'PerfSystem',
+        'PetalRenderer',
         'PlantRenderer',
         'TideRenderer',
         'createPerfHud',

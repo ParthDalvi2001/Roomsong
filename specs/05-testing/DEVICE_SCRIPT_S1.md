@@ -1101,6 +1101,14 @@ Whether the time to load the page (T1) is added to these counts waits for the sa
 
 ---
 
+
+### Also, from the T-146 review (needs T-146 in the app: T-128d)
+1. Pinch a plant and hold perfectly still for 2 seconds. Nothing should stretch and no ghost cell should appear. Write down: yes or no.
+2. Pinch a plant and open your fingers at once. Its height and its place must not change. Write down: yes or no.
+3. Remove a plant, plant a seed in the same spot, then pinch the petal above it. The petal must be taken, not the new plant (they are 3 cm apart). Write down: which one was taken, three tries.
+4. Pull one plant up with one hand while you drag another with the other hand; then put both hands on the same plant. Write down anything odd.
+5. Watch the petal fade over a bright table: a fade, or a blink? Write down: fade or blink.
+
 ## Block 14 — The app: ten minutes with a full garden (30 min)
 
 **Needs: T-128d** (the garden drawn and played in the app). That the app draws and plays the plants, and that a hand's hover lights them, is **(from the plan)**; the flag and the read-out are checked against code.

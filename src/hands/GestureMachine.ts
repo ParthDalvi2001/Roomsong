@@ -1,11 +1,11 @@
-// The gesture state machine, v1 (LLD §4): what one hand's pinch starts on, and the one event that commits.
-// Built: IDLE, CARRYING (a seed), PINCHED (a plant, or nothing) and PRESSED (orb, undo petal, panel control);
-// PLANT is the release of a carried seed over the bed; the hover (FR-HND-16) and the tracking-loss grace with
-// its revert (FR-HND-15). Pull, drag and remove are T-146.
+// The gesture state machine (LLD §4): what one hand's pinch starts on, what it becomes, and the one event that
+// commits. IDLE, CARRYING (a seed), PRESSED (orb, undo petal, panel control) and PINCHED (a plant, or nothing);
+// a pinched plant becomes PULLING or DRAGGING once the hand leaves the dead zone (FR-HND-08/10). The hover
+// (FR-HND-16) and the tracking-loss grace with its revert (FR-HND-15) hold for every one of them.
 import { bus } from '../core/index.js';
 import { bedZone } from '../garden/index.js';
 
-import { TRACKING_GRACE_MS } from './config.js';
+import { DRAG_DEAD_ZONE_M, TRACKING_GRACE_MS } from './config.js';
 import { PalmUpHold } from './poses/palmUp.js';
 import { pickTarget, stickyCell, toBedLocal } from './TargetPicker.js';
 
@@ -46,11 +46,24 @@ export interface GestureContext {
   candidates: readonly PickCandidate[];
   /** The BedAnchor entity's `matrixWorld.elements` (LLD §3); null while no bed is placed. */
   bedPose: Mat4 | null;
-  /** garden's `nearestFreeCell` on the state of the latest `garden:changed`. null = the bed is full. */
-  nearestFreeCell: (cell: Cell) => Cell | null;
+  /**
+   * garden's `nearestFreeCell` on the state of the latest `garden:changed`. null = the bed is full.
+   * `ignorePlantId`: the plant that is being dragged, whose own cell counts as free.
+   */
+  nearestFreeCell: (cell: Cell, ignorePlantId?: string) => Cell | null;
 }
 
-type State = 'IDLE' | 'PRESSED' | 'PINCHED' | 'CARRYING';
+type State = 'IDLE' | 'PRESSED' | 'PINCHED' | 'PULLING' | 'DRAGGING' | 'CARRYING';
+
+/** What the release of each state is: the `gesture` column of the release table (API_SPEC §1.4). */
+const ENDS_AS: Readonly<Record<State, HeldGesture>> = {
+  IDLE: 'none',
+  PRESSED: 'press',
+  PINCHED: 'none',
+  PULLING: 'pull',
+  DRAGGING: 'drag',
+  CARRYING: 'carry',
+};
 
 function copy(out: Vec3, from: Vec3): void {
   out.x = from.x;
@@ -63,13 +76,16 @@ function isSame(a: TargetRef | null, b: TargetRef | null): boolean {
 }
 
 /**
- * One hand's gestures. Emits `gesture:palmUp`, `gesture:pinchStart`, `gesture:release`, `gesture:trackingLost`,
- * `hands:lost`, `hands:found` and `target:hover` on the bus. The payload objects are reused from one event to
- * the next (API_SPEC §1.4): a handler copies what it keeps.
+ * One hand's gestures. Emits `gesture:palmUp`, `gesture:pinchStart`, `gesture:pull`, `gesture:drag`,
+ * `gesture:release`, `gesture:trackingLost`, `hands:lost`, `hands:found` and `target:hover` on the bus. The
+ * payload objects are reused from one event to the next (API_SPEC §1.4): a handler copies what it keeps.
  */
 export class GestureMachine {
   private state: State = 'IDLE';
-  /** True: the held pinch started on `pinch` (a plant) and ends on it. False: on `select` (everything else). */
+  /**
+   * True: the held pinch started on `pinch` (a plant) and ends on it. False: on `select` (everything else).
+   * So a hand that is not idle holds a plant exactly when this is true.
+   */
   private endsOnPinch = false;
   private wasPinch = false;
   private wasSelect = false;
@@ -87,6 +103,8 @@ export class GestureMachine {
   private readonly local: Vec2 = { x: 0, y: 0 };
   private readonly palmUpEvent: GesturePayload<'gesture:palmUp'>;
   private readonly startEvent: GesturePayload<'gesture:pinchStart'>;
+  private readonly pullEvent: GesturePayload<'gesture:pull'>;
+  private readonly dragEvent: GesturePayload<'gesture:drag'>;
   private readonly releaseEvent: GesturePayload<'gesture:release'>;
   private readonly trackingLostEvent: GesturePayload<'gesture:trackingLost'>;
   private readonly lostEvent: EventMap['hands:lost'];
@@ -96,6 +114,9 @@ export class GestureMachine {
   constructor(hand: Hand) {
     this.palmUpEvent = { type: 'gesture:palmUp', hand };
     this.startEvent = { type: 'gesture:pinchStart', hand, target: null, pos: { x: 0, y: 0, z: 0 } };
+    this.pullEvent = { type: 'gesture:pull', hand, target: this.held, dy: 0 };
+    const pos = { x: 0, y: 0, z: 0 };
+    this.dragEvent = { type: 'gesture:drag', hand, target: this.held, pos, zone: 'inner' };
     this.releaseEvent = {
       type: 'gesture:release',
       hand,
@@ -114,7 +135,8 @@ export class GestureMachine {
 
   /**
    * One sample of this machine's hand; `timeMs` never goes back. Nothing starts, ends or commits on an untracked
-   * sample. On a tracked one the hover is worked out first, so a pinch starts and ends on what was shown.
+   * sample. On a tracked one a held plant's travel is read first (while the pinch is closed), then the hover is
+   * worked out, so a pinch starts and ends on what was shown; a held plant that is not released is previewed.
    */
   update(frame: HandFrame, timeMs: number, context: GestureContext): void {
     if (!frame.tracked) {
@@ -123,9 +145,12 @@ export class GestureMachine {
       return;
     }
     if (!this.wasTracked) this.find(timeMs);
+    // Not on the sample where the pinch opens: opening moves the pinch point, and what commits is what was shown.
+    if (this.state !== 'IDLE' && this.endsOnPinch && frame.pinch) this.shape(frame, context.bedPose);
     this.hover(frame, context);
     if (this.state === 'IDLE') this.idle(frame, timeMs);
     else if (!(this.endsOnPinch ? frame.pinch : frame.select)) this.release(frame, context);
+    else this.preview(frame, context.bedPose);
     this.wasPinch = frame.pinch;
     this.wasSelect = frame.select;
   }
@@ -167,7 +192,8 @@ export class GestureMachine {
 
   /**
    * FR-HND-15: the held gesture ends with no release, so nothing is committed. What reverts the preview hangs
-   * on this event: a carried seed's way back to the supply (garden), a dragged plant's glide to its cell (T-146).
+   * on this event: a carried seed's way back to the supply (garden), a dragged plant's glide to its cell and a
+   * pulled plant's way back to its height (render, T-147).
    */
   private revert(): void {
     this.state = 'IDLE';
@@ -175,20 +201,67 @@ export class GestureMachine {
     this.setHover(null, null);
   }
 
+  /**
+   * FR-HND-08/10, a held plant: its travel since the pinch began, and on the first sample outside the dead zone
+   * the larger part of that travel decides what the pinch is, for good. A tie is a pull, the one that cannot
+   * remove a plant.
+   */
+  private shape(frame: HandFrame, bedPose: Mat4 | null): void {
+    const from = this.startEvent.pos; // where the pinch began: start() wrote it, and nothing does before the next
+    const dx = frame.pinchPos.x - from.x;
+    const dy = frame.pinchPos.y - from.y;
+    const dz = frame.pinchPos.z - from.z;
+    // LLD §4: the travel is read in the bed's frame, whose up is the second column of its pose (a restored
+    // anchor may not be level). With no bed it is the world's up.
+    const up = bedPose === null ? dy : dx * bedPose[4]! + dy * bedPose[5]! + dz * bedPose[6]!;
+    this.pullEvent.dy = up; // kept in the preview's own payload: the release reads it there too
+    if (this.state !== 'PINCHED') return;
+    const travelSq = dx * dx + dy * dy + dz * dz;
+    if (travelSq < DRAG_DEAD_ZONE_M * DRAG_DEAD_ZONE_M) return;
+    this.state = up * up >= travelSq - up * up ? 'PULLING' : 'DRAGGING'; // |dy| >= |dxz|, both squared
+  }
+
   /** FR-HND-16: what a pinch, or the release of this one, would act on. */
   private hover(frame: HandFrame, context: GestureContext): void {
-    if (this.state !== 'CARRYING') {
-      // A held plant hovers no cell: its release commits none until the drag exists (T-146).
+    const state = this.state;
+    if (state !== 'CARRYING' && state !== 'DRAGGING') {
       this.snapped = null;
-      this.setHover(pickTarget(frame.pinchPos, context.candidates, this.hoverEvent.target), null);
+      // A pinched or pulled plant is its own hover wherever the hand goes: its release acts on it and on no cell.
+      const isHeldPlant = state !== 'IDLE' && this.endsOnPinch;
+      const picked = isHeldPlant
+        ? this.held
+        : pickTarget(frame.pinchPos, context.candidates, this.hoverEvent.target);
+      this.setHover(picked, null);
       return;
     }
     this.snapped =
       context.bedPose === null
         ? null
         : stickyCell(toBedLocal(context.bedPose, frame.pinchPos, this.local), this.snapped);
-    // Garden is asked on every sample: the other hand may fill the cell while this one hovers it.
-    this.setHover(null, this.snapped === null ? null : context.nearestFreeCell(this.snapped));
+    // Garden is asked on every sample: the other hand may fill the cell while this one hovers it. A dragged
+    // plant's own cell counts as free: it may be put back where it stands.
+    const dragged = state === 'DRAGGING' ? this.held.id : undefined;
+    this.setHover(null, this.snapped === null ? null : context.nearestFreeCell(this.snapped, dragged));
+  }
+
+  /** No bed placed: 'inner', the zone where a release commits nothing (API_SPEC §1.4). */
+  private zone(frame: HandFrame, bedPose: Mat4 | null): BedZone {
+    return bedPose === null ? 'inner' : bedZone(toBedLocal(bedPose, frame.pinchPos, this.local));
+  }
+
+  /**
+   * The previews of a held plant (LLD §4): one per tracked sample, from the sample that decided to the one
+   * before the release. They commit nothing (FR-HND-16).
+   */
+  private preview(frame: HandFrame, bedPose: Mat4 | null): void {
+    if (this.state === 'PULLING') {
+      bus.emit('gesture:pull', this.pullEvent); // shape() wrote its travel on this same sample
+    } else if (this.state === 'DRAGGING') {
+      const event = this.dragEvent;
+      copy(event.pos, frame.pinchPos);
+      event.zone = this.zone(frame, bedPose);
+      bus.emit('gesture:drag', event);
+    }
   }
 
   /** Stores the hover and emits `target:hover`, on a change only. */
@@ -246,16 +319,15 @@ export class GestureMachine {
   private release(frame: HandFrame, context: GestureContext): void {
     const event = this.releaseEvent;
     const state = this.state;
-    const local = context.bedPose === null ? null : toBedLocal(context.bedPose, frame.pinchPos, this.local);
-    // No bed placed: 'inner', the zone where a release commits nothing (API_SPEC §1.4).
-    event.zone = local === null ? 'inner' : bedZone(local);
-    event.gesture = state === 'CARRYING' ? 'carry' : state === 'PRESSED' ? 'press' : 'none';
-    // PLANT (FR-HND-16): the hovered cell of this same sample, not a fresh snap. It is null off the bed.
-    event.cell = state === 'CARRYING' ? this.hoverEvent.cell : null;
+    event.zone = this.zone(frame, context.bedPose);
+    event.gesture = ENDS_AS[state];
+    // PLANT and a drag (FR-HND-16): the hovered cell of this same sample, not a fresh snap; null off the bed.
+    // Every other hover has no cell, so a pull cannot move its plant.
+    event.cell = this.hoverEvent.cell;
     event.target = this.holdsTarget ? this.held : null;
     // A press counts only when the hover is still on what was pressed; moving off it first cancels.
     if (state === 'PRESSED' && !isSame(this.hoverEvent.target, this.held)) event.target = null;
-    event.dy = null;
+    event.dy = state === 'PULLING' ? this.pullEvent.dy : null; // FR-HND-08: a pull always carries its travel
     copy(event.pos, frame.pinchPos);
     this.state = 'IDLE';
     bus.emit('gesture:release', event);
