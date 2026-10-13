@@ -1,38 +1,93 @@
-# Device script S1 — the first sitting with a headset (T-129)
+# Device script S1 — the sittings with a headset (T-129)
 
-**Status:** ready to run. Nothing in it has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00.
+**Status:** the blocks marked "can be run today" are ready to run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8.
 
 This script produces results. It contains none.
-Every step about our own pages was checked against the page's source code.
-A step marked **(unchecked)** is about the headset's own menus, which nobody on the team has seen yet. If a menu looks different, do the nearest thing and write down what it was called.
+
+How sure each step is:
+
+- **No mark:** a step about our own pages, checked against the page's source code on `develop`.
+- **(unchecked):** a step about the headset's own menus, which nobody on the team has seen yet. If a menu looks different, do the nearest thing and write down what it was called.
+- **(from the plan):** a step about a part of the app that is not on `develop` yet. It is written from the plan and the review notes, not from code. When the part lands, Claude checks the step against the code and takes the mark off.
+
+Every block starts with **Can be run today** or **Needs: a task**. "Today" means `develop` at 3ca3392: the test pages, and the app with its landing page, its Enter button, the session and the sound engine started, but no bed, no plants and nothing to hear yet. A block that needs a task can be run as soon as that task is merged and the build on the headset holds it (block 0 tells you the build).
 
 You need only this file during the sitting.
 
 ## The sitting at a glance
 
-| # | Block | Answers (codes of the T-129 row) | Time |
-|---|---|---|---|
-| 0 | Get the pages onto the headset | first load of the app page | 15 min |
-| 1 | Capability page, three runs | P1 labels · F1/F2 frame rates · W1 audio · A1 anchors ×2 · M1 mesh · do hands send `select` events | 15 min |
-| 2 | Pinch page, first run | H1 pinch on the ring · G1 field of view | 10 min |
-| 3 | Pinch page, smoothing runs | hand smoothing ("beta") | 20 min |
-| 4 | Garden preview in passthrough | the garden's look · frame rate with the garden drawn | 10 min |
-| 5 | The app: landing page and entry | start time · no drawn hands | 10 min |
-| 6 | Sound page on the headset speakers | bass · steady time · headset taken off | 15 min |
-| 7 | Same room, second session | does the key, the scale or the echo change between sessions | 5 min |
-| 8 | A room without Space Setup | what the headset gives with no room scan | 10 min |
-| 9 | Decline the room permission | P2 permission decline | 10 min |
-| 10 | Hand the results to Claude | — | 10 min |
+| # | Block | Answers | Time | Can be run |
+|---|---|---|---|---|
+| 0 | Get the pages onto the headset | first load of the app page (T1) | 15 min | today |
+| 1 | Capability page, three runs | P1 labels · F1/F2 frame rates · W1 audio · A1 anchors ×2 · M1 mesh and its label · do hands send `select` events | 15 min | today |
+| 2 | Pinch page, first run | H1 pinch on the ring · G1 field of view | 10 min | today |
+| 3 | Pinch page, smoothing runs | hand smoothing ("beta") | 20 min | today |
+| 4 | Garden preview in passthrough | the garden's look · frame rate with the garden drawn · the light's dark edge, Bass and Choir shapes, growth, high contrast (T-119) | 25 min | today |
+| 5 | Sound page on the headset speakers | bass · steady time · headset taken off | 15 min | today |
+| 6 | Same room, second session | does the key, the scale or the echo change between sessions · an anchor about an hour old | 5 min | today |
+| 7 | A room without Space Setup | what the headset gives with no room scan · a saved anchor asked for in another room | 10 min | today |
+| 8 | The app: landing page and Enter | start times (T1, T2) · no drawn hands · does one click start sound and session | 15 min | today |
+| 9 | The app: headset off and on, the menu, leaving | what a pause looks like to the app · does the sound come back by itself | 15 min | today (the steps you listen to: T-128d) |
+| 10 | The app: the bed on your table | the bed on the real table · the hint when no table is found · the table limits of D-034 | 15 min | needs T-128c |
+| 11 | The app: plant, first sound, first loop | first sound within 20 s, first loop within 90 s · does a plant land where your fingers are | 10 min | needs T-128d (with T-127) |
+| 12 | The app: the settings panel and its orb | the orb · reading the panel · hitting its buttons · the long hold · by looking | 15 min | needs T-128d |
+| 13 | The app: hands lost | the "Hand out of view" words · the 0.2 s grace | 10 min | needs T-128d (with T-127) |
+| 14 | The app: ten minutes with a full garden | frame rate with sound and hands · steady time · Bass on the speakers · drift of the bed · what a hand lights up (T-119) | 30 min | needs T-128d |
+| 15 | The app: a key change listened to | the re-tune, rated | 10 min | needs T-128d |
+| 16 | The app: the garden comes back | the saved place: does the bed return, in how many seconds, how many cm off · the reach slack · the anchor count · a week later, in bloom (T-119) | 35 min | needs T-128e |
+| 17 | Rooms against the tape measure | what the app reads of a room, against your tape · two rooms sound different | 10 min a room | needs T-128c |
+| 18 | Say no: the room permission, and hand tracking off | P2 permission decline · what the app says | 15 min | today |
+| 19 | Clear the site's data | do the saved places go with it | 10 min | part A today (USB cable) · part B needs T-128e |
+| 20 | Hand the results to Claude | the filled results sheet | 10 min | today |
 
-Total: about 3 hours, with 30 minutes of setup and two short breaks. The plan said about 4 hours: the difference is the list "Not testable yet" near the end.
+All of it is about 5 h 15 of blocks, over 6 hours with setup and breaks. That is too long for one sitting, so there are two, and a walk through other rooms.
 
-**One change from the order in the plan:** "decline the room permission" (P2) is last, not second. Every other block needs the room data, and nobody knows yet how easily a declined permission is switched back on.
+| Sitting | Blocks, in this order | Time |
+|---|---|---|
+| **Sitting 1, the test pages and the app's entry.** Can be run today | 0 to 9 · 18 · 20 (and 19 part A only if time is left and you have a USB cable) | 2 h 50 of blocks; about 3 h 35 with 30 minutes of setup and two short breaks |
+| **Sitting 2, the garden in the app.** Needs T-128c, T-128d and T-128e | 0 again for the new build (10 min) · the listening steps of 9 (5 min) · 10 to 16 · 19 (part A, if not done in sitting 1, and part B) · 20 | 2 h 40 of blocks; about 3 h 20 with setup and breaks |
+| **Room walk.** Needs T-128c | 17, in each other room you can reach | 10 minutes a room; any day you have the headset |
+| **One hour, a friend's headset.** Can be run today | see "One-hour version" near the end | 1 hour |
+
+If only part of the integration is merged on the day of sitting 2, run the blocks whose "Needs" line is met and skip the rest. Blocks 10 and 17 need the least (T-128c), then 11 to 15 (T-128d), then 16 and 19 part B (T-128e).
+
+**Why this order.**
+
+- **Fresh things first.** Block 0 times the very first load, while nothing is stored.
+- **The capability page before the app's bed.** From T-128c on, the app deletes every saved place ("persistent anchor") on its address that is not its own (D-040). The capability page keeps one there, one at a time. So blocks 1, 6 and 7 come before the app places a bed. Today the app saves no place, so in sitting 1 this cannot go wrong.
+- **Things that are hard to undo last.** "Say no to the room" (block 18) comes after every block that needs the room, because nobody knows yet how easily a declined permission is switched back on. Clearing the site's data (block 19) is the very last thing before the hand-over: it wipes the saved garden and the pages' stored results.
+- **One change from the order in the plan:** the plan had the permission decline (P2) second. It is near the end, for the reason above.
+- **The app's blocks feed each other.** Block 11 plants the three starter seeds. Block 12 ends with "New garden", which gives three fresh seeds. Block 13 carries those seeds and plants none. Block 14 fills the empty bed by a flag and plants one seed by hand. Blocks 15 and 16 use that full garden.
+- **If you do both sittings on one day,** follow the numbers from 0 to 20.
 
 Pass and fail: each block has its rule. Where the documents give a number, the rule is that number. Where they give none, it says "write down what you see", and that is the result.
+
+The **results sheet** near the end lists every number and every yes or no the developers wait for, with the decision or task that waits for it. Fill it as you go: the sitting ends with that one page.
 
 ---
 
 ## Before you start
+
+### Decide before the day (PROGRESS item 22)
+
+Write the five answers at the top of your results note.
+
+| Question | Your answer |
+|---|---|
+| Which room and which table (at least 75 cm deep; round or not)? Is there a second room without Space Setup in reach of the same Wi-Fi? | |
+| Your own headset or a borrowed one? Quest 3 or Quest 3S? | |
+| Will the public site be live before the headset arrives? Only that route gives the real start-up time | |
+| Results back by mail from the headset's browser, or by USB cable? | |
+| Can you keep the headset overnight? Then blocks 6 and 16 are repeated the next day | |
+
+### One address for the whole sitting
+
+A saved garden and a saved place belong to the address they were made on. The public site, the mirror and the Mac are three different places to the headset, and so are two ports of the same Mac: what is saved on one is not seen on the other.
+
+1. Open everything from **one address: the built site.** That is the public address (route A of block 0), or the Mac's preview of the build (route B). Both serve the app at `/` and the test pages at `proto/spike/`, `proto/pinch/` and `proto/bed/`.
+2. If the public site is live, use it: it is the address that will be submitted, and the mirror is not tested in its place (from T-162).
+3. **One exception: the sound page** (block 5). It is not part of the built site. It is opened from the Mac, from its own folder and its own port. It saves nothing, so this does no harm.
+4. **A second exception, for one check only:** the dev server (block 9, last step). A garden saved there is not the garden on the built site.
 
 ### Charge and connect
 
@@ -42,14 +97,14 @@ Pass and fail: each block has its rule. Where the documents give a number, the r
 
 ### Headset, once (unchecked)
 
-1. Phone, Meta Horizon app → Devices → your headset → Developer Mode: on. Restart the headset. This is needed only for the USB way of copying results (block 10).
+1. Phone, Meta Horizon app → Devices → your headset → Developer Mode: on. Restart the headset. This is needed for the Mac's console over USB (blocks 9, 16 and 19) and for the USB way of copying results (block 20).
 2. Headset Settings → Movement tracking → Hand tracking: on. Another document calls this path Settings → Tracking → Hand and Body Tracking. Write down the real path: the app's own error message quotes the first one.
 3. Run Space Setup in the test room. It must have the walls, the floor and the ceiling, and your table added as a table.
 4. In Meta Quest Browser, sign in to your email. You will paste results into a mail to yourself. Do not use a private window: the pages keep their results in the browser.
 
 ### Leaving a session with hands only (unchecked)
 
-Blocks 4 and 5 start a session that does not end by itself. To leave:
+Block 4 and blocks 8 to 17 start a session that does not end by itself. To leave:
 
 1. Look at your palm at eye level.
 2. Hold thumb and index finger together until the icon fills, then let go. The headset's menu opens.
@@ -61,20 +116,36 @@ If you had to press a controller button to leave, write that down: it is a findi
 
 1. In the repository folder, `git status` shows a clean `develop`.
 2. `npm install` has been run. If it fails with `EACCES`: `npm install --cache "${TMPDIR:-/tmp}/roomsong-npm-cache" --no-audit --no-fund`.
-3. For the USB way of copying results: Android Platform Tools (`adb`), Chrome and a USB-C cable.
+3. For the console over USB and the USB way of copying results: Android Platform Tools (`adb`), Chrome and a USB-C cable.
+
+### The Mac's console over USB (unchecked)
+
+Some steps say **(console)**. They read lines that the app writes for developers. You need this for blocks 9, 16 and 19; elsewhere it is a bonus. Without a cable, skip the steps marked (console) and say so in the results.
+
+1. Connect the headset to the Mac with the USB-C cable. In the headset, allow USB debugging.
+2. Mac, Chrome: open `chrome://inspect/#devices`. The headset and its open pages are listed.
+3. Click **inspect** under the page you are testing. A window opens. Choose its **Console** tab.
+4. In the Console's level menu ("Default levels"), tick **Verbose**. The app writes its event lines at that level.
+5. Open the app with `?dev=1&flags=eventLog` at the end of its address. Every event of the app is now a line in the Console: `[events]`, then the event's name, then its values. Example: `[events] xr:sessionStart`. Lines that start with `[app]` come from the app's start and its sound.
+6. To type a command: click in the Console, type the line, press Enter. With `dev=1` the app offers `__roomsong` there: it holds `world` and `engine` (and `garden` from T-128d on).
+7. The window closes when the page reloads or the browser restarts: click **inspect** again.
 
 ### The room
 
 - The room where you ran Space Setup, and the table you added. Clear the table top.
 - Best is a table at least 75 cm deep in front of you: the far edge of the garden is 75 cm from your head.
 - Ordinary room light. You will write down "bright", "normal" or "dim".
-- A second room where Space Setup was never run, with any table or desk, in reach of the same Wi-Fi (block 8).
-- Controllers out of reach for the whole sitting. If you ever need one, write down where: that is a finding.
+- A second room where Space Setup was never run, with any table or desk, in reach of the same Wi-Fi (blocks 7 and 10).
+- For the room walk (block 17): any other rooms you can reach with the headset. Most useful are a small desk room, a kitchen and a living room.
+- Controllers out of reach for the whole sitting. If you ever need one, write down where: that is a finding. One planned exception: block 18 switches hand tracking off, and the headset's menus then need a controller. Keep one in the room, put down.
 
-### Two things beside you
+### Five things beside you
 
 1. The Mac, with this file open and a plain note for the results (or the Claude chat). Do not type results into this file.
 2. A tape measure.
+3. A coin, or a small sticker. It marks the middle of the bed on the real table (blocks 14 and 16).
+4. The USB-C cable, if you use the console.
+5. A large sheet of white paper, or a white pillowcase or towel. It is the bright table for the sweeping light (blocks 4, 14 and 16).
 
 ### Measure with the tape before the headset goes on
 
@@ -93,9 +164,13 @@ If you had to press a controller button to leave, write that down: it is a findi
 
 ## Block 0 — Get the pages onto the headset (15 min)
 
-**Purpose:** open the pages in Meta Quest Browser, and time the very first load of the app page while nothing is stored yet. There are two routes. Use route A if the public site is live and was published after 2026-10-12 (an older one has no garden preview and no landing page). Use route B otherwise. The sound page (block 6) always comes from the Mac.
+**Can be run today.**
 
-**Answers:** TC-DEV-01 and FR-SYS-06, the first half (time to a ready page) · the two routes of DEPLOYMENT_GUIDE §1 and §3.
+**Purpose:** open the pages in Meta Quest Browser, and time the very first load of the app page while nothing is stored yet. There are two routes. Use route A if the public site is live and its build holds T-128a (published on 2026-10-13 or later: an older one has another way in and other words on the page). Use route B otherwise. Whichever you choose, it is your one address for the whole sitting (see "One address for the whole sitting"). The sound page (block 5) always comes from the Mac.
+
+**Answers:** TC-DEV-01 and FR-SYS-06, the first half (time from page load to a usable Enter button) · the two routes of DEPLOYMENT_GUIDE §1 and §3.
+
+**You need:** the headset, the Mac on the same Wi-Fi, and for route B a Terminal window.
 
 **Checked against:** `vite.config.ts` (the build holds the app page, `proto/spike/`, `proto/pinch/` and `proto/bed/`), `package.json` (`preview`), the certificate code of the dev plugin, a local build, `src/ui/Landing.ts` and `src/ui/strings.ts` (the words on the app page), `src/core/flags.ts` (`dev=1`), DEPLOYMENT_GUIDE §1 and §3, ENVIRONMENT_SETUP §3 and §7.
 
@@ -108,11 +183,12 @@ If you had to press a controller button to leave, write that down: it is a findi
 5. Open the same address followed by `proto/spike/`. You see "Roomsong - device capability spike". Bookmark it.
 6. Open the same address followed by `proto/pinch/`. You see "Roomsong - pinch accuracy test". Bookmark it.
 7. Open the same address followed by `proto/bed/?dev=1&flags=perfHud`. You see "Roomsong - bed preview". Bookmark it.
-8. Open the same address followed by `version.json`. Write down the value of `commit`.
+8. Open the same address followed by `?dev=1&flags=perfHud,eventLog`. It is the app page again, with the developers' read-outs switched on. Bookmark it as "app, dev".
+9. Open the same address followed by `version.json`. Write down the value of `commit`.
 
 ### Route B — the Mac over Wi-Fi
 
-1. Mac, Terminal, in the repository folder. Stop old servers, so that no old page is served: `lsof -ti tcp:4173 | xargs kill`. A complaint from `kill` means nothing was running. (This also stops the sound preview Claude keeps running; block 6 starts a new one.)
+1. Mac, Terminal, in the repository folder. Stop old servers, so that no old page is served: `lsof -ti tcp:4173 | xargs kill`. A complaint from `kill` means nothing was running. (This also stops the sound preview Claude keeps running; block 5 starts a new one.)
 2. `git rev-parse --short HEAD`. Write down what it prints.
 3. `npm run build`
 4. `npm run preview`. It prints a `Network:` line. Write down the address that starts with `https://192.168.`, with its port (4173, or the next free one).
@@ -124,18 +200,19 @@ If you had to press a controller button to leave, write that down: it is a findi
 10. Count the seconds from that press until the line "Getting the garden ready." under the button is gone. Write the count down as T1.
 11. You see "Roomsong", "Grow a song on your table." and a button **Enter the garden**. Do not pinch it yet. Bookmark the page.
 12. Open the same address followed by `proto/spike/`, then `proto/pinch/`, then `proto/bed/?dev=1&flags=perfHud`. No second warning is expected. Bookmark each.
+13. Open the same address followed by `?dev=1&flags=perfHud,eventLog`. It is the app page again, with the developers' read-outs switched on. Bookmark it as "app, dev".
 
 ### Write down
 
 | Field | Value |
 |---|---|
-| Route used | A or B |
+| Route used, and the address | A or B; the address |
 | Build | the `commit` (route A) or the short hash (route B) |
-| T1, first load of the app page | seconds |
+| T1, page load to a usable Enter button | seconds |
 | The warning: what the headset showed and what you pressed | words |
 | Anything you could not do with hands only | words |
 
-**Pass rule:** T1 is half of a rule that block 5 completes (T1 + T2 at most 5 seconds). Route A is the number that counts: route B loads from your own Mac.
+**Pass rule:** to be decided (PROGRESS item 26b). The rule says "in the room within 5 seconds", and it is not settled whether that counts from opening the page or from the Enter pinch. So two numbers are recorded and kept apart: T1 here, and T2 (Enter pinch to the first sight of the room) in block 8. Route A is the T1 that counts: route B loads from your own Mac.
 
 **If it fails:** the page does not load on route B → check that both are on the same Wi-Fi, that the address starts with `https://` and has the port, and that the Mac is awake. If the warning offers no way to continue, tell Claude: the fix is a trusted certificate (ENVIRONMENT_SETUP §8), and until then only route A works. A page under `proto/` that is missing on route A means the public site is older than that page: use route B.
 
@@ -143,11 +220,17 @@ If you had to press a controller button to leave, write that down: it is a findi
 
 ## Block 1 — Capability page, three runs (15 min)
 
+**Can be run today.**
+
 **Purpose:** ask the headset's browser what it really supports: room labels, frame rate, audio, saved anchors, room mesh, and whether a hand pinch sends `select` events.
 
-**Answers:** T-104, TC-DEV-0A · P1, F1/F2, W1, A1, M1 · from T-124: do hands send `selectstart` and `selectend` · from T-123: which labels, whether planes are there early, what the hit-test meets · from T-141: room size, first session · D-034: how level the table plane is.
+**Answers:** T-104, TC-DEV-0A · P1, F1/F2, W1, A1, M1 · from T-124: do hands send `selectstart` and `selectend` · from T-123: which labels, whether planes are there early, what the hit-test meets · from T-141: room size, first session · D-034: how level the table plane is · from T-140: is the room mesh labelled `global mesh` · from T-128a: does the session say which features it was given, and what the foveation setting reads · from T-162: how long a saved place's name ("handle") is.
+
+**You need:** the room with Space Setup, your table, the capability page's bookmark. The USB console only for step 15.
 
 **Checked against:** `proto/spike/index.html`, `src/main.ts`, `src/probe.ts`, `src/config.ts`, `proto/spike/README.md`.
+
+**Know this first:** the page keeps one saved place at a time. Each run asks the headset for the place the run before saved, deletes it, and saves a new one half a metre in front of you. So `anchors.restore` in run 2 is about the place of run 1.
 
 ### Steps
 
@@ -164,7 +247,8 @@ If you had to press a controller button to leave, write that down: it is a findi
 11. **Run 2.** Reload the page. Pinch **Start**. Repeat steps 4 to 10 with "run 2: after a reload".
 12. **Run 3.** Close Meta Quest Browser completely and open it again (unchecked). Open the bookmark. Pinch **Start**. Repeat steps 4 to 10 with "run 3: after a browser restart".
 13. Pinch **Copy JSON**. The page says "Copied." Open your mail in a new tab, paste, send it to yourself, and check on the Mac that it arrived.
-14. If the mail did not arrive: fill in the second group of rows by hand for run 3, and carry on. The page keeps every run, and block 10 has a second way to get them.
+14. If the mail did not arrive: fill in the second group of rows by hand for run 3, and carry on. The page keeps every run, and block 20 has a second way to get them.
+15. Only with the USB console, after run 3 (console): type `JSON.parse(localStorage.getItem('roomsong.spike.anchor')).handle.length` and write down the number. It is the length of the saved place's name.
 
 ### Write down, once per run
 
@@ -176,9 +260,12 @@ How to read the page: the table has one row per value. A value shown as `null (�
 | `emulator` | | | |
 | `completed` | | | |
 | `planes.labels` (copy the list exactly) and `planes.desk` | | | |
+| `meshes.count` and `meshes.labels`: is `global mesh` in the list? | | | |
+| `features.granted`: a list, or `null` with a reason? | | | |
 | Click heard: yes / no | | | |
 | The crackle step you answered | | | |
-| `anchors.restore.restored` | no earlier run | | |
+| `anchors.restore.restored`, and `anchors.restore.error` when it is not `true` | no earlier run | | |
+| Length of the handle (step 15) | — | — | |
 
 | Only if the copied text did not reach the Mac | Value |
 |---|---|
@@ -205,7 +292,10 @@ How to read the page: the table has one row per value. A value shown as `null (�
 | W1 audio | no crackle at 8, 16 or 24 voices, and `audio.state` is `running` | TC-PERF-06, NFR-PERF-10 |
 | A1 anchors | `anchors.restore.restored` is `true` in run 2 and in run 3: report it as n of 2 | TC-DEV-05 |
 | F1/F2 frame rate | no rule for an empty page. The game's own rule is 72 typical and never below 60, so an empty page below 72 is a warning: write it down | TC-PERF-01 |
-| `select` events, M1 mesh, hit-test, joints | write down what you see. Compare `hitTest.height` with the table height from your tape | — |
+| Handle length | at most 64 characters. The app's save drops a longer one, and the bed would then be placed again on every visit | API_SPEC §4, from T-162 |
+| Features given | `features.granted` is a list. `null` means the browser does not say what it gave, and the app's "This device" lines (block 8) cannot be trusted | from T-128a |
+| Mesh label | write down what you see. The app looks for the label `global mesh` to measure a room that has no floor or ceiling plane | from T-140 |
+| `select` events, hit-test, joints, foveation | write down what you see. Compare `hitTest.height` with the table height from your tape | — |
 
 ### If it fails
 
@@ -219,9 +309,13 @@ How to read the page: the table has one row per value. A value shown as `null (�
 
 ## Block 2 — Pinch page, first run (10 min)
 
+**Can be run today.**
+
 **Purpose:** find the smallest dot spacing you hit on the first try, and whether the ring's outer and inner rows are within easy reach and in view.
 
-**Answers:** T-105, TC-DEV-00 · H1, G1 · D-020 (bed distance, outer radius, view box) · D-027 (no drawn hands) · D-030 (how often hands are lost) · D-034 (how far the table is below your eyes) · from T-123: which label the table has, and whether its plane is there in the first second.
+**Answers:** T-105, TC-DEV-00 · H1, G1 · D-020 (bed distance, outer radius, view box) · D-027 (no drawn hands) · D-030 and T-116 (how often, and where, real hands are lost; what the app does about it is block 13) · D-034 (how far the table is below your eyes) · from T-123: which label the table has, and whether its plane is there in the first second.
+
+**You need:** the room with Space Setup, your table, the pinch page's bookmark.
 
 **Checked against:** `proto/pinch/index.html`, `src/main.ts`, `src/trials.ts`, `src/config.ts`, `src/hands/config.ts`, `proto/pinch/README.md`.
 
@@ -297,9 +391,13 @@ Decide on the column **First try unfiltered**. The column "First try" of this ru
 
 ## Block 3 — Pinch page, smoothing runs (20 min)
 
+**Can be run today.**
+
 **Purpose:** find the smoothing value ("beta") at which the judged point no longer trails your hand. With the starting value 0 it trails by about 3 cm.
 
 **Answers:** T-129 (beta, search about 5 to 50) · TC-DEV-00 (the second run is required) · FR-HND-03 · D-028 · the second look at the outer ring (D-020).
+
+**You need:** the same seat and table as block 2.
 
 **Checked against:** `proto/pinch/src/main.ts` (`?beta=`, 0 to 100; the copied text names the value), `src/hands/config.ts`, `proto/pinch/README.md`.
 
@@ -329,17 +427,26 @@ Two notes for reading them:
 
 ---
 
-## Block 4 — Garden preview in passthrough (10 min)
+## Block 4 — Garden preview in passthrough (25 min)
 
-**Purpose:** see the garden in your real room for the first time, and read the frame rate with it drawn. It is a picture that moves: no sound, nothing to pinch.
+**Can be run today.**
 
-**Answers:** T-125 (the look, to rate) · TC-DEV-07 and TC-PERF-01, in part (frame rate with the garden drawn, without sound and without hands) · FR-UI-11 (flashing) · D-020 (the view box, now with plants).
+**Purpose:** see the garden in your real room for the first time, and read the frame rate with it drawn. It is a picture that moves: no sound, nothing to pinch. Part B looks at what T-119 added: the dark edge of the sweeping light, the Bass and Choir shapes, growth, the unfurl and high contrast.
 
-**Checked against:** `proto/bed/index.html`, `proto/bed/src/main.ts`, `proto/bed/README.md`, `src/render/PerfHud.ts`, `src/render/config.ts`, `src/core/flags.ts`, `src/core/config.ts`.
+**Answers:** T-125 (the look, to rate) · TC-DEV-07 and TC-PERF-01, in part (frame rate with the garden drawn, without sound and without hands) · FR-UI-11 (flashing) · D-020 (the view box, now with plants) · from T-119: the light's dark leading edge on a real bright table; jug and umbrella by outline; the hole at the top of the umbrella's stem; leaf whorls and cream blossoms; the unfurl and a week passing; high contrast; the frame rate with a full bed of five shapes and every effect on (D-044).
 
-**Know this first:** the preview does not look for your table. It puts the bed 45 cm in front of where you sit when the session starts, 72 cm above the floor. On a table of another height it floats or sinks: that is expected here.
+**You need:** your table, the bed preview's bookmark, a large sheet of white paper (or a white pillowcase or towel) for part B.
 
-### Steps
+**Checked against:** `proto/bed/index.html` (the switches: the list **Garden**, the button **A week passes**, the boxes **Bright table**, **Glow the plant under the pointer**, **Dim the nearest plant (hand out of view)**, **Reduced motion**, **High contrast**), `proto/bed/src/main.ts`, `proto/bed/README.md`, `src/render/PerfHud.ts`, `src/render/config.ts` (the dark band's strength, `TIDE_SHADE_COVER`, is 0.6), `src/core/flags.ts`, `src/core/config.ts`.
+
+**Know this first:**
+
+- The preview does not look for your table. It puts the bed 45 cm in front of where you sit when the session starts, 72 cm above the floor. On a table of another height it floats or sinks: that is expected here.
+- Set the switches on the flat page before you pinch **Enter XR**: in a session the page is hidden. Leave the session to change them.
+- In a session the page's drawn table is hidden and you see your real one, so the box **Bright table** changes nothing there. The white sheet is the bright table.
+- The pointer stands in for a hand on the flat page only. In a session there is no pointer, so the box **Glow the plant under the pointer** and the lit cell under it cannot be seen here. With real hands they are block 14, part B.
+
+### Steps, part A — the numbers
 
 1. Sit at the table, belly at its edge, facing it.
 2. Open the bed preview from its bookmark (the address ends in `proto/bed/?dev=1&flags=perfHud`).
@@ -352,15 +459,25 @@ Two notes for reading them:
 9. Open the same address with `,autoplant=80` added at the end: `…/proto/bed/?dev=1&flags=perfHud,autoplant=80`. This is the full bed, 80 plants.
 10. Pinch **Enter XR**. Watch the panel for one minute. Write down the same numbers. Leave the session.
 
+### Steps, part B — the drawing (T-119)
+
+11. Open the bed preview's bookmark again (without `autoplant`). Lay the white sheet flat on the table where the ring appeared in step 4.
+12. Leave **Garden** on "13 sample plants". Pinch **Enter XR**. Watch the light sweep over the white sheet. A dark band runs just ahead of the light. Can you see it? Does the sweep show clearly on white? Is the dark band too weak, about right, or too strong? Leave the session.
+13. **Garden**: choose "The five shapes". Enter. Without counting stems, name each shape by its outline: which one is the jug (Bass) and which the umbrella (Choir)? Look at the top of the umbrella's stem from your seat: there is a small hole there, about 8 mm. Do you notice it? Leave.
+14. **Garden**: choose "Growth: new, 1 day, 3 days, a week". Enter. Each row shows one shape at four ages, from left to right: new, a day, three days, a week. Stretch an arm toward the bed and count the leaf whorls on each stem (the small four-leaf stars, about 2.4 cm across): none, one, two, then cream blossoms. Can you count them from your seat? Do the cream blossoms stand out on the white sheet? Leave.
+15. Tick **High contrast**. Enter. Every plant gets a cream rim. Does it read as an outline round each plant? Leave. Untick **High contrast**.
+16. The unfurl, on the flat page. In a session you cannot see it here: once a week passes, every plant unfurls the next time the light reaches it, within one sweep (about 3 seconds), sooner than you can enter. So: **Garden**: choose "Full bed, all five shapes". Look at the flat page, pinch **A week passes**, and watch one sweep. Each plant unfurls as the light reaches it: leaf whorls grow, open into cream blossoms, and the plant turns lighter. Is it pleasant? The blossom's colour arrives at once with the light: does it look like part of the light's flash? About 160 whorls change in one sweep: does the bed bloom, or sparkle? (In passthrough: block 16, part C.)
+17. Every effect on, for the numbers. Keep that full bed, now a week old. Tick **Dim the nearest plant (hand out of view)** and **High contrast**. Enter. Watch the panel for one minute and write down its numbers. Leave. Untick both boxes.
+
 ### Write down
 
-| Number on the panel | 13 plants | 80 plants |
-|---|---|---|
-| `fps`, usual | | |
-| `fps`, lowest seen | | |
-| `ms` | | |
-| `draws` and `tris` | | |
-| `flash` (shown as a count out of 3) | | |
+| Number on the panel | 13 plants | 80 plants | 80 plants, five shapes, a week old, every switch on (step 17) |
+|---|---|---|---|
+| `fps`, usual | | | |
+| `fps`, lowest seen | | | |
+| `ms` | | | |
+| `draws` and `tris` | | | |
+| `flash` (shown as a count out of 3) | | | |
 
 | Question | Answer |
 |---|---|
@@ -372,17 +489,31 @@ Two notes for reading them:
 | Whole ring and all plants in view when you look at its centre, head still? | yes / no, which edge was cut |
 | The look, 1 to 5, and one thing to change first | number, words |
 
+| Part B question | Answer |
+|---|---|
+| The dark band ahead of the light, on the white sheet | visible / not visible; too weak / about right / too strong |
+| The sweep on white | clear / faint / not visible |
+| Jug (Bass) and umbrella (Choir) named by outline | yes / no, which was confused |
+| The hole at the top of the umbrella's stem | not noticed / noticed / distracting |
+| Leaf whorls counted from your seat | yes / no, which age was hard |
+| Cream blossoms on the white sheet | stand out / blend in |
+| High contrast: the cream rim reads as an outline | yes / no, words |
+| The unfurl (flat page): pleasant | 1 to 5, words |
+| The blossom's colour with the light: part of the flash | yes / no |
+| A week passes, all whorls in one sweep | bloom / sparkle |
+
 ### Pass rules
 
 | Check | Rule | Source |
 |---|---|---|
-| Frame rate | usual `fps` at least 72 and never below 60, with 13 plants and with 80 | TC-PERF-01 |
+| Frame rate | usual `fps` at least 72 and never below 60, in all three runs | TC-PERF-01 |
 | Script time | `ms` at most 6 | NFR-PERF-05 |
-| Drawing budget | `draws` at most 60, `tris` at most 150,000. The emulator showed 14 draws, and 11,724 and 36,412 triangles | Golden Rule 5, `proto/bed/README.md` |
+| Drawing budget | `draws` at most 60, `tris` at most 150,000. In the emulator, both eyes with the panel: 14 draws and 11,748 triangles (13 plants), 14 and 36,436 (80 plants), 20 and 49,732 (80 plants, five shapes, a week old) | Golden Rule 5, `proto/bed/README.md`, D-044 |
 | Flashing | `flash` at most 3 | FR-UI-11 |
-| The look | write down what you see | — |
+| The dark band | write down what you see. Its strength, 0.6, was chosen without a headset: on a headset the light is added to the real table, and the emulator cannot show whether the band shows | from T-119, D-044 |
+| The look, the shapes, growth, the unfurl, high contrast | write down what you see. Parth's answers go to the art pass (T-163) | from T-119 |
 
-A pass on frame rate here is needed but not enough: the real test runs 10 minutes with sound and hands (TC-DEV-07, not testable yet).
+A pass on frame rate here is needed but not enough: the real test runs 10 minutes with sound and hands (TC-DEV-07, block 14).
 
 ### If it fails
 
@@ -390,69 +521,24 @@ A pass on frame rate here is needed but not enough: the real test runs 10 minute
 - No panel beside the ring: the address lacks `dev=1`. A built page ignores `flags` without it.
 - The bed is behind you or to the side: you were not facing the table when the session started. Leave, face the table, enter again.
 - `fps` below 72 with 13 plants: nothing to do in the sitting. Tell Claude: the performance work (T-165) moves forward.
+- `fps` fine in part A and below 72 only in step 17: write down both. D-044 accepted 20 draw calls on the emulator's numbers; the perf pass (T-165) looks at it again.
+- A switch seems to do nothing in a session: it was changed while the session ran, or it is **Bright table** or **Glow the plant under the pointer** (see "Know this first").
 
 ---
 
-## Block 5 — The app: landing page and entry (10 min)
+## Block 5 — Sound page on the headset speakers (15 min)
 
-**Purpose:** check the app's first screen and the step into the room. Inside the session there is nothing to see yet: the garden is not wired into the app.
-
-**Answers:** T-126 · TC-DEV-01, the part that exists (in the room within 5 seconds) · FR-SYS-01, FR-SYS-02, FR-SYS-03 · D-027 (no drawn hands, in the app itself) · Golden Rule 1 (hands only).
-
-**Checked against:** `index.html`, `src/index.ts`, `src/ui/Landing.ts`, `src/ui/strings.ts`, `iwsdk.config.json` (hand tracking required; planes, mesh, anchors and hit-test optional), `public/scenes/main.iwsdk.scene.json` (an empty scene).
-
-### Steps
-
-1. Open the app page from its bookmark. You see "Roomsong", "Grow a song on your table.", the button **Enter the garden**, a list "This device", four boxes under "Access", "Help", and a last line about saving.
-2. Write down the four lines under "This device".
-3. Pinch each of the four "Access" boxes on, then off again. Pinch "Help" to open it. Does every one react to a hand pinch?
-4. Sit facing the table. Pinch **Enter the garden**. Allow what the headset asks.
-5. You see your room and your real hands, and nothing else. No drawn hands and no controllers should appear.
-6. Look around for 20 seconds. Write down anything that is drawn, and any stutter of the room picture.
-7. Leave the session (see "Leaving a session with hands only"). The landing page is back.
-8. Write down the four lines under "This device" again: they now say what the session was given.
-9. Pinch **Enter the garden** once more and count the seconds until you see the room. Write the count down as T2. The headset should ask nothing this time; if it asks again, write that down and count from your last answer.
-10. Leave the session.
-11. Look at the browser's address bar: does the browser show a button of its own for entering? Write yes or no. Do not use it.
-
-### Write down
-
-| Field | Value |
-|---|---|
-| "This device", before the first session | four lines |
-| Every box, "Help" and the button work with a hand pinch | yes / which did not |
-| Anything drawn in the session; drawn hands | words; yes / no |
-| "This device", after the first session | four lines |
-| T2, second entry | seconds |
-| T1 (block 0) + T2 | seconds |
-| The browser's own enter button | yes / no |
-| Words on the page that are hard to read, or wrong | words |
-
-### Pass rules
-
-| Check | Rule | Source |
-|---|---|---|
-| Start time | T1 + T2 at most 5 seconds. You count by ear: write the number as you counted it | TC-DEV-01, FR-SYS-06 |
-| Before the first session | "Immersive AR: supported.", and three lines that each say "checked when you enter" | `src/ui/strings.ts` |
-| After the first session | "Hand tracking: on." If you allowed the room: "Plane detection: on. The garden looks for your table." and "Anchors: on. The garden can come back to the same place." They must agree with `features.granted` of block 1 | `src/ui/Landing.ts` |
-| No drawn hands | none, and nothing else drawn | D-027 |
-| Hands only | every control on the page reacts to a pinch | Golden Rule 1 |
-
-### If it fails
-
-- Under the button: "The garden did not open. Check that hand tracking is on in the headset: …". Switch hand tracking on and enter again.
-- Under the button: "The garden could not load. Reload the page." Reload. If it says so again, tell Claude: it is a bug.
-- Under the button on the headset: "Roomsong needs immersive AR. …". Tell Claude: it is a top-severity bug.
-
----
-
-## Block 6 — Sound page on the headset speakers (15 min)
+**Can be run today.**
 
 **Purpose:** hear the garden loop on the headset's own speakers: is the low drone there, does the loop keep steady time, and what happens to the sound when the headset comes off.
 
 **Answers:** T-129 (bass on the headset speakers) · T-103 (listening review, one more rating) · from T-121: steady time and the stop when the headset is taken off, as far as this page can show it.
 
-**What this block cannot show:** this is an ordinary web page, not the game inside a session. The game's own audio inside a session is under "Not testable yet".
+**You need:** the Mac with a second Terminal window, the headset on the same Wi-Fi, no headphones.
+
+**What this block cannot show:** this is an ordinary web page with the first sound sketch, not the game inside a session. The game's own sound inside a session is blocks 9 and 14, and its Bass voice is block 14.
+
+**Where this page is opened from:** it is not published with the site, so it is not on your one address. The Mac serves it from the folder `proto/sound`, on its own port (4175) and without the `s` in `http`. It saves nothing.
 
 **Checked against:** `proto/sound/index.html`, `src/main.ts`, `src/engine.ts`, `src/signatures.ts`, `src/garden.ts`, `package.json`, `vite.config.ts`, `proto/sound/README.md`. The root build does not contain this page, so it is not on the public address.
 
@@ -503,18 +589,22 @@ A pass on frame rate here is needed but not enough: the real test runs 10 minute
 ### If it fails
 
 - The page does not open: check the `http://` and the port 4175, and that the second Terminal window is still running.
-- The drone is faint or missing: nothing to do in the sitting. The sound pass (T-164) raises it or adds overtones, and the lower Bass voice of T-144 needs this same check.
-- The sound keeps playing with the headset off: expected for this page, which has no pause of its own. The game's pause is T-152.
+- The drone is faint or missing: nothing to do in the sitting. The sound pass (T-164) raises it or adds overtones. The lower Bass voice of T-144 gets the same check in block 14.
+- The sound keeps playing with the headset off: expected for this page, which has no pause of its own. What the game does is block 9; its fade is T-152.
 
 ---
 
-## Block 7 — Same room, second session (5 min)
+## Block 6 — Same room, second session (5 min)
+
+**Can be run today.**
 
 **Purpose:** measure the same room again, to see whether the room would get the same key, scale and echo twice.
 
-**When:** at least 30 minutes after block 1, at the same table and seat. The headset has been off your head in between (block 6 did that).
+**When:** at least 30 minutes after block 1, at the same table and seat. The headset has been off your head in between (block 5 did that).
 
 **Answers:** T-129 (two sessions in one room) · from T-141: ceiling height and floor area on two visits · TC-DEV-13 (last sentence) · D-028 (echo from room volume) · A1 once more: an anchor that is about an hour old.
+
+**You need:** the capability page's bookmark, your tape numbers.
 
 **Checked against:** `proto/spike/src/probe.ts` (`readScene`: one plane per label with its size and position), `src/garden/config.ts` (the limits below).
 
@@ -530,7 +620,7 @@ A pass on frame rate here is needed but not enough: the real test runs 10 minute
 
 For floor and ceiling, read the rows as in block 1. Ceiling height = the ceiling's middle `position` number minus the floor's.
 
-| | Block 1, run 1 | Run 2 | Run 3 | Block 7 | Your tape |
+| | Block 1, run 1 | Run 2 | Run 3 | Block 6 | Your tape |
 |---|---|---|---|---|---|
 | Floor `size` (m × m) | | | | | |
 | Floor area = the two numbers multiplied (m²) | | | | | |
@@ -551,7 +641,7 @@ Every session lands in the same band, in all three rows of this table:
 
 A value that changes band between sessions, or a ceiling within 5 cm of 2.60 or 2.90 m, is the result to report.
 
-The page measures the box around one floor plane and the height of one ceiling plane. The game's own measurement (T-140) may give slightly different numbers; what counts here is how much they move between sessions.
+The page measures the box around one floor plane and the height of one ceiling plane. The game's own measurement (T-140) may give slightly different numbers: block 17 reads those. What counts here is how much the numbers move between sessions.
 
 **If it fails:** nothing to do in the sitting. The choice afterwards is to keep it, to remember the last result, or to promise less (PROGRESS, "Know this about the room tunes the song").
 
@@ -559,13 +649,17 @@ The page measures the box around one floor plane and the height of one ceiling p
 
 ---
 
-## Block 8 — A room without Space Setup (10 min)
+## Block 7 — A room without Space Setup (10 min)
 
-**Purpose:** see what the headset gives in a room it has never scanned: planes, mesh, and what the test ray hits.
+**Can be run today.**
 
-**Answers:** from T-123: what the hit-test meets without Space Setup · TC-DEV-02 (b), in part · TC-DEV-00 (the optional floating run).
+**Purpose:** see what the headset gives in a room it has never scanned: planes, mesh, and what the test ray hits. Also: what the headset answers when it is asked, in this room, for a place that was saved in the first room.
 
-**Checked against:** `proto/spike/src/probe.ts` (hit-test: one ray from the head, 60 degrees below straight ahead, for 1 second), `proto/pinch/src/main.ts` (`findSurface`: no plane means dots floating 45 cm below the head).
+**Answers:** from T-123: what the hit-test meets without Space Setup · TC-DEV-02 (b), in part · TC-DEV-00 (the optional floating run) · from T-162: what the browser does with a known saved place in another room (refuses it, gives it back but cannot find it, or never answers).
+
+**You need:** the second room, its table or desk, the two bookmarks. Do block 6 first: its run saved the place that this block asks for.
+
+**Checked against:** `proto/spike/src/probe.ts` (hit-test: one ray from the head, 60 degrees below straight ahead, for 1 second; the anchor step: the last run's place is asked for once, and a step that gets no answer is given up after 3 seconds with "timed out"), `proto/pinch/src/main.ts` (`findSurface`: no plane means dots floating 45 cm below the head).
 
 ### Steps
 
@@ -587,37 +681,769 @@ The page measures the box around one floor plane and the height of one ceiling p
 | `permission.detectedPlanes` | |
 | `hitTest.hits` and `hitTest.height` (m); the table height from your tape | |
 | `anchors.created` | |
+| The place saved in the first room: `anchors.restore.restored`, `anchors.restore.tracked`, `anchors.restore.error` | |
 | Pinch page, the line under the table: Surface … | |
 | Floating dots: were they at a height you could use? | words |
 
 **Pass rule:** write down what you see. A hit at about the table's height means that a pinch on a surface (the game's third way to place the bed) has something to work with.
 
+How to read the saved-place row: `restored` false with an error text = the browser refused it. `restored` true and `tracked` false = it gave the place back but cannot find it here. An error that says "timed out" = it never answered in 3 seconds. The app waits 4 seconds for a saved place and then places the bed again, so every one of these is handled; the developers need to know which one happens.
+
 **If it fails:** the ray hits nothing → the game's last way to place the bed is the floating bed, which needs no room data.
 
 ---
 
-## Block 9 — Decline the room permission (10 min)
+## Block 8 — The app: landing page and Enter (15 min)
 
-**Purpose:** see what the browser returns when the player says no to the room request, and that everything else still works.
+**Can be run today.**
 
-**Answers:** T-104, TC-DEV-0A run 4 · P2 · FR-ROOM-04.
+**Purpose:** check the app's first screen and the step into the room: how long it takes, that one pinch on Enter starts both the session and the sound, and that the way in still works after you leave, come back or go away and return. Inside the session there is nothing to see or hear yet: the garden is not in the app until T-128c and T-128d.
 
-**Checked against:** `proto/spike/src/probe.ts` (`setScene`: the `permission` fields), `src/config.ts` (every feature is asked for as optional), `iwsdk.config.json` (the game requires hand tracking only), `proto/spike/README.md` step 9.
+**Answers:** T-126 and T-128a · TC-DEV-01, the part that exists (the two start times) · TC-DEV-14 (new: entry and session) · FR-SYS-01, FR-SYS-02, FR-SYS-03 · API_SPEC §1.10 rule 2 (one way in; sound and session from one click) · D-027 (no drawn hands, in the app itself) · Golden Rule 1 (hands only).
+
+**You need:** the app's plain bookmark and the "app, dev" bookmark. No cable.
+
+**Checked against:** `index.html`, `src/index.ts`, `src/app.ts` (`enterSession`, `followSession`, the 3-second wait before "Sound unavailable", which then stays 5 seconds), `src/ui/Landing.ts`, `src/ui/strings.ts` and `src/core/strings.ts` (the words, as they are since T-128a), `iwsdk.config.json` (`offer` is `"none"`; hand tracking required; planes, mesh, anchors and hit-test optional), `src/render/RenderSystems.ts` and `src/render/config.ts` (the read-out: 16 cm wide, 10 cm to the left of your nose, 12.5 cm below it, 50 cm ahead).
 
 ### Steps
 
-1. Go back to the first room and the first table.
-2. Make the results so far safe first: do block 10, steps 1 to 3, now. The reset in the next step may also wipe what the page has saved (unchecked).
-3. Open the capability page. Reset this site's permissions: the icon left of the address (unchecked; the menu names may differ).
-4. Reload. Pinch **Start**. When the headset asks for the room or for spatial data: decline. Allow hand tracking.
-5. If the session starts: pinch once when the view turns green, listen to the six steps, wait for the end.
-6. On the page: **Which run was this** = "run 4: decline" · **Room permission on this run** = "declined", or "the headset did not ask".
-7. Write down the rows below.
-8. Pinch **Copy JSON** and mail it to yourself: it now ends with this run.
+1. Open the app page from its plain bookmark. You see "Roomsong", "Grow a song on your table.", the button **Enter the garden**, a list "This device", four boxes under "Accessibility", "Help", and a last line about saving.
+2. Write down the four lines under "This device".
+3. Pinch each of the four "Accessibility" boxes on, then off again. Pinch "Help" to open it. Does every one react to a hand pinch?
+4. Look at the browser's address bar: does the browser show a button of its own for entering? None is expected. Write yes or no. Do not use it.
+5. Sit facing the table. Pinch **Enter the garden**. Allow what the headset asks.
+6. You see your room and your real hands, and nothing else. No drawn hands and no controllers should appear.
+7. Keep looking straight ahead for 5 seconds. Do the words "Sound unavailable" appear in front of you, a little below where you look? If they do: at once, or after about 3 seconds?
+8. Look around for 20 seconds. Write down anything that is drawn, and any stutter of the room picture.
+9. Leave the session (see "Leaving a session with hands only"). The landing page is back.
+10. Write down the four lines under "This device" again: they now say what the session was given.
+11. Pinch **Enter the garden** once more and count the seconds from your pinch until you see the room. Write the count down as T2. The headset should ask nothing this time; if it asks again, write that down and count from your last answer.
+12. Again look straight ahead for 5 seconds: "Sound unavailable", yes or no? This is the second Enter of the same page.
+13. Leave the session.
+14. Reload the app page. Before you pinch Enter, open the capability page's bookmark in the same tab. Do not start it. Then use the browser's Back arrow: the app page is back.
+15. Pinch **Enter the garden**. Does the session start? Leave it.
+16. Open the "app, dev" bookmark. Pinch **Enter the garden**.
+17. A small panel with three lines of numbers sits low on your left, half a metre away, and moves with your head. Can you read it without squinting? Is it in the way?
+18. Watch it for 30 seconds. Write down the usual `fps`, the lowest `fps`, and `ms`, `draws` and `tris`. Leave the session.
 
 ### Write down
 
 | Field | Value |
+|---|---|
+| "This device", before the first session | four lines |
+| Every box, "Help" and the button work with a hand pinch | yes / which did not |
+| The browser's own enter button | yes / no |
+| Anything drawn in the session; drawn hands | words; yes / no |
+| "Sound unavailable" on the first Enter | no / at once / after about 3 s |
+| "This device", after the first session | four lines |
+| T2, Enter pinch to the first sight of the room (second entry) | seconds |
+| "Sound unavailable" on the second Enter | no / at once / after about 3 s |
+| Enter after Back | works / what happened |
+| The read-out: readable; in the way; where it sat | yes / no; yes / no; words |
+| Empty session: `fps` usual and lowest; `ms`; `draws`; `tris` | |
+| Words on the page that are hard to read, or wrong | words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Start times | to be decided (PROGRESS item 26b). T1 (block 0) and T2 are recorded apart and not added. The limit in the documents is 5 seconds; whether it applies to T1, to T2 or to each is Parth's call. You count by ear: write the numbers as you counted them | TC-DEV-01, FR-SYS-06, T-128a |
+| One click for sound and session | the session starts, and "Sound unavailable" does not appear, on the first Enter and on the second | API_SPEC §1.10 rule 2, T-128a |
+| One way in | the browser shows no enter button of its own | API_SPEC §1.10 rule 2 |
+| Before the first session | "Mixed reality: supported.", and three lines that each say "checked when you enter" | `src/ui/strings.ts` |
+| After the first session | "Hand tracking: on." If you allowed the room: "Table detection: on. The garden looks for your table." and "Saved position: on. The garden can come back to the same spot." They must agree with `features.granted` of block 1 | `src/ui/Landing.ts` |
+| Enter after Back | a session starts | from T-128a |
+| No drawn hands | none, and nothing else drawn (with the "app, dev" bookmark: only the read-out) | D-027 |
+| Hands only | every control on the page reacts to a pinch | Golden Rule 1 |
+| The read-out | write down what you see. Its place is a first guess until someone has seen it on a headset | from T-128a |
+| Empty session frame rate | no rule for an empty session. The game's rule is 72 usual and never below 60, so less than 72 here is a warning | TC-PERF-01 |
+
+### If it fails
+
+- "Sound unavailable" appears: the browser did not start the sound with the Enter pinch. Nothing to do in the sitting. Write down on which Enter and how soon, and tell Claude: the sound then needs a pinch of its own inside the session (T-152).
+- Under the button: "The garden did not open. Check that hand tracking is on in the headset: …". Switch hand tracking on and enter again.
+- Under the button: "The garden could not load. Reload the page." Reload. If it says so again, tell Claude: it is a bug.
+- Under the button on the headset: "Roomsong is played in a mixed-reality headset. …". Tell Claude: it is a top-severity bug.
+- No read-out with the "app, dev" bookmark: the address lacks `dev=1`. A built page ignores `flags` without it.
+
+---
+
+## Block 9 — The app: headset off and on, the menu, leaving (15 min)
+
+**Can be run today** for everything you read in the console and see. The steps marked **(listen)** need T-128d: until then the session is silent. A soft fade when the headset comes off is T-152.
+
+**Purpose:** find out what the app is told when you take the headset off, open the headset's menu, or leave it lying; and whether the sound comes back by itself.
+
+**Answers:** from T-128a: which pause events arrive, does the sound come back without a pinch, does it keep playing under the menu, a session the headset ends by itself, the foveation setting as the headset reports it · from T-121 and TC-DEV-08: the sound stops on time and returns in time · from T-162: does taking the headset off count as "hidden" · TC-DEV-14 (new).
+
+**You need:** the USB cable and the Mac's console with **Verbose** ticked (see "The Mac's console over USB"); the "app, dev" bookmark. From T-128d on, add `,autoplant=13` at the end of that address, so that a small garden plays (from the plan).
+
+**Checked against:** `src/app.ts` (`followSession`: the app's pause event `xr:visibility` comes from the session's own `visibilitychange`, only when the value changes, and a dimmed, "blurred", session counts as seen; a session that starts unseen says so; the line a failed part writes), `src/core/events.ts` and `src/core/log.ts` (the `eventLog` lines), `src/render/config.ts` (the app asks for foveation 2/3, "medium").
+
+### Steps
+
+1. Connect the cable. Headset: open the "app, dev" bookmark. Mac: click **inspect** under it and choose **Console**.
+2. Pinch **Enter the garden**. The console shows `[app] audio started` and `[events] xr:sessionStart`. Write yes or no for each. A red `[app] E_AUDIO_CONTEXT` line means the sound did not start.
+3. (console) Type `__roomsong.world.renderer.xr.getBaseLayer().fixedFoveation` and write down the number. The app asks for 0.67.
+4. Take the headset off and hold it for 5 seconds. Put it back on.
+5. Read the console: which `[events] xr:visibility` lines came? `visible: false` and then `visible: true` means the app was told. No line means the headset only dimmed the session and the app never knew. Is there a red `E_AUDIO_CONTEXT` line?
+6. (listen) Did the sound stop when the headset came off? Did it come back by itself, without a pinch? In time with the light, or with a jump?
+7. Open the headset's menu over the session: look at your palm, pinch and hold. Read the console: any `xr:visibility` line? (listen) Does the sound keep playing under the menu?
+8. Keep the menu open for 30 seconds. Then close it and go back to the session. (listen) Is the sound there? Does the loop carry on in time?
+9. Take the headset off and put it down until it goes to sleep. Try 2 minutes (unchecked: nobody knows how long it takes). Put it back on.
+10. Is the session still there, or is the landing page back? If the page is back, the headset ended the session while it was unseen. Read the console: is there an `[events] xr:sessionEnd` line?
+11. If the page is back: is **Enter the garden** ready? Pinch it. Does a session start? Leave it.
+12. Only if a red line in any app block read `[app] ….update threw: skipped for 1 s` and the name before `.update` was one or two meaningless letters: the build shortened the name. To read the full name, start the dev server on the Mac (`npm run dev:runtime`; it serves on port 8081), open its address on the headset (unchecked: nobody has opened the dev server from a headset, and a new certificate warning is expected), and do the same thing again. That address is another place: a garden saved there is not the garden on the built site.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| `[app] audio started`; `[events] xr:sessionStart`; any red `E_AUDIO_CONTEXT` | yes / no each |
+| Foveation as the headset reports it | number / the console's error text |
+| Headset off 5 s: the `xr:visibility` lines | false then true / none / other |
+| (listen) Sound with the headset off, and back on | stops after … s / keeps playing; back by itself / needs a pinch; in time / jumps |
+| The menu: an `xr:visibility` line; (listen) sound under the menu | yes / no; plays / stops |
+| (listen) After 30 seconds in the menu | sound there; loop in time / jumps |
+| Headset put down: how long until it slept; what you found | minutes; session still there / landing page |
+| `[events] xr:sessionEnd` when the headset ended the session | yes / no |
+| Enter after the headset ended the session | works / what happened |
+| Any other red line (copy it) | words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The pause is seen | write down what you see. The app saves on `visible: false`, and from T-152 it fades the sound there. If no line comes when the headset is off, neither can happen | API_SPEC §1.10 rules 3 and 9, from T-128a and T-162 |
+| Sound under the menu (listen) | it keeps playing | from T-128a |
+| Back after a pause (listen) | the sound is back and the loop carries on in time, after 5 seconds off and after 30 seconds in the menu | TC-DEV-08, FR-SYS-05, from T-121 |
+| After the headset ended the session | Enter starts a new one | from T-128a |
+| Foveation | write down what you see | NFR-PERF-09 |
+
+### If it fails
+
+- The console shows nothing at all: tick **Verbose** in its level menu, and check that the address has `dev=1&flags=eventLog`.
+- `__roomsong` "is not defined": the address lacks `dev=1`.
+- A red `E_AUDIO_CONTEXT` line after the headset came back: the browser wants a pinch before it plays again. Tell Claude: T-152 then asks for that pinch.
+- The session is gone after 5 seconds off the head: write it down. The garden is saved at that moment from T-128e on, so nothing is lost, but every pause would then mean a new Enter.
+
+---
+
+## Block 10 — The app: the bed on your table (15 min)
+
+**Needs: T-128c** (the room system and the bed drawn in the app). Every step of this block is **(from the plan)**.
+
+**Purpose:** see the app put the bed on your real table: where, how fast, and by which of its four ways. Then see what it does from a bad seat, at a low table, and in the room where it finds no table.
+
+The four ways, which the app calls levels: **1** a surface the headset labels as a table · **2** any level surface at table height · **3** you look at a surface and pinch · **4** a bed that floats in front of you.
+
+**Answers:** TC-DEV-02 (a) and (b) · from T-123: which level your table gets, the 3-second wait for a table, a pinch on a coffee table 0.4 m high, the limits of D-034 · from T-140: sitting with your head over the table near its far edge, looking outward · from T-116: entering while a pinch is held (nothing may be confirmed) · D-040: do the room's surfaces still arrive with the SDK's own scene system switched off · Golden Rule 2 and D-020 (reach) · the hint's words over a bright wall (from the reviews) · PROGRESS items 23 and 26c (first sound in a room with no table).
+
+**You need:** your table; the second room (no Space Setup); a low table about 40 cm high, if you have one; the tape; the "app, dev" bookmark. The console is a bonus here.
+
+**Written from:** the T-128c row of the plan, API_SPEC §1.10 rule 4 and §2 (`room:placementLevel`, `room:bedPlaced`), UX_WIREFRAMES §9.2 (the pale "ghost" ring and the words of the hint). Checked against code that is already on `develop`: `src/room/config.ts` (3 seconds for a table, 10 seconds for your pinch, nothing lower than 0.5 m above the floor, nothing less than 0.25 m below your eyes).
+
+### Steps, part A — at your table
+
+1. Sit at your table as in block 2, belly at its edge, facing it. Open the "app, dev" bookmark.
+2. Pinch **Enter the garden**. Count the seconds from the first sight of the room until the ring shows.
+3. Where is the ring? On the table top, above it, or sunk into it: by how many cm?
+4. Put the tape on the table: measure from the table's near edge, at your belly, to the middle of the ring, and to the ring's far edge.
+5. Look at the middle of the ring and keep your head still: is the whole ring in view?
+6. (console) Read the `[events] room:placementLevel` lines: write the numbers in order. Read `[events] room:bedPlaced`: is `restored` false?
+7. Leave the session.
+
+### Steps, part B — a bad seat and a low table
+
+8. Stand at the far side of your table and lean over it, so that your head is above the table near its far edge. Face away from the middle of the table. Pinch **Enter the garden**.
+9. Where does the bed land: on the table, or in the air past its edge? (console) Which level? Leave the session.
+10. Only with a low table: sit beside it, somewhere the app finds no table (the second room is fine). Enter. When the pale ring shows, look at the low table and pinch.
+11. Does the bed land on the low table? Today it should not: it floats instead. Would you have wanted it there? Leave the session.
+
+### Steps, part C — the room with no table
+
+12. Carry the headset to the second room. Sit at its desk. Open the "app, dev" bookmark.
+13. Press the thumb and finger of your left hand together and keep them together. With your right hand, pinch **Enter the garden**. Count the seconds aloud from this pinch.
+14. After about 3 seconds a pale copy of the ring shows where the bed would land, with the words "Look at your table, and pinch". Now open your left hand. Did the bed land at that moment? It must not.
+15. Are the words easy to read? Turn until a bright wall or a window is behind them: still easy?
+16. Look at the desk: the pale ring moves onto it. Pinch once and let go. The bed lands where the pale ring was. Write down your count.
+17. Only once T-128d is in: plant your first seed as in block 11 and write down your count when it first sings.
+18. Leave. Enter again, look at the desk and do not pinch. After 10 seconds the bed lands by itself. On the desk, or floating?
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Part A: seconds from the first sight of the room to the ring | seconds |
+| The ring on the table top | on it / above by … cm / sunk by … cm |
+| Near edge of the table to the ring's middle; to its far edge | cm; cm |
+| Whole ring in view, head still | yes / no, which edge was cut |
+| (console) Levels in order; `restored` | numbers; true / false |
+| Part B: head over the far edge, facing outward: where the bed landed; level | words; number |
+| Low table (height from your tape): did the bed land on it; did you want it there | cm; yes / no; yes / no |
+| Part C: did opening the held pinch place the bed | yes / no |
+| The hint's words: readable; over a bright wall | yes / no; yes / no |
+| Seconds from the Enter pinch to the bed (you pinched) | seconds |
+| Seconds from the Enter pinch to your first plant singing, in this room (T-128d) | seconds |
+| No pinch: where the bed landed after 10 seconds | on the desk / floating |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Reach | the ring's middle is 35 to 45 cm in front of your head and its far edge at most 75 cm. From the table's edge at your belly that is about the same | Golden Rule 2, FR-ROOM-03, D-020 |
+| Your table | level 1: the table's surface was there within 3 seconds and carries the label `table` or `desk`. Level 2: write it down with the label block 1 showed. Level 3 or 4 at a table from Space Setup: tell Claude, because the room then does not tune the song | FR-ROOM-01, TC-DEV-02, from T-123 |
+| The surfaces still arrive | level 1 or 2 at your table also shows that the SDK's own scene system is not needed | D-040 |
+| Time to the bed at a table | within 3 seconds of the session's start | FR-ROOM-10, API_SPEC §2 |
+| A pinch held from before Enter | places nothing | from T-116 |
+| The bad seat | write down what you see | from T-140 |
+| The low table | write down what you see. The limit of 0.5 m above the floor is a first guess until this run | D-034 |
+| The hint | its words show from the pale ring until the bed is placed, and can be read | UX_WIREFRAMES §9.2 |
+| First sound with no table | the rule is 20 seconds. The plan counts 22 at worst; Parth chooses between three ways out (PROGRESS items 23 and 26c). Your count decides how urgent it is | FR-UI-02 |
+
+### If it fails
+
+- No ring 15 seconds after you see the room: tell Claude. It is a top-severity bug.
+- The bed floats although you sit at your Space Setup table: check that you faced the table, and that "This device" says "Table detection: on." (block 8). If the pinch page said `table` in block 2 and the app floats, the app is wrong: tell Claude, and name D-040.
+- No pale ring and no words in the second room: the headset gave no hit-test there. Compare with `hitTest.hits` of block 7.
+
+---
+
+## Block 11 — The app: plant, first sound, first loop (10 min)
+
+**Needs: T-128d, with T-127** (seeds that come to your hand). Every step of this block is **(from the plan)**.
+
+**Purpose:** do the game's first minute as a new player would, and time it. See whether a plant lands where your fingers are.
+
+**Answers:** TC-DEV-01, the second half (first sound within 20 seconds, first loop within 90) · Golden Rule 4 · from T-116: does a pinch land where the fingers are (the app trusts that the headset's space and its own are one: API_SPEC §1.10 rule 13); entering while a pinch is held (nothing may be planted) · D-037 (three starter seeds on the first visit, no fourth) · Golden Rule 1.
+
+**You need:** your table; the app's plain bookmark (no flags: this is the real thing). A garden that was never opened on this address is best. If the app has run here before, say so in the results.
+
+**Written from:** the T-127 and T-128d rows of the plan, API_SPEC §1.10 rules 4 and 8. Checked against code that is already on `develop`: `src/ui/strings.ts` (the Help lines say the same three moves), `src/garden/` (three starter seeds, at most one seed out at a time).
+
+### Steps
+
+1. Sit at your table, facing it. Open the app's plain bookmark.
+2. Pinch **Enter the garden** and count the seconds aloud from this pinch. Keep counting until step 6.
+3. The ring shows on the table. Remember your count.
+4. Open one hand, palm up. A seed comes to it.
+5. With the other hand pinch the seed, carry it over the ring and let go. A plant stands there. Remember your count when you first hear it sing. If you heard any other sound before it, remember that count too.
+6. Plant the other two seeds in the same way. Remember your count when all three have sung in one turn of the light. Stop counting and write the counts down.
+7. Look at each plant: does it stand where your fingertips were when you let go? If not: how many cm off, and in which direction? The same direction every time?
+8. Open a palm once more. No fourth seed should come.
+9. Leave the session. Press the thumb and finger of one hand together and keep them together. With the other hand pinch **Enter the garden**.
+10. When the ring shows, move the closed hand over it and open it. Nothing may be planted or moved. Leave the session.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Was this the first time the app ran on this address? | yes / no |
+| Count when the ring showed | seconds |
+| Count at the first sound of any kind, and what it was | seconds; words |
+| Count when your first plant sang ("first sound") | seconds |
+| Count when all three sang in one turn ("first loop") | seconds |
+| Plants against your fingertips | on the spot / off by … cm, direction, same every time? |
+| Seeds on the first visit | three / other |
+| Opening a pinch held from before Enter | nothing happened / what happened |
+| Anything you could not do with hands only | words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| First sound | your first plant sings within 20 seconds of the Enter pinch | TC-DEV-01, FR-UI-02, Golden Rule 4 |
+| First loop | all three sing in one turn within 90 seconds | TC-DEV-01, Golden Rule 4 |
+| Where a plant lands | write down what you see. A steady offset in one direction means the app's space and the headset's are not one, and it is a bug | from T-116, API_SPEC §1.10 rule 13 |
+| Starter seeds | three on the first visit and no more that day | D-037 |
+| A pinch held from before Enter | plants nothing | from T-116 |
+
+Whether the time to load the page (T1) is added to these counts waits for the same call as the start times: PROGRESS item 26b.
+
+### If it fails
+
+- No seed comes to an open palm: hold the palm flat and still, facing up, for a full second. Still none: tell Claude.
+- The plant stands in another cell than the one you aimed at, now and then: that is aim, and block 2 measured it. Every time, the same way: that is the offset of step 7.
+- No sound at all, and "Sound unavailable" showed: see block 8.
+
+---
+
+## Block 12 — The app: the settings panel and its orb (15 min)
+
+**Needs: T-128d** (its first step, d1, puts the panel into the app). That the panel is in the app is **(from the plan)**; what it looks like and does is checked against code.
+
+**Purpose:** find the small orb that opens the settings, read the panel, hit its buttons with a pinch and by looking, and try the long hold that starts a new garden. Nobody has seen any of it on a headset.
+
+**Answers:** from T-151: does the back of the hand show the orb and the palm hide it; does the orb show most of the time while you play; can the panel be read at arm's length and over a bright room; is it drawn over your real hands; do Tempo + and the tabs take the pinch without a neighbour taking it (buttons 4 cm wide, 5.5 cm apart); the 1.5 second hold on New garden; the same by looking; a hitch when the panel redraws; the panel after a head tilt; where the orb waits at the very start · TC-DEV-15 (new) · Golden Rule 1.
+
+**You need:** the session of block 11 with its three plants, or any garden. The app opened with `?dev=1&flags=perfHud` at the end of its address: the read-out shows a hitch.
+
+**Checked against:** `src/ui/Panel.ts`, `src/ui/PanelSystem.ts`, `src/ui/config.ts` (panel 40 by 28 cm, 55 cm away; orb 4 cm, 9 cm off the hand; the hold 1.5 s), `src/ui/strings.ts` (the panel's words), `src/hands/config.ts`, `src/core/settings.ts` (the main hand is the right one unless you change it, so the orb is on the left hand).
+
+**Know this first:** this block ends with a new, empty garden and three fresh seeds. Blocks 13 and 14 need exactly that.
+
+### Steps
+
+1. Open the app with `?dev=1&flags=perfHud`. Pinch **Enter the garden**. The bed is on your table.
+2. Hold your left hand up with its back toward your face. A small round orb shows a little way off the back of the hand. Turn the palm up: the orb goes.
+3. Play as usual for one minute, both hands palm-down over the bed. How much of that minute does the orb show? Is it in the way?
+4. Show the orb and pinch it with the other hand. A panel opens in front of you with three tabs: **Sound**, **Access**, **Garden**.
+5. Read every word on the Sound tab with your arm stretched toward it. Turn until a bright wall or a window is behind the panel: still easy to read?
+6. Hold a hand between your face and the panel. Do you see your hand, or is the panel's picture drawn over it?
+7. Pinch **+** beside Tempo five times, slowly. Each time: did the number go up by 4? Count the pinches that hit something else or nothing. Watch the read-out: does the picture hitch at a press?
+8. Pinch the tabs Access, Garden, Sound, twice round. Count the pinches that opened the wrong tab or nothing.
+9. Tilt your head toward one shoulder and hold it. Does the panel stay level? Close it with the **x** and open it again with the head still tilted: how does it sit now? Straighten your head: does the panel look crooked until you open it again?
+10. Garden tab: beside "New garden" is a button **hold**. Give it one short pinch. Nothing may happen.
+11. Pinch that button and hold for 2 seconds: a ring fills. Let go. The plants are gone and three seeds wait.
+12. Access tab: pinch **Look and hold** on. From here to step 15, do not pinch.
+13. Look at the Sound tab and keep looking: a ring fills and the tab opens. Look at Tempo **+** and keep looking: does it press?
+14. Look at the Garden tab, then at the button **hold** beside "New garden", and keep looking until a new garden starts. It takes the hold time and then 1.5 seconds more. Does it start?
+15. Look at the **x** to close the panel. In this mode the orb does not need your hand: it waits in view by itself. Where is it?
+16. Leave the session and enter again. In the first second: is the orb in view at that same place, or somewhere odd (at your feet, on the floor, behind you)?
+17. Open the panel by looking at the orb. Access tab: look at **Look and hold** and keep looking. It must not switch off. Now pinch it off.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Back of the hand shows the orb; palm up hides it | yes / no; yes / no |
+| The orb during a minute of play | most of the time / now and then / never; in the way: yes / no |
+| The panel's words at arm's length; over a bright wall | easy / hard, which words; easy / hard |
+| Your hand in front of the panel | hand visible / covered by the panel |
+| Tempo +: pinches that missed, of 5 | count, and what was hit |
+| Tabs: pinches that missed, of 6 | count, and what was hit |
+| A hitch at a press; the lowest `fps` you saw | yes / no; number |
+| Head tilted: the panel | stays level / tilts with you; crooked until reopened: yes / no |
+| Short pinch on New garden | nothing / what happened |
+| Hold on New garden | new garden with three seeds / what happened |
+| By looking: tab opened; Tempo + pressed; New garden started | yes / no each |
+| The orb in look-and-hold mode: where it waits; where it was at the very start of the next session | words; words |
+| Look and hold by looking | stays on / went off |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The orb | the back of the left hand toward your face shows it; palm up hides it | from T-151 |
+| Buttons | no pinch on Tempo + or on a tab is taken by a neighbour | from T-151, FR-HND-04 |
+| New garden | a short pinch does nothing; only the hold, let go after 1.5 seconds, starts one; by looking it starts too, after the longer wait | from T-151, FR-PER-03 |
+| Look and hold | looking cannot switch it off | from T-151 |
+| Reading, the orb during play, your hand in front, the hitch, the head tilt, the orb at the start | write down what you see. Each has a note in the review and no number | from T-151 |
+| Hands only | every control reacts to a pinch | Golden Rule 1 |
+
+### If it fails
+
+- No orb: it shows on the hand that is not your main hand. Still none: tell Claude. Without the orb nothing else in this block can be done, and blocks 13 and 14 then need another empty garden: reload the page while T-128e is not in, or wait for block 19.
+- The panel is gone by itself: it closes when you look away from it for 5 seconds. Open it again.
+- The orb is in the way while you play: write down where your hands were. The review expected this risk.
+
+---
+
+## Block 13 — The app: hands lost (10 min)
+
+**Needs: T-128d, with T-127** (a seed to carry). The last step also needs T-146. That a seed can be carried in the app is **(from the plan)**; the hand rules are checked against code.
+
+**Purpose:** see what happens when the headset loses a hand that is holding something: the words "Hand out of view", where the seed goes, and whether a lost moment can plant a seed you never let go of.
+
+**Answers:** TC-DEV-09 · NFR-REL-02, FR-HND-15 · D-030 (the words only for a hand that held something, for at most 5 seconds) · from T-116: does the browser end the pinch when a hand drops out for an instant and start it again a moment late (a carried seed would then be let go: say what happened); how real hands are lost and whether a grace of 0.2 seconds suits; do the words stay at least 1.2 seconds, also after a very short loss and when the headset's menu takes the hands away, or do they flicker; can the words be read, also over a bright wall.
+
+**You need:** the empty garden with three seeds from block 12; the "app, dev" bookmark. The console is a bonus: it shows `hands:lost`, `gesture:trackingLost` and `garden:seedBack`.
+
+**Checked against:** `src/hands/config.ts` (the grace is 200 ms; the words stay at most 5 s), `src/hands/HandSystem.ts`, `src/core/strings.ts` ("Hand out of view"), `tests/e2e/11-tracking-loss.spec.ts` (what the emulator already shows: a whole hand removed while it carries a seed).
+
+**Know this first:** do not plant a seed in this block. To put a seed back, let go of it away from the ring.
+
+### Steps
+
+1. Open the "app, dev" bookmark and enter. Open a palm: a seed comes. Pinch it with the other hand. You now carry it.
+2. Put the carrying hand behind your back for 3 seconds. The words "Hand out of view" should show, and the seed should be back in the supply: not planted, not gone. Bring the hand back. Do the words go? Did they stay at least a second?
+3. Take the seed again. Slide the carrying hand slowly out of view, down past the table's edge. The same questions.
+4. Take the seed again. Flick the carrying hand out of view and straight back, as fast as you can. The seed should still be at your fingers. Did the words flash up?
+5. Carry the seed over the ring. Pass your other hand quickly between your face and the carrying hand, three times. Did the seed get planted, or drop, although you never let go? Say exactly what happened.
+6. Carry the seed. With the other hand open the headset's menu (palm, pinch and hold). Do the words show steadily, or do they flicker? Close the menu. Where is the seed?
+7. Carry the seed, hide the hand behind your back and keep it there for 10 seconds. Do the words go by themselves after about 5 seconds?
+8. Let go of the seed away from the ring. Rest one empty hand in your lap, out of view, for 10 seconds. No words may show.
+9. Make the words show once more, as in step 2, and read them with a bright wall or a window behind them.
+10. Think back over steps 2 to 7. Did the seed ever go back although your hand was gone only for a blink? Did it ever hang in the air long after the hand had gone?
+11. Only once T-146 is in: pinch a plant and drag it, and hide the hand as in step 2: the plant goes back to its cell. Flick as in step 4: the drag goes on. The same while pulling a plant up. No plant may be lost or doubled.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Behind the back: the words; the seed; how long the words stayed | yes / no; back in the supply / planted / gone; seconds |
+| Past the table's edge: the same | |
+| The flick: seed still carried; the words | yes / no; nothing / flashed |
+| The other hand passed in front, three times | nothing / the seed was planted / dropped; words |
+| The menu: the words | steady / flicker / none; where the seed was afterwards |
+| Hidden for 10 seconds: the words | gone after about … s / stayed |
+| Empty hand out of view | no words / words showed |
+| The words over a bright wall | easy / hard |
+| The grace of 0.2 seconds | suits / too short (when) / too long (when) |
+| With T-146: drag and pull | plant back in its cell; drag goes on after a flick; lost or doubled plants: count |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| A held thing and a lost hand | the words show and the seed goes back (a dragged plant: to its cell) | TC-DEV-09, FR-HND-15 |
+| Back at once | a hand back within about 0.2 seconds carries on | TC-DEV-09 |
+| Nothing planted by a loss | no seed is planted or dropped without your letting go | from T-116, NFR-REL-02 |
+| The words | they stay at least 1.2 seconds and do not flicker, also after a very short loss and under the menu; they go after 5 seconds at most | from T-116, D-030 |
+| An empty hand | no words | D-030 |
+| The grace | write down what you see | from T-116 |
+
+### If it fails
+
+- The words flicker: nothing to do in the sitting. Tell Claude when (a short loss, or the menu): the review already names the fix.
+- A seed was planted that you never let go of: write down the step. It is a bug of the second-highest severity: the review reasoned this case out and could not test it without a headset.
+- No seed comes: all were planted. From T-128e on, open the app with `?dev=1&flags=eventLog,fakeDay=+1`: one new seed arrives, as on the next day. Raise the number by one each time you need another.
+
+---
+
+## Block 14 — The app: ten minutes with a full garden (30 min)
+
+**Needs: T-128d** (the garden drawn and played in the app). That the app draws and plays the plants, and that a hand's hover lights them, is **(from the plan)**; the flag and the read-out are checked against code.
+
+**Purpose:** the real frame-rate test: ten minutes with sound, hands and many plants. In the same ten minutes: does the loop keep steady time, does the Bass come through the headset's speakers, does planting late in a session hitch, and does the bed creep away from its place. Part B looks at what a real hand lights up (T-119), now that the bed lies on your real table.
+
+**Answers:** TC-DEV-07, TC-PERF-01, TC-PERF-06 (without Listen mode, which is T-148) · from T-121: the sound keeps its rate inside a session · from T-144: is the lowest Bass heard on the headset's speakers; what many Choir notes cost · from T-143: a first plant put in minutes after the start · from T-162 and TC-DEV-05: the bed's drift over ten minutes, in cm · from T-119 and D-044: the light's dark edge on your real table; the lit cell and the 20 % glow of a hovered plant in passthrough, also under the light's crest and in high contrast, where the hovered plant's own cell lights up too; a glow that feels late or flickers with a real hand; the frame rate with those effects on.
+
+**You need:** the empty garden with three seeds from block 12; the coin; the white sheet of block 4; the app's address with `?dev=1&flags=perfHud,autoplant=60` at its end. Leave `eventLog` out: its lines cost time and would spoil the numbers.
+
+**Checked against:** `src/garden/GardenSystem.ts` (`autoplant` fills only a garden that has no plants; the plants take the five voices in turn: bell, pad, pluck, bass, choir), `src/core/flags.ts` (0 to 80), `src/render/PerfHud.ts` (the three lines of the read-out), `src/garden/signature.ts` (the key A, the lowest, goes to rooms with a floor of 34 m² or more).
+
+**Know this first:** 60 plants are 12 of each voice, and 20 cells stay free for step 6. The lowest Bass note of all (55 Hz) belongs to the key of A. In a smaller room the lowest note is higher and easier to hear: that is why you write the key down.
+
+### Steps, part A — ten minutes
+
+1. Open the app with `?dev=1&flags=perfHud,autoplant=60`. Pinch **Enter the garden**. Sixty plants stand on the ring and the light plays them.
+2. Put the coin on the real table, exactly under the middle of the ring.
+3. Look at a clock. For 10 minutes keep your hands over the bed and move them as in play. Watch the read-out.
+4. Listen the whole time. Count stutters, gaps and clicks, and moments when the sound and the light drift apart.
+5. Listen for the lowest notes. Do you hear the Bass on the headset's speakers? Open the panel (block 12), Garden tab, and write down the Key.
+6. After minute 5: open a palm, take a seed and plant it in a free cell. Did the picture or the sound hitch at that moment? What does the new plant sound like?
+7. At minute 10: look straight down at the coin. How far is the middle of the ring from it, and in which direction?
+8. Write down the read-out's numbers. Leave the session. Leave the coin where it is: block 16 uses it.
+
+### Steps, part B — what a hand lights up (T-119)
+
+9. Slide the white sheet onto the table under the right half of the ring. Do not move the coin. Open the same address and enter: the garden is full already, so the flag adds nothing.
+10. Watch the light pass over your real table and over the sheet. A dark band runs just ahead of it. Can you see it on the table? On the sheet? Too weak, about right, or too strong?
+11. Hold an empty hand over a plant, fingers apart, as if about to pinch it. The plant should brighten a little and the ring of its cell light up. Can you see both in your room? Keep the hand there while the light passes over that plant: can you still tell it is the one under your hand?
+12. Move the hand slowly from plant to plant, then quickly, and stop it on the line between two plants. Does the glow follow at once, or feel late? Does it flicker between the two?
+13. Open a palm, take a seed and carry it over free cells without letting go. The ring of the cell where it would land lights up. Can you see it? Then let go of the seed away from the ring: it goes back.
+14. Open the settings panel (block 12), Access tab, and pinch **High contrast** on. Close the panel. Every plant has a cream rim: does it read as an outline? Hover a plant as in step 11, also while the light passes over it. Can you tell which one you hover? Its cell lights up as well: is that enough?
+15. Keep a hand hovering and high contrast on, and read the read-out: `fps`, `draws`, `tris`. Then switch **High contrast** off on the panel and leave the session.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| `fps`, usual; `fps`, lowest seen, and when | |
+| `ms` | |
+| `draws` and `tris` | |
+| `voices`, the highest you saw | |
+| `flash` (shown as a count out of 3) | |
+| Stutters, gaps, clicks; sound and light apart | count; yes / no |
+| The Bass on the speakers; the Key on the panel | clearly / faintly / no; letter |
+| The seed planted after minute 5 | no hitch / picture hitched / sound hitched; what the plant sounds like |
+| The ring's middle against the coin after 10 minutes | cm, direction |
+
+| Part B | Value |
+|---|---|
+| The dark band ahead of the light: on your table; on the sheet | visible / not visible each; too weak / about right / too strong |
+| A hovered plant's glow; its lit cell | visible / faint / not visible each |
+| The hovered plant under the light's crest | still clear / lost |
+| The glow with a moving hand | at once / late; steady / flickers between two |
+| The lit cell under a carried seed | visible / faint / not visible |
+| High contrast: the cream rim as an outline; which plant is hovered, with its cell lit | yes / no; clear / not clear; enough / not enough |
+| Hand hovering, high contrast on: `fps`, `draws`, `tris` | |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Frame rate | usual `fps` at least 72 and never below 60, over the 10 minutes, and in step 15 | TC-DEV-07, TC-PERF-01, Golden Rule 5 |
+| Script time | `ms` at most 6 | NFR-PERF-05 |
+| Drawing budget | `draws` at most 60, `tris` at most 150,000. D-044 expects up to 20 draws with every effect on | Golden Rule 5, D-044 |
+| Flashing | `flash` at most 3 | FR-UI-11 |
+| Steady time | 0 stutters, gaps or clicks | TC-PERF-06, from T-121 |
+| The Bass, the late plant, the drift | write down what you see and hear | from T-144, T-143, T-162 |
+| The dark band, the glow, the lit cells, high contrast | write down what you see. A hovered plant you cannot pick out in high contrast, even with its cell lit, goes back to D-044 | from T-119, D-044 |
+
+Listen mode is part of TC-DEV-07 and is not built yet (T-148): that half is device script S2.
+
+### If it fails
+
+- Only a few plants stand on the ring: the garden was not empty, so the flag did nothing. Make a new garden (block 12, step 11) and open the address again.
+- `fps` below 60: nothing to do in the sitting. Make a new garden and repeat steps 1 and 3 for two minutes with `autoplant=24`, the smallest garden the rule names. Write down both sets of numbers and tell Claude: the performance work (T-165) moves forward.
+- Clicks or gaps: write down what was playing. Compare with the crackle step of block 1.
+- The Bass cannot be heard: nothing to do in the sitting. The sound pass (T-164) adds overtones to it.
+
+---
+
+## Block 15 — The app: a key change listened to (10 min)
+
+**Needs: T-128d.** Every step of this block is **(from the plan)**. The listening points are from the review of T-143; how to cause the change in the middle of playing is this script's best reading of the contract, and Claude confirms it when T-128d lands.
+
+**Purpose:** listen to the moment the garden changes key, scale and echo. The review found nothing wrong by measuring; whether it sounds like a breath or like a fault only ears can say.
+
+**Answers:** from T-143 (W1) and PROGRESS item 27: do the first plucked notes after a change sound like the same instrument (a plucked note can be shifted by up to about 10 semitones); the cut and the silent step; the short dry moment when the echo is swapped; a long echo cut short and any jump in loudness; any click; the very first plucked notes of a session with a garden already there; on the headset, a visible hitch at the swap in a large room · the open choice in the T-143 notes: accept the cost of the echo swap or shorten the echo for large rooms · TC-DEV-17 (new).
+
+**You need:** the garden of block 14, playing; the app's plain bookmark; a room that the app could read (the bed sat on a table by level 1 or 2 in block 10). In a room it could not read, the garden is already in the default tuning and step 4 changes nothing.
+
+**Written from:** `T-143` in the plan and its review notes; API_SPEC §1.10 rule 4 and §2 (`room:features` comes again after "Re-place bed", and a bed that floats gets the default tuning, "Wanderer"); UX_WIREFRAMES §9.2 (a pinch while looking at nothing floats the bed at once).
+
+### Steps
+
+1. Sit at your table. Open the app's plain bookmark and pinch **Enter the garden**. The app tunes the garden to the room about one second before the first note.
+2. Listen to the first turn of the light and to the second. Do the plucked notes of the first turn sound like the same instrument as in the second? Or thinner and shorter, or duller and longer?
+3. Let it play for a minute, so that you know the sound.
+4. Now a change in the middle of playing. Open the panel, Garden tab, and pinch the button **start** beside "Re-place bed". The panel closes and the pale ring shows. Look up, away from every table, and pinch. The bed floats, and the garden goes to the default tuning.
+5. Listen at that moment, and for the two turns after it. Use the questions in the table below.
+6. Change back: "Re-place bed" again, look at your table and pinch (or wait). The garden goes back to the room's tuning. Listen again in the same way.
+7. Do steps 4 to 6 once more if you were not sure.
+8. Rate each of the four questions from 1 (a fault) to 5 (fine, or not heard).
+
+### Write down
+
+| Question | Rating 1 to 5 | Words |
+|---|---|---|
+| (a) Right after the change, do the first one or two plucked notes still sound like the same instrument? Compare the first turn with the second | | |
+| (b) Every note is cut, one step stays silent and there is a short gap of about a third of a second: a breath, or a glitch? | | |
+| (c) About half a second later the echo drops out for a moment: do you hear it? | | |
+| (d) Any click? | | |
+
+| Also | Value |
+|---|---|
+| The first turn after Enter (step 2): plucked notes | same instrument / thinner / duller |
+| A long echo cut short at the change, or a jump in loudness | yes / no, which way |
+| Did the picture hitch at the change? The room's size, from your tape | yes / no; m × m |
+| Did the bed float in step 4, and did the sound change at all? | yes / no; yes / no |
+
+### Pass rule
+
+The documents give no number. Parth's ratings decide two things: whether the shifted notes are kept or the sound pass (T-164) replaces them, and whether the echo swap is accepted as it is or the echo is shortened for large rooms.
+
+### If it fails
+
+- Nothing changes at step 4: the bed did not float, or this room was not read. Write that down. Then the only change you can hear is the one at Enter (steps 1 and 2), and the rest waits for the two-room test (TC-DEV-13, block 17).
+- No **Re-place bed** on the panel, or it does something else: write it down and tell Claude. This step is from the plan.
+
+---
+
+## Block 16 — The app: the garden comes back (35 min)
+
+**Needs: T-128e** (the garden is saved), on top of T-128c (the bed's place is saved with the headset). Every step of this block is **(from the plan)**.
+
+**Purpose:** leave and come back, in every way a player can, and see each time whether the bed is on the same spot, how long that takes, how far off it is, and that the plants are all there. This is a must-have of the game, and no emulator can show it.
+
+**Answers:** TC-DEV-05 (Must), FR-ROOM-07, US-12 · from T-162: after a reload and after closing the browser (does the bed return, in how many seconds, how many cm off); table moved; light changed; Space Setup done again; headset restarted; sitting elsewhere; headset off, or the menu opened, in the first 4 seconds; a recentre in mid-session; leaving within a second of a fresh placement, three times; the number of saved places at each step; the next day · D-040 (the number of saved places stays at 1) · D-041 (is a slack of 0.10 m right) · D-033 (the garden shown is the one you grew) · D-037 (one new seed the next day) · from T-119, in part C: the unfurl and a week passing in passthrough, leaf whorls and blossoms on your real table, the frame rate with a full garden in bloom (D-044).
+
+**You need:** the garden of block 14, with the one plant you planted by hand; the coin; the tape; the white sheet; the "app, dev" bookmark; the Mac's console for the lines marked (console). Blocks 1, 6 and 7 must be done: from here on the app removes the capability page's saved place.
+
+**Written from:** the T-128c and T-128e rows of the plan, TEST_PLAN TC-DEV-05, D-040, D-041, the review notes of T-162. Checked against code that is already on `develop`: `src/room/config.ts` (the app waits 4 seconds for a saved place; the bed's middle is at most 0.45 m ahead of you).
+
+**Know this first:** "returned" means the bed came back from its saved place. "Placed again" means the app gave up after 4 seconds and put the bed down afresh, with every plant kept. Placed again is the accepted way out and not a failure. A garden without its plants is a failure.
+
+### Steps, part A — the same seat (15 min)
+
+1. Sit at your table as before. Open the "app, dev" bookmark. Pinch **Enter the garden**.
+2. Put the coin on the table exactly under the middle of the ring. Wait 10 seconds.
+3. (console) Type `__roomsong.world.renderer.xr.getSession().persistentAnchors` and count the entries it shows. One is expected. `undefined` means this browser has no such list: write that down.
+4. Leave the session. Reload the page. Pinch **Enter the garden** and count the seconds from the first sight of the room until the ring shows.
+5. Is the middle of the ring at the coin? How many cm off? Are all your plants there? (console) Does the `[events] room:bedPlaced` line say `restored: true`? Count the saved places again.
+6. Leave. Close Meta Quest Browser completely and open it again. Open the bookmark and enter. The same four answers as in step 5.
+7. Leave. Push your chair back about 5 cm and sit as before. Measure with the tape, held level, from under your eyes to the coin. Enter. The bed should still be at the coin.
+8. Leave. Push the chair back 20 cm more. Measure again. Enter. The bed should now be put down again within your reach, with every plant. Then move the chair back to its first place, enter, and put the coin under the new middle.
+9. Leave. Pinch **Enter the garden** and at once take the headset off for 5 seconds. Put it back on. Is the bed at the coin?
+10. Leave. Enter, and at once open the headset's menu for 5 seconds. Close it. Is the bed at the coin?
+11. In the session, recentre the view: look at your palm, pinch and keep holding until the view resets (unchecked). Does the bed stay on the table at the coin? If it moved: how many cm? (console) Copy any new line.
+12. Open the panel, Garden tab, **start** beside "Re-place bed", place the bed, and leave the session as fast as you can. Do this three times. Write down about how many seconds leaving took.
+13. Enter. Is the bed where you placed it last? Put the coin under its middle. (console) Count the saved places: one is expected.
+14. (console) Switch on the times of the lines: the gear icon of the inspect window, Preferences, Console, "Timestamps". Place the bed once more with "Re-place bed" and stay in the session. Read the time of the `[events] room:bedPlaced` line and of the `[events] room:anchored` line after it. The difference is how long the headset took to save the place. No `room:anchored` line within 10 seconds: write "none".
+
+### Steps, part B — the room changes (15 min; after each one: enter, then the same four answers as in step 5)
+
+15. The light: switch the room's light off, or close the curtains. Enter. Then make it bright again.
+16. The table: push the table about 30 cm to one side, with the coin on it. Enter. Is the bed at the coin (it followed the table), where the table used to be, or put down again? Push the table back.
+17. The headset: switch it off and on again. Open the browser and the bookmark. Enter.
+18. Space Setup: run it again in this room, with the table. Enter.
+19. The next day, if you keep the headset: sit at the same table and enter. The same four answers. Open a palm: exactly one new seed should come. Then do block 6 once more.
+
+### Steps, part C — a week later (5 min; after step 19, or at the end of sitting 2 if you cannot keep the headset)
+
+Do this part last in this block. The flag `fakeDay=+7` makes the garden a week older, and the garden's own date never goes back (D-037): a real next day after it would bring no new seed, and step 19 would read wrong.
+
+20. Lay the white sheet under the right half of the ring, as in block 14. Open the app with `?dev=1&flags=perfHud,fakeDay=+7`. Enter.
+21. Every plant is a week older. Each one keeps its look until the light next reaches it, then unfurls: leaf whorls grow on its stem and open into cream blossoms, and it turns lighter. Watch the whole sweep. Is it pleasant? Does a blossom's colour, arriving with the note, look like part of the flash? Two whorls change on every plant, about 120 in one sweep: does the bed bloom, or sparkle?
+22. Stretch an arm toward the bed. Can you count the whorls of a plant from your seat? Do the cream blossoms stand out on the sheet and on your table?
+23. Read the read-out for one minute: `fps` usual and lowest, `draws`, `tris`. This is the full garden in bloom.
+24. Leave the session.
+
+### Write down
+
+| When | Bed: returned / placed again | Seconds | cm from the coin | All plants there | (console) `restored`; saved places |
+|---|---|---|---|---|---|
+| After a reload | | | | | |
+| After closing the browser | | | | | |
+| Chair 5 cm back (eyes to coin: … cm) | | | | | |
+| Chair 25 cm back (eyes to coin: … cm) | | | | | |
+| Headset off in the first seconds | | | | | |
+| Menu open in the first seconds | | | | | |
+| After three quick leaves (leaving took … s) | | | | | |
+| Light changed | | | | | |
+| Table moved 30 cm | | | | | |
+| Headset restarted | | | | | |
+| Space Setup done again | | | | | |
+| The next day | | | | | |
+
+| Also | Value |
+|---|---|
+| Saved places at the start (step 3) | count / no such list |
+| Recentre: did the bed stay at the coin; any new line | yes / moved … cm; words |
+| Time from `room:bedPlaced` to `room:anchored` (step 14) | seconds / none |
+| The slack: did the bed stay when you had only shifted a little, and move when it was a stretch? | yes / no; words |
+| The next day: seeds that came | one / other |
+| Part C: the unfurl, pleasant; a blossom's colour part of the flash | 1 to 5, words; yes / no |
+| Part C: all whorls in one sweep | bloom / sparkle |
+| Part C: whorls counted from your seat; blossoms on the sheet and on your table | yes / no; stand out / blend in each |
+| Part C: in bloom, `fps` usual and lowest; `draws`; `tris` | |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Reload and browser closed | the garden is back on the same spot within 4 seconds, from its saved place. Write the cm. Placed again with every plant kept is the accepted way out: report it as "placed again" | TC-DEV-05, FR-ROOM-07 |
+| The count | report returned n of N over all rows | TC-DEV-05 |
+| The plants | all there, in every row. A new, empty garden in place of yours is a top-severity bug | US-12, D-033 |
+| Saved places | the count stays at 1 at every step | D-040 |
+| Time to save a place | under 4 seconds: the app gives up after that, and the next visit then places the bed again | from T-162, `src/room/config.ts` |
+| Reach | with the coin more than about 55 cm from under your eyes, the bed is put down again within reach; nearer than that, it stays. Whether 10 cm of slack is the right number is your call after steps 7 and 8 | D-041, Golden Rule 2 |
+| The first seconds, the recentre, the quick leaves, light, table, restart, Space Setup | write down what you see | from T-162 |
+| The next day | exactly one new seed | D-037 |
+| Part C, in bloom | usual `fps` at least 72 and never below 60; `draws` at most 60; `tris` at most 150,000 | TC-PERF-01, Golden Rule 5, D-044 |
+| Part C, the unfurl, whorls and blossoms | write down what you see. Parth's answers go to the art pass (T-163) | from T-119 |
+
+### If it fails
+
+- The plants are gone after a reload: stop this block and tell Claude. Nothing else in it means anything until the save works.
+- Placed again every time, never returned: compare with `anchors.restore.restored` of blocks 1 and 6. If the capability page got its place back and the app does not, the app is wrong. If neither does, the headset does not keep places, and the game's fallback is what players get.
+- More than one saved place: copy the list from the console and tell Claude. The device allows a site only a few, and after that no new place can be saved.
+
+---
+
+## Block 17 — Rooms against the tape measure (10 min a room)
+
+**Needs: T-128c** (the app reads the room). The listening step needs T-128d. Every step of this block is **(from the plan)**; the names of the numbers are checked against the contract.
+
+**Purpose:** in each room you can reach, compare what the app reads (floor area, ceiling height, volume, walls) with your tape, and hear whether two rooms sound different. Nothing in the room code has ever seen a real room.
+
+**Answers:** from T-140: `room:features` against a tape measure in a small desk room, a kitchen and a living room, and in the same room on two visits; an L-shaped room; a wardrobe or a tall fridge; a sloped ceiling; a room without Space Setup; a room with a mesh but no floor or ceiling surface (a hitch as the bed appears); the three known limits of LLD §5.8 · TC-DEV-13 (two rooms differ in key, scale or echo; back in room 1 the garden is re-tuned in place) · TC-DEV-02 (c) to (f) (which level each room reaches; all playable) · TC-DEV-16 (new).
+
+**You need:** the tape; the "app, dev" bookmark; the Mac's console within cable reach of each room, or, from T-128d on, the panel (its Sound tab shows a line "Tuned by:" with the room's floor area, ceiling height and echo). Run Space Setup in each room first, except the one you keep unscanned.
+
+**Written from:** the review notes of T-140, LLD §5.8, API_SPEC §1.1 (`RoomFeatures`, `RoomSignature`) and §2 (`room:features`, `room:signature`).
+
+### Steps, once per room
+
+1. With the tape: the floor's length and width, and the ceiling's height. Note the shape (a rectangle, or L-shaped), tall furniture (a wardrobe, a tall fridge: where it stands, how far from the wall), and a sloped ceiling.
+2. Sit at a table, a desk or a counter. Open the "app, dev" bookmark and pinch **Enter the garden**.
+3. Did the picture hitch at the moment the bed appeared?
+4. (console) Click the `[events] room:features` line open. Write down `level`, `floorArea`, `ceilingHeight`, `roomVolume`, `wallCount`, `largestWallWidth`, `tableHeight` and `tableArea`. A value that is missing counts as "unknown": write that.
+5. (console) Click the `[events] room:signature` line open. Write down `keyRoot`, `mode` and `reverbRt60`. Without a cable: open the panel and copy the "Tuned by:" line of the Sound tab and the Key of the Garden tab.
+6. Only once T-128d is in: listen for 30 seconds. Against the room before: is the song higher or lower, and is the echo longer or shorter?
+7. Leave the session.
+8. After the last room, go back to the first one and enter. Are the plants in their cells? Does it sound as it did there before?
+
+### Write down, one column per room
+
+| | Room 1 (first visit) | Room 1 (second visit) | Small desk room | Kitchen | Living room | Other |
+|---|---|---|---|---|---|---|
+| Tape: floor length × width (m); area (m²) | | | | | | |
+| Tape: ceiling height (m) | | | | | | |
+| Shape; tall furniture; sloped ceiling | | | | | | |
+| `level` | | | | | | |
+| `floorArea` (m²) | | | | | | |
+| `ceilingHeight` (m) | | | | | | |
+| `roomVolume` (m³) | | | | | | |
+| `wallCount`; `largestWallWidth` (m) | | | | | | |
+| `tableHeight` (m); `tableArea` (m²) | | | | | | |
+| `keyRoot`, `mode`, `reverbRt60` (s) | | | | | | |
+| A hitch as the bed appeared | | | | | | |
+| How it sounds against the room before | | | | | | |
+
+### What the plan expects in odd rooms (only if your home has one)
+
+| Room | The app should read | Write down |
+|---|---|---|
+| L-shaped | the floor as the rectangle around it, so more than the real area (an L of 27 m² reads 36), the same on every visit | both areas; the key |
+| A wardrobe or a tall fridge | one more wall in `wallCount` | the count with it |
+| A wardrobe whose front is about 0.6 m off the wall, in a room that gives no floor surface | no `floorArea`, unless the front is turned more than 5 degrees from the wall | `floorArea` or "unknown" |
+| Three flat fronts close behind each other (8 cm apart) | one wall or two, depending on their widths | the count |
+| A sloped ceiling | `ceilingHeight` and `roomVolume` unknown | both |
+| A tall cupboard, top at about 2.0 m, in a room that gives no ceiling surface | the cupboard's top as the ceiling | `ceilingHeight` |
+| No Space Setup | nothing; the default tuning ("Wanderer"); the bed by your pinch, or floating | `level`; the key |
+| A mesh but no floor or ceiling surface (block 1 tells you: `meshes.count` above 0 and no `floor` or `ceiling` in `planes.labels`) | the volume from the mesh; a short hitch as the bed appears is the risk | the hitch; `roomVolume` |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Against the tape | the documents give no allowed error. What counts is the band: use the three band tables of block 6. A room that the app puts in another band than your tape does is the result to report | from T-140, T-141 |
+| The same room twice | the same band on both visits | TC-DEV-13, from T-140 |
+| Two rooms | they differ by ear in key, scale or echo, and their numbers differ; back in room 1 the plants are in their cells and the song is room 1's again | TC-DEV-13 |
+| Every room | note the level reached; the garden can be played in each | TC-DEV-02 |
+| Odd rooms | write down what you see next to what the plan expects | from T-140, LLD §5.8 |
+
+### If it fails
+
+- No `room:features` line: the address lacks `dev=1&flags=eventLog`, or **Verbose** is not ticked in the console.
+- Every room gives the default tuning: check `level`. At level 3 or 4 the room does not tune the song. If the level is 1 or 2 and the numbers are all unknown, tell Claude, and name block 1's `planes.labels`.
+- The numbers are far from the tape (a floor twice the size, a ceiling half a metre off): nothing to do in the sitting. Write both down. Claude decides after the sitting whether the room's tuning is built as planned (gate G1, T-130).
+
+---
+
+## Block 18 — Say no: the room permission, and hand tracking off (15 min)
+
+**Can be run today**, both parts. In part B the bed that floats after a "no" needs T-128c.
+
+**Purpose:** see what the browser returns when the player says no to the room request, and that everything else still works. Then the same in the app: what the page says after a "no", after the headset came off during the question, and with hand tracking switched off.
+
+**Answers:** T-104, TC-DEV-0A run 4 · P2 · FR-ROOM-04 · from T-128a: decline the headset's question in the app (what the page says, and that Enter still works); the headset taken off during the question (does the session start unseen); hand tracking switched off, then Enter (the page says how to switch it on, and Enter works afterwards) · TC-DEV-14 (new).
+
+**You need:** the first room and table; the capability page's bookmark and the app's bookmarks; one controller within reach, for steps 15 to 17 only. The console is a bonus for step 14.
+
+**Checked against:** `proto/spike/src/probe.ts` (`setScene`: the `permission` fields), `src/config.ts` (every feature is asked for as optional), `iwsdk.config.json` (the game requires hand tracking only), `proto/spike/README.md` step 9, `src/app.ts` (a refused session leaves the page usable; a session that starts unseen says so with `xr:visibility`), `src/ui/strings.ts` (the sentence under the button).
+
+### Steps, part A — the capability page (10 min)
+
+1. Go back to the first room and the first table.
+2. Make the results so far safe first: do block 20, steps 1 to 3, now. The reset in the next step may also wipe what the page has saved (unchecked).
+3. Open the capability page. Reset this site's permissions: the icon left of the address (unchecked; the menu names may differ).
+4. Reload. Pinch **Start**. When the headset asks for the room or for spatial data: decline. Allow hand tracking.
+5. If the session starts: pinch once when the view turns green, listen to the six steps, wait for the end.
+6. On the page: **Which run was this** = "run 4: decline" · **Room permission on this run** = "declined", or "the headset did not ask".
+7. Write down the rows of the first table below.
+8. Pinch **Copy JSON** and mail it to yourself: it now ends with this run.
+
+### Steps, part B — the app (5 min)
+
+9. Reset this site's permissions again, as in step 3. Open the app's "app, dev" bookmark.
+10. Pinch **Enter the garden**. When the headset asks: say no to everything.
+11. Read the sentence under the button. Is **Enter the garden** ready again?
+12. Pinch **Enter the garden** again. Does the headset ask again? This time allow hand tracking and decline the room, if it asks for them one by one. Does the session start? Leave it, and write down the four lines under "This device".
+13. Reset the permissions once more. Pinch **Enter the garden**. The moment the question shows, take the headset off for 5 seconds. Put it back on and allow everything.
+14. Did the session start? (console) Is there an `[events] xr:visibility` line with `visible: false` right after `[events] xr:sessionStart`? Leave the session.
+15. Now the one step with a controller (unchecked). Headset Settings → Movement tracking → Hand tracking: off.
+16. With the controller, open the app page and press **Enter the garden**. Read the sentence under the button. Does the path in it match the path you just used?
+17. Switch hand tracking on again and put the controller away. Pinch **Enter the garden**. Does the session start? Leave it.
+18. If the room is still declined: reset the permissions a last time and allow everything at the next Enter.
+
+### Write down
+
+| Part A, the capability page | Value |
 |---|---|
 | The words of the headset's question, as well as you remember | words |
 | Did the session start; `completed` | yes / no |
@@ -628,13 +1454,86 @@ The page measures the box around one floor plane and the height of one ceiling p
 | `hitTest.hits`, `anchors.created` | |
 | Click heard on the pinch | yes / no |
 
-**Pass rule:** the session still starts and the pinch still clicks with the room declined. The rest: write down what you see.
+| Part B, the app | Value |
+|---|---|
+| After "no" to everything: the sentence under the button; Enter ready again | words; yes / no |
+| Second Enter: did the headset ask again; did the session start with the room declined | yes / no; yes / no |
+| "This device" after that session | four lines |
+| From T-128c on: where the bed went with the room declined | pale ring and a pinch / floating / none |
+| Headset off during the question: did the session start; the `visible: false` line | yes / no; yes / no / no console |
+| Hand tracking off: the sentence under the button; does its path match the real one | words; yes / the real path is … |
+| Hand tracking on again: Enter | works / what happened |
+| How you switched the room permission back on | words |
 
-**If it fails:** the session does not start at all → tell Claude: it becomes a bug, because the game asks for the same features in the same way. If you cannot switch the permission back on afterwards, look in the browser's site settings (unchecked): this is why the block is last.
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Part A | the session still starts and the pinch still clicks with the room declined. The rest: write down what you see | TC-DEV-0A run 4, FR-ROOM-04 |
+| After a "no" in the app | the page says "The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking." and Enter works again | from T-128a, `src/ui/strings.ts` |
+| The room declined in the app | the session starts. "This device" then reads "Table detection: not available. The garden asks you where to put it, or floats in front of you." if the headset really withheld it: write down what it reads | FR-ROOM-04, `src/ui/Landing.ts` |
+| Headset off during the question | write down what you see | from T-128a |
+| Hand tracking off | the page says how to switch it on, with the right path, and Enter works once it is on | from T-128a, UX_WIREFRAMES §9.7 |
+
+### If it fails
+
+- Part A, the session does not start at all: tell Claude. It becomes a bug, because the game asks for the same features in the same way.
+- The sentence after a "no" talks about hand tracking although you declined the room: expected. The browser does not tell the page why it refused. Write down whether that misled you.
+- You cannot switch the permission back on: look in the browser's site settings (unchecked). This is why the block is near the end. Block 19 clears everything for this address, and that also brings the question back.
 
 ---
 
-## Block 10 — Hand the results to Claude (10 min)
+## Block 19 — Clear the site's data (10 min)
+
+**Part A can be run today**, with the USB cable. **Part B needs: T-128e**, and the cable too.
+
+**Purpose:** find out whether the places the headset saved for this address go away when the player clears the site's data. If they stay, they count toward the few a site may keep.
+
+**Answers:** from T-162: site storage cleared (do the address's saved places go too).
+
+**You need:** the USB cable and the Mac's console; your results note. Do this block last: it wipes the saved garden, the capability page's stored runs and, most likely, the permissions.
+
+**Checked against:** `proto/spike/src/probe.ts` and `src/config.ts` (the page keeps the name of its saved place under `roomsong.spike.anchor`, and its runs under `roomsong.spike.runs`), `src/room/AnchorStore.ts` (with the flag `noAnchors` the app touches no saved place), `src/core/flags.ts`.
+
+### Steps, part A — the capability page's saved place
+
+1. Make the results safe first: do block 20, steps 1 to 3, now.
+2. Open the capability page. Mac: click **inspect** under it, **Console**.
+3. (console) Type `copy(localStorage.getItem('roomsong.spike.anchor'))`. Paste into your note on the Mac. It is one line in curly brackets: the name of the saved place and when it was saved. If you get `null`, run the page once (**Start**) and do this step again.
+4. Headset: clear this site's data (unchecked: the icon left of the address, then the site's settings; or the browser's settings, privacy, clear browsing data, cookies and site data). Write down the path you used.
+5. Reload the capability page. The results of earlier runs should be gone from the page: that shows the clearing worked.
+6. (console; click **inspect** again) Type `localStorage.setItem('roomsong.spike.anchor', '…')` with the line from your note between the two single quotes.
+7. Pinch **Start**. Did the headset ask for its permissions again? Allow everything and let the run finish.
+8. Read `anchors.restore.restored` on the page. `true`: the saved place outlived the clearing. `false`: it went with the data; copy `anchors.restore.error`.
+
+### Steps, part B — the app's saved place
+
+9. Before step 4, with the garden of block 16 still there: (console) count the saved places as in block 16, step 3. One is expected.
+10. After step 4: open the app with `?dev=1&flags=eventLog,noAnchors` at the end of its address. With that flag the app leaves the saved places alone. Enter. The garden is new and empty: that is expected, the save is gone.
+11. (console) Type `__roomsong.world.renderer.xr.getSession().persistentAnchors` and count the entries. None: the place went with the data. One: it stayed.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| How you cleared the site's data | the path |
+| Earlier runs gone from the capability page | yes / no |
+| Did the headset ask for its permissions again | yes / no |
+| The capability page's place after the clearing: `anchors.restore.restored`; the error | true / false; words |
+| The app: saved places before the clearing; after it | count; count |
+| The app after the clearing | a new garden with three seeds / what you saw |
+
+**Pass rule:** write down what you see. Either answer is fine for the player; the developers need to know which, because a place that stays is only removed when the app next saves one of its own (D-040).
+
+**If it fails:** the console says `SyntaxError` at step 6 → the quotes are wrong: single quotes outside, the pasted line inside, nothing else. You cannot find a way to clear one site's data → clear the browser's whole data instead, after block 20 is done, and say so.
+
+---
+
+## Block 20 — Hand the results to Claude (10 min)
+
+**Can be run today.**
+
+**You need:** your results note with the filled results sheet (the section after this block), and your mail open in the headset's browser, or the USB cable.
 
 **Checked against:** `proto/spike/src/main.ts` (Copy JSON, the storage key `roomsong.spike.runs`), `proto/pinch/index.html` and `src/main.ts` (the element `json`; nothing is stored), `proto/spike/README.md` steps 10 to 13.
 
@@ -645,10 +1544,117 @@ The page measures the box around one floor plane and the height of one ceiling p
 5. In its Console, for the capability page: `copy(localStorage.getItem('roomsong.spike.runs'))`. The text is now on the Mac's clipboard.
 6. In its Console, for the pinch page while its results are still on screen: `copy(document.getElementById('json').textContent)`.
 7. Check before you send anything: every capability run reads `"emulator": null`.
-8. Give Claude, in one message: the capability text · each pinch text with its beta · your filled-in tables · the tape measurements · headset model and lighting · the route and the build from block 0 · the clock time of each capability run and what it was (run 1, 2, 3, second session, other room, decline).
+8. Give Claude, in one message: the filled results sheet · the capability text · each pinch text with its beta · your filled-in tables · the tape measurements · headset model and lighting · the route, the address and the build from block 0 · the clock time of each capability run and what it was (run 1, 2, 3, second session, other room, decline, after the clearing) · which blocks you skipped, and why.
 9. On the Mac, stop both servers: Ctrl+C in both Terminal windows.
 
 The copied text holds the browser version and the sizes and heights of the surfaces in your room, and nothing else about you. A public GitHub issue would show those sizes to everyone: a mail to yourself does not.
+
+Say in the message what was run on a headset and what was not. Claude writes the results into the documents with those words: a check that was skipped stays "not tested on a device".
+
+---
+
+## Results sheet
+
+One page. Every line is a number or a yes or no that a decision or a task waits for. Copy it into your results note before you start and fill it as you go. A line you could not fill gets "not run" and the reason.
+
+### Sitting 1 — can be filled today
+
+| # | What | Your answer | From block | Who waits for it |
+|---|---|---|---|---|
+| 1 | Headset model; lighting; route, address and build | | setup, 0 | every result below |
+| 2 | T1: page load to a usable Enter button (s) | | 0 | TC-DEV-01; PROGRESS item 26b |
+| 3 | T2: Enter pinch to the first sight of the room (s) | | 8 | TC-DEV-01; PROGRESS item 26b |
+| 4 | Does one pinch on Enter start session and sound: "Sound unavailable" on the first Enter, on the second | | 8 | T-128a (API_SPEC §1.10 rule 2); T-152 |
+| 5 | Room labels: is there a floor, a ceiling, a table or a desk | | 1 | the room signature, gate G1 (T-130); D-028 |
+| 6 | Is the room mesh there, and labelled `global mesh` | | 1 | T-140 |
+| 7 | Does a hand pinch send `selectstart` and `selectend`, and in which order | | 1 | T-124 (then the switch to `XRFrame.fillPoses`) |
+| 8 | First sound step that crackled (8, 16, 24, 32, 48, 64 voices, or none) | | 1 | the voice limit (T-145); TC-PERF-06 |
+| 9 | Saved place back after a reload, after a browser restart, after about an hour (n of 3) | | 1, 6 | anchors as a must-have (D-021, T-162) |
+| 10 | Length of the saved place's name (at most 64?) | | 1 | T-162; API_SPEC §4 |
+| 11 | Empty page: frame rate measured; rates offered; foveation and whether it can be set | | 1 | T-165; NFR-PERF-09 |
+| 12 | Smallest dot spacing with 18 of 20 on the first try, unfiltered (3, 4 or 5 cm, or none) | | 2, 3 | cell size and hit radius (FR-HND-04) |
+| 13 | Outer ring, unfiltered (n of 10, all runs) | | 2, 3 | D-020: outer radius 0.30 or 0.25 m |
+| 14 | Inner ring, unfiltered (n of 10, all runs) | | 2, 3 | 16 or 12 steps (LLD §5.1) |
+| 15 | Lowest beta at which "First try" matches "First try unfiltered" | | 3 | D-028; FR-HND-03 |
+| 16 | Whole ring in view when you look at its middle, head still | | 2, 4 | D-020; Golden Rule 6 |
+| 17 | Table: its label, and how far below your eyes (m) | | 1, 2 | D-034 |
+| 18 | Hands lost during the pinch runs (count, and where) | | 2 | D-030; T-116 |
+| 19 | No drawn hands: did aiming suffer | | 2, 8 | D-027 |
+| 20 | Garden preview: `fps` usual and lowest, with 13 plants and with 80 | | 4 | T-165; TC-PERF-01 |
+| 21 | The garden's look, 1 to 5, and what to change first | | 4 | the art pass (T-163) |
+| 22 | The drone on the headset's speakers, in "Wanderer" and in "Hall" | | 5 | the sound pass (T-164) |
+| 23 | The sound sketch, 1 to 5 | | 5 | T-103 |
+| 24 | Same room twice: does floor area, ceiling height or volume change band | | 1, 6 | D-028; PROGRESS item 21; the wording "same key and scale" |
+| 25 | No Space Setup: does the test ray hit the table | | 7 | T-123 (placing the bed by a pinch) |
+| 26 | A place saved in room 1, asked for in room 2: refused, not found, or no answer | | 7 | T-162 |
+| 27 | Headset off 5 s: is the app told (`xr:visibility` lines) | | 9 | T-152; T-128e (the save on a pause) |
+| 28 | The menu over the session: is the app told | | 9 | T-152 |
+| 29 | After the headset ended the session by itself: does Enter work | | 9 | T-128a |
+| 30 | The app's foveation as the headset reports it | | 9 | T-128a; NFR-PERF-09 |
+| 31 | The perf read-out in the app: readable, and where it should sit | | 8 | T-128a |
+| 32 | Room declined: does a session still start (capability page; app) | | 18 | FR-ROOM-04; P2 |
+| 33 | After a "no", and with hand tracking off: what the page says, and does Enter work afterwards | | 18 | T-128a |
+| 34 | The real menu path to hand tracking | | setup, 18 | the sentence on the landing page (UX_WIREFRAMES §9.7, T-167) |
+| 35 | Headset off during the headset's question: does the session start unseen | | 18 | T-128a |
+| 36 | Site data cleared: does the capability page's saved place survive | | 19 | T-162; D-040 |
+| 37 | Anything that needed a controller, apart from block 18 | | all | Golden Rule 1 |
+
+### Sitting 2 and the room walk — once the garden is in the app
+
+| # | What | Your answer | From block | Who waits for it |
+|---|---|---|---|---|
+| 38 | (listen) Headset off and back: does the sound return by itself, in time | | 9 | TC-DEV-08; T-152; T-121 |
+| 39 | (listen) Does the sound keep playing under the menu | | 9 | T-128a |
+| 40 | The bed at your table: level; on the table top (cm off); seconds until it showed | | 10 | T-128c; T-123; D-040 |
+| 41 | Near edge of the table to the ring's middle, and to its far edge (cm) | | 10 | D-020; Golden Rule 2 |
+| 42 | Head over the far edge, facing outward: where the bed landed | | 10 | T-140 |
+| 43 | A low table (height): did the bed land on it; did you want it there | | 10 | D-034 (the limit of 0.5 m) |
+| 44 | No table: seconds from Enter to the bed, and to your first plant singing | | 10 | PROGRESS items 23 and 26c |
+| 45 | The hint's words over a bright wall: readable | | 10, 13 | T-126 (captions) |
+| 46 | A pinch held from before Enter: did it place or plant anything | | 10, 11 | T-116 |
+| 47 | First sound (s) and first loop (s) at your table | | 11 | TC-DEV-01; Golden Rule 4 |
+| 48 | Does a plant land where your fingers are (cm off, direction) | | 11 | T-116; API_SPEC §1.10 rule 13 |
+| 49 | The orb: shown by the back of the hand; how often during play | | 12 | T-151 |
+| 50 | The panel: readable; your hand in front of it; missed pinches on Tempo + and the tabs | | 12 | T-151; T-167 |
+| 51 | New garden: short pinch does nothing; the hold works; by looking it works | | 12 | T-151; T-160 |
+| 52 | A hitch when the panel redraws; the panel after a head tilt; the orb at the very start | | 12 | T-151 |
+| 53 | Hand lost while carrying: the words show, the seed goes back, nothing is planted | | 13 | TC-DEV-09; T-116 |
+| 54 | The words: at least 1.2 s, steady or flickering (short loss; menu) | | 13 | T-116 |
+| 55 | Does a grace of 0.2 s suit | | 13 | T-116; D-030 |
+| 56 | An empty hand out of view: no words | | 13 | D-030 |
+| 57 | Ten minutes, 60 plants: `fps` usual and lowest; `ms`; `draws`; `tris` | | 14 | TC-DEV-07; T-165; the numbers in the Devpost text |
+| 58 | Stutters, gaps or clicks in ten minutes | | 14 | T-121; TC-PERF-06 |
+| 59 | The Bass on the headset's speakers, and the key | | 14 | T-144; T-164 |
+| 60 | A seed planted after minute 5: a hitch | | 14 | T-143 |
+| 61 | Drift of the bed after ten minutes (cm) | | 14 | T-162; TC-DEV-05 |
+| 62 | The key change: ratings (a) to (d) | | 15 | PROGRESS item 27; T-143; T-164 |
+| 63 | A long echo cut short, a jump in loudness, a hitch at the change | | 15 | T-143 (keep the echo swap, or shorten it) |
+| 64 | The garden back after a reload and after closing the browser: returned or placed again; seconds; cm | | 16 | TC-DEV-05; T-162; D-021 |
+| 65 | Saved places at every step (stays at 1?); does the list exist; seconds to save a place (under 4?) | | 16 | D-040; T-162 |
+| 66 | Eyes to coin when the bed stayed, and when it was put down again (cm): is 10 cm of slack right | | 16 | D-041 |
+| 67 | Headset off, or the menu, in the first 4 s: is the bed back | | 16 | T-162; T-128c |
+| 68 | A recentre: does the bed stay on the table | | 16 | T-162; T-128c |
+| 69 | Table moved; light changed; headset restarted; Space Setup done again: returned or placed again | | 16 | T-162 |
+| 70 | The next day: returned; exactly one new seed | | 16 | TC-DEV-05; D-037 |
+| 71 | Was a new, empty garden ever shown in place of yours | | 16 | D-033; T-128e |
+| 72 | Each room: the app's floor area, ceiling height and volume against your tape; same band? | | 17 | T-140; T-141; gate G1 (T-130) |
+| 73 | Two rooms: do they sound different (key, scale or echo) | | 17 | TC-DEV-13 |
+| 74 | Odd rooms (L-shaped, wardrobe, sloped ceiling, mesh only): what the app read | | 17 | T-140; LLD §5.8 |
+| 75 | Site data cleared: do the app's saved places go | | 19 | T-162; D-040 |
+
+### The garden's drawing (T-119) — the preview today, the app later
+
+| # | What | Your answer | From block | Who waits for it |
+|---|---|---|---|---|
+| 76 | The light's dark leading edge on a real white surface: visible; its strength (0.6) too weak, right or too strong (preview; app) | | 4, 14 | D-044; the perf pass (T-165) |
+| 77 | A hovered plant's 20 % glow and the lit cell, in passthrough; under the light's crest; in high contrast with the plant's own cell lit: enough | | 14 | D-044; T-165 |
+| 78 | Full bed of five shapes, a week old, every effect on: `fps` usual and lowest; `draws`; `tris` (preview; app in bloom) | | 4, 16 | D-044; T-165 |
+| 79 | The unfurl: pleasant; does a blossom's colour read as part of the flash | | 4, 16 | the art pass (T-163) |
+| 80 | A week later, all whorls in one sweep: bloom or sparkle | | 4, 16 | T-163 |
+| 81 | Leaf whorls counted from your seat; cream blossoms on a light table | | 4, 16 | T-163 |
+| 82 | Jug (Bass) and umbrella (Choir) named by outline; the hole at the top of the umbrella's stem | | 4 | T-163 |
+| 83 | High contrast: does the cream rim read as an outline | | 4, 14 | T-163 |
+| 84 | The glow with a real, moving hand: late, or flickering between two plants | | 14 | T-163 |
 
 ---
 
@@ -665,35 +1671,13 @@ Ask the owner beforehand: headset charged, hand tracking on, Space Setup done in
 5. Block 2 (10 min).
 6. Block 3 with `?beta=10` only (8 min).
 7. Block 4 with 13 plants only (5 min).
-8. Block 5, steps 4 to 9 (5 min).
-9. Block 9 (8 min).
-10. Block 10, by mail (5 min).
-11. Block 6, steps 1 to 5 and 9 to 11, only if the Mac is there (8 min).
-12. Left out: run 3, blocks 7 and 8, the other beta values, the 80-plant run.
-13. Optional recording of block 2: Navigator → Camera → Record video. Do not record during block 1 or block 4: recording may lower the frame rate those blocks read. Clear the table and walls of brand names and photos first, and keep other people out of view.
-
----
-
-## Not testable yet
-
-One line each. No steps are written for these, because the part is not on `develop`.
-
-| What | Arrives with |
-|---|---|
-| Planting in the real app; first sound within 20 s; first loop within 90 s (TC-DEV-01, second half) | T-127 (seeds), T-128 (wiring) |
-| Captions over a bright wall: can they be read, is the contrast enough. The caption code is merged, but the app shows no caption until it is wired in | T-128 |
-| The bed on your real table; the hint while the game waits for a pinch to place the bed (placement level 3); the exact time the first plane takes, against the 3-second wait; the refused pinch on a coffee table 0.4 m high | T-128; hints in T-150 |
-| Saving in the app and finding the same garden again | T-128 |
-| The saved anchor putting the bed back in place, and its drift in cm (TC-DEV-05). The capability page draws nothing at its anchor | T-162 |
-| Frame rate over 10 minutes with sound, hands and 24 or more plants (TC-DEV-07) | T-128, then T-165 |
-| The game's own 25 ms audio tick inside a session; a clean stop and return when the headset comes off (TC-DEV-08) | T-128, T-152 |
-| The hand hint and the plant that goes back when hands are lost (TC-DEV-09, D-030) | T-116 |
-| Pull, drag and drag-off (TC-DEV-03) | T-146 |
-| The room's song in the room: the tuning ripple, two rooms that sound different (TC-DEV-13) | T-140, T-142, T-143 |
-| The Bass voice, an octave below the pad, and the Choir | T-144 |
-| The 3D-sound comparison (HRTF A/B) | T-145 |
-| Listen mode, one-hand and gaze modes, the policy sweep on the headset (TC-DEV-04, 06, 11) | device script S2 (T-154) |
-| The re-pinch time (about 153 ms expected at 72 Hz); the real gap between thumb and finger at pinch and at release, in cm; the outline of a round table's plane; the cost of a hit-test source that is not used; finger-to-sound time from a recording | no page shows these and no task owns the read-out yet |
+8. Block 8, steps 5 to 12 (5 min): the Enter pinch, "Sound unavailable" yes or no on both entries, T2.
+9. Block 18, part A (8 min).
+10. Block 20, by mail (5 min).
+11. Block 5, headset steps 1 to 5 and 9 to 11, only if the Mac is there (8 min).
+12. Left out: run 3, blocks 6, 7 and 9, the other beta values, the 80-plant run, block 18 part B, block 19, and every block that needs the garden in the app (10 to 17).
+13. On the results sheet you can fill lines 1 to 9, 11 to 21 and 32, and lines 22 and 23 if the Mac is there.
+14. Optional recording of block 2: Navigator → Camera → Record video. Do not record during block 1 or block 4: recording may lower the frame rate those blocks read. Clear the table and walls of brand names and photos first, and keep other people out of view.
 
 ---
 
@@ -701,7 +1685,7 @@ One line each. No steps are written for these, because the part is not on `devel
 
 ### Where the results go
 
-You hand them over (block 10). Claude files them:
+You hand them over (block 20). Claude files them:
 
 | Result | Filed in |
 |---|---|
@@ -709,66 +1693,200 @@ You hand them over (block 10). Claude files them:
 | Pinch tables and texts | `specs/04-development/ENVIRONMENT_SETUP.md` §9.2 |
 | Each choice made from them | `specs/08-status/DECISIONS_LOG.md` |
 | Anything that failed, the same day | `specs/05-testing/BUG_LOG.md` |
-| The summary, and TC-DEV-00 and TC-DEV-0A marked as run on a device | `specs/08-status/PROGRESS.md`, `specs/05-testing/TEST_PLAN.md` |
+| The summary, and each `TC-DEV-` case that was run marked as run on a device, with the blocks that were skipped named as not tested | `specs/08-status/PROGRESS.md`, `specs/05-testing/TEST_PLAN.md` |
 
 ### What they unblock
 
 | Decision or gate | From |
 |---|---|
-| D-020: outer radius 0.30 or 0.25 m; bed centre at 0.45 m; the view box | blocks 2, 3 and 4 |
+| D-020: outer radius 0.30 or 0.25 m; bed centre at 0.45 m; the view box | blocks 2, 3, 4 and 10 |
 | Cell size and hit radius (FR-HND-04, today 4 cm); 16 or 12 steps | block 2 |
-| D-028: the smoothing value; whether echo-from-room-volume is steady enough | blocks 3 and 7 |
-| D-027: no drawn hands | blocks 2 and 5 |
-| D-030: the hand hint (only how often hands are lost; the hint itself is not built) | block 2 |
-| D-034: table reach, the two height limits, the 5 degrees | block 1 (table plane), block 2 (table below the eyes), your tape |
-| Room signature: build it or not (gate G1, T-130) | block 1 |
-| Voice limit and audio latency setting (T-145) | block 1 |
-| Anchors as a must-have (D-021, T-162) | blocks 1 and 7 |
-| The garden's look (art pass T-163) and how early the performance work starts (T-165) | block 4 |
-| Whether the app keeps the browser's own enter button (`xr.offer`, decided in T-128) | block 5 |
-| The sound direction (T-103, sound pass T-164) | block 6 |
+| D-028: the smoothing value; whether echo-from-room-volume is steady enough | blocks 3 and 6 |
+| D-027: no drawn hands | blocks 2 and 8 |
+| D-030: the hand hint | block 2 (how often hands are lost), block 13 (the hint itself) |
+| D-034: table reach, the two height limits, the 5 degrees | block 1 (table plane), block 2 (table below the eyes), block 10 (the low table, the bad seat), your tape |
+| D-033: the garden you grew is the one shown | block 16 |
+| D-037: three starter seeds; one new seed the next day | blocks 11 and 16 |
+| D-040: the room's surfaces arrive without the SDK's scene system; the number of saved places stays at 1 | blocks 10, 16 and 19 |
+| D-041: the reach slack of 0.10 m | block 16 |
+| D-044: up to 20 draw calls with every effect on; a hovered plant lights its own cell | blocks 4, 14 and 16 |
+| The drawing of T-119: the dark edge, the shapes, growth, the unfurl, high contrast, the glow (art pass T-163) | blocks 4, 14 and 16 |
+| Room signature: build it or not (gate G1, T-130) | block 1, then block 17 |
+| Voice limit and audio latency setting (T-145) | blocks 1 and 14 |
+| Anchors as a must-have (D-021, T-162) | blocks 1, 6, 7 and 16 |
+| The garden's look (art pass T-163) and how early the performance work starts (T-165) | blocks 4 and 14 |
+| The one way in: the page's Enter button starts session and sound (`xr.offer` is `"none"` since T-128a) | block 8 |
+| The start-time rule, from page load or from Enter (PROGRESS item 26b) | blocks 0 and 8 |
+| First sound in a room with no table (PROGRESS items 23 and 26c) | block 10 |
+| Pause and resume: is the app told, and does the sound need a pinch (T-152) | block 9 |
+| The key change: keep the shifted notes and the echo swap, or change them (PROGRESS item 27, T-164) | block 15 |
+| The sound direction (T-103, sound pass T-164) | blocks 5 and 14 |
 | The hand reader's switch to `XRFrame.fillPoses` (follow-up of T-124) | done after this run |
 
 ### The three results that could change the plan the most
 
 1. **Block 1, `planes.labels`.** No floor, ceiling or table labels means the room cannot tune the song. The headline idea falls back to one default tuning, and the pitch and the video change.
 2. **Block 2, the grids and the two rings.** Below 18 of 20 on the 5 cm grid, or a failed outer or inner ring, changes the bed itself: fewer or larger cells, a smaller ring, or 12 steps. Garden, visuals and tests follow.
-3. **Block 7, a band that flips.** If the same room lands in another band on the second session, "same room, same key and scale" cannot be promised as written.
+3. **Block 6, a band that flips.** If the same room lands in another band on the second session, "same room, same key and scale" cannot be promised as written.
 
-Next in line: a frame rate below 72 in block 4, and anchors that do not come back in blocks 1 and 7.
+Next in line: "Sound unavailable" in block 8; a frame rate below 72 in block 4 or below 60 in block 14; saved places that do not come back in blocks 1, 6 and 16.
+
+### Left for device script S2 and for later tasks
+
+Not in this script, because no review note asks for it here and its own task or script owns it.
+
+| What | Where it is checked |
+|---|---|
+| Pull, drag and drag-off, with the 2 cm of movement that decides between them (TC-DEV-03) | device script S2 (T-154), once T-146 is in. Block 13, step 11, only covers a hand lost while shaping |
+| Listen mode; one-hand and look-and-hold modes over a full loop; the policy sweep on the headset (TC-DEV-04, 06, 11); the Listen half of TC-DEV-07 | device script S2 (T-154) |
+| The tuning ripple and its three captions (the first half of TC-DEV-13) | T-142 |
+| The 3D-sound comparison (HRTF A/B) | T-145 |
+| The same blocks on a Quest 3S (TC-DEV-12) | a second run of this script, if a 3S is at hand |
 
 ---
 
-## For Claude: the T-129 row, clause by clause
+## For Claude: where each source note went
 
-| Clause of the row | Where |
+**Block numbers changed on 2026-10-13.** Old 5 (the app's landing page) is 8 · old 6 (sound page) is 5 · old 7 (second session) is 6 · old 8 (room without Space Setup) is 7 · old 9 (decline) is 18, part A · old 10 (hand-over) is 20. Blocks 0 to 4 kept their numbers.
+
+"Last section" below means "Not measurable yet: needs a small read-out".
+
+| Source note | Where |
 |---|---|
+| **The T-129 row itself** | |
 | P1 labels | block 1 |
-| P2 permission decline | block 9 (moved to the end) |
+| P2 permission decline | block 18 |
 | H1 pinch on the ring (TC-DEV-00) | blocks 2 and 3 |
-| F1/F2 frame rates and foveation | block 1 (an empty page), block 4 (the garden drawn, no sound, no hands) |
-| W1 audio | block 1; the 3D-sound comparison is not testable yet |
-| A1 anchors ×2 | block 1 (reload, restart), block 7 (after about an hour) |
-| A1 drift | not testable yet (T-162); block 2 asks only whether the dots stay put within one session |
+| F1/F2 frame rates and foveation | block 1 (an empty page), block 4 (the garden drawn), blocks 8 and 9 (the app's empty session and its layer), block 14 (sound and hands) |
+| W1 audio | blocks 1 and 14; the 3D-sound comparison is T-145 |
+| A1 anchors ×2 | block 1 (reload, restart), block 6 (after about an hour) |
+| A1 drift | block 14 (ten minutes), block 16 (cm on every return) |
 | M1 mesh | block 1 |
-| G1 field of view | block 2 (dots), block 4 (plants) |
-| Two sessions in one room | block 7 |
-| Bass on the headset speakers | block 6 (the Pad; the Bass voice is not on `develop`) |
+| G1 field of view | block 2 (dots), block 4 (plants), block 10 (the bed in the app) |
+| Two sessions in one room | block 6 (the page), block 17 (the app's own numbers) |
+| Bass on the headset speakers | block 5 (the Pad of the sketch), block 14 (the Bass voice) |
 | Beta, about 5 to 50 | block 3 |
 | Do hands send `select` events | block 1 |
 | One-hour version | its own section |
-| T-124: re-pinch time | not testable yet (no read-out) |
-| T-124: `selectstart` and `selectend` for a hand pinch | block 1 |
-| T-124: switch to `XRFrame.fillPoses` | after the run |
-| T-121: the 25 ms tick inside a session; stop when the headset comes off | block 6 for an ordinary page; the game itself is not testable yet |
-| T-141: ceiling height and floor area, two visits | blocks 1 and 7 |
-| T-123: labels | blocks 1 and 2 |
-| T-123: time to the first plane | only brackets: there in the first second (block 2), there at about 7 seconds (block 1) |
-| T-123: hit-test without Space Setup | block 8 |
-| T-123: round tables; cost of an unused hit-test source; the coffee table | not testable yet |
-| T-123: the two height limits and the 5 degrees | blocks 1 and 2, your tape |
-| From the reviews: the real pinch thresholds | block 2 counts pinches that got no tone and tones you did not mean; the gap in cm is not testable yet |
-| From the reviews: caption legibility over a bright wall | not testable yet (T-128) |
-| From the reviews: frame rate with the garden drawn | block 4 |
-| The landing page and the entry (T-126) | blocks 0 and 5 |
+| **From T-124** | |
+| Re-pinch time | last section |
+| `selectstart` and `selectend` for a hand pinch | block 1 |
+| Switch to `XRFrame.fillPoses` | after the run ("What they unblock") |
+| **From T-121** | |
+| The 25 ms tick keeps its rate inside a session | block 14, by ear (steady time); a worst tick: last section |
+| The sound stops on time when the headset comes off (TC-DEV-08) | block 9; block 5 for the sketch page |
+| **From T-141** | |
+| Ceiling height and floor area, two visits | blocks 1 and 6; block 17 |
+| **From T-144** | |
+| The lowest Bass note on the headset speakers | block 14 |
+| What 24 Choir notes cost | block 14 gives the numbers with 12 Choir plants; exactly 24: last section |
+| **From T-123** | |
+| Which labels | blocks 1, 2 and 10 |
+| Time to the first surface, against the 3-second wait | block 10 (level 1 means it was there in time; the seconds are counted); brackets in blocks 1 and 2 |
+| Hit-test without Space Setup | block 7; block 10, part C |
+| Outline of a round table; cost of an unused hit-test source | last section |
+| A coffee table 0.4 m high | block 10, part B |
+| The two height limits and the 5 degrees (D-034) | blocks 1, 2 and 10, your tape |
+| **From T-140** | |
+| `room:features` against a tape in three rooms; the same room twice | block 17 |
+| L-shaped room; wardrobe or tall fridge; sloped ceiling; mesh without floor or ceiling surface; the three known limits of LLD §5.8 | block 17, "odd rooms" |
+| No Space Setup (Wanderer) | block 17; block 10, part C |
+| Is the mesh labelled `global mesh` | block 1 |
+| Head over the table near its far edge, looking outward | block 10, part B |
+| **From T-116 (TC-DEV-09)** | |
+| A pinch ended by a very short loss and started again late (a carried seed let go) | block 13, step 5 |
+| How real hands are lost; does 0.2 s suit | block 2 (count and place), block 13, step 10 |
+| The words stay at least 1.2 s, after a short loss and under the menu | block 13, steps 2 to 7 |
+| Enter while still pinching | block 10, steps 13 and 14; block 11, steps 9 and 10 |
+| Does a pinch land where the fingers are | block 11, step 7 |
+| Can the hint be read | block 13, step 9 |
+| **From T-151** | |
+| Back of the hand shows the orb, palm up hides it; does it show most of the time | block 12, steps 2 and 3 |
+| Readable at arm's length and over passthrough; the panel over real hands | block 12, steps 5 and 6 |
+| Tempo + and a tab without a neighbour taking the pinch; a hitch on a redraw | block 12, steps 7 and 8 |
+| Hold New garden 1.5 s; the same by looking | block 12, steps 10 to 14 and 17 |
+| The panel after a head roll | block 12, step 9 |
+| The orb's place when the first head pose is late | block 12, steps 15 and 16 |
+| **From T-143 (listen, W1)** | |
+| First plucked notes after a re-tune (up to about 10 semitones); the cut; the silent step; the dry moment at the echo swap; a long echo cut short; any click; a hitch at the swap | block 15 |
+| The very first plucked notes of a session with a garden already there | block 15, steps 1 and 2 |
+| The first plant put in minutes after the start | block 14, step 6 |
+| A worst-tick reading | last section |
+| **From T-162 (TC-DEV-05)** | |
+| After a reload, after closing the browser, the next day: returned, seconds, cm | block 16, steps 4 to 6 and 19 |
+| Table moved; light changed; Space Setup done again; headset restarted | block 16, part B |
+| Site storage cleared | block 19 |
+| A ten-minute session for drift | block 14, step 7 |
+| The restored pose logged every frame; does `reset` fire on a recentre | last section |
+| Sitting elsewhere (D-041) | block 16, steps 7 and 8 |
+| Headset off, or the menu, in the first 4 s | block 16, steps 9 and 10 |
+| A recentre in mid-session (does the bed leave the table) | block 16, step 11 |
+| Leaving within a second of a fresh placement, three times | block 16, steps 12 and 13 |
+| The count of saved places at each step; does the list exist | block 16, steps 3, 5 and 13; block 19 |
+| A known saved place asked for in another room | block 7 |
+| Time from saving a place to its name | block 16, step 14 |
+| Pages and the mirror are different addresses | "One address for the whole sitting" |
+| The capability page's anchor runs before the app | "Why this order" |
+| The length of a handle | block 1, step 15 |
+| The limit of eight; `deletePersistentAnchor` after the session ended; timers while hidden | last section |
+| Does taking the headset off give `hidden` | block 9, step 5 |
+| **From T-128a** | |
+| One click for sound and session; the sound also on the second Enter | block 8, steps 5 to 7, 11 and 12; block 9, step 2 |
+| Headset off 5 s: which events, does the sound return without a pinch | block 9, steps 4 to 6 |
+| The menu over the session | block 9, steps 7 and 8 |
+| Page load to a usable Enter; Enter to the first frame | block 0 (T1), block 8 (T2) |
+| Hand tracking off, then Enter; decline the question | block 18, part B |
+| Headset off during the question | block 18, steps 13 and 14 |
+| The perf read-out: readable, low left; fps | block 8, steps 16 to 18 |
+| Does `enabledFeatures` exist | block 1 (`features.granted`); block 8 ("This device" after a session) |
+| A session the headset ends while unseen | block 9, steps 9 to 11 |
+| Foveation read off the layer | block 9, step 3 |
+| Leave the page before entering and come back with Back | block 8, steps 14 and 15 |
+| Full class names in the log of a failed part (the dev server) | block 9, step 12 |
+| Page timers, seen and unseen; the part of `engine.init()` inside the click | last section |
+| **From T-119 (the drawing; the main session's list of 2026-10-13)** | |
+| 1. The light's dark leading edge on a real bright table; is 0.6 enough | block 4, steps 11 and 12; block 14, steps 9 and 10 |
+| 2. The cell cue and the 20 % glow in passthrough; under the crest; in high contrast with the cell lit (D-044) | block 14, steps 11, 13 and 14 (the preview has no pointer in a session) |
+| 3. The unfurl on a plant's first note; a blossom's colour with the flash | block 4, step 16 (flat page); block 16, step 21 (passthrough) |
+| 4. A week later, about 160 whorls in one bar: bloom or sparkle | block 4, step 16; block 16, step 21 |
+| 5. A 2.4 cm leaf whorl counted at arm's length; cream blossoms on a light table | block 4, step 14; block 16, step 22 |
+| 6. Jug and umbrella by outline; the 8 mm hole at the top of the Choir's stem | block 4, step 13 |
+| 7. High contrast: the cream rim as an outline | block 4, step 15; block 14, step 14 |
+| 8. A flickering hover with a real hand: does the glow feel late | block 14, step 12 |
+| 9. Frame rate, a full bed of 80 plants in five shapes, every effect on | block 4, step 17; block 14, step 15; block 16, step 23 |
+| **Decisions and status items** | |
+| D-030 · D-033 · D-034 | block 13 · block 16 · blocks 1, 2 and 10 |
+| D-037 · D-040 · D-041 | blocks 11 and 16 · blocks 10, 16 and 19 · block 16 |
+| PROGRESS item 22 | "Decide before the day" |
+| PROGRESS items 23 and 26c | block 10, part C |
+| PROGRESS item 26b | blocks 0 and 8 (two numbers, kept apart; the rule is not decided) |
+| PROGRESS item 27 | block 15 |
+| **From the earlier reviews** | |
+| The real pinch thresholds | block 2 counts pinches that got no tone and tones you did not mean; the gap in cm: last section |
+| Caption legibility over a bright wall | block 10, step 15; block 13, step 9 |
+| Frame rate with the garden drawn | blocks 4 and 14 |
+| The landing page and the entry (T-126, T-128a) | blocks 0 and 8 |
 | The garden's look in passthrough (T-125) | block 4 |
+
+---
+
+## Not measurable yet: needs a small read-out
+
+The notes ask for these, and nothing on `develop` shows them. Do not hunt for them on the day. Each needs a line or a number added by the task named; then it gets a step in the block named.
+
+| What the notes ask | Why you cannot read it today | Who could add the read-out | Then in block |
+|---|---|---|---|
+| The time between two pinches of the same hand (about 153 ms expected at 72 Hz) (T-124) | no page times one pinch against the next | the pinch page, as a follow-up of T-124 | 3 |
+| The real gap between thumb and finger at the start and the end of a pinch, in cm | the pinch page judges the gap and does not show it | the same follow-up | 2 |
+| Finger-to-sound time | needs a slow-motion video of a finger and the sound; no code | Parth, with a phone, during block 2; a step for it belongs in device script S2 (T-154) | 2 |
+| Do page timers run at their normal rate in a session, seen and unseen (T-128a, T-162) | nothing shows a timer's rate | T-152, which depends on the answer; or the capability page | 9 |
+| How long the part of `engine.init()` inside the Enter pinch takes (T-128a) | not logged | T-128d, which next edits that click: one `[app]` line | 8 |
+| The longest single audio tick (T-121, T-143) | `stats.cpuEstimate` is an average over time and hides one long tick | T-128d, which adds `stats.triggers` beside it; or T-165 | 14 |
+| The restored bed's place logged every frame for 10 s: does the first place move (T-162) | not logged | T-128c, in the room system, behind `eventLog` | 16 |
+| Does the headset signal a recentre (`reset`) (T-162) | it is not one of the app's events, so `eventLog` does not show it | T-128c, which must listen for it anyway | 16 |
+| What deleting a saved place does after the session has ended (T-162) | needs a command typed after the session with the session kept | T-128c, as a line when `clear()` runs late | 16 |
+| The limit of eight saved places for a site (T-162) | no page saves nine | the capability page, as a follow-up of T-104 | 1 |
+| The outline of a round table's surface (T-123) | the capability page keeps the box around a surface, not its outline | the capability page, as a follow-up of T-104 | 1 |
+| The cost of a hit-test source that is asked for and not used (T-123) | needs the same frame-rate run with and without it | the capability page, or T-165 | 1 |
+| The cost of exactly 24 Choir notes at once (T-144) | `autoplant` gives the five voices in turn: 80 plants hold 16 Choir | T-164 or T-165, with a flag that plants one voice only | 14 |
+| How to cause a key change in a running session, for certain (T-143) | block 15 uses "Re-place bed" with the bed left floating; no note confirms that way | T-128d's builder, in one sentence | 15 |
