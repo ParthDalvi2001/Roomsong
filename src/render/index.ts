@@ -11,4 +11,4 @@ export { PetalRenderer } from './PetalRenderer.js';
 export { createPerfHud, PerfSampler } from './PerfHud.js';
 export type { PerfHud } from './PerfHud.js';
 // The module's ECS systems (LLD §3.2): the one file of render/ that imports @iwsdk/core.
-export { PerfSystem } from './RenderSystems.js';
+export { BedRenderSystem, PerfSystem } from './RenderSystems.js';

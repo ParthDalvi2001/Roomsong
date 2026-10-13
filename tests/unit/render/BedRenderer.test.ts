@@ -244,3 +244,76 @@ describe('the rendering rules (NFR-PERF-09, TC-PERF-08)', () => {
     expect(bed.markers.frustumCulled).toBe(false); // 80 markers, the bounds of one
   });
 });
+
+describe('BedRenderer.setGhost (UX §9.2, T-128c)', () => {
+  const HERE: Cell = { ring: 2, step: 5 };
+  const everyMarker = (bed: BedRenderer): number[] =>
+    Array.from({ length: RINGS * STEPS }, (_, i) =>
+      strength(bed, { ring: Math.floor(i / STEPS), step: i % STEPS }),
+    );
+
+  it('true fades every marker out through the guard and then stops drawing them: the glass alone is left', () => {
+    const guard = new FlashGuard();
+    const bed = new BedRenderer(new Group(), guard);
+    bed.update(0);
+    expect([bed.base.visible, bed.markers.visible]).toEqual([true, true]); // built as a placed bed
+    bed.setGhost(true);
+    expect(bed.markers.visible).toBe(true); // not at once: a fade, never a cut
+    const out = watch(bed, HERE, FRAME_MS, 2 * HOVER_CUE_MS);
+    expect(out[1]!.value).toBeGreaterThan(0);
+    expect(out[1]!.value).toBeLessThan(MARKER_ALPHA);
+    expect(changeTimes(out)).toHaveLength(1);
+    expect(everyMarker(bed)).toEqual(new Array<number>(RINGS * STEPS).fill(0));
+    expect([bed.base.visible, bed.markers.visible]).toEqual([true, false]); // 1 draw call: the ghost
+    expect(guard.takePeak()).toBe(1); // the page's guard saw the fade, one change per marker
+  });
+
+  it('before its first frame nothing was drawn: a ghost starts at 0 at once, with no change to count', () => {
+    const guard = new FlashGuard();
+    const bed = new BedRenderer(new Group(), guard);
+    bed.setGhost(true); // BedRenderSystem does this in init(), before any frame
+    expect(everyMarker(bed)).toEqual(new Array<number>(RINGS * STEPS).fill(0));
+    watch(bed, HERE, 0, 2 * HOVER_CUE_MS);
+    expect(bed.markers.visible).toBe(false);
+    expect(guard.takePeak()).toBe(0);
+    bed.setGhost(false); // the first placement: one fade in
+    watch(bed, HERE, 1000, 2 * HOVER_CUE_MS);
+    expect(strength(bed, HERE)).toBeCloseTo(MARKER_ALPHA);
+    expect(guard.takePeak()).toBe(1);
+  });
+
+  it('false draws the markers again at once and fades them in; a hovered cell comes back lit', () => {
+    const bed = new BedRenderer(new Group());
+    bed.update(0);
+    bed.setGhost(true);
+    watch(bed, HERE, FRAME_MS, 2 * HOVER_CUE_MS);
+    bed.setHover('right', HERE); // no hover on a ghost: hands has no bed then, and the target is 0 anyway
+    const ghost = watch(bed, HERE, 1000, 2 * HOVER_CUE_MS);
+    expect(strength(bed, HERE)).toBe(0);
+    bed.setGhost(false);
+    expect(bed.markers.visible).toBe(true);
+    const back = watch(bed, HERE, ghost[ghost.length - 1]!.t + FRAME_MS, 2 * HOVER_CUE_MS); // the frames carry on
+    expect(back[0]!.value).toBeLessThan(MARKER_ALPHA); // a fade in, not a jump
+    expect(back[back.length - 1]!.value).toBe(MARKER_HOVER_ALPHA);
+    expect(changeTimes(back)).toHaveLength(1);
+    expect(strength(bed, { ring: 0, step: 0 })).toBeCloseTo(MARKER_ALPHA);
+    bed.setGhost(true);
+    bed.setGhost(false); // taken back before a frame: nothing hides
+    watch(bed, HERE, 3000, 2 * HOVER_CUE_MS);
+    expect(bed.markers.visible).toBe(true);
+    expect(strength(bed, HERE)).toBe(MARKER_HOVER_ALPHA);
+  });
+
+  it('a bed placed and re-placed over and over cannot make its markers blink: 3 changes a second at most', () => {
+    const guard = new FlashGuard();
+    const bed = new BedRenderer(new Group(), guard);
+    bed.update(0);
+    // Ghost and placed in turn every 100 ms: a full fade each way, five flashes a second asked for.
+    const turns = watch(bed, HERE, FRAME_MS, 4000, (frame) =>
+      bed.setGhost(Math.floor((frame * FRAME_MS) / HOVER_CUE_MS) % 2 === 0),
+    );
+    expect(changeTimes(turns).length).toBeGreaterThan(FLASH_CAP_PER_S); // it did keep changing
+    expect(mostInOneSecond(turns)).toBeLessThanOrEqual(FLASH_CAP_PER_S);
+    expect(guard.takePeak()).toBe(FLASH_CAP_PER_S);
+  });
+});

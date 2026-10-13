@@ -104,6 +104,27 @@ describe('one way in (API_SPEC §1.10 rule 2)', () => {
   });
 });
 
+describe('the systems start() registers (API_SPEC §1.10, the priorities table)', () => {
+  it('each at its number, in ascending order, and the bed renderer on the bed of the room system', () => {
+    // Read from the source: `start()` needs a real World. `register` itself throws for a number out of order,
+    // but not for a wrong one: the room at 30 would run, and hear the bus, after the hands that read its bed.
+    const source = readFileSync(new URL('../../src/app.ts', import.meta.url), 'utf8');
+    const lines = Array.from(source.matchAll(/register\(world, (\w+), (-?\d+)(?:, (\{[^}]*\}))?\)/g), (m) =>
+      m.slice(1, 4).filter((part) => part !== undefined),
+    );
+    expect(lines).toEqual([
+      ['PerfSystem', '-100', '{ guard, engine }'],
+      ['RoomSystem', '10'],
+      ['HandSystem', '20'],
+      ['BedRenderSystem', '50', '{ guard, bed: room.bed.object3D }'],
+      ['CaptionSystem', '60'],
+    ]);
+    expect(source.indexOf('breakOtherSystems(world);')).toBeGreaterThan(
+      source.lastIndexOf('register(world,'),
+    );
+  });
+});
+
 describe('register (LLD §3.2)', () => {
   it('returns the instance, registered at its priority, with its configData there when init() runs', () => {
     const world = fakeWorld();

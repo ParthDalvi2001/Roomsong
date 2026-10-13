@@ -14,4 +14,6 @@ export { MeshAdapter } from './MeshAdapter.js';
 export { PlacementSolver } from './PlacementSolver.js';
 export { PlaneAdapter } from './PlaneAdapter.js';
 export { RoomFeatureExtractor } from './RoomFeatures.js';
+// The module's ECS system (LLD §3.2): the one file of room/ that imports @iwsdk/core.
+export { RoomSystem } from './RoomSystem.js';
 export type { BedPlacement, RoomMesh, RoomPlane, RoomSurfaces, SurfaceRef } from './types.js';

@@ -1,8 +1,10 @@
 /// <reference types="webxr" />
-// T-162: the real AnchorStore (src/room/) on IWER's anchors and persistent handles (FR-ROOM-07). Nothing wires
-// the store into the app before T-128, so the page loads the class from the dev server and gives it every XR
-// frame, as RoomSystem will; TC-E2E-02's anchor half (`room:bedPlaced { restored }`, `room:anchored`) is
-// RoomSystem's and is not checked here. Each test has its own browser context and so its own empty storage.
+// T-162: the real AnchorStore (src/room/) on IWER's anchors and persistent handles (FR-ROOM-07), by itself: the
+// page loads the class from the dev server and gives it every XR frame, as RoomSystem does. Since T-128c the app
+// has a store of its own, in RoomSystem, and two stores on one site sweep each other's anchors: every page here
+// is opened with `noAnchors`, which switches the app's store off, and this spec's store gets flags of its own.
+// TC-E2E-02's anchor half (`room:bedPlaced { restored }`, `room:anchored`) is 06-room.spec.ts.
+// Each test has its own browser context and so its own empty storage.
 // Emulator result (E). IWER keeps a persistent anchor as a matrix in localStorage, restores every handle it
 // knows in the next frame, has no limit on their number, and never loses tracking: this shows that the calls are
 // made in the right order inside the right frames, and nothing about whether a Quest finds the table again.
@@ -33,19 +35,24 @@ const RESTORE_TIMEOUT_MS = 4000;
 const toTenthOfMm = (pose: ArrayLike<number> | null): number[] | null =>
   pose && Array.from(pose, (value) => Math.round(value * 1e4) / 1e4 + 0);
 
+/** Every page of this spec: the app's own anchor store, in RoomSystem, is off. */
+const APP_STORE_OFF = '/?flags=noAnchors';
+
 /**
  * Puts an AnchorStore in the page's XR session and gives it every frame from now on; resolves after the first.
- * The frame goes in behind a proxy that notes what the store reads from it.
+ * The frame goes in behind a proxy that notes what the store reads from it. `isOn` false: the store gets the
+ * `noAnchors` flag, as the page has it.
  */
-async function startStore(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    const roomUrl = '/src/room/index.ts';
+async function startStore(page: Page, isOn = true): Promise<void> {
+  await page.evaluate(async (isOn) => {
+    const [coreUrl, roomUrl] = ['/src/core/index.ts', '/src/room/index.ts'];
+    const core = (await import(/* @vite-ignore */ coreUrl)) as typeof import('../../src/core/index');
     const room = (await import(/* @vite-ignore */ roomUrl)) as typeof import('../../src/room/index');
     const device = (window as unknown as { IWER_DEVICE: { activeSession?: XRSession } }).IWER_DEVICE;
     const session = device.activeSession;
     if (!session) throw new Error('startStore needs an active XR session');
     const space = await session.requestReferenceSpace('local-floor');
-    const store = new room.AnchorStore(); // the page's own flags: noAnchors comes from the URL
+    const store = new room.AnchorStore({ ...core.flags, noAnchors: !isOn });
     const touched: string[] = [];
     const watched = (frame: XRFrame): XRFrame =>
       new Proxy(frame, {
@@ -64,7 +71,7 @@ async function startStore(page: Page): Promise<void> {
       };
       session.requestAnimationFrame(onFrame);
     });
-  });
+  }, isOn);
 }
 
 test('T-162 an anchor made on one page load gives the same pose after a reload, and none once cleared', async ({
@@ -72,7 +79,7 @@ test('T-162 an anchor made on one page load gives the same pose after a reload, 
 }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(String(error)));
-  const offHost = await openApp(page, readRoom('table'));
+  const offHost = await openApp(page, readRoom('table'), APP_STORE_OFF);
   await enterXR(page);
   await startStore(page);
   const first = await page.evaluate(async (pose) => {
@@ -157,7 +164,7 @@ test('T-162 with noAnchors the store reads nothing of a frame and restores nothi
 }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(String(error)));
-  const offHost = await openApp(page, readRoom('table'));
+  const offHost = await openApp(page, readRoom('table'), APP_STORE_OFF);
   await enterXR(page);
   await startStore(page);
   const handle = await page.evaluate(
@@ -166,9 +173,9 @@ test('T-162 with noAnchors the store reads nothing of a frame and restores nothi
   );
   expect(handle).not.toBeNull();
 
-  await page.goto('/?flags=noAnchors'); // the same storage: the emulator still knows the handle
+  await page.goto(APP_STORE_OFF); // loaded anew, with the same storage: the emulator still knows the handle
   await enterXR(page);
-  await startStore(page);
+  await startStore(page, false); // this time the store has the flag too
   const flagged = await page.evaluate(
     async ({ handle, pose, timeoutMs }) => {
       const { store, touched } = (window as unknown as Installing).anchors;

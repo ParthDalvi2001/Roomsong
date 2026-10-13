@@ -35,12 +35,20 @@ export const FLOATING_DROP_M = 0.25;
 export const PLANE_LEVELS_TIMEOUT_MS = 3000;
 /** FR-ROOM-01: level 3 waits this long for the pinch that confirms. */
 export const HIT_TEST_TIMEOUT_MS = 10_000;
+/** UX §9.2: the level-3 ghost follows the preview with this ease, so hit-test jitter does not shake it. */
+export const GHOST_EASE_MS = 100;
 
 /**
  * FR-ROOM-07: a saved anchor that has given no pose after this long is given up, and the chain places the bed.
  * The caller passes it to `restore()`.
  */
 export const ANCHOR_RESTORE_TIMEOUT_MS = 4000;
+/**
+ * D-041: a bed that comes back from its anchor is kept when its centre is in front of the user and at most
+ * BED_CENTRE_MAX_M plus this from the head, measured level; farther out it is placed again. Provisional: the
+ * reviewer's starting number, to confirm on the headset (T-129). Without it a small change of posture moves the bed.
+ */
+export const RESTORE_REACH_SLACK_M = 0.1;
 /**
  * FR-ROOM-07 (the new anchor is made in the background and its failure is no error): `create()` gives up after
  * this long, and nothing waits longer than this for an old anchor to be deleted. No requirement gives the

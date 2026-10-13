@@ -15,6 +15,11 @@ const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../../src')
 const ROOM_DIR = join(SRC_DIR, 'room');
 // API_SPEC §1: room/ imports core/ and garden/, each through its index.ts.
 const ALLOWED = [join(SRC_DIR, 'core', 'index.js'), join(SRC_DIR, 'garden', 'index.js')];
+// RoomSystem.ts is the module's ECS system (LLD §3.2) and the one file of room/ that loads the SDK. It alone may
+// import @iwsdk/core, and the shared components, which every importer takes from core/components.js
+// (CODING_GUIDELINES §3).
+const SYSTEM_FILE = 'RoomSystem.ts';
+const SYSTEM_ONLY = ['@iwsdk/core', join(SRC_DIR, 'core', 'components.js')];
 
 /** Every module a source file imports or re-exports from, static or dynamic. */
 function imports(source: string): string[] {
@@ -27,8 +32,9 @@ function imports(source: string): string[] {
 /** The imports of one room file that break the rule. */
 function violations(file: string, source: string): string[] {
   return imports(source).filter((spec) => {
+    const target = spec.startsWith('.') ? resolve(ROOM_DIR, dirname(file), spec) : spec;
+    if (file === SYSTEM_FILE && SYSTEM_ONLY.includes(target)) return false;
     if (!spec.startsWith('.')) return true; // no package: the adapters use the browser's WebXR, not IWSDK or three
-    const target = resolve(ROOM_DIR, dirname(file), spec);
     return !target.startsWith(ROOM_DIR + sep) && !ALLOWED.includes(target);
   });
 }
@@ -39,8 +45,21 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
   const files = readdirSync(ROOM_DIR, { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.ts'));
 
   it('no file under src/room/ imports anything but its own folder and the index of core/ and garden/', () => {
-    expect(files.length).toBeGreaterThanOrEqual(9);
+    expect(files.length).toBeGreaterThanOrEqual(10);
     for (const file of files) expect(violations(file, read(file)), file).toEqual([]);
+  });
+
+  it('RoomSystem.ts alone may also import the SDK and the shared components, and nothing more', () => {
+    const sdk = "import { createSystem } from '@iwsdk/core';";
+    const components = "import { BedAnchor } from '../core/components.js';";
+    expect(violations('RoomSystem.ts', sdk + components)).toEqual([]);
+    expect(violations('PlacementSolver.ts', sdk + components)).toHaveLength(2);
+    expect(violations('index.ts', sdk)).toHaveLength(1);
+    expect(violations('RoomSystem.ts', "import { Vector3 } from 'three';")).toHaveLength(1);
+    expect(violations('RoomSystem.ts', "import { HandState } from '../hands/index.js';")).toHaveLength(1);
+    expect(violations('RoomSystem.ts', "import { STRINGS } from '../core/strings.js';")).toHaveLength(1);
+    // The file really is the only one: the rule above would also pass with the SDK imported nowhere.
+    expect(imports(read('RoomSystem.ts'))).toContain('@iwsdk/core');
   });
 
   it('the check does catch a deep import, a module beside or above room/, the root and a package', () => {
@@ -75,6 +94,7 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
         'PlacementSolver',
         'PlaneAdapter',
         'RoomFeatureExtractor',
+        'RoomSystem',
       ].sort(),
     );
   });
@@ -82,6 +102,7 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
   it('config.ts holds every placement, anchor and feature number by value (FR-ROOM-01, 03, 07, 10)', () => {
     expect({ ...config }).toEqual({
       ANCHOR_RESTORE_TIMEOUT_MS: 4000,
+      RESTORE_REACH_SLACK_M: 0.1, // D-041, provisional
       ANCHOR_CALL_TIMEOUT_MS: 4000,
       FLOOR_MAX_OFFSET_M: 0.2,
       CEILING_MIN_HEIGHT_M: 1.8,
@@ -103,6 +124,7 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
       FLOATING_DROP_M: 0.25,
       PLANE_LEVELS_TIMEOUT_MS: 3000,
       HIT_TEST_TIMEOUT_MS: 10_000,
+      GHOST_EASE_MS: 100, // UX §9.2
       EPSILON_M: 1e-6,
     });
     // index.ts hands on the same values, not copies of its own

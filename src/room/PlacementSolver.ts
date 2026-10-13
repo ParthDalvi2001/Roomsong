@@ -1,6 +1,7 @@
 // Where the bed goes (LLD §5.5): the fallback chain of FR-ROOM-01, the reach clamp of FR-ROOM-03 (D-020) and the
-// bed frame of D-029. Plain code with no XR in it: the adapters read the room, RoomSystem (T-128) calls `update`
-// every frame while a run is pending. Level 3 is a stub: the pinch confirms, but nothing draws a preview yet.
+// bed frame of D-029. Plain code with no XR in it: the adapters read the room, RoomSystem calls `update` every
+// frame while a run is pending. At level 3 `preview()` is where the bed would land now (UX §9.2): RoomSystem
+// draws the ghost there.
 // Not seen on a headset: every number here was only ever run against the emulator's planes and hand-made ones.
 import { bus, flags as pageFlags, log } from '../core/index.js';
 
@@ -50,14 +51,37 @@ function readHead(pose: Mat4, out: Head): boolean {
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
+/** A level pose with no turn, at a point: what `poseAt` starts from. */
+const pointAt = (x: number, y: number, z: number): number[] => [
+  1,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  x,
+  y,
+  z,
+  1,
+];
+
 /**
- * The one way a bed pose is made, at every level. FR-ROOM-03: the centre is pulled along the head-to-point line
- * to 0.35..0.45 m from the head, measured level, and keeps the point's height. D-029: the bed is level, +z
- * points from its centre at the head and +x to the user's right. null when the numbers are not finite.
+ * The one way a bed pose is made, at every level: `pose`, a level pose at some point, is turned and pulled in,
+ * in place. FR-ROOM-03: the centre is pulled along the head-to-point line to 0.35..0.45 m from the head, measured
+ * level, and keeps the point's height. D-029: the bed is level, +z points from its centre at the head and +x to
+ * the user's right. null when the numbers are not finite.
+ * The point comes in inside the array and not as three numbers: level 3 calls this in every frame of its wait,
+ * and a fraction handed over as an argument can cost an object (48 bytes a frame, measured: the solver's heap test).
  */
-function poseAt(head: Head, x: number, y: number, z: number): Mat4 | null {
-  let ux = x - head.x;
-  let uz = z - head.z;
+function poseAt(head: Head, pose: number[]): number[] | null {
+  let ux = pose[12]! - head.x;
+  let uz = pose[14]! - head.z;
   const distM = Math.sqrt(ux * ux + uz * uz);
   if (distM > EPSILON_M) {
     ux /= distM;
@@ -70,9 +94,22 @@ function poseAt(head: Head, x: number, y: number, z: number): Mat4 | null {
   const reachM = clamp(distM, BED_CENTRE_MIN_M, BED_CENTRE_MAX_M);
   const cx = head.x + reachM * ux;
   const cz = head.z + reachM * uz;
-  // Columns: x = y cross z, y = up, z = -u (centre to head), then the centre. `0 - u` keeps -0 out of the pose.
-  const pose = [0 - uz, 0, ux, 0, 0, 1, 0, 0, 0 - ux, 0, 0 - uz, 0, cx, y, cz, 1];
-  return pose.every(Number.isFinite) ? pose : null;
+  // Columns: x = y cross z, y = up (as `pose` has it), z = -u (centre to head), then the centre. `0 - u` keeps -0
+  // out of the pose.
+  pose[0] = pose[10] = 0 - uz;
+  pose[2] = ux;
+  pose[8] = 0 - ux;
+  pose[12] = cx;
+  pose[14] = cz;
+  return Number.isFinite(ux + uz + cx + pose[13]! + cz) ? pose : null;
+}
+
+/** FR-ROOM-01 level 4, the floating bed, written into `pose`: 0.45 m forward of the head, 0.25 m below eye height. */
+function floatAt(head: Head, pose: number[]): number[] | null {
+  pose[12] = head.x + BED_CENTRE_DEFAULT_M * head.fx;
+  pose[13] = head.y - FLOATING_DROP_M;
+  pose[14] = head.z + BED_CENTRE_DEFAULT_M * head.fz;
+  return poseAt(head, pose);
 }
 
 /** Where a ray from `from` going `step` per metre leaves the slab -half..half. */
@@ -145,7 +182,8 @@ function placeOnPlanes(head: Head, planes: readonly RoomPlane[], level: 1 | 2): 
   for (let i = 0; i < planes.length; i++) {
     const plane = planes[i]!;
     const spot = spotOn(head, plane, level);
-    const pose = spot !== null && spot.missM < bestMissM ? poseAt(head, spot.x, spot.y, spot.z) : null;
+    const isBetter = spot !== null && spot.missM < bestMissM;
+    const pose = isBetter ? poseAt(head, pointAt(spot.x, spot.y, spot.z)) : null;
     if (spot === null || pose === null) continue;
     best = { pose, level, surfaceId: plane.id };
     bestMissM = spot.missM;
@@ -166,8 +204,8 @@ export interface HitSource {
 /**
  * The placement chain (API_SPEC §1.3): `run()` starts it, `update()` moves it on, and the promise resolves with
  * the bed of the first level that can place one: 1 a table plane, 2 a level plane 0.5..1.1 m high, 3 the point
- * the gaze hits when the user pinches (`confirm()`), at least 0.25 m below the eyes and 0.5 m above the floor,
- * 4 the floating bed, which always works (FR-ROOM-02).
+ * the gaze is on when the user pinches (`confirm()`) or the wait runs out, at least 0.25 m below the eyes and
+ * 0.5 m above the floor, 4 the floating bed, which always works (FR-ROOM-02).
  * `room:placementLevel` is emitted for each level tried; the last one of a run is the level of its bed.
  */
 export class PlacementSolver {
@@ -178,6 +216,10 @@ export class PlacementSolver {
   private sinceMs = 0;
   private isConfirmed = false;
   private readonly head: Head = { x: 0, y: 0, z: 0, fx: 0, fz: -1 };
+  /** Level 3: where the bed would land now. One object, written in every frame of the wait: `preview()`. */
+  private readonly shown: { pose: number[]; level: PlacementLevel } = { pose: pointAt(0, 0, 0), level: 4 };
+  /** `shown` is of this run's level 3. */
+  private hasPreview = false;
 
   /** `flags.forceLevel` starts the chain at that level; a forced level that cannot place still falls on. */
   constructor(
@@ -204,11 +246,24 @@ export class PlacementSolver {
     this.resolve = null;
     this.level = null;
     this.isConfirmed = false;
+    this.hasPreview = false;
   }
 
-  /** The pinch that confirms level 3. At any other level it means nothing. */
+  /**
+   * The pinch that confirms level 3 (UX §9.2): the next `update` places the bed where `preview()` is, on the
+   * surface (level 3) or, with the gaze on no usable spot, floating at once (level 4). At any other level it
+   * means nothing.
+   */
   confirm(): void {
     this.isConfirmed = this.level === 3;
+  }
+
+  /**
+   * Level 3 only: the pose and the level (3 or 4) a confirm in this frame would give, as of the last `update`.
+   * One reused object: copy what you keep. null at any other level and with no run pending.
+   */
+  preview(): Readonly<BedPlacement> | null {
+    return this.level === 3 && this.hasPreview ? this.shown : null;
   }
 
   /**
@@ -248,10 +303,7 @@ export class PlacementSolver {
     if (this.level === 3) return this.stepHitTest(nowMs);
     const head = this.head;
     if (this.level === 4) {
-      // FR-ROOM-01: 0.45 m forward of the head, 0.25 m below eye height
-      const x = head.x + BED_CENTRE_DEFAULT_M * head.fx;
-      const z = head.z + BED_CENTRE_DEFAULT_M * head.fz;
-      const pose = poseAt(head, x, head.y - FLOATING_DROP_M, z);
+      const pose = floatAt(head, pointAt(0, 0, 0));
       return pose && { pose, level: 4 };
     }
     const planes = this.planes.read();
@@ -262,17 +314,35 @@ export class PlacementSolver {
     return this.fallTo(this.firstAvailable(3), nowMs);
   }
 
+  /**
+   * Level 3 (UX §9.2): the bed lands where `preview()` is, on the pinch and when the wait runs out. That is on
+   * the surface while the gaze is on a usable spot, and the floating bed otherwise.
+   */
   private stepHitTest(nowMs: number): BedPlacement | null {
-    const point = this.isConfirmed ? this.hits.hit() : null;
-    this.isConfirmed = false;
-    // FR-ROOM-01 (D-034): a pinch while the gaze is on a wall at eye height, or on the floor, is no confirm. No bed
-    // higher than the floating one would be, and none lower than a level-2 surface may be.
-    const isInReach =
-      point !== null && point.y <= this.head.y - FLOATING_DROP_M && point.y >= SURFACE_MIN_HEIGHT_M;
-    const pose = isInReach ? poseAt(this.head, point.x, point.y, point.z) : null;
-    if (pose) return { pose, level: 3 };
-    if (this.hits.supported() && nowMs - this.sinceMs < HIT_TEST_TIMEOUT_MS) return null;
-    return this.fallTo(4, nowMs);
+    // A pinch places the bed where the last frame showed it: the gaze may have moved on since.
+    if (!this.isConfirmed || !this.hasPreview) this.aim();
+    const { pose, level } = this.shown;
+    const isOver = !this.hits.supported() || !(nowMs - this.sinceMs < HIT_TEST_TIMEOUT_MS);
+    if (this.isConfirmed || (isOver && level === 3)) return { pose: Array.from(pose), level };
+    return isOver ? this.fallTo(4, nowMs) : null;
+  }
+
+  /** Fills `shown` for this frame, creating nothing. */
+  private aim(): void {
+    const head = this.head;
+    const shown = this.shown;
+    const point = this.hits.hit();
+    // FR-ROOM-01 (D-034): a wall at eye height and the floor are no place for the bed. No bed is higher than the
+    // floating one would be, and none lower than a level-2 surface may be.
+    const isUsable = point !== null && point.y <= head.y - FLOATING_DROP_M && point.y >= SURFACE_MIN_HEIGHT_M;
+    if (isUsable) {
+      shown.pose[12] = point.x;
+      shown.pose[13] = point.y;
+      shown.pose[14] = point.z;
+    }
+    shown.level = isUsable && poseAt(head, shown.pose) !== null ? 3 : 4;
+    if (shown.level === 4) floatAt(head, shown.pose);
+    this.hasPreview = true;
   }
 
   /** A level waited and got nothing. Ending up at level 4 that way is E_PLACEMENT_TIMEOUT: expected, not fatal. */

@@ -251,7 +251,7 @@ Seven questions the builders and reviewers raised, settled so the next tasks do 
 **Decision.** The moment level 3 starts, a ghost of the bed shows where the bed will land and one caption says what to do. The bed lands where the ghost is, in all three endings: a pinch, a dwell in gaze mode, or the 10 s running out. So nothing jumps at the end of the wait and no pinch is ignored.
 
 **Numbers and text.**
-- Start: `room:placementLevel { level: 3 }`, at most 3 s after the session starts (at once in a session without plane detection). Ghost and caption fade in over 300 ms. A session without hit-test never enters level 3 and shows neither.
+- Start: `room:placementLevel { level: 3 }`, at most 3 s after the session starts (at once in a session without plane detection). Ghost and caption fade in over 300 ms (not built: as built in T-128c the ghost eases into place over about 100 ms and the caption appears at once). A session without hit-test never enters level 3 and shows neither.
 - Caption, hands: **"Look at your table, and pinch"** (6 words) with the pinch icon. Gaze mode: **"Look at your table, and wait"** (6 words) with the gaze-dot icon. It sits in the caption slot of §3.3 (0.6 m ahead, 8° below the gaze, held in the view box by the FoV guard) and stays until the bed is placed. Keys `placeLook` and `placeLookGaze` in `core/strings.ts`.
 - Ghost: the bed's own glass with its five ring lines and nothing else: no cell markers, no plants. Its pose is exactly the pose a confirm in this frame would give:
   - gaze on a usable spot (a hit at least 0.25 m below the eyes and at least 0.5 m above the floor, D-034): on that surface, its centre pulled to 0.35–0.45 m from the head by the solver's own clamp;

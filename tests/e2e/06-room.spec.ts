@@ -1,151 +1,700 @@
 /// <reference types="webxr" />
-// T-123: the real PlacementSolver and room adapters (src/room/) on IWER's emulated planes and hit-test. Part of
-// TC-E2E-02: each level yields a placed bed. Nothing wires room/ into the app before T-128, so the page loads
-// the classes from the dev server and drives them once per XR frame; `room:bedPlaced` is RoomSystem's event and
-// is not checked here. Emulator result (E): IWER's planes are not a real room, and this says nothing about a headset.
-import { expect, test, type Page } from '@playwright/test';
+// T-128c: room and bed in the real app (LLD §3.5 c1 and c2; the placement half of TC-E2E-02). The page's own
+// Enter starts a session; RoomSystem places the bed in the emulator's room, or brings it back from its anchor,
+// reads the room once and says both on the bus. The events are read from the app's own bus (the dev server's
+// /src/core/index.ts), the bed from `window.__roomsong.world`.
+// The app has no GardenSystem before T-128d: nothing answers `room:features`, and where a test needs a saved
+// anchor pair it plays the garden's part itself, with a `garden:changed` before Enter.
+// Emulator results (E). IWER's planes are not a real room, its hit-test meets only the fixture's planes, and it
+// restores every anchor it knows in the next frame: this says nothing about a headset (T-129).
+import { expect, test, type JSHandle, type Page } from '@playwright/test';
 
-import { enterXR, openApp, readRoom, ROOMS } from './support/iwer';
+import {
+  enterXR,
+  openApp,
+  playHandPath,
+  readHandPath,
+  readRoom,
+  WORLD_READY_MS,
+  xrFrames,
+} from './support/iwer';
 
-/** One placement, as the solver gave it. */
-interface Placed {
-  level: number;
-  surfaceId: string | null;
-  /** The bed pose, column-major, rounded to a millimetre. */
-  pose: number[];
-  /** Every `room:placementLevel` of the run, in order. */
-  levels: number[];
-  /** From `run()` to the bed. */
-  ms: number;
-  /** The label of the plane the bed is on. */
-  surfaceLabel: string | null;
-}
+type Core = typeof import('../../src/core/index');
+type Components = typeof import('../../src/core/components');
+type Garden = typeof import('../../src/garden/index');
+type RoomModule = typeof import('../../src/room/index');
+type Ui = typeof import('../../src/ui/index');
+type PerfSample = import('../../src/core/index').EventMap['perf:sample'];
 
-type Point = { x: number; y: number; z: number };
-interface Emulator {
+/** The part of IWER's XRDevice this spec uses (iwer 2.5.0). */
+interface Device {
   activeSession?: XRSession;
+  /** Queued until the session's next frame, which then fires the session's `visibilitychange`. */
+  updateVisibilityState(state: XRVisibilityState): void;
   remote: { dispatch(method: string, params?: object): Promise<unknown> };
 }
 
-/**
- * Runs the chain in the page's XR session, pinching on every frame as a user who confirms level 3 at once.
- * `lookAt` turns the emulated head to that point first; without it the head looks level down -z.
- */
-function placeBed(page: Page, lookAt?: Point): Promise<Placed> {
-  return page.evaluate(async (lookAt) => {
-    const roomUrl = '/src/room/index.ts';
-    const coreUrl = '/src/core/index.ts';
-    const { HitTestAdapter, PlaneAdapter, PlacementSolver, PLANE_LEVELS_TIMEOUT_MS } = (await import(
-      /* @vite-ignore */ roomUrl
-    )) as typeof import('../../src/room/index');
-    const { bus } = (await import(/* @vite-ignore */ coreUrl)) as typeof import('../../src/core/index');
-    const device = (window as unknown as { IWER_DEVICE: Emulator }).IWER_DEVICE;
-    const session = device.activeSession;
-    if (!session) throw new Error('placeBed needs an active XR session');
-    if (lookAt) await device.remote.dispatch('look_at', { device: 'headset', target: lookAt });
-    const space = await session.requestReferenceSpace('local-floor');
-    const planes = new PlaneAdapter();
-    const hits = new HitTestAdapter();
-    const solver = new PlacementSolver(planes, hits); // the page's own flags: forceLevel comes from the URL
-    const levels: number[] = [];
-    const stopListening = bus.on('room:placementLevel', ({ level }) => levels.push(level));
-    const labels = new Map<string, string>();
+/** The bed as the page has it at one moment. */
+interface BedNow {
+  /** The bed's entity carries BedAnchor. */
+  isPlaced: boolean;
+  source: string | null;
+  isShown: boolean;
+  /** The 80 cell markers are drawn: false for the ghost. */
+  hasMarkers: boolean;
+  /** `bed.object3D.matrixWorld`, column-major. */
+  pose: number[];
+}
+type Heard = { type: string; payload: Record<string, unknown>; frame: number; atMs: number; bed: BedNow };
 
-    const started = performance.now();
-    let isPlaced = false;
-    const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
-    const onFrame = (time: number, frame: XRFrame) => {
-      if (isPlaced) return;
-      planes.setFrame(frame, space);
-      hits.setFrame(frame, space);
-      for (const plane of planes.read()) labels.set(plane.id, plane.label);
-      const head = frame.getViewerPose(space)?.transform.matrix;
-      solver.confirm();
-      if (head) solver.update(head, time);
-      session.requestAnimationFrame(onFrame);
+/** What a test holds in the page. */
+interface RoomProbe {
+  room: InstanceType<RoomModule['RoomSystem']>;
+  /** Every `room:*` and `xr:*` event since the probe was made, with the frame it came in and the bed then. */
+  heard: Heard[];
+  /** BedAnchor added to or taken off an entity, and Caption likewise, with the frame. */
+  anchorLog: { on: boolean; frame: number }[];
+  captionLog: { key: string | null; frame: number }[];
+  /** `renderer.info.render.calls` of every frame, by frame number. */
+  draws: number[];
+  /** The height of the bed as drawn, by frame number. */
+  bedY: number[];
+  /** Of every frame in which `room:bedPlaced` came: all systems' updates, and updates plus render. */
+  placedFrames: { frame: number; updateMs: number; scriptMs: number }[];
+  /** `RoomSystem.update` since `reset`: how many, and their time together. */
+  cost: { frames: number; ms: number };
+  samples: PerfSample[];
+  frame(): number;
+  bed(): BedNow;
+  /** How many entities carry BedAnchor. */
+  anchored(): number;
+  /** The key of the caption on screen. */
+  shown(): string | null;
+  eyes(): number;
+  log(): string[];
+  /** The confirm by hand, as hands/ sends it for a pinch on nothing, its start and its release (LLD §3.5 c2). */
+  release(): void;
+}
+
+const device = (page: Page) =>
+  page.waitForFunction(() => (window as unknown as { IWER_DEVICE?: Device }).IWER_DEVICE) as Promise<
+    JSHandle<Device>
+  >;
+
+/** Console errors and page errors from now on. */
+function watch(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(String(error)));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  return errors;
+}
+
+/**
+ * Waits for the world, then listens in the page. Made before Enter: placement starts with the session's first
+ * frame. `saved`: the anchor pair a saved garden would hold, said with a `garden:changed` as GardenSystem will.
+ */
+async function watchRoom(
+  page: Page,
+  saved: { handle: string; level: 1 | 2 | 3 | 4 } | null = null,
+): Promise<JSHandle<RoomProbe>> {
+  const enter = page.getByRole('main').getByRole('button', { name: 'Enter the garden' });
+  await expect(enter).toBeEnabled({ timeout: WORLD_READY_MS });
+  return page.evaluateHandle(async (saved) => {
+    const load = (url: string): Promise<unknown> => import(/* @vite-ignore */ url);
+    const core = (await load('/src/core/index.ts')) as Core;
+    const { BedAnchor, Caption } = (await load('/src/core/components.ts')) as Components;
+    const garden = (await load('/src/garden/index.ts')) as Garden;
+    const room = (await load('/src/room/index.ts')) as RoomModule;
+    const ui = (await load('/src/ui/index.ts')) as Ui;
+    const { world } = window.__roomsong!;
+    const system = world.getSystem(room.RoomSystem)!;
+    const captions = world.getSystem(ui.CaptionSystem)!;
+    const object = system.bed.object3D!;
+
+    let frame = 0;
+    let startedMs = 0;
+    let updateMs = 0;
+    const bed = (): BedNow => ({
+      isPlaced: system.bed.hasComponent(BedAnchor),
+      source: system.bed.hasComponent(BedAnchor) ? system.bed.getValue(BedAnchor, 'source') : null,
+      isShown: object.visible,
+      hasMarkers: object.children.some((child) => 'isInstancedMesh' in child && child.visible),
+      pose: Array.from(object.matrixWorld.elements),
+    });
+    const heard: Heard[] = [];
+    for (const type of [
+      'xr:sessionStart',
+      'xr:sessionEnd',
+      'xr:visibility',
+      'room:placementLevel',
+      'room:bedPlaced',
+      'room:features',
+      'room:anchored',
+    ] as const) {
+      core.bus.on(type, (payload) =>
+        heard.push({
+          type,
+          payload: JSON.parse(JSON.stringify(payload)) as Record<string, unknown>,
+          frame,
+          atMs: performance.now(),
+          bed: bed(),
+        }),
+      );
+    }
+    const anchors = world.queryManager.registerQuery({ required: [BedAnchor] });
+    const anchorLog: RoomProbe['anchorLog'] = [];
+    anchors.subscribe('qualify', () => anchorLog.push({ on: true, frame }));
+    anchors.subscribe('disqualify', () => anchorLog.push({ on: false, frame }));
+    const raised = world.queryManager.registerQuery({ required: [Caption] });
+    const captionLog: RoomProbe['captionLog'] = [];
+    raised.subscribe('qualify', (entity) => captionLog.push({ key: entity.getValue(Caption, 'key'), frame }));
+    raised.subscribe('disqualify', () => captionLog.push({ key: null, frame }));
+    const samples: PerfSample[] = [];
+    core.bus.on('perf:sample', (sample) => samples.push({ ...sample }));
+
+    // A frame: IWSDK's loop calls world.update, then renders, and the scene's onAfterRender ends the render.
+    const update = world.update.bind(world);
+    world.update = (delta, time) => {
+      frame++;
+      startedMs = performance.now();
+      update(delta, time);
+      updateMs = performance.now() - startedMs;
     };
-    session.requestAnimationFrame(onFrame);
-    const placement = await run;
-    isPlaced = true;
-    stopListening();
-    return {
-      level: placement.level,
-      surfaceId: placement.surfaceId ?? null,
-      pose: Array.from(placement.pose, (value) => Math.round(value * 1000) / 1000 + 0),
-      levels,
-      ms: Math.round(performance.now() - started),
-      surfaceLabel: labels.get(placement.surfaceId ?? '') ?? null,
+    const draws: number[] = [];
+    const bedY: number[] = [];
+    const placedFrames: RoomProbe['placedFrames'] = [];
+    const after = world.scene.onAfterRender.bind(world.scene);
+    world.scene.onAfterRender = (...args) => {
+      after(...args);
+      draws[frame] = world.renderer.info.render.calls;
+      bedY[frame] = object.matrixWorld.elements[13]!;
+      const last = heard[heard.length - 1];
+      const isPlacedFrame = heard.some((event) => event.type === 'room:bedPlaced' && event.frame === frame);
+      if (last !== undefined && isPlacedFrame && placedFrames[placedFrames.length - 1]?.frame !== frame) {
+        placedFrames.push({ frame, updateMs, scriptMs: performance.now() - startedMs });
+      }
     };
-  }, lookAt);
+    const cost = { frames: 0, ms: 0 };
+    const roomUpdate = system.update.bind(system);
+    system.update = (delta, time) => {
+      const from = performance.now();
+      roomUpdate(delta, time);
+      cost.ms += performance.now() - from;
+      cost.frames++;
+    };
+
+    if (saved !== null) {
+      const state = garden.setAnchor(garden.newGarden(Date.now(), core.settings.get()), saved);
+      core.bus.emit('garden:changed', { state, diff: { added: [], removed: [], changed: [] } });
+    }
+    const probe: RoomProbe = {
+      room: system,
+      heard,
+      anchorLog,
+      captionLog,
+      draws,
+      bedY,
+      placedFrames,
+      cost,
+      samples,
+      frame: () => frame,
+      bed,
+      anchored: () => anchors.entities.size,
+      shown: () => captions.shown,
+      eyes: () => world.renderer.xr.getCamera().cameras.length,
+      log: () => core.log.recent().map((entry) => `${entry.level} ${entry.scope} ${entry.msg}`),
+      release: () => {
+        const pos = { x: 0.1, y: 1, z: -0.3 };
+        // Begun while the ghost is up: a pinch begun before it does not confirm (T-128c review).
+        core.bus.emit('gesture:pinchStart', { type: 'gesture:pinchStart', hand: 'right', target: null, pos });
+        core.bus.emit('gesture:release', {
+          type: 'gesture:release',
+          hand: 'right',
+          gesture: 'none',
+          target: null,
+          pos,
+          zone: 'outer',
+          cell: null,
+          dy: null,
+        });
+      },
+    };
+    return probe;
+  }, saved);
+}
+
+/** Resolves once the page has heard `count` events of `type`. */
+const heardOf = (page: Page, probe: JSHandle<RoomProbe>, type: string, count = 1, timeout = 20_000) =>
+  page.waitForFunction(
+    ([p, type, count]) => p.heard.filter((event) => event.type === type).length >= count,
+    [probe, type, count] as const,
+    { timeout },
+  );
+const heard = (probe: JSHandle<RoomProbe>) => probe.evaluate((p) => p.heard);
+const roomEvents = (events: Heard[]) => events.filter((event) => event.type.startsWith('room:'));
+const typesOf = (events: Heard[]) => roomEvents(events).map((event) => event.type);
+const levelsOf = (events: Heard[]) =>
+  events.filter((event) => event.type === 'room:placementLevel').map((event) => event.payload.level);
+const only = (events: Heard[], type: string): Heard => {
+  const found = events.filter((event) => event.type === type);
+  expect(found, type).toHaveLength(1);
+  return found[0]!;
+};
+type Placed = { placement: { pose: number[]; level: number; surfaceId?: string }; restored: boolean };
+const placedOf = (event: Heard) => event.payload as unknown as Placed;
+
+/** Equal to within `tolerance`: the bed's entity keeps its position in 32-bit floats, a pose has 64. */
+function expectPose(actual: number[], expected: number[], tolerance = 1e-6, note = ''): void {
+  expect(actual, note).toHaveLength(16);
+  for (let i = 0; i < 16; i++) {
+    expect(
+      Math.abs(actual[i]! - expected[i]!),
+      `${note} [${i}]: ${actual[i]} vs ${expected[i]}`,
+    ).toBeLessThan(tolerance);
+  }
 }
 
 /** A bed straight ahead of the emulator's head (0, 1.6, 0; looking down -z): no turn, 0.45 m forward. */
 const aheadAt = (heightM: number) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, heightM, -0.45, 1];
 const EYE_HEIGHT_M = 1.6;
 const FLOATING_M = EYE_HEIGHT_M - 0.25; // FR-ROOM-01 level 4
-
 const TABLE_CENTRE = { x: 0, y: 0.74, z: -0.5 }; // of the table room
+// The requirement's numbers, spelled out on purpose (room/config.ts holds the module's constants).
+const PLANE_WAIT_MS = 3000;
+const HIT_WAIT_MS = 10_000;
+/** LLD §3.3 D: the one frame of a placement may take this much script time. */
+const PLACED_FRAME_BUDGET_MS = 50;
 
 interface Case {
-  room: (typeof ROOMS)[number];
+  room: 'table' | 'counter';
   flags?: string;
-  lookAt?: Point;
-  level: number;
   levels: number[];
+  level: number;
   heightM: number;
-  surfaceLabel: string | null;
+  source: string;
+  /** A plane the bed is on: the room's own features are known. */
+  features?: { tableHeight: number; floorArea: number; ceilingHeight: number };
 }
-
 const CASES: Case[] = [
-  // The chain as it runs for a user: the six rooms.
-  { room: 'table', level: 1, levels: [1], heightM: 0.74, surfaceLabel: 'table' },
-  { room: 'tiny', level: 1, levels: [1], heightM: 0.72, surfaceLabel: 'table' },
-  { room: 'large', level: 1, levels: [1], heightM: 0.75, surfaceLabel: 'table' },
-  { room: 'no-walls', level: 1, levels: [1], heightM: 0.74, surfaceLabel: 'table' },
-  { room: 'counter', level: 2, levels: [1, 2], heightM: 0.92, surfaceLabel: 'other' },
-  // No planes and nothing for the gaze to hit: 3 s for a plane, 10 s for a pinch on a hit, then the floating bed.
-  { room: 'none', level: 4, levels: [1, 3, 4], heightM: FLOATING_M, surfaceLabel: null },
-  // forceLevel=N starts the chain at level N (TC-E2E-02).
-  { room: 'table', flags: 'forceLevel=1', level: 1, levels: [1], heightM: 0.74, surfaceLabel: 'table' },
-  { room: 'table', flags: 'forceLevel=2', level: 2, levels: [2], heightM: 0.74, surfaceLabel: 'table' },
-  // Level 3: the head looks down at the table and the pinch confirms where the gaze meets it, 0.5 m away.
+  // The chain as it runs for a user.
   {
     room: 'table',
-    flags: 'forceLevel=3',
-    lookAt: TABLE_CENTRE,
-    level: 3,
-    levels: [3],
+    levels: [1],
+    level: 1,
     heightM: 0.74,
-    surfaceLabel: null,
+    source: 'table',
+    features: { tableHeight: 0.74, floorArea: 18, ceilingHeight: 2.5 },
   },
-  { room: 'table', flags: 'forceLevel=4', level: 4, levels: [4], heightM: FLOATING_M, surfaceLabel: null },
-  // No planes and a level gaze: it meets the far wall at eye height, where a pinch is no confirm. 10 s, then the
-  // floating bed.
-  { room: 'table', flags: 'noPlanes', level: 4, levels: [3, 4], heightM: FLOATING_M, surfaceLabel: null },
+  {
+    room: 'counter',
+    levels: [1, 2],
+    level: 2,
+    heightM: 0.92,
+    source: 'surface',
+    features: { tableHeight: 0.92, floorArea: 12, ceilingHeight: 2.4 },
+  },
+  // LLD §3.5 c1: forceLevel=1, 2 and 4 each give room:bedPlaced with that level, then room:features.
+  { room: 'table', flags: 'forceLevel=1', levels: [1], level: 1, heightM: 0.74, source: 'table' },
+  { room: 'table', flags: 'forceLevel=2', levels: [2], level: 2, heightM: 0.74, source: 'surface' },
+  { room: 'table', flags: 'forceLevel=4', levels: [4], level: 4, heightM: FLOATING_M, source: 'floating' },
 ];
 
-for (const { room, flags, lookAt, level, levels, heightM, surfaceLabel } of CASES) {
+for (const { room, flags, levels, level, heightM, source, features } of CASES) {
   const title = flags === undefined ? `the ${room} room` : `the ${room} room with ${flags}`;
-  test(`T-123 placement in ${title}: level ${level}, bed 0.45 m ahead at ${heightM} m`, async ({ page }) => {
-    const pageErrors: string[] = [];
-    page.on('pageerror', (error) => pageErrors.push(String(error)));
+  test(`T-128c c1 ${title}: the app places the bed at level ${level} and reads the room in the same frame`, async ({
+    page,
+  }) => {
+    const errors = watch(page);
     const offHost = await openApp(page, readRoom(room), flags === undefined ? '/' : `/?flags=${flags}`);
+    const probe = await watchRoom(page);
     await enterXR(page);
+    await heardOf(page, probe, 'room:anchored');
+    const events = await heard(probe);
 
-    const placed = await placeBed(page, lookAt);
-    console.log(`T-123 ${title}: ${JSON.stringify(placed)} (emulator)`);
-    expect(placed.level).toBe(level);
-    expect(placed.levels).toEqual(levels);
-    expect(placed.pose).toEqual(aheadAt(heightM));
-    expect(placed.surfaceLabel).toBe(surfaceLabel);
-    expect(placed.surfaceId === null).toBe(level > 2);
-    if (level <= 2) expect(placed.ms).toBeLessThan(3000); // FR-ROOM-01: levels 1 and 2 within 3 s
-    // Each wait that ran out took its full time: 3 s for a plane, 10 s for a pinch on a usable hit.
-    const planeWaitMs = levels.includes(1) && level > 2 ? 3000 : 0;
-    const pinchWaitMs = levels.includes(3) && level === 4 ? 10_000 : 0;
-    expect(placed.ms).toBeGreaterThanOrEqual(planeWaitMs + pinchWaitMs);
+    // The order of API_SPEC §1.10 rule 4, and nothing twice.
+    expect(events[0]?.type).toBe('xr:sessionStart');
+    expect(typesOf(events)).toEqual([
+      ...levels.map(() => 'room:placementLevel'),
+      'room:bedPlaced',
+      'room:features',
+      'room:anchored',
+    ]);
+    expect(levelsOf(events)).toEqual(levels);
+    const placed = only(events, 'room:bedPlaced');
+    const read = only(events, 'room:features');
+    const { placement, restored } = placedOf(placed);
+    expect(restored).toBe(false);
+    expect(placement.level).toBe(level);
+    expect(typeof placement.surfaceId === 'string').toBe(level <= 2);
+    // On the fixture's surface, in front of the head: the reference space and the world space are one.
+    expectPose(placement.pose, aheadAt(heightM), 1e-6, 'the placement');
+    // In the frame of the event: the entity is at the placement's pose, shown, with BedAnchor and its markers.
+    expectPose(placed.bed.pose, placement.pose, 1e-6, 'the bed entity at room:bedPlaced');
+    expect(placed.bed).toMatchObject({ isPlaced: true, source, isShown: true, hasMarkers: true });
+    // One update: the bed and the room read share a frame, the one after the chain resolved.
+    expect(read.frame).toBe(placed.frame);
+    const lastLevel = events.filter((event) => event.type === 'room:placementLevel').pop()!;
+    expect(placed.frame).toBe(lastLevel.frame + 1);
+    expect(lastLevel.bed).toMatchObject({ isPlaced: false, isShown: false });
+    expect((read.payload.features as { level: number }).level).toBe(level);
+    if (features !== undefined) {
+      const got = read.payload.features as Record<string, number>;
+      for (const [name, value] of Object.entries(features)) expect(got[name], name).toBeCloseTo(value, 3);
+      expect(got.wallCount).toBe(4);
+      expect(read.payload.surfaces).toHaveProperty('table');
+      expect(read.payload.surfaces).toHaveProperty('ceiling');
+    }
+    // The new anchor comes later, holding nothing up, with the level of the bed.
+    const anchored = only(events, 'room:anchored');
+    expect(anchored.frame).toBeGreaterThan(placed.frame);
+    expect(anchored.payload).toMatchObject({ level });
+    expect(anchored.payload.handle).toMatch(/^[0-9a-f-]{36}$/);
 
-    expect(pageErrors).toEqual([]);
+    // The bed's two draw calls, in each eye: the glass with its ring lines, and the markers.
+    await page.waitForFunction((p) => p.samples.length >= 2, probe);
+    const numbers = await probe.evaluate((p, frame) => {
+      const sample = p.samples[p.samples.length - 1]!;
+      p.cost.frames = p.cost.ms = 0;
+      return {
+        eyes: p.eyes(),
+        before: p.draws[frame - 1],
+        after: p.draws[frame],
+        sample,
+        now: p.draws[p.frame()],
+      };
+    }, placed.frame);
+    expect(numbers.after! - numbers.before!).toBe(2 * numbers.eyes);
+    expect(numbers.sample.draws).toBe(numbers.now); // perf:sample reports the same count
+    // The markers' one fade-in at the placement is the only luminance change (UX §9.2), through the page's guard.
+    const flashes = await probe.evaluate((p) => p.samples.map((sample) => sample.maxFlashPerS));
+    expect(Math.max(...flashes)).toBeLessThanOrEqual(1);
+
+    // The numbers: the placed frame, and RoomSystem.update once the bed is placed.
+    await xrFrames(page, 200);
+    const cost = await probe.evaluate((p) => ({ placed: p.placedFrames, ...p.cost }));
+    expect(cost.placed).toHaveLength(1);
+    expect(cost.placed[0]!.updateMs).toBeLessThan(PLACED_FRAME_BUDGET_MS);
+    const perFrameMs = cost.ms / cost.frames;
+    console.log(
+      `T-128c ${title}: placed frame ${cost.placed[0]!.updateMs.toFixed(2)} ms of updates, ` +
+        `${cost.placed[0]!.scriptMs.toFixed(2)} ms with its render (software); RoomSystem.update while placed ` +
+        `${perFrameMs.toFixed(4)} ms a frame over ${cost.frames} frames; draws ${numbers.before} -> ` +
+        `${numbers.after} in ${numbers.eyes} eyes (emulator)`,
+    );
+    expect(perFrameMs).toBeLessThan(0.5);
+
+    if (flags === undefined && room === 'table') {
+      // Re-place (FR-ROOM-05): BedAnchor comes off, the chain runs again, and the room is read again.
+      // Read in the same call: with a table in sight the bed is back two frames later.
+      const taken = await probe.evaluate((p) => {
+        p.room.replace();
+        return p.bed();
+      });
+      expect(taken).toMatchObject({ isPlaced: false, isShown: false });
+      await heardOf(page, probe, 'room:features', 2);
+      const again = roomEvents(await heard(probe)).slice(4);
+      expect(again.map((event) => event.type).slice(0, 3)).toEqual([
+        'room:placementLevel',
+        'room:bedPlaced',
+        'room:features',
+      ]);
+      expect(placedOf(again[1]!)).toMatchObject({ restored: false, placement: { level: 1 } });
+      expect(again[2]!.frame).toBe(again[1]!.frame);
+      expect((await probe.evaluate((p) => p.anchorLog)).map((entry) => entry.on)).toEqual([
+        true,
+        false,
+        true,
+      ]);
+    }
+
+    // After the session no entity carries BedAnchor, and the bed is not drawn.
+    await (await device(page)).evaluate((d) => d.activeSession?.end());
+    await heardOf(page, probe, 'xr:sessionEnd');
+    expect(await probe.evaluate((p) => ({ anchored: p.anchored(), bed: p.bed() }))).toMatchObject({
+      anchored: 0,
+      bed: { isPlaced: false, isShown: false },
+    });
+    // The markers fade out through the guard, in the frames the page goes on drawing without a session.
+    await page.waitForFunction((p) => !p.bed().hasMarkers, probe);
+    expect(errors).toEqual([]);
     expect(offHost).toEqual([]);
   });
 }
+
+test('T-128c c2 level 3: the ghost and its caption, a dwell that floats nothing, and a pinch on the table', async ({
+  page,
+}) => {
+  const errors = watch(page);
+  const offHost = await openApp(page, readRoom('table'), '/?flags=forceLevel=3');
+  const probe = await watchRoom(page);
+  await enterXR(page);
+  await heardOf(page, probe, 'room:placementLevel');
+  // Few frames from here to the pinch: under software rendering 10 s of level 3 is not many, and a wait that runs
+  // out over the table also gives level 3, which would make the pinch a no-op the test could not tell apart.
+  await xrFrames(page, 5);
+
+  // A level gaze meets the far wall at eye height: no usable spot, so the ghost is the floating bed.
+  const start = only(await heard(probe), 'room:placementLevel');
+  expect(start.payload).toEqual({ level: 3 });
+  const floating = await probe.evaluate((p) => ({ bed: p.bed(), shown: p.shown(), captions: p.captionLog }));
+  expect(floating.bed).toMatchObject({ isPlaced: false, isShown: true, hasMarkers: false });
+  expectPose(floating.bed.pose, aheadAt(FLOATING_M), 1e-6, 'the ghost with the gaze on the wall');
+  // The caption is up from room:placementLevel { level: 3 }, in that very frame.
+  expect(floating.captions).toEqual([{ key: 'placeLook', frame: start.frame }]);
+  expect(floating.shown).toBe('placeLook');
+
+  // The gaze dwell's way in: over no usable spot it places nothing. A dwell never floats the bed.
+  await probe.evaluate((p) => p.room.confirm());
+  await xrFrames(page, 5);
+  expect(typesOf(await heard(probe))).toEqual(['room:placementLevel']);
+
+  // The head turns down to the table: the ghost follows, with its ease, onto the table top.
+  await (
+    await device(page)
+  ).evaluate((d, target) => d.remote.dispatch('look_at', { device: 'headset', target }), TABLE_CENTRE);
+  await page.waitForFunction((p) => Math.abs(p.bed().pose[13]! - 0.74) < 1e-4, probe); // settled on the table
+  // At least one frame drew it between the two places: an ease, not a jump. Read per frame, so a slow emulator
+  // frame (software rendering) changes how many such frames there are, not whether there is one.
+  const between = await probe.evaluate(
+    (p, low) => p.bedY.filter((y) => y > low && y < 1.35 - 1e-3).length,
+    0.74 + 1e-3,
+  );
+  expect(between).toBeGreaterThan(0);
+  const ghost = await probe.evaluate((p) => p.bed());
+  expect(ghost).toMatchObject({ isPlaced: false, isShown: true, hasMarkers: false });
+  expectPose(ghost.pose, aheadAt(0.74), 1e-4, 'the ghost with the gaze on the table');
+
+  // The confirm by hand, as hands/ sends it. The bed lands where the ghost is: level 3.
+  const pinchedAt = await probe.evaluate((p) => {
+    p.release();
+    return p.frame();
+  });
+  await heardOf(page, probe, 'room:features');
+  const events = await heard(probe);
+  expect(typesOf(events).slice(0, 3)).toEqual(['room:placementLevel', 'room:bedPlaced', 'room:features']);
+  const placed = only(events, 'room:bedPlaced');
+  // Placed by the pinch: after it, and before the 10 s of level 3 could have run out.
+  expect(placed.frame - pinchedAt).toBeGreaterThanOrEqual(1);
+  expect(placed.frame - pinchedAt).toBeLessThanOrEqual(2); // the solver's frame, then the placed step
+  expect(placed.atMs - start.atMs).toBeLessThan(HIT_WAIT_MS);
+  expect(placedOf(placed)).toMatchObject({ restored: false, placement: { level: 3 } });
+  expect(placedOf(placed).placement.surfaceId).toBeUndefined();
+  expectPose(placedOf(placed).placement.pose, ghost.pose, 1e-4, 'the placed pose is where the ghost was');
+  expect(placed.bed).toMatchObject({ isPlaced: true, source: 'hittest', isShown: true, hasMarkers: true });
+  expect((only(events, 'room:features').payload.features as { level: number }).level).toBe(3);
+  // The caption goes with room:bedPlaced, and nothing blinked on the way.
+  const captions = await probe.evaluate((p) => p.captionLog);
+  expect(captions).toEqual([
+    { key: 'placeLook', frame: start.frame },
+    { key: null, frame: placed.frame },
+  ]);
+  await page.waitForFunction((p) => p.shown() === null, probe);
+  await page.waitForFunction((p) => p.samples.length >= 2, probe);
+  const samples = await probe.evaluate((p) => p.samples);
+  // The ghost and the caption are levels: the one change is the markers' fade-in at the placement.
+  expect(Math.max(...samples.map((sample) => sample.maxFlashPerS))).toBeLessThanOrEqual(1);
+  console.log(
+    `T-128c level 3: ghost ${ghost.pose
+      .slice(12, 15)
+      .map((n) => n.toFixed(4))
+      .join()} placed ` +
+      `${placedOf(placed)
+        .placement.pose.slice(12, 15)
+        .map((n) => n.toFixed(4))
+        .join()}, ` +
+      `${placed.frame - pinchedAt} frames after the pinch (emulator)`,
+  );
+  expect(errors).toEqual([]);
+  expect(offHost).toEqual([]);
+});
+
+test('T-128c c2 level 3: a pinch with the gaze on nothing usable floats the bed in that frame', async ({
+  page,
+}) => {
+  const errors = watch(page);
+  await openApp(page, readRoom('table'), '/?flags=forceLevel=3');
+  const probe = await watchRoom(page);
+  await enterXR(page);
+  await heardOf(page, probe, 'room:placementLevel');
+  await xrFrames(page, 10);
+  const pinchedAt = await probe.evaluate((p) => {
+    p.release();
+    return { frame: p.frame(), atMs: performance.now() };
+  });
+  await heardOf(page, probe, 'room:features');
+  const events = await heard(probe);
+  expect(levelsOf(events)).toEqual([3, 4]);
+  const placed = only(events, 'room:bedPlaced');
+  expect(placedOf(placed)).toMatchObject({ restored: false, placement: { level: 4 } });
+  expectPose(placedOf(placed).placement.pose, aheadAt(FLOATING_M), 1e-6, 'the floating bed');
+  expect(placed.bed).toMatchObject({ isPlaced: true, source: 'floating', hasMarkers: true });
+  expect(placed.frame - pinchedAt.frame).toBeLessThanOrEqual(2);
+  expect(placed.atMs - pinchedAt.atMs).toBeLessThan(1000); // at once, not when the 10 s are over
+  // The user chose it: no wait ran out, so nothing is logged as a time-out.
+  expect(await probe.evaluate((p) => p.log())).not.toContain('warn room E_PLACEMENT_TIMEOUT');
+  expect(errors).toEqual([]);
+});
+
+test('T-128c c2 level 3: a hide and a show start the wait again, and with no pinch the bed lands where the ghost is', async ({
+  page,
+}) => {
+  const errors = watch(page);
+  await openApp(page, readRoom('table'), '/?flags=forceLevel=3');
+  const probe = await watchRoom(page);
+  const d = await device(page);
+  await enterXR(page);
+  await heardOf(page, probe, 'room:placementLevel');
+  await d.evaluate((d, target) => d.remote.dispatch('look_at', { device: 'headset', target }), TABLE_CENTRE);
+  await xrFrames(page, 60);
+
+  await d.evaluate((d) => d.updateVisibilityState('hidden'));
+  await heardOf(page, probe, 'xr:visibility');
+  await d.evaluate((d) => d.updateVisibilityState('visible'));
+  await heardOf(page, probe, 'xr:visibility', 2);
+  await heardOf(page, probe, 'room:placementLevel', 2);
+  await xrFrames(page, 5);
+  const restarted = await probe.evaluate((p) => ({ heard: p.heard, captions: p.captionLog, bed: p.bed() }));
+  expect(levelsOf(restarted.heard)).toEqual([3, 3]); // the chain began again
+  // The hint was taken back with the old run and raised anew for the new wait; the ghost is back.
+  expect(restarted.captions.map((entry) => entry.key)).toEqual(['placeLook', null, 'placeLook']);
+  expect(restarted.bed).toMatchObject({ isPlaced: false, isShown: true, hasMarkers: false });
+
+  // No pinch: the wait runs its full 10 s from the show, and the bed lands on the table the gaze is on.
+  await heardOf(page, probe, 'room:features', 1, HIT_WAIT_MS + 8000);
+  const events = await heard(probe);
+  const shownAgain = events.filter((event) => event.type === 'xr:visibility')[1]!;
+  const secondStart = events.filter((event) => event.type === 'room:placementLevel')[1]!;
+  const placed = only(events, 'room:bedPlaced');
+  expect(shownAgain.payload).toEqual({ visible: true });
+  expect(placed.atMs - secondStart.atMs).toBeGreaterThanOrEqual(HIT_WAIT_MS - 100);
+  expect(placed.atMs - secondStart.atMs).toBeLessThan(HIT_WAIT_MS + 3000);
+  expect(levelsOf(events)).toEqual([3, 3]); // a time-out over a usable spot uses it: no level 4
+  expect(placedOf(placed)).toMatchObject({ restored: false, placement: { level: 3 } });
+  expectPose(placedOf(placed).placement.pose, aheadAt(0.74), 1e-4, 'on the table');
+  expect(await probe.evaluate((p) => p.log())).not.toContain('warn room E_PLACEMENT_TIMEOUT');
+  expect(errors).toEqual([]);
+});
+
+test('T-128c the none room: the ghost after the 3 s for a plane, then an emulated pinch places the floating bed', async ({
+  page,
+}) => {
+  const errors = watch(page);
+  const offHost = await openApp(page, readRoom('none'));
+  const probe = await watchRoom(page);
+  await enterXR(page);
+  await heardOf(page, probe, 'room:placementLevel', 2);
+  await xrFrames(page, 10);
+  const before = await probe.evaluate((p) => ({ heard: p.heard, bed: p.bed(), shown: p.shown() }));
+  expect(levelsOf(before.heard)).toEqual([1, 3]);
+  const [first, third] = before.heard.filter((event) => event.type === 'room:placementLevel');
+  expect(third!.atMs - first!.atMs).toBeGreaterThanOrEqual(PLANE_WAIT_MS - 100);
+  expect(first!.bed).toMatchObject({ isPlaced: false, isShown: false }); // levels 1 and 2: the room, nothing else
+  // Nothing to hit in this room: the ghost is the floating bed.
+  expect(before.bed).toMatchObject({ isPlaced: false, isShown: true, hasMarkers: false });
+  expectPose(before.bed.pose, aheadAt(FLOATING_M), 1e-6, 'the ghost');
+  expect(before.shown).toBe('placeLook');
+
+  // A real pinch of the emulated right hand, in the air: HandSystem sends the release on nothing.
+  const trace = await playHandPath(page, readHandPath('pinch'));
+  expect(trace.events.map((event) => event.type)).toEqual(['selectstart', 'selectend']);
+  await heardOf(page, probe, 'room:features');
+  const events = await heard(probe);
+  expect(levelsOf(events)).toEqual([1, 3, 4]);
+  const placed = only(events, 'room:bedPlaced');
+  expect(placedOf(placed)).toMatchObject({ restored: false, placement: { level: 4 } });
+  expectPose(placedOf(placed).placement.pose, before.bed.pose, 1e-6, 'where the ghost was');
+  expect(placed.bed).toMatchObject({ isPlaced: true, source: 'floating', isShown: true, hasMarkers: true });
+  expect(placed.atMs - third!.atMs).toBeLessThan(HIT_WAIT_MS - 1000); // the pinch, not the time-out
+  // room:features always follows, with the level alone in a room that gives nothing.
+  const read = only(events, 'room:features');
+  expect(read.frame).toBe(placed.frame);
+  expect(read.payload).toEqual({ features: { level: 4 }, surfaces: {} });
+  // Glass, then glass and markers: one draw call and two, in each eye, on top of what else is drawn.
+  const draws = await probe.evaluate(
+    (p, at) => ({
+      eyes: p.eyes(),
+      ghost: [p.draws[at.ghost - 1], p.draws[at.ghost]],
+      placed: [p.draws[at.placed - 1], p.draws[at.placed]],
+    }),
+    { ghost: third!.frame, placed: placed.frame },
+  );
+  console.log(`T-128c none: draw calls ${JSON.stringify(draws)} (emulator; the hint is a draw call too)`);
+  expect(errors).toEqual([]);
+  expect(offHost).toEqual([]);
+});
+
+test('T-128c the none room with no pinch: the bed floats when the 3 s and the 10 s are over', async ({
+  page,
+}) => {
+  const errors = watch(page);
+  await openApp(page, readRoom('none'));
+  const probe = await watchRoom(page);
+  await enterXR(page);
+  await heardOf(page, probe, 'room:features', 1, PLANE_WAIT_MS + HIT_WAIT_MS + 10_000);
+  const events = await heard(probe);
+  expect(levelsOf(events)).toEqual([1, 3, 4]);
+  const placed = only(events, 'room:bedPlaced');
+  const waitedMs = placed.atMs - events[0]!.atMs;
+  console.log(`T-128c none, no pinch: placed ${Math.round(waitedMs)} ms after xr:sessionStart (emulator)`);
+  expect(waitedMs).toBeGreaterThanOrEqual(PLANE_WAIT_MS + HIT_WAIT_MS - 100);
+  expect(placedOf(placed)).toMatchObject({ restored: false, placement: { level: 4 } });
+  expectPose(placedOf(placed).placement.pose, aheadAt(FLOATING_M), 1e-6, 'the floating bed');
+  expect(placed.bed).toMatchObject({ isPlaced: true, source: 'floating', isShown: true, hasMarkers: true });
+  // A floating bed is a complete garden: logged at warn, and nothing tells the user.
+  expect(await probe.evaluate((p) => p.log())).toContain('warn room E_PLACEMENT_TIMEOUT');
+  await page.waitForFunction((p) => p.shown() === null, probe);
+  expect(errors).toEqual([]);
+});
+
+test('T-128c anchors: a second visit brings the bed back at the same pose, and with noAnchors it is placed again', async ({
+  page,
+}) => {
+  const errors = watch(page);
+  const offHost = await openApp(page, readRoom('table'));
+  const first = await watchRoom(page);
+  await enterXR(page);
+  await heardOf(page, first, 'room:anchored');
+  const made = await heard(first);
+  const saved = only(made, 'room:anchored').payload as { handle: string; level: 1 };
+  const pose = placedOf(only(made, 'room:bedPlaced')).placement.pose;
+
+  // The next visit: the page is loaded again, and the garden's saved pair is there before Enter.
+  await page.reload();
+  const second = await watchRoom(page, saved);
+  await enterXR(page);
+  await heardOf(page, second, 'room:features');
+  await xrFrames(page, 30);
+  const back = await heard(second);
+  // The chain did not run: one level, said by RoomSystem, and no new anchor.
+  expect(typesOf(back)).toEqual(['room:placementLevel', 'room:bedPlaced', 'room:features']);
+  expect(levelsOf(back)).toEqual([1]);
+  const restored = only(back, 'room:bedPlaced');
+  expect(placedOf(restored)).toMatchObject({ restored: true, placement: { level: 1 } });
+  expect(placedOf(restored).placement.surfaceId).toBeUndefined();
+  expectPose(placedOf(restored).placement.pose, pose, 1e-4, 'the pose of the first visit');
+  expect(restored.bed).toMatchObject({ isPlaced: true, source: 'table', isShown: true, hasMarkers: true });
+  expectPose(restored.bed.pose, pose, 1e-4, 'the bed entity');
+  // A bed restored at level 1 gets its room back: the same features as on the day it was placed.
+  const read = only(back, 'room:features');
+  expect(read.frame).toBe(restored.frame);
+  expect(read.payload.features).toEqual(only(made, 'room:features').payload.features);
+  console.log(
+    `T-128c restore: room:bedPlaced ${Math.round(restored.atMs - back[0]!.atMs)} ms and ` +
+      `${restored.frame - back[0]!.frame} frames after xr:sessionStart (emulator: the anchor is there at once)`,
+  );
+
+  // With noAnchors the store answers null: the chain places the bed, and no anchor is announced.
+  await page.goto('/?flags=noAnchors');
+  const flagged = await watchRoom(page, saved);
+  await enterXR(page);
+  await heardOf(page, flagged, 'room:features');
+  await xrFrames(page, 30);
+  const again = await heard(flagged);
+  expect(typesOf(again)).toEqual(['room:placementLevel', 'room:bedPlaced', 'room:features']);
+  expect(placedOf(only(again, 'room:bedPlaced'))).toMatchObject({ restored: false, placement: { level: 1 } });
+  expect(typeof placedOf(only(again, 'room:bedPlaced')).placement.surfaceId).toBe('string'); // the chain's own
+  expect(errors).toEqual([]);
+  expect(offHost).toEqual([]);
+});

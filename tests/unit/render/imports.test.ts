@@ -26,6 +26,8 @@ function violations(file: string, source: string): string[] {
     if (!spec.startsWith('.')) return !PACKAGES.includes(spec);
     const target = resolve(RENDER_DIR, dirname(file), spec);
     if (target.startsWith(RENDER_DIR + sep)) return false;
+    // The shared ECS components: every importer takes them from this file, not from core's index (CODING_GUIDELINES §3).
+    if (target === join(SRC_DIR, 'core', 'components.js')) return false;
     return !BELOW.some((module) => target === join(SRC_DIR, module, 'index.js'));
   });
 }
@@ -58,6 +60,7 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
     expect(violations('BedRenderer.ts', "import { HIT_RADIUS_M } from '../hands/index.js';")).toEqual([]);
     expect(violations('PlantRenderer.ts', "import { stepGlow } from './TideRenderer.js';")).toEqual([]);
     expect(violations('PlantRenderer.ts', "import { InstancedMesh } from 'three';")).toEqual([]);
+    expect(violations('RenderSystems.ts', "import { BedAnchor } from '../core/components.js';")).toEqual([]);
   });
 
   it('the renderers read no clock and no random source: time comes in as an argument', () => {
@@ -81,6 +84,7 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
   it('index.ts exports the public surface, and nothing else', () => {
     expect(Object.keys(render).sort()).toEqual(
       [
+        'BedRenderSystem',
         'BedRenderer',
         'FLASH_CAP_PER_S',
         'FLASH_MIN_DELTA',

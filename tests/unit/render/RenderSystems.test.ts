@@ -1,13 +1,15 @@
 // PerfSystem (LLD §3.2, priority -100; NFR-PERF-03/04/05) on a fake world: the frame is timed from its update to
 // the scene's onAfterRender, and a throw inside the render callback never reaches the frame loop.
-import { Group } from 'three';
+// BedRenderSystem (priority 50; T-128c): the bed's drawing follows BedAnchor, markers and all or the ghost alone.
+import { Group, type InstancedMesh, type Mesh } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { bus, flags } from '../../../src/core/index.js';
-import { PERF_HUD_HEAD_OFFSET_M } from '../../../src/render/config.js';
+import { BedRenderer } from '../../../src/render/BedRenderer.js';
+import { MARKER_ALPHA, PERF_HUD_HEAD_OFFSET_M } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
 import * as perfHud from '../../../src/render/PerfHud.js';
-import { PerfSystem } from '../../../src/render/RenderSystems.js';
+import { BedRenderSystem, PerfSystem } from '../../../src/render/RenderSystems.js';
 
 import type { EventMap } from '../../../src/core/index.js';
 
@@ -98,5 +100,106 @@ describe('PerfSystem', () => {
     system.destroy();
     expect(head.children).toEqual([]);
     vi.unstubAllGlobals();
+  });
+});
+
+/** As much of an ECS query as BedRenderSystem uses: who is told when an entity gets or loses BedAnchor. */
+class FakeQuery {
+  readonly entities = new Set<object>();
+  private readonly told = { qualify: new Set<() => void>(), disqualify: new Set<() => void>() };
+
+  subscribe(event: 'qualify' | 'disqualify', callback: () => void, replay = false): () => void {
+    this.told[event].add(callback);
+    if (replay) this.entities.forEach(callback);
+    return () => this.told[event].delete(callback);
+  }
+  /** RoomSystem's `addComponent(BedAnchor)`: the callbacks run inside it. */
+  place(): void {
+    this.entities.add(this);
+    this.told.qualify.forEach((callback) => callback());
+  }
+  unplace(): void {
+    this.entities.delete(this);
+    this.told.disqualify.forEach((callback) => callback());
+  }
+}
+
+/** BedRenderSystem on the bed's Object3D, as `register(world, BedRenderSystem, 50, { guard, bed })` makes it. */
+function bedRig(beds = new FakeQuery()) {
+  const bed = new Group();
+  const guard = new FlashGuard();
+  const system = new BedRenderSystem({} as never, {} as never, 50);
+  system.queries = { beds } as never;
+  system.config.guard.value = guard;
+  system.config.bed.value = bed;
+  system.init();
+  stop = () => system.destroy();
+  const [glass, markers] = bed.children as [Mesh, InstancedMesh];
+  let timeS = 12_345.678;
+  /** `count` frames at 72 Hz. */
+  const frames = (count = 20): void => {
+    for (let i = 0; i < count; i++) system.update(1 / 72, (timeS += 1 / 72));
+  };
+  const strength = (marker: number): number => markers.geometry.getAttribute('aStrength').getX(marker);
+  return { bed, beds, guard, system, glass, markers, frames, strength };
+}
+
+describe('BedRenderSystem: the bed and its ghost (LLD §3.2, priority 50; UX §9.2)', () => {
+  it('draws the bed on the Object3D it is given, and starts as not placed: the glass alone once its frames ran', () => {
+    const { bed, glass, markers, frames, strength } = bedRig();
+    expect(bed.children).toHaveLength(2); // the glass with its ring lines, and the 80 markers: 2 draw calls
+    frames();
+    expect(glass.visible).toBe(true);
+    expect(markers.visible).toBe(false); // faded out, and no longer drawn: 1 draw call
+    expect(strength(0)).toBe(0);
+    // Whether the bed shows at all is RoomSystem's: this system never touches the bed's own Object3D.
+    expect(bed.visible).toBe(true);
+  });
+
+  it('BedAnchor on: the markers are drawn at once and fade in. Off (Re-place, the session end): they fade out', () => {
+    const { beds, glass, markers, frames, strength, guard } = bedRig();
+    frames(80); // past the second in which the start-up fade-out still counts
+    guard.takePeak();
+    beds.place();
+    expect(markers.visible).toBe(true); // in the frame of room:bedPlaced
+    frames();
+    expect(strength(0)).toBeCloseTo(MARKER_ALPHA);
+    beds.unplace();
+    expect(markers.visible).toBe(true); // a fade, not a cut
+    frames();
+    expect(markers.visible).toBe(false);
+    expect(strength(79)).toBe(0);
+    expect(glass.visible).toBe(true);
+    expect(guard.takePeak()).toBe(2); // the page's guard: one change in, one out
+  });
+
+  it('a bed that was placed before the system was registered counts as placed', () => {
+    const beds = new FakeQuery();
+    beds.place();
+    const { markers, frames, strength } = bedRig(beds);
+    frames();
+    expect(markers.visible).toBe(true);
+    expect(strength(0)).toBeCloseTo(MARKER_ALPHA);
+  });
+
+  it('a throw in a query callback is caught and logged: it runs inside the placed step of RoomSystem', () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { beds } = bedRig();
+    vi.spyOn(BedRenderer.prototype, 'setGhost').mockImplementation(() => {
+      throw new Error('planted');
+    });
+    expect(() => beds.place()).not.toThrow();
+    expect(() => beds.unplace()).not.toThrow();
+    expect(errors).toHaveBeenCalledTimes(2);
+    expect(errors.mock.calls[0]?.[0]).toBe('[render] the bed could not be drawn as placed or as a ghost');
+  });
+
+  it('destroy() takes the bed out of the scene and stops following BedAnchor', () => {
+    const { bed, beds, system, markers, frames } = bedRig();
+    frames();
+    system.destroy();
+    expect(bed.children).toEqual([]);
+    beds.place();
+    expect(markers.visible).toBe(false);
   });
 });

@@ -105,6 +105,8 @@ export class BedRenderer {
   private readonly hovered = new Int8Array([NO_CELL, NO_CELL]);
   private lastMs = Number.NaN;
   private isAtRest = true;
+  /** The level-3 ghost: every marker's target is 0 (UX §9.2). */
+  private isGhost = false;
 
   /** `guard` is the page's FlashGuard; a page that passes none gets one of the bed's own (API_SPEC §1.8). */
   constructor(
@@ -159,6 +161,24 @@ export class BedRenderer {
   }
 
   /**
+   * The level-3 ghost of UX §9.2: `true` fades the cell markers out, through the flash cap, and then stops
+   * drawing them, which leaves the glass with its ring lines (1 draw call). `false` draws them again at once and
+   * fades them in. The fades are `update`'s.
+   */
+  setGhost(on: boolean): void {
+    this.isGhost = on;
+    this.isAtRest = false;
+    if (!on) this.markers.visible = true;
+    if (!on || !Number.isNaN(this.lastMs)) return;
+    // No frame has come, so nothing was drawn: the ghost starts at 0 at once, and there is no change to count.
+    for (let marker = 0; marker < this.strength.length; marker++) {
+      this.guard.reset(this.firstElement + marker, 0);
+      this.strength[marker] = this.drawn.array[marker] = 0;
+    }
+    this.drawn.needsUpdate = true;
+  }
+
+  /**
    * FR-HND-16: the cell a release of this hand will land on, as `target:hover` gives it; its marker is the cue.
    * null, or a cell that is not on the bed, is no cue. One cue per hand; two hands on one cell are one cue.
    */
@@ -185,7 +205,8 @@ export class BedRenderer {
     let isDirty = false;
     let isAtRest = true;
     for (let marker = 0; marker < drawn.length; marker++) {
-      const target = marker === left || marker === right ? MARKER_HOVER_ALPHA : MARKER_ALPHA;
+      const hovered = marker === left || marker === right ? MARKER_HOVER_ALPHA : MARKER_ALPHA;
+      const target = this.isGhost ? 0 : hovered;
       const shown = this.strength[marker]!;
       if (shown === target) continue;
       isAtRest = false;
@@ -197,6 +218,8 @@ export class BedRenderer {
     }
     if (isDirty) this.drawn.needsUpdate = true;
     this.isAtRest = isAtRest;
+    // A ghost whose markers have faded out costs no draw call for them.
+    if (this.isGhost && isAtRest) this.markers.visible = false;
   }
 
   dispose(): void {

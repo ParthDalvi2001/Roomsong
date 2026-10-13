@@ -33,10 +33,17 @@ describe('core/strings', () => {
     expect(STRINGS.handOutOfView).toBe('Hand out of view');
   });
 
+  it('holds the two level-3 placement hints of UX §9.2, six words each (FR-UI-01)', () => {
+    expect(STRINGS.placeLook).toBe('Look at your table, and pinch');
+    expect(STRINGS.placeLookGaze).toBe('Look at your table, and wait');
+    for (const key of ['placeLook', 'placeLookGaze'] as const)
+      expect(STRINGS[key].split(' ')).toHaveLength(6);
+  });
+
   it('keys the message of a failure by its error code', () => {
     expect(STRINGS.E_SAVE_FAILED).toBe('Saving unavailable');
     expect(STRINGS.E_AUDIO_CONTEXT).toBe('Sound unavailable'); // a session with no sound (API_SPEC §1.10 rule 2)
-    const failures = entries.filter(([k]) => !k.startsWith('ripple') && k !== 'handOutOfView');
+    const failures = entries.filter(([k]) => !/^(ripple|place)/.test(k) && k !== 'handOutOfView');
     for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);
   });
 });

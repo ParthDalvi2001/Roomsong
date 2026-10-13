@@ -506,7 +506,8 @@ test('a4 no sound, init() rejected: "Sound unavailable" is up from the session\'
   page,
 }) => {
   const errors = watch(page);
-  await openApp(page, readRoom('none'));
+  // A room with a table: in one without, the bed waits at level 3 and the app raises its hint (T-128c).
+  await openApp(page, readRoom('table'));
   const probe = await probeSession(page);
   await probe.evaluate((p) => {
     p.engine.init = () => Promise.reject(new Error('planted: no audio'));
@@ -549,7 +550,8 @@ test('a4 no sound, a context that never starts: the caption comes after the grac
   page,
 }) => {
   const errors = watch(page);
-  await openApp(page, readRoom('none'));
+  // A room with a table: in one without, the bed waits at level 3 and the app raises its hint (T-128c).
+  await openApp(page, readRoom('table'));
   const probe = await probeSession(page);
   const d = await device(page);
   // What a browser that will not start the context looks like: init() neither resolves nor rejects.
@@ -584,7 +586,8 @@ test('a4 no sound, a later session whose audio context does not resume: the capt
   page,
 }) => {
   const errors = watch(page);
-  await openApp(page, readRoom('none'));
+  // A room with a table: in one without, the bed waits at level 3 and the app raises its hint (T-128c).
+  await openApp(page, readRoom('table'));
   const probe = await probeSession(page);
   const d = await device(page);
 

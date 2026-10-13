@@ -9,7 +9,8 @@ import { createAudioEngine, type AudioEngine } from './audio/index.js';
 import { Caption } from './core/components.js';
 import { bus, clock, flags, log, type StringKey } from './core/index.js';
 import { HandSystem } from './hands/index.js';
-import { FlashGuard, FOVEATION_MEDIUM, PerfSystem } from './render/index.js';
+import { BedRenderSystem, FlashGuard, FOVEATION_MEDIUM, PerfSystem } from './render/index.js';
+import { RoomSystem } from './room/index.js';
 import { CaptionSystem } from './ui/index.js';
 
 import type { Landing } from './ui/Landing.js';
@@ -243,7 +244,11 @@ export async function start(landing: Landing): Promise<void> {
   // In ascending priority, with the numbers of API_SPEC §1.10. A system subscribes to the bus in `init()`, so
   // every system is registered before the first `xr:sessionStart` can be emitted.
   register(world, PerfSystem, -100, { guard, engine });
+  // The room before the hands: it moves the bed before hands reads its pose, in the frame and on the bus.
+  const room = register(world, RoomSystem, 10);
   register(world, HandSystem, 20);
+  // Everything drawn on the bed is a child of the bed entity's Object3D (API_SPEC §1.10 rule 5).
+  register(world, BedRenderSystem, 50, { guard, bed: room.bed.object3D });
   register(world, CaptionSystem, 60);
   // PanelSystem (62) is not registered yet: it takes `garden` and `room`, and the step that first holds both
   // (T-128d, d1) registers it here, after CaptionSystem.

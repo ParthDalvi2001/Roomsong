@@ -16,6 +16,7 @@ import {
 import { PlacementSolver } from '../../../src/room/PlacementSolver.js';
 import { PlaneAdapter } from '../../../src/room/PlaneAdapter.js';
 import { ROOMS } from '../../e2e/support/iwer';
+import { heapCost, PROBE_BYTES } from '../hands/heapCost.js';
 
 import { FakeXR, HEAD, headAt, NORMAL_DOWN, NORMAL_UP, poseOf, readRoom, sceneOf, yaw } from './fixtures.js';
 
@@ -452,26 +453,130 @@ describe('PlacementSolver: waits, the level-3 pinch and the level events (FR-ROO
     expect(log.warn).toHaveBeenCalledExactlyOnceWith('room', 'E_PLACEMENT_TIMEOUT');
   });
 
-  it('level 3 places on the pinch, where the gaze hits; a pinch with nothing hit is not a confirm', async () => {
+  it('level 3 places on the pinch, where preview() showed the bed, not where the gaze has gone since', async () => {
     const { solver, room } = rig({ planes: [], hit: null });
     const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
     solver.confirm(); // before level 3: not a confirm
     solver.update(HEAD, 0);
     solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS);
     expect(levels).toEqual([1, 3]);
-    solver.confirm(); // nothing hit
-    solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS + FRAME_MS);
     room.hit = { x: 0, y: 0.7, z: -0.4 };
-    solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS + 2 * FRAME_MS); // a hit, but no pinch since
+    solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS + FRAME_MS); // a hit, and no pinch yet
     expect(await isSettled(run)).toBe(false);
+    const shown = solver.preview();
+    expect(shown?.level).toBe(3);
+    expectClose(shown!.pose, unturnedAt(0, 0.7, -0.4));
     solver.confirm();
-    solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS + 3 * FRAME_MS);
-    expect(await run).toMatchObject({ level: 3 });
+    room.hit = { x: 0.3, y: 0.9, z: -0.4 }; // the gaze moved on between the pinch and the next frame
+    solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS + 2 * FRAME_MS);
+    const placed = await run;
+    expect(placed.level).toBe(3);
+    expectClose(placed.pose, unturnedAt(0, 0.7, -0.4));
+    expect(placed.pose).not.toBe(shown!.pose); // a copy: the preview's object is the solver's own
     expect(levels).toEqual([1, 3]);
     expect(log.warn).not.toHaveBeenCalled();
   });
 
-  it('a pinch while the gaze is on something higher than the floating bed would be is not a confirm', async () => {
+  it('a pinch with the gaze on no usable spot places the floating bed at once: level 4, no wait, no warning (UX §9.2)', async () => {
+    const eyeM = HEAD[13]!;
+    for (const hit of [null, { x: 0, y: eyeM, z: -2.25 }, { x: 0, y: 0.2, z: -0.4 }]) {
+      levels = [];
+      const { solver } = rig({ hit });
+      const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
+      solver.update(HEAD, 0);
+      expect(solver.preview()?.level).toBe(4);
+      expect(await isSettled(run)).toBe(false);
+      solver.confirm();
+      solver.update(HEAD, FRAME_MS);
+      const placed = await run;
+      expect(placed.level).toBe(4);
+      expectClose(placed.pose, unturnedAt(0, eyeM - FLOATING_DROP_M, -BED_CENTRE_DEFAULT_M));
+      expect(levels).toEqual([3, 4]);
+    }
+    expect(log.warn).not.toHaveBeenCalled();
+  });
+
+  it('preview() is the bed a confirm in this frame would give: one reused object, and null outside level 3', async () => {
+    const eyeM = HEAD[13]!;
+    const { solver, room } = rig({ planes: [], hit: null });
+    expect(solver.preview()).toBeNull(); // no run
+    const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
+    expect(solver.preview()).toBeNull();
+    solver.update(HEAD, 0);
+    expect(solver.preview()).toBeNull(); // levels 1 and 2 wait
+    // Asked from inside the event that announces level 3: there is nothing to show yet, not the last run's bed.
+    let atTheEvent: unknown = 'not asked';
+    const stop = bus.on('room:placementLevel', () => (atTheEvent = solver.preview()));
+    solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS);
+    stop();
+    expect(atTheEvent).toBeNull();
+    const first = solver.preview();
+    expect(first).toMatchObject({ level: 4 });
+    expectClose(first!.pose, unturnedAt(0, eyeM - FLOATING_DROP_M, -BED_CENTRE_DEFAULT_M));
+    expect(first).not.toHaveProperty('surfaceId');
+
+    room.hit = { x: 0.3, y: 0.7, z: -1.2 }; // beyond reach: the same clamp as a placed bed (FR-ROOM-03)
+    solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS + FRAME_MS);
+    const second = solver.preview();
+    expect(second).toBe(first);
+    expect(second!.pose).toBe(first!.pose);
+    expect(second!.level).toBe(3);
+    expectReachableAndFacing(second!.pose, HEAD, 'the preview on a far hit');
+    expect(second!.pose[13]).toBe(0.7);
+    room.hit = { x: Number.NaN, y: 0.7, z: -0.4 }; // a hit that cannot be used: the floating bed again, whole
+    solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS + 2 * FRAME_MS);
+    expect(solver.preview()!.level).toBe(4);
+    expectClose(solver.preview()!.pose, unturnedAt(0, eyeM - FLOATING_DROP_M, -BED_CENTRE_DEFAULT_M));
+
+    solver.confirm();
+    solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS + 3 * FRAME_MS);
+    await run;
+    expect(solver.preview()).toBeNull(); // placed
+    void solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
+    solver.update(HEAD, 50_000);
+    solver.update(HEAD, 50_000 + PLANE_LEVELS_TIMEOUT_MS);
+    expect(solver.preview()).not.toBeNull();
+    solver.cancel();
+    expect(solver.preview()).toBeNull();
+    // Level 4 has no preview: it places in its first frame.
+    const floating = rig().solver;
+    void floating.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
+    floating.update(HEAD, 0);
+    expect(floating.preview()).toBeNull();
+  });
+
+  it('a frame of level 3 creates no objects: preview() is called in every one of them (LLD §3.4)', () => {
+    const ROUNDS = 20_000;
+    const hit = { x: 0.31, y: 0.71, z: -1.23 };
+    const { solver } = rig({ hit });
+    vi.restoreAllMocks(); // a spy records every call, which allocates
+    void solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
+    const head = headAt(0.013, 1.587, 0.021, 7.3, -31.7);
+    // The times exist before the loops (see tests/unit/hands/HandSystem.test.ts): all inside the 10 s wait.
+    const TIMES: unknown[] = [null];
+    for (let i = 1; i <= ROUNDS; i++) TIMES.push(i * 0.4689);
+    let seen: unknown = null;
+    const round = (): void => {
+      for (let i = 1; i <= ROUNDS; i++) {
+        solver.update(head, TIMES[i] as number);
+        seen = solver.preview();
+      }
+    };
+    // Until one round is clean: before V8 has optimised the frame, every fraction it works out is an object of
+    // the interpreter's own (47 bytes a frame, seen with the whole suite running beside this test), and how
+    // soon that ends depends on how busy the machine is. Code that creates an object never has a clean round.
+    const costs: ReturnType<typeof heapCost>[] = [];
+    const isClean = (): boolean => {
+      const cost = heapCost(round);
+      costs.push(cost);
+      return cost.gcs === 0 && cost.grewBytes < PROBE_BYTES;
+    };
+    while (costs.length < 200 && !isClean());
+    expect(costs.length, JSON.stringify(costs.slice(-5))).toBeLessThan(200);
+    expect(seen).toMatchObject({ level: 3 }); // it did the work, and the wait had not run out
+  }, 60_000);
+
+  it('a spot higher than the floating bed would be is not usable: a pinch there gives the floating bed', async () => {
     const eyeM = HEAD[13]!;
     const wallAtEyeHeight = { x: 0, y: eyeM, z: -2.25 };
     const justTooHigh = { x: 0, y: eyeM - FLOATING_DROP_M + 0.05, z: -0.4 };
@@ -481,7 +586,7 @@ describe('PlacementSolver: waits, the level-3 pinch and the level events (FR-ROO
     expect((await place({ hit: lowEnough, pinch: true })).level).toBe(3);
   });
 
-  it('a pinch while the gaze is on the floor, or on anything lower than 0.5 m, is not a confirm (D-034)', async () => {
+  it('the floor, or anything lower than 0.5 m, is not usable: a pinch there gives the floating bed (D-034)', async () => {
     expect((await place({ hit: { x: 0, y: 0, z: -0.45 }, pinch: true })).level).toBe(4);
     expect((await place({ hit: { x: 0, y: 0.49, z: -0.4 }, pinch: true })).level).toBe(4);
     const lowTable = await place({ hit: { x: 0, y: 0.5, z: -0.4 }, pinch: true });
@@ -489,13 +594,34 @@ describe('PlacementSolver: waits, the level-3 pinch and the level events (FR-ROO
     expectClose(centreOf(lowTable.pose), [0, 0.5, -0.4]);
   });
 
-  it('level 3 gives up 10 s after it began: the floating bed and E_PLACEMENT_TIMEOUT', async () => {
-    const { solver } = rig({ hit: { x: 0, y: 0.7, z: -0.4 } });
+  it('a level-3 wait that runs out 10 s after it began uses the spot the gaze is on then: level 3, no warning', async () => {
+    const { solver, room } = rig({ hit: null });
     const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
     solver.update(HEAD, 500);
     solver.update(HEAD, 500 + HIT_TEST_TIMEOUT_MS - 1);
     expect(await isSettled(run)).toBe(false);
+    room.hit = { x: 0, y: 0.7, z: -0.4 }; // the gaze reaches the table in the wait's last frame
     solver.update(HEAD, 500 + HIT_TEST_TIMEOUT_MS);
+    const placed = await run;
+    expect(placed.level).toBe(3);
+    expectClose(placed.pose, unturnedAt(0, 0.7, -0.4));
+    expect(levels).toEqual([3]);
+    expect(log.warn).not.toHaveBeenCalled();
+  });
+
+  it('a level-3 wait that runs out over no usable spot: the floating bed and E_PLACEMENT_TIMEOUT', async () => {
+    const { solver, room } = rig({ hit: { x: 0, y: 0.7, z: -0.4 } });
+    const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
+    solver.update(HEAD, 500);
+    solver.update(HEAD, 500 + HIT_TEST_TIMEOUT_MS - 1);
+    expect(await isSettled(run)).toBe(false);
+    room.hit = { x: 0, y: HEAD[13]!, z: -2.25 }; // the gaze is on the far wall when the time is up
+    // Level 3 is over when level 4 is announced: there is no preview to draw any more.
+    let atLevel4: unknown = 'not asked';
+    const stop = bus.on('room:placementLevel', () => (atLevel4 = solver.preview()));
+    solver.update(HEAD, 500 + HIT_TEST_TIMEOUT_MS);
+    stop();
+    expect(atLevel4).toBeNull();
     expect((await run).level).toBe(4);
     expect(levels).toEqual([3, 4]);
     expect(log.warn).toHaveBeenCalledExactlyOnceWith('room', 'E_PLACEMENT_TIMEOUT');
