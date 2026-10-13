@@ -1,14 +1,18 @@
-import { Group, Vector3 } from 'three';
+import { Color, CustomBlending, Group, OneFactor, OneMinusSrcAlphaFactor, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 
-import { cellCentre, STEPS } from '../../../src/garden/index.js';
+import { BED_INNER, BED_OUTER, cellCentre, STEPS } from '../../../src/garden/index.js';
 import {
+  BED_BASE_COLOUR,
+  CREAM,
   FLASH_CAP_PER_S,
   PLANT_FLASH_BRIGHTNESS,
   PLANT_REST_BRIGHTNESS,
   TIDE_FADE_MS,
   TIDE_LEAD_STEPS,
   TIDE_PEAK,
+  TIDE_SHADE_COVER,
+  TIDE_SHADE_STEPS,
   TIDE_TRAIL_STEPS,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
@@ -44,6 +48,25 @@ function make(): { tide: TideRenderer; guard: FlashGuard; parent: Group } {
   return { tide: new TideRenderer(parent, guard), guard, parent };
 }
 
+/** How far the wedge is faded in, 0..1: the one number that scales its light and its shade. */
+function shown(tide: TideRenderer): number {
+  return tide.mesh.material.uniforms.uShown!.value as number;
+}
+
+/** Every vertex of the wedge: where it is and what it carries. */
+function vertices(
+  tide: TideRenderer,
+): { stepsAhead: number; radius: number; light: number; cover: number }[] {
+  const position = tide.mesh.geometry.getAttribute('position');
+  const carried = tide.mesh.geometry.getAttribute('aTide');
+  return Array.from({ length: position.count }, (_, v) => ({
+    stepsAhead: Math.atan2(position.getZ(v), position.getX(v)) / ((2 * Math.PI) / STEPS),
+    radius: Math.hypot(position.getX(v), position.getZ(v)),
+    light: carried.getX(v),
+    cover: carried.getY(v),
+  }));
+}
+
 /** Calls update on every frame of `durationMs` with `phase(frame)`, and returns the wedge's brightness per frame. */
 function run(
   tide: TideRenderer,
@@ -55,7 +78,7 @@ function run(
   for (let frame = 0; frame * FRAME_MS < durationMs; frame++) {
     const t = fromMs + frame * FRAME_MS;
     tide.update(phase(frame), t);
-    series.push({ t, value: tide.mesh.visible ? tide.mesh.material.opacity : 0 });
+    series.push({ t, value: tide.mesh.visible ? shown(tide) : 0 });
   }
   return series;
 }
@@ -84,7 +107,7 @@ describe('TideRenderer (FR-MUS-03)', () => {
     const { tide, parent } = make();
     expect(parent.children).toEqual([tide.mesh]);
     expect(tide.mesh.visible).toBe(false);
-    expect(tide.mesh.material.opacity).toBe(0);
+    expect(shown(tide)).toBe(0);
     tide.dispose();
     expect(parent.children).toEqual([]);
   });
@@ -120,7 +143,7 @@ describe('TideRenderer (FR-MUS-03)', () => {
 
   it('a phase or a time that is not finite never reaches the matrix, and the wedge stays where it was', () => {
     const { tide } = make();
-    const { material, matrix } = tide.mesh;
+    const { matrix } = tide.mesh;
     run(tide, 0, 2 * TIDE_FADE_MS, () => 0.25); // shown, the crest on step 4
     const onStep8 = (): void => {
       expect(matrix.elements.every(Number.isFinite)).toBe(true);
@@ -130,38 +153,75 @@ describe('TideRenderer (FR-MUS-03)', () => {
     // A real phase with a time that is not finite: the wedge turns, its brightness stays.
     tide.update(0.5, Number.NaN);
     onStep8();
-    expect(material.opacity).toBe(1);
+    expect(shown(tide)).toBe(1);
     // No phase and no usable time: nothing at all.
     tide.update(Number.NaN, Number.POSITIVE_INFINITY);
     onStep8();
-    expect(material.opacity).toBe(1);
+    expect(shown(tide)).toBe(1);
     // No phase, real time: it stays on step 8 and starts to fade.
     const phases = [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
     phases.forEach((phase, i) => {
       tide.update(phase, 2 * TIDE_FADE_MS + i * FRAME_MS);
       onStep8();
     });
-    expect(material.opacity).toBeLessThan(1);
-    expect(material.opacity).toBeGreaterThan(0.8);
+    expect(shown(tide)).toBeLessThan(1);
+    expect(shown(tide)).toBeGreaterThan(0.8);
   });
 
   it('its light is behind the crest and a little ahead of it, and fades to nothing at both ends', () => {
-    const { geometry } = make().tide.mesh;
-    const position = geometry.getAttribute('position');
-    const alpha = geometry.getAttribute('color');
-    const vertices = Array.from({ length: position.count }, (_, v) => ({
-      stepsAhead: Math.atan2(position.getZ(v), position.getX(v)) / ((2 * Math.PI) / STEPS),
-      light: alpha.getW(v),
-    }));
-    const brightest = Math.max(...vertices.map((vertex) => vertex.light));
+    const all = vertices(make().tide);
+    const brightest = Math.max(...all.map((vertex) => vertex.light));
     expect(brightest).toBeCloseTo(TIDE_PEAK);
-    for (const { stepsAhead, light } of vertices) {
+    for (const { stepsAhead, light } of all) {
       expect(stepsAhead).toBeGreaterThan(-TIDE_TRAIL_STEPS - 1e-4);
-      expect(stepsAhead).toBeLessThan(TIDE_LEAD_STEPS + 1e-4);
+      expect(stepsAhead).toBeLessThan(TIDE_SHADE_STEPS + 1e-4);
       if (light === brightest) expect(Math.abs(stepsAhead)).toBeLessThan(1e-4); // only on the crest
       const atAnEnd = stepsAhead > TIDE_LEAD_STEPS - 1e-4 || stepsAhead < -TIDE_TRAIL_STEPS + 1e-4;
       if (atAnEnd) expect(light).toBeCloseTo(0);
     }
+  });
+
+  it('a charcoal shade leads the crest: none a step ahead, 0.6 half a step ahead, none on the crest (UX §9.4)', () => {
+    const { tide } = make();
+    const onTheBed = vertices(tide).filter(
+      ({ radius }) => radius > BED_INNER - 1e-6 && radius < BED_OUTER + 1e-6,
+    );
+    const coverAt = (ahead: number): number[] =>
+      onTheBed.filter(({ stepsAhead }) => Math.abs(stepsAhead - ahead) < 1e-4).map(({ cover }) => cover);
+    for (const [ahead, cover] of [
+      [TIDE_SHADE_STEPS, 0],
+      [0.75, TIDE_SHADE_COVER / 2],
+      [0.5, TIDE_SHADE_COVER],
+      [0.25, TIDE_SHADE_COVER / 2],
+      [0, 0],
+      [-1, 0],
+    ] as const) {
+      expect(coverAt(ahead).length, `${ahead} steps ahead`).toBeGreaterThan(0);
+      for (const found of coverAt(ahead)) expect(found, `${ahead} steps ahead`).toBeCloseTo(cover);
+    }
+    // Across the bed it has the light's own profile: nothing at the two glass edges.
+    for (const { radius, cover } of vertices(tide)) {
+      if (radius < BED_INNER - 1e-6 || radius > BED_OUTER + 1e-6) expect(cover).toBe(0);
+    }
+    // Where it is darkest no light has begun: the crest stands against it.
+    for (const { cover, light } of onTheBed) {
+      if (cover > TIDE_SHADE_COVER - 1e-6) expect(light).toBeCloseTo(0);
+    }
+    expect(tide.mesh.geometry.index!.count / 3).toBe(96); // 4 steps of arc, still one mesh
+  });
+
+  it('light and shade are one draw: the light adds, the shade covers what lies under it (UX §9.4)', () => {
+    const { material } = make().tide.mesh;
+    // What is drawn = the light + what lies under it × (1 − cover), in one blend.
+    expect(material.blending).toBe(CustomBlending);
+    expect(material.blendSrc).toBe(OneFactor);
+    expect(material.blendDst).toBe(OneMinusSrcAlphaFactor);
+    expect(material.fragmentShader).toContain('uShown * vec4(uCrest * vTide.x + uShade * vTide.y, vTide.y)');
+    expect(material.depthWrite).toBe(false);
+    // The colours as the canvas encodes them: cream for the light, the bed's own charcoal for the shade.
+    const encoded = (hex: number): number[] => new Color(hex).convertLinearToSRGB().toArray();
+    expect((material.uniforms.uCrest!.value as Color).toArray()).toEqual(encoded(CREAM));
+    expect((material.uniforms.uShade!.value as Color).toArray()).toEqual(encoded(BED_BASE_COLOUR));
   });
 });
 

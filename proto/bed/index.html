@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Roomsong - bed preview (T-125)</title>
+    <title>Roomsong - bed preview (T-125, T-119)</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
@@ -12,10 +12,29 @@
     <main>
       <h1>Roomsong - bed preview</h1>
       <p>
-        The garden bed on a table, as you would see it sitting in front of it: 13 sample plants in three
-        shapes, and the tide sweeping at 84 beats per minute. Drag to look around, scroll to move closer. No
-        sound on this page.
+        The garden bed on a table, as you would see it sitting in front of it, with the tide sweeping at 84
+        beats per minute. Drag to look around, scroll to move closer. Move the pointer over the bed to see
+        where a seed would land. No sound on this page.
       </p>
+      <fieldset>
+        <legend>What to show</legend>
+        <label>
+          Garden
+          <select id="garden">
+            <option value="sample">13 sample plants</option>
+            <option value="shapes">The five shapes</option>
+            <option value="growth">Growth: new, 1 day, 3 days, a week</option>
+            <option value="everything">Full bed, all five shapes</option>
+            <option value="empty">Empty bed</option>
+          </select>
+        </label>
+        <button id="week" type="button">A week passes</button>
+        <label><input id="bright" type="checkbox" /> Bright table</label>
+        <label><input id="glow" type="checkbox" /> Glow the plant under the pointer</label>
+        <label><input id="tint" type="checkbox" /> Dim the nearest plant (hand out of view)</label>
+        <label><input id="reduced" type="checkbox" /> Reduced motion</label>
+        <label><input id="contrast" type="checkbox" /> High contrast</label>
+      </fieldset>
       <button id="enter" type="button" hidden>Enter XR</button>
       <p id="numbers"></p>
       <p id="status" role="status" aria-live="polite"></p>

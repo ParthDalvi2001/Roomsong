@@ -40,6 +40,10 @@ export const GUIDE_LINE_M = 0.0012;
 export const GUIDE_LINE_ALPHA = 0.5;
 export const MARKER_LINE_M = 0.002;
 export const MARKER_ALPHA = 0.3;
+/** FR-HND-16, chosen in T-119: the marker of the cell a release will land on is drawn this strong: the cue. */
+export const MARKER_HOVER_ALPHA = 1;
+/** UX §5: a hover cue moves between rest and hover over this long, in and out (FR-HND-16). */
+export const HOVER_CUE_MS = 100;
 /** Chosen in T-125: what lies flat on the bed is drawn this far above it, so nothing fights for depth. */
 export const BED_LAYER_M = 0.001;
 /** Chosen in T-125: straight edges around the glass, and around one marker. */
@@ -57,6 +61,11 @@ export const TIDE_SEGMENTS_PER_STEP = 4;
 export const TIDE_FALLOFF_POWER = 2;
 /** FR-UI-11, chosen in T-125: the wedge takes this long to fade in when a tide starts and out when it stops. */
 export const TIDE_FADE_MS = 300;
+/** UX §9.4: a shade of the bed's charcoal leads the crest, so the sweep shows on a bright table. It begins this
+ *  many steps ahead of the crest, covers this much where the light begins (TIDE_LEAD_STEPS ahead), and is gone
+ *  on the crest. */
+export const TIDE_SHADE_STEPS = 1;
+export const TIDE_SHADE_COVER = 0.6;
 
 /** FR-MUS-01: one plant per cell at most, so 80 instances per silhouette is the worst case. */
 export const PLANT_CAPACITY = RINGS * STEPS;
@@ -77,6 +86,29 @@ export const PLANT_RIM_GLOW = 0.6;
 /** FR-UI-07: a plant's brightness at rest, and when the tide triggers it. One flash is two changes per bar. */
 export const PLANT_REST_BRIGHTNESS = 0.7;
 export const PLANT_FLASH_BRIGHTNESS = 1;
+/** FR-HND-15, UX §3.4: the plant a lost hand held is drawn at this share of its brightness, in one step, and is
+ *  back at full this long after the hand is seen again or the hint's time is up (D-030). */
+export const PLANT_TINT_BRIGHTNESS = 0.5;
+export const PLANT_TINT_BACK_MS = 100;
+/** FR-HND-16, UX §3.4: the plant an empty hand hovers is drawn this much brighter (20 %), over HOVER_CUE_MS. */
+export const PLANT_HOVER_LIFT = 0.2;
+/** FR-MUS-09, UX §9.6: a plant's age is counted in leaf whorls on its stem, one from stage 1 and two from stage
+ *  2, at these shares of the stem's height. At stage 3 they open into cream blossoms this many times as wide
+ *  (3.1 cm for 2.4), and the plant's colour takes this lightness in place of PLANT_LIGHTNESS. */
+export const PLANT_WHORL_AT = [0.4, 0.6] as const;
+export const PLANT_BLOSSOM_WIDTH = 1.3;
+export const PLANT_BLOSSOM_LIGHTNESS = 0.75;
+/** Chosen in T-119: how far a whorl is pressed in between its four leaves, as a share of its radius. At
+ *  PLANT_LOBE_DEPTH a ring of four leaves on eight segments is exactly a square; at this it has four points. */
+export const PLANT_WHORL_LOBE_DEPTH = 0.6;
+/** UX §5 and §9.6: a plant that grew unfurls over this long (ease-out) on its first note of the session; one
+ *  that no crest has reached after the wait unfurls then. */
+export const PLANT_BLOOM_MS = 600;
+export const PLANT_BLOOM_WAIT_MS = 10_000;
+/** FR-UI-05 (outlines on all targets), chosen in T-119: in high contrast a plant's surface turns cream where it
+ *  turns away from the eye: from the first number on (0 = facing the eye, 1 = edge on), fully at the second. */
+export const PLANT_OUTLINE_FROM = 0.55;
+export const PLANT_OUTLINE_FULL = 0.75;
 
 /** Radians per step: step s sits at angle s * STEP_RAD from +x toward +z (D-029). */
 export const STEP_RAD = (2 * Math.PI) / STEPS;

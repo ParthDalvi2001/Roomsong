@@ -86,11 +86,18 @@ src/
 │   │                           renderers; tuning-ripple timeline (§5.8)
 │   ├── events.ts               perf:sample (API_SPEC §2)
 │   ├── BedRenderer.ts          the glass with its five ring lines (one shader) and the 80 cell markers (one InstancedMesh): 2 draw calls.
-│   │                           The beat ring is not in it yet
-│   ├── PlantRenderer.ts        one InstancedMesh per silhouette: bell, pad, pluck (bass borrows bell, choir borrows pad, shimmer borrows
-│   │                           pluck, until theirs are drawn). Instance matrix = cell, turn and stem height; instance colour = the hue's
-│   │                           colour × the brightness FlashGuard hands out (the glow). No age attribute yet
-│   ├── TideRenderer.ts         the wedge of light, turned by audio's barPhase; one FlashGuard element for its showing and hiding (§5.9)
+│   │                           The hover cue (FR-HND-16, T-119) is a marker's own alpha, 0.3 at rest and 1 when hovered, one FlashGuard
+│   │                           element per marker, faded over 100 ms. The beat ring is not in it yet
+│   ├── PlantRenderer.ts        one InstancedMesh per silhouette: bell, pad, pluck, bass (a jug), choir (an umbrella); shimmer borrows
+│   │                           the pluck's (UX §9.5). Instance matrix = cell, turn and stem height; instance colour = the hue's colour ×
+│   │                           the brightness FlashGuard hands out. That brightness is one request per plant per frame: the tide's glow ×
+│   │                           the dim of a lost hand's tint × the lift of an empty hand's hover (T-119). Age (UX §9.6) is one more
+│   │                           InstancedMesh for the leaf whorls of all plants, two per plant at most; a whorl has no guard element and
+│   │                           takes its plant's brightness. A plant that grew unfurls on its first rise that the guard counted; a
+│   │                           blossom's colours arrive in that frame, so they are part of a counted swing
+│   ├── TideRenderer.ts         the wedge of light, turned by audio's barPhase; one FlashGuard element for its showing and hiding (§5.9).
+│   │                           A charcoal shade leads the crest (UX §9.4): what is drawn = the light + what lies under it × (1 − cover),
+│   │                           in one blend and one draw call; the canvas's alpha carries the cover only (T-119)
 │   ├── TuningRipple.ts         surface sweep (table → wall → ceiling) synced to chord tones (FR-ROOM-12)
 │   ├── HaloRenderer.ts         aurora halo over the bed in Listen mode (Must)
 │   ├── VineRenderer.ts         spline tube along wall plane (Could C4, D-021)
@@ -689,7 +696,7 @@ A missing surface skips its sweep and its caption, but its note still rings at t
 ### 5.9 Flash cap (`render/FlashGuard.ts`, FR-UI-11)
 No element changes luminance more than 3 times per second. The terms, with constants in `render/config.ts` (API_SPEC §1.8):
 - **Element** = one drawn instance whose brightness is animated: one plant, one cell marker or ghost, one beat-ring tick, one ripple quad, the halo, the tide crest (its showing and hiding; its sweep keeps one brightness and relies on a continuous phase, API_SPEC §1.8). A shape that moves at constant brightness is not changing luminance; what it lights up is counted on the element it lights (the trigger flash, on that plant).
-- **One luminance change** = one swing of the element's brightness factor (0–1, the multiplier its material applies) in one direction, of at least `FLASH_MIN_DELTA` = 0.10, measured from where the last swing ended. It is counted when it starts, the moment it can still be refused. A swing ends only when the brightness comes back at least `FLASH_MIN_DELTA` from its far end: a pause or a smaller step back does not end it (design no stairs). Before its first swing an element may move less than half of `FLASH_MIN_DELTA` from its claimed brightness. A refused swing holds the element where it is. A flash, up and back, is two changes. A slow fade counts once, like a fast one.
+- **One luminance change** = one swing of the element's brightness factor (0–1, the multiplier its material applies) in one direction, of at least `FLASH_MIN_DELTA` = 0.10, measured from where the last swing ended. It is counted when it starts, the moment it can still be refused. A swing ends only when the brightness comes back at least `FLASH_MIN_DELTA` from its far end: a pause or a smaller step back does not end it (design no stairs). A swing counts from its last movement: when it moves on after a pause (a crest on a plant a hover already lit, a tint on one whose glow has gone), its time moves to that moment, and the changes that follow inside the second are counted against it there (T-119). Before its first swing an element may move less than half of `FLASH_MIN_DELTA` from its claimed brightness. A refused swing holds the element where it is. A flash, up and back, is two changes. A slow fade counts once, like a fast one.
 - **Cap** = at most `FLASH_CAP_PER_S` = 3 changes of one element in any sliding 1 s window. That is at most 1.5 full flashes per second, half of what WCAG's three-flashes rule allows (a flash there is a pair of opposing changes of 10 % or more), so NFR-ACC-01 holds with margin.
 
 **Enforcement.** Animation code does not write a brightness directly; it asks FlashGuard to start a swing for an element. FlashGuard grants it when the element's window has room and otherwise holds the element at its current brightness until it has. FlashGuard counts from the values it hands out, so its report does not depend on the callers. `perf:sample.maxFlashPerS` is the largest count any element reached in the last second; TC-E2E-15 asserts it never exceeds 3 with `autoplant=80` in Listen mode. The beat ring (`access/`) and the hover cue go through the same guard; `access/` and `ui/` may import `render/`.
@@ -705,7 +712,7 @@ See API_SPEC.md §4 (`GardenStateV1`). Validation via a tiny hand-written valida
 | Pad | M | 3 detuned saws → LPF (cutoff from hue) → slow attack 0.4 s | Wide soft fan of leaves |
 | Pluck | M | Karplus-Strong string (noise burst → delay line + LPF feedback), computed into an `AudioBuffer` (see below) | Thin reed with a bead |
 | Bass | M | Sine + 0.8 × its 2nd harmonic, soft-clipped (tanh, drive 3). The clipped cycle is computed once into a `PeriodicWave` of 12 harmonics and one oscillator plays it → low-pass (cutoff 8 × the note, ±1 octave from hue) → envelope: 10 ms attack, hold 0.2 × release, decay τ = release ÷ 25. About 0.65 s for a new plant, 0.1 to 1.1 s over the height range; audible level in the 2nd and 4th harmonics (see below) | Low, broad bulb |
-| Choir | M | 3 formant band-passes over a pulse, slow vibrato | Cluster of three rounded petals |
+| Choir | M | 3 formant band-passes over a pulse, slow vibrato | Canopy of three rounded petals hanging over the top of the stem |
 | Shimmer | S (S5) | Band-passed noise grains × 6, high register | Spiky star-burst |
 
 Phase 0 desktop sound prototype (G0) uses Bell, Pad, Pluck only.

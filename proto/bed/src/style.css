@@ -29,6 +29,18 @@ p {
 #numbers {
   font-family: monospace;
 }
+fieldset {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #48cae4;
+  border-radius: 0.5rem;
+}
+select {
+  font: inherit;
+  min-height: 2rem;
+}
 button {
   font: inherit;
   min-height: 3rem;
@@ -38,7 +50,9 @@ button {
   background: #16303f;
   color: inherit;
 }
-button:focus-visible {
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
   outline: 3px solid #f4d35e;
   outline-offset: 2px;
 }

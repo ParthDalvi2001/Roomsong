@@ -16,6 +16,12 @@ const PAGE = '/proto/bed/?flags=perfHud'; // the HUD panel on: the worst case fo
 const SHOTS = fileURLToPath(new URL('../../.tmp/', import.meta.url)); // git-ignored; the paths go in the report
 const DRAW_CALL_BUDGET = 15; // T-125's own acceptance (NFR-PERF-03 allows 60)
 const TRIANGLE_BUDGET = 150_000; // NFR-PERF-04
+// T-119, everything on the bed at once, per eye: the glass and its markers 2, the five silhouettes 5, the whorls
+// 1, the tide 1, and the HUD panel 1. A session draws both eyes: 20 (18 without the panel), which is over T-125's
+// 15 and inside NFR-PERF-03's 60. UX §9.5 and §9.6 count the same meshes.
+const EVERYTHING_PER_EYE = 2 + 5 + 1 + 1 + 1;
+const NFR_DRAW_CALLS = 60; // NFR-PERF-03
+const TIDE_PASS_MARK = 3; // UX §9.4: crest to the shade's darkest point, as a luminance ratio
 
 interface Sample {
   fps: number;
@@ -27,7 +33,12 @@ interface Sample {
   atMs: number;
 }
 interface PageWindow {
-  __bed: { sample(): Sample | null; foveation(): number | null };
+  __bed: {
+    sample(): Sample | null;
+    foveation(): number | null;
+    pixelOf(ring: number, step: number): { x: number; y: number };
+    holdTide(phase: number | null): void;
+  };
   IWER_DEVICE: { primaryInputMode: string; activeSession?: object };
   policyViolations: string[];
 }
@@ -78,12 +89,41 @@ function coloursOnCanvas(page: Page): Promise<number> {
   );
 }
 
-function expectInBudget(sample: Sample): void {
+function expectInBudget(sample: Sample, draws = DRAW_CALL_BUDGET): void {
   expect(sample.draws).toBeGreaterThan(0);
-  expect(sample.draws).toBeLessThanOrEqual(DRAW_CALL_BUDGET);
+  expect(sample.draws).toBeLessThanOrEqual(draws);
   expect(sample.tris).toBeGreaterThan(0);
   expect(sample.tris).toBeLessThanOrEqual(TRIANGLE_BUDGET);
   expect(sample.maxFlashPerS).toBeLessThanOrEqual(3); // FR-UI-11
+}
+
+/** Enters an emulated AR session by the page's own button, hands selected; returns once the bed is in view. */
+async function enterSession(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (window as unknown as PageWindow).IWER_DEVICE.primaryInputMode = 'hand';
+  });
+  await page.locator('#enter').click(); // the page's own button; the emulator's overlay has one of the same name
+  await page.waitForFunction(
+    () => (window as unknown as PageWindow).IWER_DEVICE.activeSession !== undefined,
+    undefined,
+    { timeout: SESSION_ENTRY_LIMIT_MS },
+  );
+  // The page seats the emulated head and points it at the bed, so everything is in view.
+  await expect(page.locator('#status')).toContainText('in the headset');
+  await xrFrames(page, 10);
+}
+
+/** The largest `maxFlashPerS` of the perf samples of the next `durationMs`, in the plain view or in the session. */
+async function flashPeaks(page: Page, inXr: boolean, durationMs: number): Promise<number[]> {
+  const peaks: number[] = [];
+  let sinceMs = await page.evaluate(() => performance.now());
+  const untilMs = sinceMs + durationMs;
+  while (sinceMs < untilMs) {
+    const sample = await nextSample(page, inXr, sinceMs);
+    peaks.push(sample.maxFlashPerS);
+    sinceMs = sample.atMs;
+  }
+  return peaks;
 }
 
 /** Opens the page and checks the plain view, then the same bed in an emulated AR session. `shot` names screenshots. */
@@ -98,19 +138,8 @@ async function plainThenSession(page: Page, path: string, label: string, shot?: 
   expect(await coloursOnCanvas(page)).toBeGreaterThan(100); // a drawn garden, not a blank or one-colour canvas
   if (shot) await page.screenshot({ path: `${SHOTS}${shot}-plain.png` });
 
-  // The same bed in an emulated AR session, hands selected (nothing on the page needs a hand or a controller).
-  await page.evaluate(() => {
-    (window as unknown as PageWindow).IWER_DEVICE.primaryInputMode = 'hand';
-  });
-  await page.locator('#enter').click(); // the page's own button; the emulator's overlay has one of the same name
-  await page.waitForFunction(
-    () => (window as unknown as PageWindow).IWER_DEVICE.activeSession !== undefined,
-    undefined,
-    { timeout: SESSION_ENTRY_LIMIT_MS },
-  );
-  // The page seats the emulated head and points it at the bed, so everything is in view.
-  await expect(page.locator('#status')).toContainText('in the headset');
-  await xrFrames(page, 10);
+  // The same bed in an emulated AR session (nothing on the page needs a hand or a controller).
+  await enterSession(page);
   const inXr = await nextSample(page, true, await page.evaluate(() => performance.now()));
   console.log(
     `T-125 ${label}, emulated session ${JSON.stringify(inXr)} (IWER, both eyes, software rendering)`,
@@ -124,6 +153,58 @@ async function plainThenSession(page: Page, path: string, label: string, shot?: 
   expect(errors).toEqual([]);
 }
 
+/** Waits until the page has drawn `count` more frames. */
+function frames(page: Page, count: number): Promise<void> {
+  return page.evaluate(
+    (count) =>
+      new Promise<void>((done) => {
+        const next = (left: number): void =>
+          void requestAnimationFrame(() => (left > 1 ? next(left - 1) : done()));
+        next(count);
+      }),
+    count,
+  );
+}
+
+/** Moves the pointer onto a point of the bed (`ring` and `step` may lie between cells): a hand's hover on this page. */
+async function pointAt(page: Page, ring: number, step: number): Promise<void> {
+  const { x, y } = await page.evaluate(
+    ([ring, step]) => (window as unknown as PageWindow).__bed.pixelOf(ring, step),
+    [ring, step] as const,
+  );
+  await page.mouse.move(x, y);
+}
+
+/** The relative luminance (WCAG) of the canvas at a point of the bed, averaged over 3 by 3 pixels of a drawn frame. */
+function luminanceAt(page: Page, ring: number, step: number): Promise<number> {
+  return page.evaluate(
+    ([ring, step]) =>
+      new Promise<number>((done) => {
+        requestAnimationFrame(() => {
+          const canvas = document.querySelector('#view canvas') as HTMLCanvasElement;
+          const { x, y } = (window as unknown as PageWindow).__bed.pixelOf(ring, step);
+          const box = canvas.getBoundingClientRect();
+          const scale = canvas.width / box.width;
+          const copy = document.createElement('canvas');
+          copy.width = copy.height = 3;
+          const context = copy.getContext('2d')!;
+          context.drawImage(canvas, (x - box.left) * scale - 1, (y - box.top) * scale - 1, 3, 3, 0, 0, 3, 3);
+          const { data } = context.getImageData(0, 0, 3, 3);
+          const linear = (channel: number): number => {
+            const c = channel / 255;
+            return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+          };
+          let sum = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            sum += 0.2126 * linear(data[i]!) + 0.7152 * linear(data[i + 1]!) + 0.0722 * linear(data[i + 2]!);
+          }
+          done(sum / (data.length / 4));
+        });
+      }),
+    [ring, step] as const,
+  );
+}
+
 test('T-125 the bed preview draws in a plain page and in the emulator, within 15 draw calls', async ({
   page,
 }) => {
@@ -135,17 +216,134 @@ test('T-125 a full bed of 80 plants stays within the budgets and under the flash
   await plainThenSession(page, `${PAGE},autoplant=80`, 'full bed');
   // FR-UI-11 over two more bars at 84 BPM (5.7 s), in the session: every plant flashes once a bar, and no
   // sample reports more than 3 changes for any of them. (TC-E2E-15 proper needs Listen mode: T-128.)
-  const peaks: number[] = [];
-  let sinceMs = await page.evaluate(() => performance.now());
-  const untilMs = sinceMs + 5800;
-  while (sinceMs < untilMs) {
-    const sample = await nextSample(page, true, sinceMs);
-    peaks.push(sample.maxFlashPerS);
-    sinceMs = sample.atMs;
-  }
+  const peaks = await flashPeaks(page, true, 5800);
   console.log(`T-125 full bed, flash peaks over two bars ${JSON.stringify(peaks)} (emulator)`);
   expect(Math.max(...peaks)).toBeLessThanOrEqual(3);
   expect(Math.max(...peaks)).toBeGreaterThan(0); // the report is live: plants did flash
+});
+
+test('T-119 the tide shows on a dark table and on a white one: crest to shade at least 3 to 1', async ({
+  page,
+}) => {
+  const errors = recordErrors(page);
+  await openApp(page, readRoom('table'), '/proto/bed/');
+  await page.locator('#garden').selectOption('empty'); // nothing stands between the eye and the glass
+  // The crest held on step 4, the side nearest the eye. Half a step ahead of it the shade is darkest (UX §9.4).
+  await page.evaluate(() => (window as unknown as PageWindow).__bed.holdTide(4 / 16));
+  const BETWEEN_RINGS = 2.5; // no marker and no ring line there
+  for (const table of ['dark', 'white'] as const) {
+    await page.locator('#bright').setChecked(table === 'white');
+    await nextSample(page, false, await page.evaluate(() => performance.now())); // the wedge has faded in
+    const crest = await luminanceAt(page, BETWEEN_RINGS, 4);
+    const shade = await luminanceAt(page, BETWEEN_RINGS, 4.5);
+    const bedAway = await luminanceAt(page, BETWEEN_RINGS, 12);
+    const ratio = (lighter: number, darker: number): number => (lighter + 0.05) / (darker + 0.05);
+    console.log(
+      `T-119 tide on a ${table} table: crest to shade ${ratio(crest, shade).toFixed(1)}, crest to the bed ` +
+        `away from it ${ratio(crest, bedAway).toFixed(1)}, bed to shade ${ratio(bedAway, shade).toFixed(1)} ` +
+        '(plain page, headless: the canvas blends encoded values)',
+    );
+    expect(ratio(crest, shade)).toBeGreaterThanOrEqual(TIDE_PASS_MARK);
+    expect(shade).toBeLessThanOrEqual(bedAway); // the shade darkens, on any table
+  }
+  expect(errors).toEqual([]);
+});
+
+test('T-119 everything at once on a full bed: draw calls, triangles and the flash cap', async ({ page }) => {
+  const errors = recordErrors(page);
+  const offHost = await openApp(page, readRoom('table'), PAGE);
+  // All five shapes on all 80 cells; the nearest plant dimmed as by a lost hand; the pointer a hovering hand.
+  await page.locator('#garden').selectOption('everything');
+  await page.locator('#glow').check();
+  await page.locator('#tint').check();
+  await page.locator('#week').click(); // a visit a week later: all 80 unfurl into blossoms on their next note
+  // The hover flickers between two neighbouring plants for two bars, as fast as the page takes the pointer.
+  let peaks: number[] = [];
+  const watching = flashPeaks(page, false, 5800).then((found) => (peaks = found));
+  for (let i = 0; peaks.length === 0; i++) await pointAt(page, 4, 3 + (i % 3) * 0.5);
+  await watching;
+  const plain = await nextSample(page, false, await page.evaluate(() => performance.now()));
+  console.log(
+    `T-119 everything, plain view ${JSON.stringify(plain)}, flash peaks ${JSON.stringify(peaks)} (headless)`,
+  );
+  expectInBudget(plain); // 9 for the bed, the plants and the tide; the HUD panel and the page's table make 11
+  expect(plain.draws).toBe(EVERYTHING_PER_EYE + 1);
+  expect(Math.max(...peaks)).toBeLessThanOrEqual(3);
+  expect(Math.max(...peaks)).toBeGreaterThan(0);
+
+  await enterSession(page);
+  const inXr = await nextSample(page, true, await page.evaluate(() => performance.now()));
+  const sessionPeaks = await flashPeaks(page, true, 5800);
+  console.log(
+    `T-119 everything, emulated session ${JSON.stringify(inXr)}, flash peaks ${JSON.stringify(sessionPeaks)} ` +
+      '(IWER, both eyes)',
+  );
+  // Both eyes: 20 with the HUD panel, over T-125's 15 (see EVERYTHING_PER_EYE) and inside NFR-PERF-03.
+  expectInBudget(inXr, NFR_DRAW_CALLS);
+  expect(inXr.draws).toBe(2 * EVERYTHING_PER_EYE);
+  expect(Math.max(...sessionPeaks)).toBeLessThanOrEqual(3);
+  expect(offHost).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('T-119 the pictures for the look rating', async ({ page }) => {
+  mkdirSync(SHOTS, { recursive: true });
+  const errors = recordErrors(page);
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await openApp(page, readRoom('table'), '/proto/bed/');
+  const hold = (phase: number | null): Promise<void> =>
+    page.evaluate((phase) => (window as unknown as PageWindow).__bed.holdTide(phase), phase);
+  // The seated view, the whole bed in it; the text panel is out of the pictures.
+  const AWAY = [5, 5] as const; // a corner of the view, off the bed
+  await page.mouse.move(...AWAY);
+  /** Every fade and ease of the page is shorter than this (the tide's 300 ms is the longest). */
+  const settle = async (): Promise<void> => {
+    await page.waitForTimeout(450);
+    await frames(page, 2);
+  };
+  const shot = async (name: string): Promise<void> => {
+    await settle();
+    const style = await page.addStyleTag({ content: 'main { visibility: hidden; }' });
+    await page.screenshot({ path: `${SHOTS}t119-${name}.png` });
+    await style.evaluate((node) => (node as Element).remove());
+  };
+
+  await hold(4.4 / 16); // the crest just past the plant nearest the eye
+  await shot('tide-dark-table');
+  await page.locator('#bright').check();
+  await shot('tide-bright-table');
+  await page.locator('#bright').uncheck();
+
+  await hold(12 / 16); // the tide on the far side: the near plants at rest
+  await pointAt(page, 4, 3); // a free cell: its marker is the cue
+  await shot('hover-cue');
+  await page.locator('#glow').check();
+  await pointAt(page, 4, 4); // the reed nearest the eye glows
+  await shot('hover-glow');
+  await page.mouse.move(...AWAY);
+  await page.locator('#glow').uncheck();
+  await page.locator('#tint').check(); // the same reed, dimmed as by a lost hand
+  await shot('tint');
+  await page.locator('#tint').uncheck();
+
+  await page.locator('#garden').selectOption('shapes');
+  await shot('five-shapes');
+  await page.locator('#contrast').check();
+  await pointAt(page, 3, 4);
+  await shot('high-contrast');
+  await page.locator('#contrast').uncheck();
+  await page.mouse.move(...AWAY);
+
+  await page.locator('#garden').selectOption('growth');
+  await shot('growth-stages');
+  await hold(null);
+  await page.locator('#week').click(); // every plant unfurls into blossoms on its next note
+  await page.waitForTimeout(3500); // a bar and more at 84 BPM: every plant has had its note
+  await hold(12 / 16);
+  await shot('growth-a-week-later');
+
+  expect(await coloursOnCanvas(page)).toBeGreaterThan(100);
+  expect(errors).toEqual([]);
 });
 
 test('T-125 the built bed preview loads under the Content Security Policy with no violation', async ({

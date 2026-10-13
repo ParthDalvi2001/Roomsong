@@ -424,6 +424,9 @@ Choir  segments 18, lobes 3, 252 triangles, 4.2 cm across
 
 **Replaces.** In §5, Motion: "replaces growth with fades" becomes "shows a grown plant's new stage at once, on its own trigger (§9.6)". In §8, Reduced motion: "growth → fades" becomes "growth → the new stage at once, on the plant's own trigger (§9.6)". The plants are opaque and cannot cross-fade without a second, transparent pass. The Shapes bullet of §5, "age adds branches/blossoms", stays true: the whorls are the branches.
 
+**As built (T-119, 2026-10-13; where it differs from the text above).** A blossom's colours arrive at once, in the frame of the plant's first counted rise of brightness (its note), and do not ease over 600 ms: an eased colour moved the plant's brightness outside the flash guard and broke the cap of three changes a second in the full-bed test; only the whorls' size eases. That rise can also be a hover's glow or the end of a tint, so a plant touched before its first note unfurls then. The 10 s wait counts from the first frame after the visit. A leaf whorl's lobes are cut 0.6 deep, not the pad's 0.3, which on eight segments drew a square plate. In high contrast every plant is outlined all the time (FR-UI-05), so a hovered plant is told by its glow and by its own cell lighting up on the bed (D-044).
+
+
 ### 9.7 The words on the landing page (T-128's re-read; T-167 proofreads)
 **Decision.** The copy in `ui/strings.ts` is honest in tone and mostly right. Fifteen strings change, in the eleven rows below: the browser's feature names become words a visitor knows, one access label stops promising eye control, the two fallback lines for a room without table detection stop promising what may not ship or may not happen, and the privacy line names the room. Nothing breaks the English-only rule, and the only brand on the page is the device's name.
 

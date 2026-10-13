@@ -5,7 +5,9 @@
 // A change is one swing of an element's brightness in one direction of at least FLASH_MIN_DELTA, measured from
 // where the last swing ended. It is counted when it starts, because that is the moment it can still be refused.
 // A refused swing holds the element at its current brightness until the window has room. A swing ends only when
-// the brightness comes back at least FLASH_MIN_DELTA from its far end: a pause does not end it.
+// the brightness comes back at least FLASH_MIN_DELTA from its far end: a pause does not end it. But a swing
+// counts from its last movement: when it moves on, its time moves on with it, and the window is measured from
+// there.
 import { FLASH_CAP_PER_S, FLASH_MIN_DELTA, FLASH_WINDOW_MS } from './config.js';
 
 // Per element: the value handed out last, the far end of its current swing, the swing's direction (0 = none yet),
@@ -61,11 +63,20 @@ export class FlashGuard {
     target = Math.min(1, Math.max(0, target)); // written out: a call that returns a fraction is boxed by V8
     const move = target - d[i + PIVOT]!;
     const direction = d[i + DIRECTION]!;
-    // Onward in the direction already granted: the same swing, and the pivot rides its far end.
-    if (direction !== 0 && move * direction >= 0) return (d[i + PIVOT] = d[i + VALUE] = target);
+    // Onward in the direction already granted: the same swing, and the pivot rides its far end. A swing counts
+    // from its last movement: one that moves on after a pause (a crest on a plant a hover already lit, a tint on
+    // one whose glow has gone) is a change the eye gets now, so its time moves to now. Without that, three more
+    // changes could follow it inside the second and the report still read 3 (T-119 review).
+    if (direction !== 0 && move * direction >= 0) {
+      if (move !== 0) d[i + STRIDE - 1] = nowMs;
+      return (d[i + PIVOT] = d[i + VALUE] = target);
+    }
     // Short of a change. Before the first swing the element may move to either side of where it started, so
-    // each side gets half: its whole travel then stays under FLASH_MIN_DELTA.
-    if (Math.abs(move) < (direction === 0 ? FLASH_MIN_DELTA / 2 : FLASH_MIN_DELTA)) {
+    // each side gets half: its whole travel then stays under FLASH_MIN_DELTA. Two comparisons, not one against a
+    // limit picked by the condition: V8 boxed that limit, 16 bytes per request of an element that had never
+    // swung, so per plant per frame until its first note (measured in T-119).
+    const size = Math.abs(move);
+    if (direction === 0 ? size < FLASH_MIN_DELTA / 2 : size < FLASH_MIN_DELTA) {
       return (d[i + VALUE] = target);
     }
     // A new swing, if the window has room for it.
