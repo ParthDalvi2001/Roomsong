@@ -911,6 +911,25 @@ describe('garden/GardenSystem: newGarden and setBedHeightOffset (FR-PER-03, FR-U
     expect(s.names()).toEqual(['garden:seedOut']);
   });
 
+  it('BUG-006: a hand closed on the old seed plants nothing, though the new seed of that id is out on the other palm', () => {
+    const s = setup();
+    const id = `seed-${TODAY}-0`;
+    s.system.load(s.lib.newGarden(T0, s.core.settings.get()));
+    s.features();
+    s.palmUp('left');
+    s.pinch('right', seedRef(id));
+    s.system.newGarden(); // the same day: the starter seeds get the same ids
+    s.palmUp('left'); // the re-arm: the new seed of that id rests on the left palm
+    s.clear();
+    s.release('right', 'carry', seedRef(id), 'bed', cell(0, 0)); // the right hand never let go
+    expect(s.seen).toEqual([]);
+    expect(s.state().plants).toEqual([]);
+
+    s.pinch('right', seedRef(id)); // a pinch in the new garden plants it
+    s.release('right', 'carry', seedRef(id), 'bed', cell(0, 0));
+    expect(s.state().plants.map((p) => p.id)).toEqual([id]);
+  });
+
   it('New garden before the session has its signature stops after garden:changed; the seeds come with that visit', () => {
     const s = setup();
     s.system.load(saved([plant('a', 0, 0), plant('b', 1, 1)], [seed('s1')]));

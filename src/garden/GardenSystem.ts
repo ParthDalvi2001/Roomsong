@@ -41,6 +41,9 @@ export class GardenSystem {
   private out: { seedId: string; carrier: Hand | null } | null = null;
   /** The removed plants that can still come back, by plant id (FR-MUS-12). */
   private readonly undos = new Map<string, { token: UndoToken; expiresAt: number }>();
+  /** newGarden() calls so far, and the count at each hand's latest gesture:pinchStart (BUG-006). */
+  private generation = 0;
+  private readonly pinchedIn = new Map<Hand, number>();
   /** How many of its own garden:changed emits are running. */
   private emitting = 0;
 
@@ -75,6 +78,7 @@ export class GardenSystem {
     // choice: LLD §3.2 lists no pinchStart for the garden, but without it "the seed that hand carried" (its
     // trackingLost row) cannot be told from a hand that held a plant; rule 8 names this event as the start
     on('gesture:pinchStart', (_s, e) => {
+      this.pinchedIn.set(e.hand, this.generation);
       if (this.out !== null && e.target?.kind === 'seed' && e.target.id === this.out.seedId) {
         this.out.carrier = e.hand; // the hand of the latest pinch on it
       }
@@ -111,6 +115,7 @@ export class GardenSystem {
   newGarden(): void {
     const old = this.current;
     if (old === null) return;
+    this.generation++;
     this.undos.clear(); // no petal may bring a plant of the old garden into the new one
     this.takeBack('reset');
     // choice: LLD §3.2 carries over the anchor pair only, but API_SPEC §1.10 says "the bed and its anchor
@@ -198,8 +203,9 @@ export class GardenSystem {
 
   private plant(s: GardenState, seedId: string, e: Release): void {
     // choice: the carry row does not say what a seed that is not out does; here only the one out is planted
-    // or sent back, so a hand still closed on a seed of the garden before New garden plants nothing
-    if (this.out?.seedId !== seedId) return;
+    // or sent back. A pinch begun before New garden plants nothing (BUG-006): the new starters have the old ids
+    const pinchedIn = this.pinchedIn.get(e.hand) ?? this.generation;
+    if (this.out?.seedId !== seedId || pinchedIn !== this.generation) return;
     const now = plantTime(this.appClock.now(), s);
     const planted = e.cell === null ? null : plantSeed(s, seedId, e.cell, now);
     if (!planted?.ok) {
