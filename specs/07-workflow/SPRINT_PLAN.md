@@ -118,7 +118,7 @@ Lanes: **A** fullstack (room/access/onboarding/integration/garden window) · **B
 | T-183 | **Code freeze (Nov 15)**: tag `v1.0.0-rc1`; deploy to GitHub Pages **and** the mirror; verify the same build hash from a second device/network | devops-engineer + Parth | T-168 | D | version.json matches on both | todo |
 | T-184 | UAT final (Nov 16) on prod from a clean headset (or Emergency-mode emulator UAT) + compliance gate + go/no-go | qa-engineer + product-owner + Parth | T-183 | D | sign-off; gate 10/10 | todo |
 | T-185 | **Submit (Nov 17 ≤18:00 IST)**: tag `v1.0.0-submission`, deploy, lock prod, Chinmay submits as Representative (Pages URL as the WebXR link, mirror in the description), archive evidence; **post-submission smoke test from a clean browser profile** | Chinmay + devops-engineer | T-184 | human | confirmation screenshot | todo |
-| T-186 | Weekly rule check (every Friday from Oct 10): Devpost Updates/FAQ/Rules | Chinmay / product-owner | — | D | note in PROGRESS | todo (recurring) |
+| T-186 | Weekly rule check (every Friday from Oct 10): Devpost Updates/FAQ/Rules | Chinmay / product-owner | — | D | note in PROGRESS | todo (recurring; 15 Oct done: rules unchanged, FAQ facts in HACKATHON_RULES §11) |
 | T-187 | Uptime checks through Dec 11 (both links, daily; no deploys); `uptime.yml` must be on `main` before the submission lock, because GitHub runs schedules from the default branch only | devops-engineer | T-185 | D | zero downtime | todo |
 
 ## Lane guide
