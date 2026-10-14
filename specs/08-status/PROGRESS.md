@@ -1,13 +1,13 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-10-12 09:40 IST (plan v2.1; one driving session with role agents in worktrees, D-038)
+**Last updated:** 2026-10-15 01:25 IST (plan v2.1; one driving session with role agents in worktrees, D-038)
 **Phase:** 0 Prove (Oct 10–17) · **Next gate:** G0 Oct 17 (D-023) · **Headset gate H1:** Oct 20 · **Plan:** v2.1
-**Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 37 on 2026-10-12
+**Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 34 on 2026-10-15
 
 > **Read first this session:** `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions), `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) and `specs/07-workflow/SPRINT_PLAN.md` v2.1.
-> **ONE DRIVER, UP TO 4 HEAVY AGENTS ON THIS MAC, ONE BROWSER RUN AT A TIME (D-046, on Parth's word; his ceiling is 10, D-036):** one Claude session drives the repository. On Parth's word up to 4 agents that build or test run at once, plus agents that only write documents, one per module, each in its own worktree; shared files and the contract are edited only by the driving session. Agent ids for resuming after a restart are in `.tmp/agents.json`. After any restart: list Claude processes, stop leftover copies (parent pid 1), then resume the agents by id. The tracking page (port 4180), the sound preview (port 4173) and the dev server with the emulator (port 8081) run detached.
+> **ONE DRIVER, UP TO 6 AGENTS ON THIS MAC, ONE BROWSER RUN AT A TIME (D-047, on Parth's word; his ceiling is 10, D-036):** one Claude session drives the repository. On Parth's word up to 6 agents run at once (unit tests with `--maxWorkers=2`, no package installs in worktrees), one per module, each in its own worktree; shared files and the contract are edited only by the driving session. Agent ids for resuming after a restart are in `.tmp/agents.json`. After any restart: list Claude processes, stop leftover copies (parent pid 1), then resume the agents by id. The tracking page (port 4180), the sound preview (port 4173) and the dev server with the emulator (port 8081) run detached.
 > **Live tracking page (Parth, 21:00 IST):** http://127.0.0.1:4180/ shows phases, every task, charts of target against done, agents, decisions and what needs Parth; click a task to see if it is done or pending and what was done. It sends Mac notifications (something needs Parth, a task is done, a decision is made, Claude stopped working). It lives in its own folder, `tracker/`, apart from the app (moved 2026-10-11). Start it with `python3 tracker/server.py` if it is down. It reads this file, SPRINT_PLAN, DECISIONS_LOG, BUG_LOG, git and the agent logs, so keeping those current keeps the page current.
-> **Pushed (2026-10-12 19:38 IST):** `develop` is on GitHub up to 25203cf, on Parth's word ("push if verified"): 29 commits, T-117 to T-162. Verified before the push: `npm run verify` and the coverage gate green at the last code commit (53d7364, 1148 unit tests), all 57 browser tests green at 25203cf on a quiet machine. Each later push is asked again and only a verified state is pushed. `main` is pushed by Parth only (go-live step).
+> **Pushed (2026-10-15 01:07 IST):** `develop` is on GitHub up to ce33e46 (T-147), on Parth's word ("FINSIH THE TASK AND VERIFY FAST AND PUSH THE CODE ASAP"): each push follows a verified merge. Verified before that push: `npm run verify` and the coverage gate green (1485 unit tests), all 80 browser tests green on a quiet machine. `main` is pushed by Parth only (go-live step).
 > **This folder is the master copy.** The PM (Chinmay) works on a copy; his proposals go to `PM_PROPOSALS.md`, never into spec files.
 
 ---
@@ -102,6 +102,8 @@
 
 31. **One rule needs your yes (D-041, from the T-128c review):** when the garden comes back from its saved spot, it is kept if its centre is up to 0.55 m in front of you (the usual maximum 0.45 m plus 0.10 m of slack). That lets its far edge be up to 0.85 m away, past our own reach rule of 0.75 m. Without the slack, leaning back a little would make it re-place the garden every visit. **I suggest keeping the slack** (reply "ok"), or say "no slack" and a restored garden must be as close as a new one.
 
+32. **G0 review, Fri 17 Oct (T-110), about 15 minutes; reply with numbers.** Suggested verdict: **conditional pass** (5 of 8 met; the 3 misses are yours: ratings, Pages, headset). Decide: (1) the verdict; (2) the headset (T-000): buy, borrow or rent, and a date; (3) rate the sound (T-103) in the meeting, and name Chinmay plus 2 outsiders, ratings by 20 Oct; (4) go live (T-108): turn Pages on and choose Vercel or Netlify for the mirror; (5) item 23; (6) fold T-152 (pause) into T-128e: yes or no; (7)–(11) the Devpost draft's five proposed tasks (`specs/06-release/DEVPOST_DRAFT.md` §5): an emulator capture rig with a visible hand (needed before the video starts, 31 Oct), the test pages in the submission build, a pitch with no room signature, four additions to T-180, a desktop check for judges. Also (12), from the UX decision for one-hand mode (D-048): should "pinch takes your own seed off your palm" also work with one-hand mode off? (13) Chinmay: screenshot the "Start Member" label (item 5).
+
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
@@ -115,7 +117,7 @@
 ## Gates
 | Gate | Date | Result | Notes |
 |---|---|---|---|
-| G0 | Oct 17 (was Oct 15, D-023) | — | |
+| G0 | Oct 17 (was Oct 15, D-023) | prepared; Parth decides (item 32) | Met: verify, coverage and 80/80 browser tests at ce33e46; emulated XR (T-107); core (T-106); spike and pinch pages built (T-104/T-105, device runs pending); T-113. Not met, carried to G1 Oct 24: T-103 ratings; T-108 Pages and mirror; T-000 headset date (H1 Oct 20, then Emergency mode Oct 27, D-013). Suggested verdict: conditional pass. Phase 1 order: T-128d, T-128e, T-142b, T-150, T-114, T-152 (after T-128e), T-160. |
 | H1 headset | Oct 20 | — | |
 | G1 | Oct 24 (was Oct 22, D-023) | — | |
 | G2 | Nov 3 (was Nov 1, D-023) | — | |
@@ -137,7 +139,8 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 | Today, 15 Oct (product-owner guess, no headset; Nov 12 guess 6 / 6 / 5 / 5; see DEVPOST_DRAFT §2) | 4 | 3 | 5 | 2 | product-owner |
 
 ## Stand-ups
-### 2026-10-12
+### 2026-10-12 to 2026-10-15
+- **01:25 IST — G0 prepared; one-hand mode decided (D-048).** The G0 checklist and the decisions are item 32. UX decided how one hand takes a seed (a pinch of the same hand takes the seed off its own palm when nothing else is within 4 cm; UX §9.1) and the panel dwell leftovers (reticle and the 8°/s pause built in T-160, the stepper repeat dropped; UX §9.8), so T-160 can start after T-148. New row T-142b (the chord tones). T-152 now waits on T-128e.
 - **01:16 IST — T-186 weekly rule check done (week of 16 Oct).** The rule text is unchanged since 9 Oct. HACKATHON_RULES gained the Devpost schedule (judging 23 Nov to 9 Dec), 3,100 participants, membership needed only by submission, and a new §11 of FAQ answers: no headset is needed to enter, judges play on a Quest 3 or 3S, the entry can be edited until the deadline. So the hands-only flow and 60 fps (C1, C5) matter more: judges use real hardware. Devpost refused the fetch tool (HTTP 403); the agent read the public pages with plain curl.
 - **01:10 IST — T-147 pushed (cc37db5..ce33e46); the Devpost draft merged; T-142 in review.** The Devpost draft v0 is `specs/06-release/DEVPOST_DRAFT.md` (481 words; every claim not true today is marked with its task; the scorecard is copied into the self-score table above). Its five proposed tasks (an emulator capture rig with a visible hand, the test pages in the submission build, a no-signature pitch, T-180 additions, a desktop check for judges) wait for the G0 review. T-142 (the tuning ripple, light and captions; the chord tones are T-142b) reported and is with a reviewer. New: a UX agent decides one-hand seed pick-up for T-160; a product-owner agent does the weekly rule check (T-186, due 16 Oct). Six agents.
 - **00:51 IST — T-147 merged (37 of 70 done).** The plant you shape is drawn: it lifts and glows when pinched, stretches with a height ladder when pulled, hangs under the hand when dragged, fades with a dark rim past the edge, and glides home if the hand is lost; the removed plant dissolves into petals that drift to its cell. The fix round also found and fixed a real per-frame memory leak in the ladder. Checks on develop: verify green (1485 unit tests), coverage gate green, the whole browser suite 80 of 80 on a quiet machine.
