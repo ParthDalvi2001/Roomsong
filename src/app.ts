@@ -9,7 +9,7 @@ import { createAudioEngine, type AudioEngine } from './audio/index.js';
 import { Caption } from './core/components.js';
 import { bus, clock, flags, log, type StringKey } from './core/index.js';
 import { HandSystem } from './hands/index.js';
-import { BedRenderSystem, FlashGuard, FOVEATION_MEDIUM, PerfSystem } from './render/index.js';
+import { BedRenderSystem, FlashGuard, FOVEATION_MEDIUM, PerfSystem, SeedSystem } from './render/index.js';
 import { RoomSystem } from './room/index.js';
 import { CaptionSystem } from './ui/index.js';
 
@@ -247,6 +247,7 @@ export async function start(landing: Landing): Promise<void> {
   // The room before the hands: it moves the bed before hands reads its pose, in the frame and on the bus.
   const room = register(world, RoomSystem, 10);
   register(world, HandSystem, 20);
+  register(world, SeedSystem, 49, { guard });
   // Everything drawn on the bed is a child of the bed entity's Object3D (API_SPEC §1.10 rule 5).
   register(world, BedRenderSystem, 50, { guard, bed: room.bed.object3D });
   register(world, CaptionSystem, 60);

@@ -94,6 +94,7 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
         'PerfSystem',
         'PetalRenderer',
         'PlantRenderer',
+        'SeedSystem',
         'TideRenderer',
         'createPerfHud',
       ].sort(),

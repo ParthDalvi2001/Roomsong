@@ -1109,14 +1109,20 @@ describe('GestureMachine: palm up (TC-HND-03, FR-HND-05)', () => {
     return times;
   }
 
-  it('asks for a seed once, 400 ms after an idle hand turned its palm up', () => {
+  it('asks for a seed 400 ms after an idle hand turned its palm up, and again every 400 ms while it stays up', () => {
     const { step } = rig('left');
     const turnedAt = step({ at: NOWHERE, palmUp: true });
     const times = palmUpTimes(step, 2000);
-    expect(times).toHaveLength(1);
+    expect(times.length).toBeGreaterThanOrEqual(4); // T-127: the garden ignores the repeats it cannot serve
     expect(times[0]! - turnedAt).toBeGreaterThanOrEqual(PALM_UP_HOLD_MS);
     expect(times[0]! - turnedAt).toBeLessThan(PALM_UP_HOLD_MS + FRAME_MS);
-    expect(seen).toEqual([{ type: 'gesture:palmUp', hand: 'left' }]);
+    for (let i = 1; i < times.length; i++) {
+      expect(times[i]! - times[i - 1]!).toBeGreaterThanOrEqual(PALM_UP_HOLD_MS);
+      expect(times[i]! - times[i - 1]!).toBeLessThan(PALM_UP_HOLD_MS + FRAME_MS);
+    }
+    expect(new Set(seen.map((event) => JSON.stringify(event)))).toEqual(
+      new Set([JSON.stringify({ type: 'gesture:palmUp', hand: 'left' })]),
+    );
   });
 
   it('does not ask while the hand carries a seed, and asks again 400 ms after it is idle', () => {
@@ -1126,7 +1132,7 @@ describe('GestureMachine: palm up (TC-HND-03, FR-HND-05)', () => {
     expect(palmUpTimes(step, 1000)).toEqual([]); // palm up all along, but busy
     const idleAt = step({ select: false });
     const times = palmUpTimes(step, 2000);
-    expect(times).toHaveLength(1); // the pointer's next seed (LLD §11)
+    expect(times.length).toBeGreaterThanOrEqual(1); // the pointer's next seed (LLD §11)
     expect(times[0]! - idleAt).toBeGreaterThanOrEqual(PALM_UP_HOLD_MS);
     expect(times[0]! - idleAt).toBeLessThanOrEqual(PALM_UP_HOLD_MS + 2 * FRAME_MS);
   });
@@ -1138,7 +1144,7 @@ describe('GestureMachine: palm up (TC-HND-03, FR-HND-05)', () => {
     step({ tracked: false });
     const backAt = step({ tracked: true });
     const times = palmUpTimes(step, 1500);
-    expect(times).toHaveLength(1);
+    expect(times.length).toBeGreaterThanOrEqual(1);
     expect(times[0]! - backAt).toBeGreaterThanOrEqual(PALM_UP_HOLD_MS);
   });
 });

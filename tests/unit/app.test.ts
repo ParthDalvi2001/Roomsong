@@ -116,6 +116,7 @@ describe('the systems start() registers (API_SPEC §1.10, the priorities table)'
       ['PerfSystem', '-100', '{ guard, engine }'],
       ['RoomSystem', '10'],
       ['HandSystem', '20'],
+      ['SeedSystem', '49', '{ guard }'], // T-127
       ['BedRenderSystem', '50', '{ guard, bed: room.bed.object3D }'],
       ['CaptionSystem', '60'],
     ]);

@@ -1,4 +1,5 @@
-// TC-HND-03, the palm-up part (FR-HND-05): within 35 degrees of world up, held 400 ms; a dropout restarts the hold.
+// TC-HND-03, the palm-up part (FR-HND-05): within 35 degrees of world up, held 400 ms, and again every 400 ms
+// while it holds (T-127); a dropout restarts the hold.
 import { describe, expect, it } from 'vitest';
 
 import { PALM_UP_HOLD_MS, PALM_UP_MAX_ANGLE_DEG } from '../../../../src/hands/config.js';
@@ -42,10 +43,19 @@ describe('isPalmUp', () => {
 });
 
 describe('PalmUpHold', () => {
-  it('fires once, on the first sample 400 ms after the palm turned up', () => {
+  it('fires on the first sample 400 ms after the palm turned up, then every 400 ms while it stays up', () => {
     const pose = new PalmUpHold();
-    // 0, 14, ... 392 ms are short of the hold; 406 ms is the first sample past it. Held on to 2 s: no repeat.
-    expect(hold(pose, hand(0), 0, 2000)).toEqual([406]);
+    // 0, 14, ... 392 ms are short of the hold; 406 ms is the first sample past it. Each repeat counts from the
+    // sample that fired (T-127): the garden ignores a repeat it cannot serve and serves the next one it can.
+    expect(hold(pose, hand(0), 0, 2000)).toEqual([406, 812, 1218, 1624]);
+  });
+
+  it('after a paused page it fires once on the first sample back, not once for every 400 ms it missed', () => {
+    const pose = new PalmUpHold();
+    expect(hold(pose, hand(0), 0, 406)).toEqual([406]);
+    expect(pose.update(hand(0), 5000)).toBe(true);
+    expect(hold(pose, hand(0), 5014, 5392)).toEqual([]);
+    expect(pose.update(hand(0), 5400)).toBe(true);
   });
 
   it('fires at exactly 400 ms, and not a millisecond before', () => {

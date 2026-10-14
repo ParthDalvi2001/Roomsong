@@ -123,3 +123,24 @@ export const PETAL_FADE_MS = 300;
 /** Chosen in T-146: a petal is an oval this much narrower than it is long, with this many edges. */
 export const PETAL_ASPECT = 0.6;
 export const PETAL_SEGMENTS = 12;
+
+/** FR-HND-04: a seed is drawn as wide as a target, in the orb and on a hand alike; a sphere of 80 triangles. */
+export const SEED_DIAMETER_M = TARGET_VISIBLE_DIAMETER_M;
+export const SEED_DETAIL = 1;
+/** UX §7 (the supply orb, FR-MUS-08), chosen in T-127: the waiting seeds hang on a ring this wide, this high over
+ *  the bed's centre hole, one place per seed of the supply: the count is the seeds there. Inside the view box
+ *  whenever the bed is (NFR-FOV-01); not a target, so it takes no reach and no pinch from the Listen orb below. */
+export const SUPPLY_ORB_LIFT_M = 0.1;
+export const SUPPLY_ORB_RADIUS_M = 0.03;
+/** Chosen in T-127: a seed waits at a plant's rest brightness and is lit full while it is out on a hand. */
+export const SEED_OUT_BRIGHTNESS = 1;
+/** UX §3.3 ("seed glides to palm"), chosen in T-127: a seed's way between the orb and a hand, ease-out. UX §9.1:
+ *  its hop from the palm to the pinch point that took it. */
+export const SEED_GLIDE_MS = 300;
+export const SEED_HOP_MS = 100;
+/** UX §7, chosen in T-127: a seed let go off the bed hops this high on its way back to the orb; UX §5: reduced
+ *  motion halves the amplitude. */
+export const SEED_BUMP_M = 0.03;
+export const SEED_BUMP_REDUCED_M = SEED_BUMP_M / 2;
+/** UX §7: "Garden is full" when a seed is let go over a full bed. Chosen in T-127: up this long (core's clock). */
+export const GARDEN_FULL_CAPTION_MS = 3000;

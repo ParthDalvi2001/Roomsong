@@ -1,19 +1,34 @@
-// The ECS systems of render/ (LLD §3.2): PerfSystem, and BedRenderSystem, which draws the bed today and gets its
-// plants, tide and targets with T-128d. The renderers themselves stay plain classes that read no clock
-// (API_SPEC §1.8).
-import { createSystem, Types, type Object3D } from '@iwsdk/core';
+// The ECS systems of render/ (LLD §3.2): PerfSystem; SeedSystem, the seeds and their orb (T-127); and
+// BedRenderSystem, which draws the bed today and gets its plants, tide and targets with T-128d. The renderers
+// themselves stay plain classes that read no clock (API_SPEC §1.8).
+import { createSystem, Types, Vector3, type Entity, type Object3D } from '@iwsdk/core';
 
-import { BedAnchor } from '../core/components.js';
-import { log } from '../core/index.js';
+import { BedAnchor, Caption, Interactable } from '../core/components.js';
+import { bus, clock, log } from '../core/index.js';
+import { HandState, HIT_RADIUS_M } from '../hands/index.js';
 
 import { BedRenderer } from './BedRenderer.js';
-import { PERF_HUD_HEAD_OFFSET_M } from './config.js';
+import { GARDEN_FULL_CAPTION_MS, PERF_HUD_HEAD_OFFSET_M } from './config.js';
 import { createPerfHud, PerfSampler } from './PerfHud.js';
+import { SeedRenderer } from './SeedRenderer.js';
 
 import type { FlashGuard } from './FlashGuard.js';
+import type { SeedMove } from './SeedRenderer.js';
 import type { AudioEngine } from '../audio/index.js';
+import type { EventMap, Hand, StringKey } from '../core/index.js';
 
 const NOTHING = (): void => {};
+/** UX §7: the caption of a seed let go over a full bed. */
+const GARDEN_FULL: StringKey = 'gardenFull';
+/** UX §7: how a seed that is sent back goes: a hop off the bed, a glide (with the caption) over a full one, and
+ *  at once for a lost hand or a session's end. */
+const BACK: Readonly<Record<EventMap['garden:seedBack']['reason'], SeedMove>> = {
+  offBed: 'bump',
+  full: 'glide',
+  lost: 'jump',
+  reset: 'jump',
+};
+const handIndex = (hand: Hand): number => (hand === 'left' ? 0 : 1);
 
 /**
  * Times every frame and emits `perf:sample` once a second (NFR-PERF-03/04/05). Priority -100 (LLD §3.2): it runs
@@ -54,6 +69,119 @@ export class PerfSystem extends createSystem(
   override update(_delta: number, time: number): void {
     this.startedMs = performance.now();
     this.frameMs = time * 1000;
+  }
+}
+
+/**
+ * The seed on the hand (T-127, FR-HND-05, API_SPEC §1.10 rule 8). Priority 49 (LLD §3.2), configData `guard`. It
+ * draws the supply in its orb over the bed and the seed that is out: on the palm of the hand it went to
+ * (`garden:seedOut`), at the pinch point of the hand of the latest `gesture:pinchStart` that names it, and back in
+ * the orb on `garden:seedBack`; a planted seed leaves the supply with its `garden:changed`. While a seed is out it
+ * carries that seed's `Interactable`, at the point it is drawn. A hand that is lost or turned leaves its HandState
+ * as it was, so a seed on its palm stays there, out (the garden's rule).
+ */
+export class SeedSystem extends createSystem(
+  { hands: { required: [HandState] }, beds: { required: [BedAnchor] } },
+  { guard: { type: Types.Object, default: null } },
+) {
+  private seeds!: SeedRenderer;
+  /** Per hand (left, right): its palm and pinch points as HandSystem wrote them this frame. A seed follows one. */
+  private readonly palms = [new Vector3(), new Vector3()];
+  private readonly pinches = [new Vector3(), new Vector3()];
+  private readonly handStates: (Entity | null)[] = [null, null];
+  /** The bed (API_SPEC §1.10 rule 5: one entity, with BedAnchor while it is placed); the orb hangs over it. */
+  private bed: Entity | null = null;
+  /** The seed's target while one is out, and the "Garden is full" caption: an entity each, made once. */
+  private target!: Entity;
+  private caption!: Entity;
+  private outId: string | null = null;
+  /** The latest frame's time, ms: a seed sent from a bus handler starts its glide there. */
+  private frameMs = 0;
+  private readonly drawnAt = new Vector3();
+
+  override init(): void {
+    this.seeds = new SeedRenderer(this.scene, this.config.guard.value as FlashGuard);
+    this.target = this.createEntity();
+    this.caption = this.createEntity();
+    const { hands, beds } = this.queries;
+    this.cleanupFuncs.push(
+      // `true`: what was there before this system was registered counts too
+      hands.subscribe(
+        'qualify',
+        (entity) => void (this.handStates[handIndex(entity.getValue(HandState, 'hand') as Hand)] = entity),
+        true,
+      ),
+      hands.subscribe('disqualify', (entity) => {
+        const i = this.handStates.indexOf(entity);
+        if (i >= 0) this.handStates[i] = null;
+      }),
+      beds.subscribe('qualify', (entity) => void (this.bed = entity), true),
+      beds.subscribe('disqualify', (entity) => {
+        if (this.bed === entity) this.bed = null;
+      }),
+      bus.on('garden:changed', ({ state }) => {
+        this.seeds.setSupply(state.seeds);
+        // Planted (its id is in diff.added, and a plant takes its seed's id) or gone with its garden.
+        if (this.outId !== null && !this.seeds.has(this.outId)) this.end();
+      }),
+      bus.on('garden:seedOut', ({ seed, hand }) => this.send(seed.id, hand)),
+      bus.on('gesture:pinchStart', ({ hand, target }) => {
+        if (target?.kind !== 'seed' || target.id !== this.outId) return;
+        this.seeds.follow(target.id, this.pinches[handIndex(hand)]!, this.frameMs, 'hop');
+      }),
+      bus.on('garden:seedBack', ({ seedId, reason }) => {
+        this.seeds.follow(seedId, null, this.frameMs, BACK[reason]);
+        if (seedId === this.outId) this.end();
+        if (reason === 'full') this.raiseFull();
+      }),
+      () => this.seeds.dispose(),
+    );
+  }
+
+  /** `time`: IWSDK's frame time in seconds. In whole ms, as HandSystem has it: a fraction handed on is boxed. */
+  override update(_delta: number, time: number): void {
+    const nowMs = (this.frameMs = Math.round(time * 1000));
+    for (let i = 0; i < 2; i++) {
+      const entity = this.handStates[i];
+      if (entity === null || entity === undefined) continue;
+      this.palms[i]!.fromArray(entity.getVectorView(HandState, 'palmPos'));
+      this.pinches[i]!.fromArray(entity.getVectorView(HandState, 'pinchPos'));
+    }
+    this.seeds.update(this.bed?.object3D?.matrixWorld ?? null, nowMs);
+    if (this.outId === null || !this.seeds.positionOf(this.outId, this.drawnAt)) return;
+    // The target is where the seed is drawn; hands reads it next frame (LLD §3.4).
+    const view = this.target.getVectorView(Interactable, 'worldPos');
+    view[0] = this.drawnAt.x;
+    view[1] = this.drawnAt.y;
+    view[2] = this.drawnAt.z;
+  }
+
+  /** `garden:seedOut`: the seed glides to that hand's palm and is a pinch target from now on (FR-HND-04). */
+  private send(seedId: string, hand: Hand): void {
+    if (this.outId !== null) {
+      // At most one seed is out (rule 8): a second one sends the first home, drawn and target alike.
+      this.seeds.follow(this.outId, null, this.frameMs, 'jump');
+      this.end();
+    }
+    if (!this.seeds.follow(seedId, this.palms[handIndex(hand)]!, this.frameMs, 'glide')) {
+      log.warn('render', 'garden:seedOut for a seed that is not in the supply', { seedId });
+      return;
+    }
+    this.outId = seedId;
+    // hands reads kind, id and radius once, when the component is added (API_SPEC §1.10 rule 7)
+    this.target.addComponent(Interactable, { kind: 'seed', id: seedId, radius: HIT_RADIUS_M });
+  }
+
+  /** The seed is not out any more: its target goes. */
+  private end(): void {
+    this.outId = null;
+    if (this.target.hasComponent(Interactable)) this.target.removeComponent(Interactable);
+  }
+
+  /** UX §7. Taken back first: a Caption added again to an entity that still has one would not qualify again. */
+  private raiseFull(): void {
+    if (this.caption.hasComponent(Caption)) this.caption.removeComponent(Caption);
+    this.caption.addComponent(Caption, { key: GARDEN_FULL, expiresAt: clock.now() + GARDEN_FULL_CAPTION_MS });
   }
 }
 

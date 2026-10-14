@@ -40,10 +40,15 @@ describe('core/strings', () => {
       expect(STRINGS[key].split(' ')).toHaveLength(6);
   });
 
+  it('holds the full-bed caption of UX §7 under the key render/ raises it by (T-127)', () => {
+    expect(STRINGS.gardenFull).toBe('Garden is full');
+  });
+
   it('keys the message of a failure by its error code', () => {
     expect(STRINGS.E_SAVE_FAILED).toBe('Saving unavailable');
     expect(STRINGS.E_AUDIO_CONTEXT).toBe('Sound unavailable'); // a session with no sound (API_SPEC §1.10 rule 2)
-    const failures = entries.filter(([k]) => !/^(ripple|place)/.test(k) && k !== 'handOutOfView');
+    const notices = ['handOutOfView', 'gardenFull'];
+    const failures = entries.filter(([k]) => !/^(ripple|place)/.test(k) && !notices.includes(k));
     for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);
   });
 });
