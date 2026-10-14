@@ -104,7 +104,7 @@ Nothing changes the garden before a pinch ends: everything in this table up to t
 | Pull | Starts when the hand leaves the dead zone moving more up or down than sideways (a tie is a pull). Plant stretches; a faint vertical scale ladder; 25 cm of travel is the whole range. Latched until release: a pull never becomes a drag and never moves the plant. The height shown is the height saved on release (FR-HND-08) | Live note preview (quiet) |
 | Drag | Starts when the hand leaves the dead zone moving more sideways than up or down; latched until release. The plant follows the hand; ghost at the cell a release would fill; guides glow; past the outer edge (> 0.35 m from centre) the ghost fades and the bed rim dims to warn. **Remove hint:** during a drag an outward arrow (✥→) glows on the bed rim on the side of the hand that holds the plant. It points sideways, never away from the player: the far side is beyond reach (§2). Shown until the first removal, like the other hints | Cell "tick" on change |
 | Drag off the bed (release outside, sideways or towards the body) | Plant dissolves into petals at the release point; the petals drift back to the plant's cell and one **undo petal** waits 3 cm above it for 5 s, shrinking as time runs out (§9.3) | Reverse chime |
-| Release in the hole | Plant snaps back to where it was | `bump` (the one "no" sound, API_SPEC §1.2) |
+| Release in the hole | Plant glides back to where it was (150 ms ease-out, hands' `REVERT_LERP_MS`; as built in T-147) | `bump` (the one "no" sound, API_SPEC §1.2) |
 | Undo (pinch and release on the petal, or dwell) | Petals reassemble in the original cell | Forward chime |
 *Twist and flick removed (D-011): no gesture is bound to either.*
 
