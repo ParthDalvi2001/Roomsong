@@ -1,6 +1,8 @@
 // The undo petal (UX §9.3, FR-MUS-12): after a plant is removed, one petal in its colour waits 3 cm above the
 // cell it stood on and shrinks while the undo lasts. One InstancedMesh: one draw call while any petal is up, none
 // otherwise. A cell holds one petal at most, so an instance is a cell, and so is a FlashGuard element.
+// Its arrival (T-147): the removed plant dissolves into a burst of petals at the release point, which drift to
+// the cell, where the undo petal is the one that stays; the others are a small pool of instances after the 80.
 // Nothing here listens to the bus or reads a clock: the wiring calls show, hide and clear from the garden's
 // events and update once per frame (API_SPEC §1.8). update allocates nothing.
 import {
@@ -12,12 +14,19 @@ import {
   SRGBColorSpace,
 } from 'three';
 
+import { settings } from '../core/index.js';
 import { cellCentre, RINGS, STEPS, UNDO_LIFE_MS } from '../garden/index.js';
 
 import {
+  BURST_MS,
+  BURST_PETAL_DIAMETER_M,
+  BURST_PETALS,
+  BURST_POOL,
+  BURST_SPREAD_M,
   FLASH_MIN_DELTA,
   PETAL_ASPECT,
   PETAL_END_DIAMETER_M,
+  PETAL_FADE_IN_MS,
   PETAL_FADE_MS,
   PETAL_LIFT_M,
   PETAL_SEGMENTS,
@@ -29,6 +38,7 @@ import {
 } from './config.js';
 
 import type { FlashGuard } from './FlashGuard.js';
+import type { Vec3 } from '../core/index.js';
 import type { Plant } from '../garden/index.js';
 import type { Object3D } from 'three';
 
@@ -50,6 +60,13 @@ void main() {
 
 const colour = new Color();
 const centre = { x: 0, y: 0 };
+/** An arrival or a particle that starts with the next frame, and one that is over (or never was). */
+const NEXT_FRAME = Number.POSITIVE_INFINITY;
+const NONE = Number.NEGATIVE_INFINITY;
+/** How a petal arrives (UX §9.3): at once, drifting from the release point, or fading in (reduced motion). */
+const AT_ONCE = 0;
+const DRIFT = 1;
+const FADE_IN = 2;
 
 export class PetalRenderer {
   readonly mesh: InstancedMesh<CircleGeometry, ShaderMaterial>;
@@ -68,6 +85,22 @@ export class PetalRenderer {
   private readonly outward = new Float32Array(PLANT_CAPACITY * 2);
   /** Per slot: how wide its petal is drawn, in metres; 0 = none. `resize` writes it into the instance. */
   private readonly widthM = new Float32Array(PLANT_CAPACITY);
+  /** Per slot: its place over the cell (x, y, z); how it arrives, from where (x, y, z) and since when. */
+  private readonly home = new Float64Array(PLANT_CAPACITY * 3);
+  private readonly arrival = new Uint8Array(PLANT_CAPACITY);
+  private readonly arriveFrom = new Float64Array(PLANT_CAPACITY * 3);
+  private readonly arriveAt = new Float64Array(PLANT_CAPACITY).fill(NONE);
+  // The burst's other petals, per particle of the pool: where it starts and ends (x, y, z each), the way out of
+  // the bed its long side lies on (x, z), and when it started (NONE: not flying). The next one a burst takes is
+  // `nextParticle`, so a burst that finds the pool busy takes the oldest; `flying` counts the ones in the air.
+  private readonly particleFrom = new Float64Array(BURST_POOL * 3);
+  private readonly particleTo = new Float64Array(BURST_POOL * 3);
+  private readonly particleOut = new Float64Array(BURST_POOL * 2);
+  private readonly particleAt = new Float64Array(BURST_POOL).fill(NONE);
+  private nextParticle = 0;
+  private flying = 0;
+  /** The frame time, kept for `fly`: a fraction handed to a method is boxed (see resize). */
+  private readonly now = new Float64Array(1);
 
   constructor(
     parent: Object3D,
@@ -76,7 +109,8 @@ export class PetalRenderer {
     this.firstElement = guard.claim(PLANT_CAPACITY);
     // One unit long, so an instance's scale is its width in metres; flat on the bed's plane.
     const geometry = new CircleGeometry(0.5, PETAL_SEGMENTS).rotateX(-Math.PI / 2).scale(1, 1, PETAL_ASPECT);
-    this.colours = new InstancedBufferAttribute(new Float32Array(PLANT_CAPACITY * 4), 4);
+    const count = PLANT_CAPACITY + BURST_POOL;
+    this.colours = new InstancedBufferAttribute(new Float32Array(count * 4), 4);
     geometry.setAttribute('aColour', this.colours);
     const material = new ShaderMaterial({
       vertexShader: VERTEX,
@@ -84,8 +118,9 @@ export class PetalRenderer {
       transparent: true,
       depthWrite: false,
     });
-    this.mesh = new InstancedMesh(geometry, material, PLANT_CAPACITY);
+    this.mesh = new InstancedMesh(geometry, material, count);
     this.mesh.instanceMatrix.array.fill(0); // every slot starts with no size: nothing of it is drawn
+    this.mesh.count = PLANT_CAPACITY; // the pool's instances are drawn only while a burst flies
     this.mesh.visible = false;
     this.mesh.frustumCulled = false; // its bounds are one petal's; the instances lie all over the bed
     this.mesh.renderOrder = 3; // after the bed's glass, its markers and the tide
@@ -98,8 +133,11 @@ export class PetalRenderer {
    * only, on `garden:removed`: `untilMs` is on the clock of `update`, so the caller converts the event's
    * `expiresAt`, which is on core's clock. One petal per cell (UX §9.3: never two on one spot): a petal already
    * over that cell goes, and so does an older one of the same plant. A cell that is not on the bed shows none.
+   * `from` (T-147), the bed-frame point where the plant dissolved (PlantRenderer.heldAt): the petal and
+   * BURST_PETALS - 1 more drift from around it to the cell over BURST_MS, and only the petal stays. Without it the
+   * petal is there at once. Reduced motion: no burst and no drift; the petal fades in over PETAL_FADE_IN_MS.
    */
-  show(plantId: string, plant: Pick<Plant, 'cell' | 'hue'>, untilMs: number): void {
+  show(plantId: string, plant: Pick<Plant, 'cell' | 'hue'>, untilMs: number, from: Vec3 | null = null): void {
     const { ring, step } = plant.cell;
     const isOnBed =
       Number.isInteger(ring) &&
@@ -124,9 +162,9 @@ export class PetalRenderer {
     this.outward[slot * 2] = centre.x / radius;
     this.outward[slot * 2 + 1] = centre.y / radius;
     const matrix = this.mesh.instanceMatrix.array;
-    matrix[slot * 16 + 12] = centre.x;
-    matrix[slot * 16 + 13] = PETAL_LIFT_M;
-    matrix[slot * 16 + 14] = centre.y;
+    this.home[slot * 3] = matrix[slot * 16 + 12] = centre.x;
+    this.home[slot * 3 + 1] = matrix[slot * 16 + 13] = PETAL_LIFT_M;
+    this.home[slot * 3 + 2] = matrix[slot * 16 + 14] = centre.y;
     matrix[slot * 16 + 15] = 1;
     this.widthM[slot] = PETAL_START_DIAMETER_M;
     this.resize(slot);
@@ -139,6 +177,7 @@ export class PetalRenderer {
     this.colours.needsUpdate = true;
     // A new thing on a reused element: at rest, with no swing in progress, whatever the last petal here left.
     this.guard.reset(this.firstElement + slot, PLANT_REST_BRIGHTNESS);
+    this.arrive(slot, from);
     this.mesh.visible = true;
   }
 
@@ -152,12 +191,22 @@ export class PetalRenderer {
     this.live[index] = this.live[--this.liveCount]!;
     this.widthM[slot] = 0;
     this.resize(slot);
-    this.mesh.visible = this.liveCount > 0;
+    this.arrival[slot] = AT_ONCE; // the rest of its burst, if it is still in the air, lands by itself
+    this.mesh.visible = this.liveCount > 0 || this.flying > 0;
   }
 
-  /** Takes every petal away: New garden drops every undo token, and no event says so. */
+  /** Takes every petal away, and every petal of a burst still in the air: New garden drops every undo token. */
   clear(): void {
     while (this.liveCount > 0) this.hide(this.plantAt[this.live[0]!]!);
+    const matrix = this.mesh.instanceMatrix.array;
+    for (let i = 0; i < BURST_POOL; i++) {
+      this.particleAt[i] = NONE;
+      for (const e of [0, 2, 5, 8, 10]) matrix[(PLANT_CAPACITY + i) * 16 + e] = 0;
+    }
+    this.flying = 0;
+    this.mesh.count = PLANT_CAPACITY;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    this.mesh.visible = false;
   }
 
   /** Whether that plant's petal is up. Its pinch target lives exactly as long (API_SPEC §1.10 rule 7). */
@@ -167,12 +216,17 @@ export class PetalRenderer {
 
   /**
    * Per frame, creates nothing. Each petal shrinks in a straight line over the undo's life, fades out over its
-   * last PETAL_FADE_MS through the flash cap (FR-UI-11), and goes when `nowMs` reaches its time. `nowMs` is the
-   * frame's time; one that is not finite changes nothing.
+   * last PETAL_FADE_MS through the flash cap (FR-UI-11), and goes when `nowMs` reaches its time. A petal that
+   * arrives drifts in from the release point, or fades in, from this frame on; a burst's other petals drift and
+   * shrink to nothing at one brightness, so they change no luminance. `nowMs` is the frame's time; one that is
+   * not finite changes nothing.
    */
   update(nowMs: number): void {
-    if (this.liveCount === 0 || !Number.isFinite(nowMs)) return;
+    if ((this.liveCount === 0 && this.flying === 0) || !Number.isFinite(nowMs)) return;
+    this.now[0] = nowMs;
+    if (this.flying > 0) this.fly();
     const alpha = this.colours.array;
+    const matrix = this.mesh.instanceMatrix.array;
     for (let i = this.liveCount - 1; i >= 0; i--) {
       const slot = this.live[i]!;
       const leftMs = this.untilMs[slot]! - nowMs;
@@ -183,15 +237,32 @@ export class PetalRenderer {
       const life = leftMs < UNDO_LIFE_MS ? leftMs / UNDO_LIFE_MS : 1;
       this.widthM[slot] = PETAL_END_DIAMETER_M + (PETAL_START_DIAMETER_M - PETAL_END_DIAMETER_M) * life;
       this.resize(slot);
+      const arrival = this.arrival[slot];
+      if (this.arriveAt[slot] === NEXT_FRAME) this.arriveAt[slot] = nowMs;
+      const sinceMs = nowMs - this.arriveAt[slot]!;
+      if (arrival === DRIFT) {
+        // UX §9.3: from the release point to the cell over BURST_MS, ease-out.
+        const left = Math.max(0, 1 - sinceMs / BURST_MS);
+        for (let c = 0; c < 3; c++) {
+          const home = this.home[slot * 3 + c]!;
+          matrix[slot * 16 + 12 + c] = home + (this.arriveFrom[slot * 3 + c]! - home) * left * left;
+        }
+        if (left === 0) this.arrival[slot] = AT_ONCE;
+      }
       // Until its fade is a luminance change (half of FLASH_MIN_DELTA, where the guard starts a swing), a petal
       // keeps the brightness show() drew it at and the guard is not asked: asked for an element that has not
       // swung yet, it cost a boxed number per call (16 bytes, measured). That is the first 21 ms of the fade.
-      const wanted = (PLANT_REST_BRIGHTNESS * leftMs) / PETAL_FADE_MS;
-      if (wanted > PLANT_REST_BRIGHTNESS - FLASH_MIN_DELTA / 2) continue;
-      alpha[slot * 4 + 3] =
-        this.guard.request(this.firstElement + slot, wanted, nowMs) / PLANT_REST_BRIGHTNESS;
+      // A petal that fades in (reduced motion) asks for the lower of its fade in and its fade out.
+      let wanted = (PLANT_REST_BRIGHTNESS * leftMs) / PETAL_FADE_MS;
+      if (arrival === FADE_IN)
+        wanted = Math.min(wanted, (PLANT_REST_BRIGHTNESS * sinceMs) / PETAL_FADE_IN_MS);
+      else if (wanted > PLANT_REST_BRIGHTNESS - FLASH_MIN_DELTA / 2) continue;
+      const granted = this.guard.request(this.firstElement + slot, wanted, nowMs);
+      alpha[slot * 4 + 3] = granted / PLANT_REST_BRIGHTNESS;
       this.colours.needsUpdate = true;
+      if (arrival === FADE_IN && granted >= PLANT_REST_BRIGHTNESS) this.arrival[slot] = AT_ONCE;
     }
+    this.mesh.visible = this.liveCount > 0 || this.flying > 0;
   }
 
   dispose(): void {
@@ -199,6 +270,77 @@ export class PetalRenderer {
     this.mesh.geometry.dispose();
     this.mesh.material.dispose();
     this.mesh.dispose();
+  }
+
+  /**
+   * How a petal just shown arrives (UX §9.3): fading in under reduced motion; else, with a release point, as one
+   * of a burst that drifts from there to its cell; else at once.
+   */
+  private arrive(slot: number, from: Vec3 | null): void {
+    this.arrival[slot] = AT_ONCE;
+    this.arriveAt[slot] = NEXT_FRAME;
+    if (settings.get().reducedMotion) {
+      this.arrival[slot] = FADE_IN;
+      this.colours.array[slot * 4 + 3] = 0;
+      this.guard.reset(this.firstElement + slot, 0);
+      return;
+    }
+    if (from === null) return;
+    this.arrival[slot] = DRIFT;
+    const matrix = this.mesh.instanceMatrix.array;
+    this.arriveFrom[slot * 3] = matrix[slot * 16 + 12] = from.x;
+    this.arriveFrom[slot * 3 + 1] = matrix[slot * 16 + 13] = from.y;
+    this.arriveFrom[slot * 3 + 2] = matrix[slot * 16 + 14] = from.z;
+    // The rest of the burst: a ring round the release point, each on its way to the same cell, in its colour.
+    for (let k = 0; k < BURST_PETALS - 1; k++) {
+      const i = this.nextParticle;
+      this.nextParticle = (i + 1) % BURST_POOL;
+      if (this.particleAt[i] === NONE) this.flying++;
+      this.mesh.count = PLANT_CAPACITY + BURST_POOL;
+      this.particleAt[i] = NEXT_FRAME;
+      const angle = (2 * Math.PI * k) / (BURST_PETALS - 1);
+      this.particleFrom[i * 3] = from.x + BURST_SPREAD_M * Math.cos(angle);
+      this.particleFrom[i * 3 + 1] = from.y;
+      this.particleFrom[i * 3 + 2] = from.z + BURST_SPREAD_M * Math.sin(angle);
+      for (let c = 0; c < 3; c++) this.particleTo[i * 3 + c] = this.home[slot * 3 + c]!;
+      this.particleOut[i * 2] = this.outward[slot * 2]!;
+      this.particleOut[i * 2 + 1] = this.outward[slot * 2 + 1]!;
+      for (let c = 0; c < 4; c++) {
+        this.colours.array[(PLANT_CAPACITY + i) * 4 + c] = this.colours.array[slot * 4 + c]!;
+      }
+    }
+  }
+
+  /**
+   * Per frame while a burst is in the air: each of its petals moves toward its cell (ease-out over BURST_MS) and
+   * shrinks in a straight line to nothing on arrival, at one brightness. Nothing is created.
+   */
+  private fly(): void {
+    const now = this.now[0]!;
+    const matrix = this.mesh.instanceMatrix.array;
+    for (let i = 0; i < BURST_POOL; i++) {
+      if (this.particleAt[i] === NONE) continue;
+      if (this.particleAt[i] === NEXT_FRAME) this.particleAt[i] = now;
+      const left = Math.max(0, 1 - (now - this.particleAt[i]!) / BURST_MS);
+      const at = (PLANT_CAPACITY + i) * 16;
+      for (let c = 0; c < 3; c++) {
+        const to = this.particleTo[i * 3 + c]!;
+        matrix[at + 12 + c] = to + (this.particleFrom[i * 3 + c]! - to) * left * left;
+      }
+      const widthM = BURST_PETAL_DIAMETER_M * left;
+      const x = this.particleOut[i * 2]! * widthM;
+      const z = this.particleOut[i * 2 + 1]! * widthM;
+      matrix[at] = matrix[at + 10] = x;
+      matrix[at + 2] = z;
+      matrix[at + 8] = -z;
+      matrix[at + 5] = widthM;
+      matrix[at + 15] = 1;
+      if (left > 0) continue;
+      this.particleAt[i] = NONE;
+      this.flying--;
+    }
+    if (this.flying === 0) this.mesh.count = PLANT_CAPACITY;
+    this.mesh.instanceMatrix.needsUpdate = true;
   }
 
   /**

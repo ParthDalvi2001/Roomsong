@@ -1,4 +1,4 @@
-# Bed preview (T-125, T-119)
+# Bed preview (T-125, T-119, T-147)
 
 **Status: desktop browser and emulator only. Nothing here has been seen on a headset.** How it looks is for
 Parth to rate; frame rate on a Quest is unknown.
@@ -33,6 +33,23 @@ picture that moves, with a few switches for the things the app's hands and visit
    this page changes with it.
 7. **High contrast**: every plant gets a cream outline.
 
+## Shaping a plant (T-147)
+
+The four buttons play a hand on the plant nearest you (each takes about 4 s; tick **Slow motion** to see the
+short moves at a tenth of the speed):
+
+1. **Pull it up**: the plant lifts 1 cm and glows, its stem stretches as the hand rises, and five faint rings
+   round it mark the heights it can reach (the scale ladder). The hand settles a little lower and lets go: the
+   plant keeps that height.
+2. **Drag it to a free cell**: the plant follows the hand; the ring of the cell it would land on lights up (the
+   ghost). Let go, it settles into that cell.
+3. **Drag it off the bed**: past the bed's edge the plant fades to half and a dark band round the bed warns that
+   it will be removed. Let go: it bursts into petals that drift back to its cell, where one petal stays for 5 s.
+4. **Lose the hand mid-drag**: the hand leaves the view while it drags the plant into the middle. The plant waits
+   there at half brightness, and after 0.2 s glides back to its cell in 0.15 s.
+
+With **Reduced motion** ticked the burst is left out and the petal fades in at its cell; the glides stay.
+
 ## See it in the emulator (the headset view, in the browser)
 
 1. On the same page press the page's own **Enter XR** button, under the switches.
@@ -43,9 +60,10 @@ picture that moves, with a few switches for the things the app's hands and visit
 
 ## What is not in this preview
 
-Sound; planting, pulling, dragging and removing; the tuning ripple; the halo and Listen mode. The bed is placed
-0.45 m ahead at 0.72 m, not on a detected table (that is `room/`, wired in T-128). The hover, the tint and the
-visit are switches here; in the app the hands and the garden call them (T-128d).
+Sound; planting by hand (the shaping above is played, not done with a hand); the tuning ripple; the halo and
+Listen mode. The bed is placed 0.45 m ahead at 0.72 m, not on a detected table (that is `room/`, wired in
+T-128). The hover, the tint, the visit and the shaping are switches here; in the app the hands and the garden
+call them (T-128d).
 
 ## Checks
 
@@ -55,7 +73,9 @@ draw calls, and fixed foveation "medium" asked of the session; a full bed (`?fla
 cap over two bars; the built page under its Content Security Policy. For T-119: the tide's crest against its
 shade on a dark and on a white table (at least 3 to 1); a full bed of all five shapes, blooming, with a
 flickering hover, a glow and a tint, for its draw calls, triangles and the flash cap, in the plain view and in
-the session; and the pictures in `.tmp/` (`t119-*.png`, with `bed-plain.png` and `bed-emulator.png`).
+the session; and the pictures in `.tmp/` (`t119-*.png`, with `bed-plain.png` and `bed-emulator.png`). For
+T-147: each of the four shapings played, with the draw calls while it shows (the ladder and the rim one more,
+the ghost none, the petal and its burst one), the flash cap, and `t147-*.png`.
 Unit tests: `npx vitest run tests/unit/render`.
 
 Measured in that run (headless Chromium, software rendering, 2026-10-12, T-119; with the HUD panel on, which is

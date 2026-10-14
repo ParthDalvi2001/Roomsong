@@ -10,7 +10,6 @@ import {
   InstancedBufferAttribute,
   InstancedMesh,
   LatheGeometry,
-  Matrix4,
   ShaderMaterial,
   SRGBColorSpace,
   Vector2,
@@ -18,7 +17,8 @@ import {
 } from 'three';
 
 import { settings } from '../core/index.js';
-import { cellCentre, stageFor, STEPS } from '../garden/index.js';
+import { cellCentre, heightAfterPull, stageFor, STEPS } from '../garden/index.js';
+import { REVERT_LERP_MS } from '../hands/index.js';
 
 import { onBed } from './BedRenderer.js';
 import {
@@ -34,8 +34,11 @@ import {
   PLANT_HOVER_LIFT,
   PLANT_LIGHTNESS,
   PLANT_LOBE_DEPTH,
+  PLANT_OFF_BED_BRIGHTNESS,
   PLANT_OUTLINE_FROM,
   PLANT_OUTLINE_FULL,
+  PLANT_PINCH_LIFT_M,
+  PLANT_TURN_MIN_R_M,
   PLANT_REFERENCE_STEM_M,
   PLANT_REST_BRIGHTNESS,
   PLANT_RIM_GLOW,
@@ -47,10 +50,11 @@ import {
   PLANT_WHORL_AT,
   PLANT_WHORL_LOBE_DEPTH,
 } from './config.js';
+import { ShapingGuides } from './ShapingGuides.js';
 import { stepGlow } from './TideRenderer.js';
 
 import type { FlashGuard } from './FlashGuard.js';
-import type { Hand } from '../core/index.js';
+import type { EventMap, Hand, Vec3 } from '../core/index.js';
 import type { GardenState, VoiceType } from '../garden/index.js';
 import type { Object3D } from 'three';
 
@@ -240,13 +244,28 @@ function silhouette({ profile, segments, lobes, lobeDepth = PLANT_LOBE_DEPTH }: 
   return geometry;
 }
 
-const matrix = new Matrix4();
-const scale = new Vector3();
 const colour = new Color();
 const centre = { x: 0, y: 0 };
+const local = new Vector3();
 // Places in `frame`: the last frame time that was finite, and the milliseconds from the frame before to it.
 const NOW = 0;
 const PASSED = 1;
+/** What a hand does with the plant it holds (T-147): nothing, a pinch inside the dead zone, a pull, a drag. */
+const FREE = 0;
+const PINCHED = 1;
+const PULLED = 2;
+const DRAGGED = 3;
+/** A pose is x, y, z of a plant's foot in the bed frame and the length of its stem, in metres. */
+const POSE = 4;
+/** The pose a slot is asked for this frame (scratch of `wanted`). */
+const want = new Float64Array(POSE);
+/** A glide that starts with the next frame, whatever time that frame has. */
+const NEXT_FRAME = Number.POSITIVE_INFINITY;
+
+type PinchStart = Pick<EventMap['gesture:pinchStart'], 'hand' | 'target' | 'pos'>;
+type Pull = Pick<EventMap['gesture:pull'], 'hand' | 'dy'>;
+type Drag = Pick<EventMap['gesture:drag'], 'hand' | 'pos' | 'zone'>;
+const handIndex = (hand: Hand): number => (hand === 'left' ? 0 : 1);
 
 export class PlantRenderer {
   /** One per silhouette: bell, pad, pluck, bass, choir. */
@@ -303,9 +322,37 @@ export class PlantRenderer {
   private readonly gain = new Float64Array(PLANT_CAPACITY).fill(1);
   /** FR-UI-05: 1 draws every plant's outline (high contrast), 0 none. */
   private readonly outline = { value: 0 };
+  /** UX §3.4: the scale ladder of a pull and the dimmed rim of a drag off the bed. */
+  readonly guides: ShapingGuides;
+  // Shaping (T-147, UX §3.4), per hand (left, right): the plant it holds and what it does with it; its height at
+  // the pinch and the pulled height; the offset from the pinch point to the plant's lifted foot, then the dragged
+  // foot (bed frame, x y z); and the pose its plant was last drawn at (for heldAt).
+  private readonly holdId: (string | null)[] = [null, null];
+  private readonly holdMode = new Uint8Array(2);
+  private readonly holdHeight = new Float64Array(4);
+  private readonly grab = new Float64Array(6);
+  private readonly dragFoot = new Float64Array(6);
+  private readonly handPose = new Float64Array(2 * POSE);
+  /** Per slot: its mesh and instance index, its cell centre (bed x, z) and its height by the state. */
+  private readonly shapeOf = new Uint8Array(PLANT_CAPACITY);
+  private readonly indexOf = new Uint8Array(PLANT_CAPACITY);
+  private readonly rest = new Float64Array(PLANT_CAPACITY * 2);
+  private readonly height = new Float64Array(PLANT_CAPACITY);
+  /** Per hand: whether its drag is past the outer edge. Per slot: the hand that holds it (1 left, 2 right, 0
+   *  none), whether that drag is past the edge, and how far its fade for that is in, 0..1. */
+  private readonly holdOff = new Uint8Array(2);
+  private readonly holder = new Uint8Array(PLANT_CAPACITY);
+  private readonly offBed = new Uint8Array(PLANT_CAPACITY);
+  private readonly away = new Float64Array(PLANT_CAPACITY);
+  /** Per slot: the pose drawn last, and a glide's start: the pose it leaves from and when (UX §3.4). */
+  private readonly pose = new Float64Array(PLANT_CAPACITY * POSE);
+  private readonly from = new Float64Array(PLANT_CAPACITY * POSE);
+  private readonly glideAt = new Float64Array(PLANT_CAPACITY).fill(Number.NEGATIVE_INFINITY);
+  /** Per slot: held or gliding, so update places it every frame. */
+  private readonly moving = new Uint8Array(PLANT_CAPACITY);
 
   constructor(
-    parent: Object3D,
+    private readonly parent: Object3D,
     private readonly guard: FlashGuard,
   ) {
     this.firstElement = guard.claim(PLANT_CAPACITY, PLANT_REST_BRIGHTNESS);
@@ -326,6 +373,7 @@ export class PlantRenderer {
     };
     this.meshes = SHAPES.map((shape) => instanced(shape, PLANT_CAPACITY));
     this.whorls = instanced(WHORL, PLANT_WHORL_AT.length * PLANT_CAPACITY);
+    this.guides = new ShapingGuides(parent, guard);
   }
 
   /**
@@ -340,6 +388,7 @@ export class PlantRenderer {
     const { plants, lastVisitAt } = state;
     if (plants === this.plants && Object.is(lastVisitAt, this.lastVisitAt)) return;
     this.freeSlotsOfGone(plants);
+    this.aim(); // a held plant is placed as held: on a committing release this change comes first (API_SPEC §1.4)
     for (const mesh of this.meshes) mesh.count = 0;
     this.whorls.count = 0;
     for (const plant of plants) {
@@ -359,13 +408,14 @@ export class PlantRenderer {
       const mesh = this.meshes[shape]!;
       const index = mesh.count++;
       this.slotAt[shape * PLANT_CAPACITY + index] = slot;
-      const height = Math.min(1, Math.max(0, plant.height)) || 0; // NaN stands at the minimum
+      this.shapeOf[slot] = shape;
+      this.indexOf[slot] = index;
+      this.height[slot] = Math.min(1, Math.max(0, plant.height)) || 0; // NaN stands at the minimum
+      // Bed-local (x, y) is the bed's x and z (D-029).
       cellCentre(plant.cell, centre);
-      // Bed-local (x, y) is the bed's x and z (D-029). The plant's own +x points out of the bed.
-      matrix.makeRotationY(-Math.atan2(centre.y, centre.x));
-      matrix.scale(scale.set(1, PLANT_STEM_MIN_M + (PLANT_STEM_MAX_M - PLANT_STEM_MIN_M) * height, 1));
-      mesh.setMatrixAt(index, matrix.setPosition(centre.x, 0, centre.y));
-      this.placeWhorls(shape, index, slot);
+      this.rest[slot * 2] = centre.x;
+      this.rest[slot * 2 + 1] = centre.y;
+      this.place(slot);
       this.paint(mesh, index, slot);
     }
     for (const mesh of [...this.meshes, this.whorls]) {
@@ -401,6 +451,99 @@ export class PlantRenderer {
   }
 
   /**
+   * On `gesture:pinchStart` (UX §3.4): a pinch on a drawn plant holds it. It lifts PLANT_PINCH_LIFT_M and glows
+   * like a hovered plant until that hand's `onRelease`. Any other target, or none, is not a hold. `pos` is world.
+   */
+  onPinchStart(event: PinchStart): void {
+    const h = handIndex(event.hand);
+    this.letGo(h);
+    const target = event.target;
+    const slot = target?.kind === 'plant' ? this.slotOfId(target.id) : undefined;
+    if (slot === undefined || target === null) return;
+    this.holdId[h] = target.id;
+    this.holdMode[h] = PINCHED;
+    this.holdHeight[h] = this.holdHeight[h + 2] = this.height[slot]!;
+    // From the pinch point to the lifted foot, in the bed frame: a drag keeps the plant where the hand took it.
+    this.toBed(event.pos);
+    this.grab[h * 3] = this.rest[slot * 2]! - local.x;
+    this.grab[h * 3 + 1] = PLANT_PINCH_LIFT_M - local.y;
+    this.grab[h * 3 + 2] = this.rest[slot * 2 + 1]! - local.z;
+    for (let i = 0; i < POSE; i++) this.handPose[h * POSE + i] = this.pose[slot * POSE + i]!;
+    this.aim();
+    this.syncOffBed(slot);
+    this.startGlide(slot);
+  }
+
+  /**
+   * On `gesture:pull`, each tracked frame (FR-HND-08): the held plant is drawn at heightAfterPull(its height at
+   * the pinch, dy), the height a release commits, with the scale ladder round it. Per frame, creates nothing.
+   */
+  onPull(event: Pull): void {
+    const h = handIndex(event.hand);
+    const mode = this.holdMode[h];
+    if (mode !== PINCHED && mode !== PULLED) return;
+    this.holdHeight[h + 2] = heightAfterPull(this.holdHeight[h]!, event.dy);
+    if (mode === PULLED) return;
+    this.holdMode[h] = PULLED; // the sample that decided: the stem eases to the hand from where it stood
+    const slot = this.slotOfId(this.holdId[h]);
+    if (slot === undefined) return;
+    this.startGlide(slot);
+    centre.x = this.rest[slot * 2]!;
+    centre.y = this.rest[slot * 2 + 1]!;
+    this.guides.setLadder(h, centre);
+  }
+
+  /**
+   * On `gesture:drag`, each tracked frame (FR-HND-10/11): the held plant is drawn under the hand, at `pos`
+   * (world) as far from it as it was at the pinch, and stays at the last `pos` while no event comes. Zone
+   * 'outer' fades it to PLANT_OFF_BED_BRIGHTNESS and dims the rim: removal ahead. Per frame, creates nothing.
+   */
+  onDrag(event: Drag): void {
+    const h = handIndex(event.hand);
+    const mode = this.holdMode[h];
+    if (mode !== PINCHED && mode !== DRAGGED) return;
+    this.toBed(event.pos);
+    this.dragFoot[h * 3] = local.x + this.grab[h * 3]!;
+    this.dragFoot[h * 3 + 1] = local.y + this.grab[h * 3 + 1]!;
+    this.dragFoot[h * 3 + 2] = local.z + this.grab[h * 3 + 2]!;
+    const slot = this.slotOfId(this.holdId[h]);
+    if (mode === PINCHED) {
+      this.holdMode[h] = DRAGGED;
+      if (slot !== undefined) this.startGlide(slot);
+    }
+    const isOff = event.zone === 'outer' ? 1 : 0;
+    if (this.holdOff[h] === isOff) return;
+    this.holdOff[h] = isOff;
+    if (slot !== undefined) this.syncOffBed(slot);
+    this.guides.setRim(this.holdOff[0] === 1 || this.holdOff[1] === 1);
+  }
+
+  /**
+   * On `gesture:release` and on `gesture:trackingLost` of that hand: the hold ends, and the plant glides over
+   * REVERT_LERP_MS (ease-out) from where it was drawn to where the garden has it. A release that committed has
+   * already changed the garden (its garden:changed comes first), so that is the new cell or height; otherwise it
+   * is where the plant was (UX §3.4). A plant removed meanwhile is not drawn: nothing to glide.
+   */
+  onRelease(event: { hand: Hand }): void {
+    this.letGo(handIndex(event.hand));
+  }
+
+  /**
+   * On `garden:removed`: whether a hand still holds that plant, and if so, into `out`, the middle of where it
+   * was last drawn, in the bed frame: where it dissolves into petals (UX §9.3; PetalRenderer.show's `from`).
+   */
+  heldAt(plantId: string, out: Vec3): boolean {
+    // The right hand first: of two hands on one plant it is the one that places it (aim), so its pose is drawn.
+    const h = this.holdId[1] === plantId ? 1 : this.holdId[0] === plantId ? 0 : -1;
+    if (h < 0) return false;
+    const p = h * POSE;
+    out.x = this.handPose[p]!;
+    out.y = this.handPose[p + 1]! + this.handPose[p + 3]! / 2;
+    out.z = this.handPose[p + 2]!;
+    return true;
+  }
+
+  /**
    * Per frame: each plant's glow as the tide passes its step (FR-UI-07), times the dim of a lost hand's tint and
    * the lift of a hover, as one request through the flash cap (FR-UI-11); and the unfurling of the plants that
    * grew (UX §9.6). `barPhase` is audio's clock.barPhase (0..1); one that is not finite means no tide, and every
@@ -421,6 +564,10 @@ export class PlantRenderer {
       let isDirty = false;
       for (let index = 0; index < mesh.count; index++) {
         const slot = this.slotAt[shape * PLANT_CAPACITY + index]!;
+        if (this.moving[slot]) {
+          if (this.glideAt[slot] === NEXT_FRAME) this.glideAt[slot] = frame[NOW]!;
+          this.place(slot);
+        }
         const asked = this.glow[this.step[slot]!]! * this.gain[slot]!;
         const granted = this.guard.request(this.firstElement + slot, asked, nowMs);
         const isSame = granted === this.brightness[slot];
@@ -432,6 +579,7 @@ export class PlantRenderer {
       }
       if (isDirty) mesh.instanceColor!.needsUpdate = true;
     }
+    this.guides.update(frame);
     if (!this.isWhorlPaintDue) return;
     this.whorls.instanceColor!.needsUpdate = true;
     this.isWhorlPaintDue = false;
@@ -444,6 +592,7 @@ export class PlantRenderer {
       mesh.dispose();
     }
     this.material.dispose();
+    this.guides.dispose();
   }
 
   /** Gives back the slots of the plants that are not in `plants`, so new plants can take them in the same call. */
@@ -470,6 +619,8 @@ export class PlantRenderer {
     this.brightness[slot] = PLANT_REST_BRIGHTNESS;
     this.dim[slot] = 1;
     this.lift[slot] = 0;
+    this.away[slot] = this.offBed[slot] = this.moving[slot] = 0;
+    this.glideAt[slot] = Number.NEGATIVE_INFINITY;
     this.stage[slot] = UNSEEN;
     this.guard.reset(this.firstElement + slot, PLANT_REST_BRIGHTNESS);
     return slot;
@@ -567,10 +718,20 @@ export class PlantRenderer {
     return typeof id === 'string' ? this.slotOf.get(id) : undefined;
   }
 
-  /** Works out, per slot, what the hands ask of it. Set-up only: when a tint, a hover or the garden changes. */
+  /**
+   * Works out, per slot, what the hands ask of it. Set-up only: when a tint, a hover, a hold or the garden
+   * changes. A held plant glows like a hovered one (UX §3.4: the pinch's glow) and is placed every frame.
+   */
   private aim(): void {
     this.dimUntil.fill(Number.NEGATIVE_INFINITY);
     this.hovered.fill(0);
+    this.holder.fill(0);
+    for (let hand = 0; hand < this.holdId.length; hand++) {
+      const held = this.slotOfId(this.holdId[hand]);
+      if (held === undefined) continue;
+      this.holder[held] = hand + 1; // two hands on one plant (an edge case): the right one places it
+      this.hovered[held] = this.moving[held] = 1;
+    }
     for (let hand = 0; hand < this.tintId.length; hand++) {
       const tinted = this.slotOfId(this.tintId[hand]);
       // Two hands on one plant are one tint: the later end. An end that is not a number tints nothing, and is
@@ -584,8 +745,8 @@ export class PlantRenderer {
   }
 
   /**
-   * Per frame: moves each plant's dim and lift toward what its hands ask (the dim down at once and back up as
-   * an ease, the lift as an ease both ways) and writes their product into `gain`.
+   * Per frame: moves each plant's dim, lift and off-bed fade toward what its hands ask (the dim down at once and
+   * back up as an ease, the other two as eases both ways) and writes their product into `gain`.
    */
   private ease(): void {
     const now = this.frame[NOW]!;
@@ -601,8 +762,107 @@ export class PlantRenderer {
       if (this.hovered[slot]) {
         if (lift < 1) this.lift[slot] = Math.min(1, lift + moved);
       } else if (lift > 0) this.lift[slot] = Math.max(0, lift - moved);
-      this.gain[slot] = this.dim[slot]! * (1 + PLANT_HOVER_LIFT * this.lift[slot]!);
+      const away = this.away[slot]!;
+      if (this.offBed[slot]) {
+        if (away < 1) this.away[slot] = Math.min(1, away + moved);
+      } else if (away > 0) this.away[slot] = Math.max(0, away - moved);
+      this.gain[slot] =
+        this.dim[slot]! *
+        (1 + PLANT_HOVER_LIFT * this.lift[slot]!) *
+        (1 - (1 - PLANT_OFF_BED_BRIGHTNESS) * this.away[slot]!);
     }
+  }
+
+  /** Ends hand `h`'s hold, if it has one: the plant glides from where it is drawn to where the garden has it. */
+  private letGo(h: number): void {
+    if (this.holdMode[h] === FREE) return;
+    const slot = this.slotOfId(this.holdId[h]);
+    if (this.holdMode[h] === PULLED) this.guides.setLadder(h, null);
+    this.holdId[h] = null;
+    this.holdMode[h] = this.holdOff[h] = 0;
+    this.guides.setRim(this.holdOff[0] === 1 || this.holdOff[1] === 1);
+    this.aim();
+    if (slot === undefined) return; // removed while held (dragged off the bed): its petals take over
+    this.syncOffBed(slot);
+    this.startGlide(slot);
+  }
+
+  /** Off the bed or not as the hand that places the plant drags it (aim: the right one of two); none, not. */
+  private syncOffBed(slot: number): void {
+    const holder = this.holder[slot]!;
+    this.offBed[slot] = holder === 0 ? 0 : this.holdOff[holder - 1]!;
+  }
+
+  /** A world point into the bed frame, written into `local`. */
+  private toBed(pos: Vec3): void {
+    // Field by field, not Vector3.set: three fractions handed to a call V8 may not inline are boxed.
+    local.x = pos.x;
+    local.y = pos.y;
+    local.z = pos.z;
+    this.parent.worldToLocal(local);
+  }
+
+  /** A glide from the pose drawn now to the one asked for, starting with the next frame (UX §3.4, §5). */
+  private startGlide(slot: number): void {
+    for (let i = slot * POSE; i < (slot + 1) * POSE; i++) this.from[i] = this.pose[i]!;
+    this.glideAt[slot] = NEXT_FRAME;
+    this.moving[slot] = 1;
+  }
+
+  /** Writes into `want` the pose a slot is asked for: its cell, or the lift, stretch or drag of its hand. */
+  private wanted(slot: number): void {
+    want[0] = this.rest[slot * 2]!;
+    want[1] = 0;
+    want[2] = this.rest[slot * 2 + 1]!;
+    want[3] = PLANT_STEM_MIN_M + (PLANT_STEM_MAX_M - PLANT_STEM_MIN_M) * this.height[slot]!;
+    const h = this.holder[slot]! - 1;
+    if (h < 0) return;
+    const mode = this.holdMode[h];
+    want[1] = PLANT_PINCH_LIFT_M;
+    if (mode === PULLED) {
+      want[3] = PLANT_STEM_MIN_M + (PLANT_STEM_MAX_M - PLANT_STEM_MIN_M) * this.holdHeight[h + 2]!;
+    } else if (mode === DRAGGED) {
+      for (let i = 0; i < 3; i++) want[i] = this.dragFoot[h * 3 + i]!;
+    }
+  }
+
+  /**
+   * Writes a slot's instance matrix, and its whorls': the pose asked for, or on the way to it from where its glide
+   * left (ease-out over REVERT_LERP_MS). A glide that has not had its first frame is still where it left. Turned
+   * so the plant's own +x points out of the bed from where it is drawn; never tilted.
+   */
+  private place(slot: number): void {
+    this.wanted(slot);
+    const p = slot * POSE;
+    const t = (this.frame[NOW]! - this.glideAt[slot]!) / REVERT_LERP_MS;
+    const left = Math.min(1, Math.max(0, 1 - t)) || 0; // no frame time yet (NaN): no glide to show
+    const k = left * left;
+    for (let i = 0; i < POSE; i++) this.pose[p + i] = want[i]! + (this.from[p + i]! - want[i]!) * k;
+    const mesh = this.meshes[this.shapeOf[slot]!]!;
+    const e = mesh.instanceMatrix.array;
+    const at = this.indexOf[slot]! * 16;
+    // Its own +x points out of the bed from where it is drawn, so its turn glides with its place (T-147 review);
+    // close over the bed's centre that way is not defined, and its cell's is kept.
+    let x = this.pose[p]!;
+    let z = this.pose[p + 2]!;
+    if (x * x + z * z < PLANT_TURN_MIN_R_M * PLANT_TURN_MIN_R_M) {
+      x = this.rest[slot * 2]!;
+      z = this.rest[slot * 2 + 1]!;
+    }
+    const r = Math.sqrt(x * x + z * z);
+    // A turn about y by -atan2(z, x), then the stem's stretch along y (the off-diagonal zeros never change).
+    e[at] = e[at + 10] = x / r;
+    e[at + 2] = z / r;
+    e[at + 8] = -z / r;
+    e[at + 5] = this.pose[p + 3]!;
+    e[at + 12] = this.pose[p]!;
+    e[at + 13] = this.pose[p + 1]!;
+    e[at + 14] = this.pose[p + 2]!;
+    mesh.instanceMatrix.needsUpdate = true;
+    this.placeWhorls(this.shapeOf[slot]!, this.indexOf[slot]!, slot);
+    const h = this.holder[slot]! - 1;
+    if (h >= 0) for (let i = 0; i < POSE; i++) this.handPose[h * POSE + i] = this.pose[p + i]!;
+    else if (k === 0) this.moving[slot] = 0;
   }
 
   /**

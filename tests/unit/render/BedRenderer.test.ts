@@ -209,7 +209,7 @@ describe('BedRenderer hover cue (FR-HND-16, FR-UI-11)', () => {
 });
 
 describe('the rendering rules (NFR-PERF-09, TC-PERF-08)', () => {
-  it('bed, plants and tide together: nine meshes, no light, no shadow, statics that do not recompute', () => {
+  it('bed, plants and tide together: ten meshes, no light, no shadow, statics that do not recompute', () => {
     const parent = new Group();
     const guard = new FlashGuard();
     new BedRenderer(parent);
@@ -221,9 +221,9 @@ describe('the rendering rules (NFR-PERF-09, TC-PERF-08)', () => {
       expect(object.castShadow || object.receiveShadow).toBe(false);
       if ((object as Mesh).isMesh) meshes.push(object as Mesh);
     });
-    // Bed 2, the five silhouettes, the whorls, the tide: one draw call each at most, per eye; a mesh with no
-    // instance to draw makes none.
-    expect(meshes).toHaveLength(9);
+    // Bed 2, the five silhouettes, the whorls, the shaping guides (T-147), the tide: one draw call each at most,
+    // per eye; a mesh with no instance to draw, or hidden (the guides while nothing is shaped), makes none.
+    expect(meshes).toHaveLength(10);
     for (const mesh of meshes) expect(mesh.matrixAutoUpdate).toBe(false);
     // No material is lit (none needs a light), and none samples a texture.
     for (const mesh of meshes) {

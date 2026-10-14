@@ -228,7 +228,8 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
       plant('e', 0, 4, { voice: 'choir' }),
       plant('f', 0, 5, { voice: 'shimmer' }),
     ]);
-    expect(parent.children).toEqual([...renderer.meshes, renderer.whorls]);
+    // And the shaping guides (T-147), drawn only while a plant is pulled or dragged off the bed.
+    expect(parent.children).toEqual([...renderer.meshes, renderer.whorls, renderer.guides.mesh]);
     expect(renderer.meshes).toHaveLength(5);
     expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, 1, 2, 1, 1]);
     expect([0, 1, 2, 3, 4, 5].map((step) => at(renderer, 0, step)!.shape)).toEqual([
@@ -784,7 +785,7 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
     expectRgb(whorlsAt(renderer, 2, 3)[0]!.rgb, cream(PLANT_REST_BRIGHTNESS));
     expectRgb(at(renderer, 2, 3)!.rgb, colourAt(PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     // One more mesh for all whorls of all voices: a ring of four leaves, 2.4 cm across, 32 triangles.
-    expect(parent.children).toEqual([...renderer.meshes, renderer.whorls]);
+    expect(parent.children).toEqual([...renderer.meshes, renderer.whorls, renderer.guides.mesh]);
     const { geometry } = renderer.whorls;
     expect(geometry.index!.count / 3).toBe(32);
     const position = geometry.getAttribute('position');

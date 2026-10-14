@@ -110,6 +110,42 @@ export const PLANT_BLOOM_WAIT_MS = 10_000;
 export const PLANT_OUTLINE_FROM = 0.55;
 export const PLANT_OUTLINE_FULL = 0.75;
 
+/** UX §3.4 (pinch on a plant): the plant a hand holds is drawn this much higher, and glows by PLANT_HOVER_LIFT for
+ *  as long as it is held. Every jump of a held plant's place or stem (the lift, the pull or drag deciding, the
+ *  release, the tracking loss) is eased over hands' REVERT_LERP_MS (150 ms, ease-out; UX §3.4, §5). */
+export const PLANT_PINCH_LIFT_M = 0.01;
+/** Chosen in T-147: a plant faces out of the bed from where it is drawn, except nearer the centre than this, where
+ *  that way is not defined and it keeps its cell's. */
+export const PLANT_TURN_MIN_R_M = 0.01;
+/** UX §3.4 (drag): past the bed's outer edge the plant under the hand fades to this share of its brightness, over
+ *  HOVER_CUE_MS, a level: removal ahead. Chosen in T-147. */
+export const PLANT_OFF_BED_BRIGHTNESS = 0.5;
+/** UX §3.4 (pull), chosen in T-147: the scale ladder is a faint cream ring round the pulled plant at each of
+ *  LADDER_MARKS heights, where its stem would end at height 0, 1/4, 1/2, 3/4 and 1 (FR-HND-08: 25 cm of travel is
+ *  the whole range, so a mark is 6.25 cm of hand). Each ring is this wide across, this thick and this opaque. */
+export const LADDER_MARKS = 5;
+export const LADDER_RADIUS_M = 0.025;
+export const LADDER_LINE_M = 0.0015;
+export const LADDER_ALPHA = 0.35;
+/** UX §3.4 (drag), chosen in T-147: while a dragged plant is past the outer edge the rim dims to warn: a charcoal
+ *  band this wide just outside the glass, at this opacity. */
+export const RIM_WARN_WIDTH_M = 0.01;
+export const RIM_WARN_ALPHA = 0.6;
+/** Chosen in T-147: the ladder's rings and the rim are round to this many edges. */
+export const GUIDE_SEGMENTS = 48;
+
+/** UX §5 (remove burst 0.4 s) and §9.3: the plant dissolves into this many petals at the release point, which drift
+ *  to its cell over BURST_MS (ease-out); the undo petal is one of them and stays, the others shrink to nothing
+ *  on the way. Each starts this far from the release point and this wide. Particles are pooled: BURST_POOL at most
+ *  at once, a new burst taking the oldest. Chosen in T-147, except the 400 ms. */
+export const BURST_PETALS = 6;
+export const BURST_MS = 400;
+export const BURST_SPREAD_M = 0.02;
+export const BURST_PETAL_DIAMETER_M = 0.015;
+export const BURST_POOL = 3 * (BURST_PETALS - 1);
+/** UX §9.3, reduced motion: no burst and no drift; the petal fades in at its cell over this long. */
+export const PETAL_FADE_IN_MS = 150;
+
 /** Radians per step: step s sits at angle s * STEP_RAD from +x toward +z (D-029). */
 export const STEP_RAD = (2 * Math.PI) / STEPS;
 

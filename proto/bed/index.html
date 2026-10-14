@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Roomsong - bed preview (T-125, T-119)</title>
+    <title>Roomsong - bed preview (T-125, T-119, T-147)</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
@@ -34,6 +34,14 @@
         <label><input id="tint" type="checkbox" /> Dim the nearest plant (hand out of view)</label>
         <label><input id="reduced" type="checkbox" /> Reduced motion</label>
         <label><input id="contrast" type="checkbox" /> High contrast</label>
+      </fieldset>
+      <fieldset>
+        <legend>Shape the plant nearest you (a hand the page plays)</legend>
+        <button id="play-pull" type="button">Pull it up</button>
+        <button id="play-drag" type="button">Drag it to a free cell</button>
+        <button id="play-dragOff" type="button">Drag it off the bed</button>
+        <button id="play-lost" type="button">Lose the hand mid-drag</button>
+        <label><input id="slow" type="checkbox" /> Slow motion (10 times)</label>
       </fieldset>
       <button id="enter" type="button" hidden>Enter XR</button>
       <p id="numbers"></p>

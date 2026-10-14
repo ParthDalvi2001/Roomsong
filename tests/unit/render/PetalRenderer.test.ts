@@ -2,11 +2,18 @@
 // A plain Object3D for the bed and the page's kind of FlashGuard; no WebGL: what would be drawn is read from the
 // instances. The per-frame heap cost is in PetalRenderer.heap.test.ts.
 import { Color, Group, Matrix4, Quaternion, SRGBColorSpace, Vector3 } from 'three';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
+import { settings } from '../../../src/core/index.js';
 import { cellCentre, RINGS, STEPS, UNDO_LIFE_MS } from '../../../src/garden/index.js';
 import {
+  BURST_MS,
+  BURST_PETAL_DIAMETER_M,
+  BURST_PETALS,
+  BURST_POOL,
+  BURST_SPREAD_M,
   FLASH_MIN_DELTA,
+  PETAL_FADE_IN_MS,
   PETAL_ASPECT,
   PETAL_END_DIAMETER_M,
   PETAL_FADE_MS,
@@ -295,5 +302,115 @@ describe('PetalRenderer (UX §9.3)', () => {
     petals.show('p', removed(2, 2), T0 + 60_000); // a wiring that got the clocks wrong
     petals.update(T0);
     expect(only(petals).widthM).toBeCloseTo(0.025, 6);
+  });
+});
+
+describe("PetalRenderer, the petal's arrival (UX §9.3, T-147)", () => {
+  const FROM = new Vector3(0.36, 0.08, 0.12); // off the bed, where the dragged plant was let go
+  const home = (ring: number, step: number): Vector3 => {
+    const centre = cellCentre(cell(ring, step), { x: 0, y: 0 });
+    return new Vector3(centre.x, PETAL_LIFT_M, centre.y);
+  };
+  const eased = (share: number): number => 1 - (1 - share) ** 2; // ease-out (UX §5)
+  afterEach(() => settings.set({ reducedMotion: false }));
+
+  it('the plant dissolves into six petals at the release point; they drift to its cell in 400 ms and one stays', () => {
+    expect(BURST_MS).toBe(400); // UX §5: the remove burst
+    const { petals } = make();
+    petals.show('a', removed(2, 1, 0.6), T0 + UNDO_LIFE_MS, FROM);
+    petals.update(T0);
+    const start = drawn(petals);
+    expect(start).toHaveLength(BURST_PETALS);
+    for (const petal of start) expect(petal.at.distanceTo(FROM)).toBeLessThanOrEqual(BURST_SPREAD_M + 1e-6);
+    expect(start[0]!.at.distanceTo(FROM)).toBeLessThan(1e-6); // the undo petal itself starts on the point
+    expect(start.slice(1).every((p) => Math.abs(p.widthM - BURST_PETAL_DIAMETER_M) < 1e-6)).toBe(true);
+    expect(petals.has('a')).toBe(true); // its target is there from the start
+
+    petals.update(T0 + BURST_MS / 2);
+    const half = drawn(petals);
+    const expected = FROM.clone().lerp(home(2, 1), eased(0.5));
+    expect(half[0]!.at.distanceTo(expected)).toBeLessThan(1e-6);
+    for (const petal of half.slice(1)) {
+      expect(petal.widthM).toBeCloseTo(BURST_PETAL_DIAMETER_M / 2, 6); // shrinking in a straight line
+      expect(petal.at.distanceTo(home(2, 1))).toBeLessThan(FROM.distanceTo(home(2, 1)) / 2);
+    }
+
+    petals.update(T0 + BURST_MS);
+    expect(only(petals).at.distanceTo(home(2, 1))).toBeLessThan(1e-6); // one stays, over its cell
+    expect(petals.mesh.visible).toBe(true);
+  });
+
+  it('every petal of the burst keeps one brightness: the burst changes no luminance (FR-UI-11)', () => {
+    const { petals, guard } = make();
+    petals.show('a', removed(3, 7, 0.1), T0 + UNDO_LIFE_MS, FROM);
+    const seen = new Set<string>();
+    for (let t = T0; t <= T0 + BURST_MS + 100; t += FRAME_MS) {
+      petals.update(t);
+      for (const petal of drawn(petals))
+        seen.add([...petal.rgb, petal.brightness].map((v) => v.toFixed(6)).join());
+    }
+    expect(seen.size).toBe(1); // one colour at one strength, for all six, from the release to the landing
+    expect(guard.takePeak()).toBe(0);
+  });
+
+  it('reduced motion: no burst and no drift; the petal fades in at its cell over 150 ms, one change', () => {
+    settings.set({ reducedMotion: true });
+    const { petals, guard } = make();
+    petals.show('a', removed(1, 12), T0 + UNDO_LIFE_MS, FROM);
+    const series: Drawn[] = [];
+    for (let t = T0; t <= T0 + 400; t += FRAME_MS) {
+      petals.update(t);
+      const all = drawn(petals);
+      expect(all).toHaveLength(1);
+      expect(all[0]!.at.distanceTo(home(1, 12))).toBeLessThan(1e-6);
+      series.push({ t: t - T0, value: all[0]!.brightness });
+    }
+    expect(series[0]!.value).toBe(0);
+    const full = series.find((each) => each.value >= PLANT_REST_BRIGHTNESS - 1e-6)!;
+    expect(full.t).toBeGreaterThanOrEqual(PETAL_FADE_IN_MS);
+    expect(full.t).toBeLessThan(PETAL_FADE_IN_MS + 2 * FRAME_MS);
+    expect(changeTimes(series)).toHaveLength(1);
+    expect(guard.takePeak()).toBe(1);
+    // And it still fades out at the end of its life, its second change.
+    for (let t = T0 + 4700; t <= T0 + UNDO_LIFE_MS - 1; t += FRAME_MS) petals.update(t);
+    expect(only(petals).brightness).toBeLessThan(0.05);
+  });
+
+  it('pooled: four bursts at once take no more than the pool, the newest whole; nothing new is made', () => {
+    const { petals } = make();
+    // The pool's instances follow the 80 cells' in the one mesh, and are drawn only while a burst flies: a petal
+    // that only waits costs the 80 instances it cost before (T-146, 15-shaping.spec.ts).
+    expect(petals.mesh.instanceMatrix.count).toBe(RINGS * STEPS + BURST_POOL);
+    expect(petals.mesh.count).toBe(RINGS * STEPS);
+    for (let k = 0; k < 4; k++) petals.show(`p${k}`, removed(k, 3 * k), T0 + UNDO_LIFE_MS, FROM);
+    petals.update(T0);
+    expect(drawn(petals)).toHaveLength(4 + BURST_POOL); // four petals, and the pool full
+    expect(petals.mesh.count).toBe(RINGS * STEPS + BURST_POOL);
+    petals.update(T0 + BURST_MS);
+    expect(drawn(petals)).toHaveLength(4);
+    expect(petals.mesh.count).toBe(RINGS * STEPS);
+    for (let k = 0; k < 4; k++) petals.show(`q${k}`, removed(k, 3 * k + 1), T0 + 2 * UNDO_LIFE_MS, FROM);
+    petals.update(T0 + BURST_MS + 1);
+    expect(drawn(petals)).toHaveLength(8 + BURST_POOL); // the pool reused
+  });
+
+  it('hide during the drift takes the petal at once; clear takes a burst in the air too', () => {
+    const { petals } = make();
+    petals.show('a', removed(2, 2), T0 + UNDO_LIFE_MS, FROM);
+    petals.update(T0);
+    petals.hide('a'); // the undo
+    expect(drawn(petals)).toHaveLength(BURST_PETALS - 1); // the rest of the burst lands by itself
+    petals.update(T0 + BURST_MS);
+    expect(petals.mesh.visible).toBe(false); // and then nothing is drawn
+    petals.show('b', removed(2, 3), T0 + UNDO_LIFE_MS, FROM);
+    petals.update(T0 + BURST_MS + 10);
+    petals.clear(); // New garden
+    expect(petals.mesh.visible).toBe(false);
+    petals.update(T0 + BURST_MS + 20);
+    expect(drawn(petals)).toEqual([]);
+    // A burst after the clear draws its own five and none of the ones the clear stopped in the air.
+    petals.show('c', removed(4, 0), T0 + 2 * UNDO_LIFE_MS, FROM);
+    petals.update(T0 + BURST_MS + 30);
+    expect(drawn(petals)).toHaveLength(BURST_PETALS);
   });
 });

@@ -22,19 +22,31 @@ import {
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import { bus, DEFAULT_TEMPO_BPM, flags, MS_PER_DAY, settings } from '../../../src/core/index.js';
-import { BED_INNER, BED_OUTER, cellCentre, RINGS, snapToCell, STEPS } from '../../../src/garden/index.js';
+import {
+  BED_INNER,
+  BED_OUTER,
+  bedZone,
+  cellCentre,
+  heightAfterPull,
+  RINGS,
+  snapToCell,
+  STEPS,
+  UNDO_LIFE_MS,
+} from '../../../src/garden/index.js';
+import { HAND_HINT_MAX_MS, TRACKING_GRACE_MS } from '../../../src/hands/index.js';
 import {
   BedRenderer,
   createPerfHud,
   FlashGuard,
   FOVEATION_MEDIUM,
   PerfSampler,
+  PetalRenderer,
   PlantRenderer,
   TideRenderer,
 } from '../../../src/render/index.js';
 
-import type { EventMap } from '../../../src/core/index.js';
-import type { Plant, VoiceType } from '../../../src/garden/index.js';
+import type { EventMap, Hand } from '../../../src/core/index.js';
+import type { Cell, Plant, VoiceType } from '../../../src/garden/index.js';
 
 // UX_WIREFRAMES §2, the seated sketch: table top 0.72 m, eyes 1.15 m, bed centre 0.45 m ahead (D-020).
 const TABLE_HEIGHT_M = 0.72;
@@ -189,6 +201,7 @@ scene.add(table, bed);
 const guard = new FlashGuard();
 const cells = new BedRenderer(bed, guard);
 const plants = new PlantRenderer(bed, guard);
+const petals = new PetalRenderer(bed, guard);
 const tide = new TideRenderer(bed, guard);
 const sampler = new PerfSampler(renderer.info, guard);
 const hud = createPerfHud(bed); // only with ?flags=perfHud
@@ -218,6 +231,11 @@ window.addEventListener('resize', resize);
 // The garden on show, and its time: `lastVisitAt` is 0 until "a week passes".
 let onShow: Plant[] = [];
 let lastVisitAt = 0;
+/** T-147: the shaping being played (below), or null; the page's clock, and how many times slower it runs. */
+let playing: { kind: Play; plant: Plant; to: Cell; startMs: number; done: Set<string> } | null = null;
+let pageMs = 0;
+const SLOW_MOTION = 10;
+let slowness = 1;
 const centre = { x: 0, y: 0 };
 /** The plant nearest the viewer: the one the "lost hand" of the tint box held. */
 const nearest = (): Plant | undefined =>
@@ -232,10 +250,12 @@ function tint(): void {
   plants.setTint('left', held?.id ?? null, held ? Number.POSITIVE_INFINITY : 0);
 }
 function showGarden(): void {
+  stopPlay();
   onShow = toPlants(gardenChoice.value, GARDENS[gardenChoice.value] ?? SAMPLE);
   lastVisitAt = 0;
   plants.setState({ plants: onShow, lastVisitAt });
   plants.setHover('right', null);
+  petals.clear();
   tint();
 }
 showGarden();
@@ -279,6 +299,126 @@ function hover(event: PointerEvent | null): void {
 renderer.domElement.addEventListener('pointermove', hover);
 renderer.domElement.addEventListener('pointerleave', () => hover(null));
 
+// T-147: the shaping feedback, played by a script that calls what the app's wiring will call from the hands'
+// events (API_SPEC §1.8): a pull, a drag to another cell, a drag off the bed, and a hand lost in a drag. The
+// hand is the right one, on the plant nearest the eye. Times are on the page's clock, which "slow motion" slows.
+type Play = 'pull' | 'drag' | 'dragOff' | 'lost';
+const HAND: Hand = 'right';
+// The pinch; the hand's move ends; it holds still (2 s, so a once-a-second perf:sample falls inside) and lets go.
+const SCRIPT_MS = { lift: 300, move: 1300, release: 3300 } as const;
+const PULL_TO_M = 0.1; // the hand's rise, then it settles at the second
+const PULL_SETTLE_M = 0.06;
+const HAND_ABOVE_M = 0.09; // the pinch on the plant's head
+const OFF_BED_M = BED_OUTER + 0.1; // past the outer zone's edge (0.35 m)
+const AFTER_MS = 500; // a script ends this long after the release, a drag off the bed when its petal is gone
+const handLocal = new Vector3();
+const handWorld = new Vector3();
+const pinchStart = { hand: HAND, target: { kind: 'plant' as const, id: '' }, pos: handWorld };
+const pull = { hand: HAND, dy: 0 };
+const drag = { hand: HAND, pos: handWorld, zone: 'bed' as EventMap['gesture:drag']['zone'] };
+const release = { hand: HAND };
+
+const bedPoint = (cell: Cell, above: number, out: Vector3): Vector3 => {
+  cellCentre(cell, centre);
+  return out.set(centre.x, above, centre.y);
+};
+const isTaken = (cell: Cell, except: string): boolean =>
+  onShow.some((p) => p.id !== except && p.cell.ring === cell.ring && p.cell.step === cell.step);
+/** The free cell nearest the plant's own, for the drag to land on. */
+function freeNear(from: Cell, id: string): Cell {
+  const all = Array.from({ length: RINGS * STEPS }, (_, i) => ({
+    ring: Math.floor(i / STEPS),
+    step: i % STEPS,
+  }));
+  const distance = (cell: Cell): number =>
+    bedPoint(cell, 0, handLocal).distanceTo(bedPoint(from, 0, handWorld));
+  const free = all.filter(
+    (cell) => !isTaken(cell, id) && (cell.ring !== from.ring || cell.step !== from.step),
+  );
+  return free.sort((a, b) => distance(a) - distance(b))[0] ?? from;
+}
+function commit(next: Plant[]): void {
+  onShow = next;
+  plants.setState({ plants: onShow, lastVisitAt });
+}
+function stopPlay(): void {
+  if (!playing) return;
+  plants.onRelease(release);
+  plants.setHover(HAND, null);
+  plants.setTint(HAND, null, 0);
+  cells.setHover(HAND, null);
+  playing = null;
+}
+function play(kind: Play): void {
+  stopPlay();
+  const plant = nearest();
+  if (!plant) return;
+  playing = { kind, plant, to: freeNear(plant.cell, plant.id), startMs: pageMs, done: new Set() };
+}
+/** Once per frame, before the renderers: the step of the script that is due. */
+function script(nowMs: number): void {
+  if (!playing) return;
+  const { kind, plant, to } = playing;
+  const t = nowMs - playing.startMs;
+  const once = (step: string, atMs: number): boolean =>
+    t >= atMs && !playing!.done.has(step) && !!playing!.done.add(step);
+  const share = Math.min(1, Math.max(0, (t - SCRIPT_MS.lift) / (SCRIPT_MS.move - SCRIPT_MS.lift)));
+  if (once('pinch', 0)) {
+    pinchStart.target.id = plant.id;
+    bed.localToWorld(bedPoint(plant.cell, HAND_ABOVE_M, handWorld));
+    plants.onPinchStart(pinchStart);
+    plants.setHover(HAND, plant.id); // a held plant is its own hover; its cell marker is lit with it (D-044)
+    cells.setHover(HAND, plant.cell);
+  }
+  if (t >= SCRIPT_MS.lift && t < SCRIPT_MS.release) {
+    if (kind === 'pull') {
+      const rise = t < SCRIPT_MS.move ? share * PULL_TO_M : PULL_TO_M;
+      pull.dy = t < SCRIPT_MS.move + 500 ? rise : PULL_SETTLE_M;
+      plants.onPull(pull);
+    } else if (t < SCRIPT_MS.move || kind !== 'lost') {
+      // The hand moves from the plant's head to the free cell, off the bed, or into the hole (a lost hand).
+      const end = kind === 'dragOff' ? handLocal.set(OFF_BED_M * 0.7, HAND_ABOVE_M, OFF_BED_M * 0.7) : null;
+      const target =
+        end ??
+        (kind === 'lost' ? handLocal.set(0, HAND_ABOVE_M, 0.02) : bedPoint(to, HAND_ABOVE_M, handLocal));
+      bedPoint(plant.cell, HAND_ABOVE_M, handWorld).lerp(target, share);
+      drag.zone = bedZone({ x: handWorld.x, y: handWorld.z });
+      const over = snapToCell({ x: handWorld.x, y: handWorld.z });
+      bed.localToWorld(handWorld);
+      plants.onDrag(drag);
+      plants.setHover(HAND, null); // a dragging hand hovers a cell: the ghost is that cell's marker
+      cells.setHover(HAND, over && !isTaken(over, plant.id) ? over : null);
+    }
+  }
+  if (kind === 'lost' && once('lost', SCRIPT_MS.move))
+    plants.setTint(HAND, plant.id, nowMs + HAND_HINT_MAX_MS);
+  if (kind === 'lost' && once('trackingLost', SCRIPT_MS.move + TRACKING_GRACE_MS)) {
+    plants.onRelease(release); // gesture:trackingLost: nothing was committed, it glides home
+    cells.setHover(HAND, null);
+  }
+  if (kind === 'lost' && once('found', SCRIPT_MS.release)) plants.setTint(HAND, null, 0);
+  if (kind !== 'lost' && once('release', SCRIPT_MS.release)) {
+    // The order of one release (API_SPEC §1.4): garden commits and says so, then render hears the release.
+    const others = onShow.filter((p) => p.id !== plant.id);
+    if (kind === 'pull')
+      commit([...others, { ...plant, height: heightAfterPull(plant.height, PULL_SETTLE_M) }]);
+    if (kind === 'drag') commit([...others, { ...plant, cell: to }]);
+    if (kind === 'dragOff') {
+      commit(others);
+      const from = new Vector3();
+      petals.show(plant.id, plant, nowMs + UNDO_LIFE_MS, plants.heldAt(plant.id, from) ? from : null);
+    }
+    plants.onRelease(release);
+    plants.setHover(HAND, null);
+    cells.setHover(HAND, null);
+  }
+  if (t >= SCRIPT_MS.release + AFTER_MS + (kind === 'dragOff' ? UNDO_LIFE_MS : 0)) playing = null;
+}
+for (const kind of ['pull', 'drag', 'dragOff', 'lost'] as const) {
+  byId(`play-${kind}`).addEventListener('click', () => play(kind));
+}
+box('slow').addEventListener('change', () => (slowness = box('slow').checked ? SLOW_MOTION : 1));
+
 let latest: (EventMap['perf:sample'] & { inXr: boolean; atMs: number }) | null = null;
 bus.on('perf:sample', (sample) => {
   // A copy: the emitter reuses its object.
@@ -288,12 +428,18 @@ bus.on('perf:sample', (sample) => {
 
 /** For the tests and the screenshots: a phase the tide is held at, or null while it runs. */
 let heldPhase: number | null = null;
+let lastFrameMs: number | null = null;
 renderer.setAnimationLoop((timeMs) => {
   const startedMs = performance.now();
-  const phase = heldPhase ?? tidePhase(timeMs / 1000);
-  cells.update(timeMs);
-  tide.update(phase, timeMs);
-  plants.update(phase, timeMs);
+  // The page's clock: the frame time, slowed in slow motion, and never back (the session's frames have their own).
+  pageMs += Math.max(0, timeMs - (lastFrameMs ?? timeMs)) / slowness;
+  lastFrameMs = timeMs;
+  const phase = heldPhase ?? tidePhase(pageMs / 1000);
+  script(pageMs);
+  cells.update(pageMs);
+  tide.update(phase, pageMs);
+  plants.update(phase, pageMs);
+  petals.update(pageMs);
   renderer.render(scene, camera);
   sampler.frame(timeMs, performance.now() - startedMs);
 });
@@ -354,8 +500,8 @@ function pixelOf(ring: number, step: number): { x: number; y: number } {
 }
 
 // Handle for tests/e2e/07-bed.spec.ts: the latest perf:sample, when it came and whether in a session; the
-// foveation the session's layer was asked for; where a point of the bed is on the page; and a way to hold the
-// tide still.
+// foveation the session's layer was asked for; where a point of the bed is on the page; a way to hold the tide
+// still; and the shaping script (T-147): play one, and how far it is on the page's clock (null when none runs).
 Object.defineProperty(window, '__bed', {
   value: Object.freeze({
     sample: () => latest,
@@ -364,5 +510,7 @@ Object.defineProperty(window, '__bed', {
     holdTide: (phase: number | null) => {
       heldPhase = phase;
     },
+    play,
+    scriptMs: () => (playing ? pageMs - playing.startMs : null),
   }),
 });

@@ -15,7 +15,7 @@
 //   frame for as long as it had never flashed (no tide yet). Both were a number picked by a condition from two
 //   constants (`x ? 0.5 : 1`), which V8 boxes. So: a round with a blooming bed, a glow and a tint, and one with
 //   no tide. What a round needs set up is set up before it, not in its loop.
-import { Group } from 'three';
+import { Group, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 
 import { MS_PER_DAY } from '../../../src/core/index.js';
@@ -134,6 +134,57 @@ describe('render/ per frame (NFR-PERF-08)', () => {
     round();
     expectClean(costsUntilClean(round));
   });
+
+  // Two more tries, as for the heap tests of engine.test.ts: under load it failed 2 of 9 full-suite runs (T-147
+  // review). A real allocation fails every try.
+  it(
+    'PlantRenderer: a pull and a drag on every frame, and a release, a glide and a pinch again, allocate nothing',
+    { timeout: 30_000, retry: 2 },
+    () => {
+      // T-147. One hand pulls p3 and the other drags p41, in and out past the bed's edge; every 50 frames both let
+      // go (each plant glides home over the next 11 frames, the ladder and the rim fade) and pinch again. The
+      // events are built before the loop, as the hands' reused payloads are: what the measured loop costs is the
+      // renderer's.
+      const plants = new PlantRenderer(new Group(), new FlashGuard());
+      plants.setState({ plants: fullBedExcept(), lastVisitAt: 0 });
+      const target = (id: string) => ({ kind: 'plant' as const, id });
+      const pinches = [
+        { hand: 'left' as const, target: target('p3'), pos: new Vector3(0.05, 0.06, 0.2) },
+        { hand: 'right' as const, target: target('p41'), pos: new Vector3(-0.2, 0.06, 0.1) },
+      ];
+      const lets = [{ hand: 'left' as const }, { hand: 'right' as const }];
+      const pulls = Array.from({ length: 97 }, (_, i) => ({
+        hand: 'left' as const,
+        dy: 0.2 * Math.sin(i / 7),
+      }));
+      const drags = Array.from({ length: 101 }, (_, i) => ({
+        hand: 'right' as const,
+        pos: new Vector3(-0.2 - 0.25 * Math.abs(Math.sin(i / 9)), 0.06 + 0.01 * Math.cos(i / 5), 0.1),
+        zone: Math.abs(Math.sin(i / 9)) > 0.6 ? ('outer' as const) : ('bed' as const),
+      }));
+      let frame = 0;
+      const round = (): void => {
+        for (let i = 0; i < ROUNDS; i++) {
+          frame++;
+          if (frame % 50 === 0) {
+            plants.onRelease(lets[0]!);
+            plants.onRelease(lets[1]!);
+            plants.onPinchStart(pinches[0]!);
+            plants.onPinchStart(pinches[1]!);
+          }
+          plants.onPull(pulls[frame % pulls.length]!);
+          plants.onDrag(drags[frame % drags.length]!);
+          plants.update(phaseAt(frame), frame * 14);
+        }
+      };
+      round(); // warm up: the JIT's own allocations happen here
+      const placed = plants.meshes[0]!.instanceMatrix.version;
+      expectClean(costsUntilClean(round));
+      expect(plants.meshes[0]!.instanceMatrix.version - placed).toBeGreaterThan(ROUNDS); // it placed, every frame
+      const guides = plants.guides.mesh.geometry.getAttribute('aColour') as BufferAttribute;
+      expect(guides.version).toBeGreaterThan(ROUNDS / 10); // and faded the ladder and the rim
+    },
+  );
 
   it('TideRenderer.update allocates nothing while the tide runs', { timeout: 30_000 }, () => {
     const tide = new TideRenderer(new Group(), new FlashGuard());

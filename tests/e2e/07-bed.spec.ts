@@ -38,6 +38,8 @@ interface PageWindow {
     foveation(): number | null;
     pixelOf(ring: number, step: number): { x: number; y: number };
     holdTide(phase: number | null): void;
+    play(kind: string): void;
+    scriptMs(): number | null;
   };
   IWER_DEVICE: { primaryInputMode: string; activeSession?: object };
   policyViolations: string[];
@@ -344,6 +346,115 @@ test('T-119 the pictures for the look rating', async ({ page }) => {
 
   expect(await coloursOnCanvas(page)).toBeGreaterThan(100);
   expect(errors).toEqual([]);
+});
+
+/**
+ * T-147: the bed preview at the size of the look-rating pictures, with what a shaping test needs: play a script,
+ * wait until it is `ms` in (the page's clock) or over, a picture of the bed, the next perf:sample (each kept),
+ * and the slow-motion switch, clicked from inside the page (Playwright's own check() waits for the page, and
+ * that took longer than the 0.2 s a script left before its release).
+ */
+async function shapingPage(page: Page) {
+  mkdirSync(SHOTS, { recursive: true });
+  const errors = recordErrors(page);
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  const offHost = await openApp(page, readRoom('table'), PAGE);
+  await page.mouse.move(5, 5); // off the bed: the pointer hovers nothing
+  const samples: Sample[] = [];
+  const tools = {
+    errors,
+    offHost,
+    samples,
+    play: (kind: string): Promise<void> =>
+      page.evaluate((kind) => (window as unknown as PageWindow).__bed.play(kind), kind),
+    at: async (ms: number): Promise<void> => {
+      await page.waitForFunction(
+        (ms) => ((window as unknown as PageWindow).__bed.scriptMs() ?? -1) >= ms,
+        ms,
+      );
+    },
+    done: (): Promise<unknown> =>
+      page.waitForFunction(() => (window as unknown as PageWindow).__bed.scriptMs() === null),
+    shot: async (name: string): Promise<void> => {
+      const style = await page.addStyleTag({ content: 'main { visibility: hidden; }' });
+      await page.screenshot({ path: `${SHOTS}t147-${name}.png` });
+      await style.evaluate((node) => (node as Element).remove());
+    },
+    sampleNow: async (): Promise<Sample> => {
+      const sample = await nextSample(page, false, await page.evaluate(() => performance.now()));
+      samples.push(sample);
+      return sample;
+    },
+    slow: async (isOn: boolean): Promise<void> => {
+      await page.evaluate((isOn) => {
+        const box = document.querySelector('#slow') as HTMLInputElement;
+        if (box.checked !== isOn) box.click();
+      }, isOn);
+    },
+    /** Every sample within the budgets and the flash cap (FR-UI-11), nothing off the host, no error. */
+    finish: (label: string): void => {
+      console.log(`T-147 ${label}, plain view ${JSON.stringify(samples)} (headless, software rendering)`);
+      for (const sample of samples) expectInBudget(sample);
+      expect(offHost).toEqual([]);
+      expect(errors).toEqual([]);
+    },
+  };
+  return tools;
+}
+
+test('T-147 shaping: a pull with its ladder and a drag with its ghost, within the budgets and the cap', async ({
+  page,
+}) => {
+  const { play, at, done, shot, sampleNow, finish } = await shapingPage(page);
+  const idle = await sampleNow();
+  // The pull: lifted, stretched, the ladder round it. The hand holds still from 1.3 s to 3.3 s on the script.
+  await play('pull');
+  await at(1400);
+  expect((await sampleNow()).draws).toBe(idle.draws + 1); // the ladder: one draw call
+  await shot('pull-ladder');
+  await done();
+
+  // A drag to a free cell: the plant under the hand, the ghost on the cell it would land on.
+  await play('drag');
+  await at(1400);
+  expect((await sampleNow()).draws).toBe(idle.draws); // nothing more: the ghost is the cell's own marker
+  await shot('drag-ghost');
+  await done();
+  await sampleNow();
+  finish('a pull and a drag');
+});
+
+test('T-147 shaping: a drag off the bed with its burst and petal, and a lost hand, within the budgets', async ({
+  page,
+}) => {
+  const { play, at, done, shot, sampleNow, slow, finish } = await shapingPage(page);
+  const idle = await sampleNow();
+  // A drag off the bed: the plant fades and the rim dims; let go at 3.3 s, it dissolves and the petals drift home.
+  await play('dragOff');
+  await at(1400);
+  expect((await sampleNow()).draws).toBe(idle.draws + 1); // the rim: one draw call
+  await shot('drag-off-rim');
+  await at(3200);
+  await slow(true); // ten times slower from before the release: the 400 ms of the burst take 4 s
+  await at(3300 + 120);
+  await shot('burst');
+  await at(3300 + 300);
+  await slow(false);
+  // The petal: one draw call, shared with the burst; the sample garden has more plants of every voice, so no
+  // silhouette's mesh went empty with the one removed.
+  expect((await sampleNow()).draws).toBe(idle.draws + 1);
+  await shot('petal'); // its 5 s go on under the next script
+
+  // A hand lost in the middle of a drag: the plant waits where the hand left it, dimmed, then glides home.
+  await play('lost');
+  await at(1250);
+  await slow(true);
+  await at(1300 + 60); // lost at 1.3 s
+  await shot('lost-tint');
+  await slow(false);
+  await done();
+  await sampleNow();
+  finish('a drag off the bed and a lost hand');
 });
 
 test('T-125 the built bed preview loads under the Content Security Policy with no violation', async ({

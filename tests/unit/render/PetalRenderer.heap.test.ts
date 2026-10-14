@@ -6,6 +6,7 @@
 import { Group } from 'three';
 import { describe, expect, it } from 'vitest';
 
+import { settings } from '../../../src/core/index.js';
 import { RINGS, STEPS, UNDO_LIFE_MS } from '../../../src/garden/index.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
 import { PetalRenderer } from '../../../src/render/PetalRenderer.js';
@@ -58,4 +59,49 @@ describe('PetalRenderer.update per frame (NFR-PERF-08)', () => {
     expect(opacity).toBeGreaterThan(0);
     expect(opacity).toBeLessThan(0.01);
   });
+
+  // T-147: the same lives, each petal arriving. With a release point all 80 drift in from it and the pool's
+  // petals fly and shrink (the last three bursts are in the air); under reduced motion all 80 fade in.
+  for (const arrival of ['burst', 'fade-in'] as const) {
+    it(
+      `80 petals arriving by ${arrival} through their whole life allocate nothing`,
+      { timeout: 30_000 },
+      () => {
+        settings.set({ reducedMotion: arrival === 'fade-in' });
+        const petals = new PetalRenderer(new Group(), new FlashGuard());
+        const from = { x: 0.36, y: 0.08, z: 0.12 };
+        let startMs = 0;
+        const showAll = (): void => {
+          startMs += 2 * UNDO_LIFE_MS;
+          for (let i = 0; i < RINGS * STEPS; i++) {
+            const plant = {
+              cell: { ring: Math.floor(i / STEPS), step: i % STEPS },
+              hue: (i % STEPS) / STEPS,
+            };
+            petals.show(`p${i}`, plant, startMs + UNDO_LIFE_MS, from);
+          }
+        };
+        const round = (): void => {
+          for (let frame = 0; frame < FRAMES; frame++) petals.update(startMs + frame);
+        };
+        const costs: { gcs: number; grewBytes: number }[] = [];
+        const isClean = (cost: { gcs: number; grewBytes: number }): boolean =>
+          cost.gcs === 0 && cost.grewBytes >= 0 && cost.grewBytes < CLEAN_BYTES;
+        let versions = 0;
+        for (let i = 0; i < MOST_ROUNDS; i++) {
+          showAll();
+          if (i === 0) round(); // warm up
+          const before = petals.mesh.instanceMatrix.version;
+          const cost = heapCost(round);
+          versions = petals.mesh.instanceMatrix.version - before;
+          costs.push(cost);
+          if (isClean(cost)) break;
+        }
+        settings.set({ reducedMotion: false });
+        const message = `heap cost of ${costs.length} rounds of ${FRAMES} frames: ${JSON.stringify(costs)}`;
+        expect(isClean(costs[costs.length - 1]!), message).toBe(true);
+        expect(versions).toBeGreaterThan(FRAMES / 2); // and it did move them, frame by frame
+      },
+    );
+  }
 });
