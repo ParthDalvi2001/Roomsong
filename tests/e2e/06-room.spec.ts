@@ -423,6 +423,15 @@ test('T-128c c2 level 3: the ghost and its caption, a dwell that floats nothing,
   const errors = watch(page);
   const offHost = await openApp(page, readRoom('table'), '/?flags=forceLevel=3');
   const probe = await watchRoom(page);
+  // The beat ring off (on by default, FR-UI-07), so the flash check below sees the ghost and the markers alone: its
+  // ticks rise and fall as the tide's crest passes, 2 changes a second, under the cap (BUG-009). That rate is checked
+  // by tests/unit/access/BeatRing.test.ts, "a full bed at 120 BPM: no tick changes brightness more than 3 times a
+  // second (FR-UI-11)".
+  await page.evaluate(async () => {
+    const url = '/src/core/index.ts';
+    const core = (await import(/* @vite-ignore */ url)) as Core;
+    core.settings.set({ beatRing: false });
+  });
   await enterXR(page);
   await heardOf(page, probe, 'room:placementLevel');
   // Few frames from here to the pinch: under software rendering 10 s of level 3 is not many, and a wait that runs
@@ -487,7 +496,7 @@ test('T-128c c2 level 3: the ghost and its caption, a dwell that floats nothing,
   await page.waitForFunction((p) => p.shown() === null, probe);
   await page.waitForFunction((p) => p.samples.length >= 2, probe);
   const samples = await probe.evaluate((p) => p.samples);
-  // The ghost and the caption are levels: the one change is the markers' fade-in at the placement.
+  // The ghost and the caption are levels: the one change is the markers' fade-in at the placement (UX §9.2).
   expect(Math.max(...samples.map((sample) => sample.maxFlashPerS))).toBeLessThanOrEqual(1);
   console.log(
     `T-128c level 3: ghost ${ghost.pose

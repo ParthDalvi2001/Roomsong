@@ -29,7 +29,8 @@ export const BEAT_TICK_LIFT_M = 0.002;
 /**
  * Tick brightness (0..1 of cream, added to the view): at rest; the lift the tide's crest gives a tick of an empty
  * step (the tide position); and the lift it gives a tick whose step holds a plant (the trigger flash). Through the
- * FlashGuard: at most one swing up and one down per bar per tick, 1 change a second at 120 BPM (FR-UI-11).
+ * FlashGuard: at most one swing up and one down per bar per tick; the crest passes in 3.5 steps, so both fall inside
+ * one second at 120 BPM: 2 a second, under the cap of 3 (FR-UI-11, BUG-009).
  */
 export const BEAT_TICK_REST = 0.3;
 export const BEAT_TICK_TIDE_LIFT = 0.2;
