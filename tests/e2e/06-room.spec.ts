@@ -352,7 +352,8 @@ for (const { room, flags, levels, level, heightM, source, features } of CASES) {
     expect(anchored.payload).toMatchObject({ level });
     expect(anchored.payload.handle).toMatch(/^[0-9a-f-]{36}$/);
 
-    // The bed's two draw calls, in each eye: the glass with its ring lines, and the markers.
+    // The bed's draw calls, in each eye: the glass with its ring lines and the markers, plus the Listen orb in the
+    // centre hole (T-148) when it is in view: a small mesh, culled when the bed lies on a table below the view.
     await page.waitForFunction((p) => p.samples.length >= 2, probe);
     const numbers = await probe.evaluate((p, frame) => {
       const sample = p.samples[p.samples.length - 1]!;
@@ -365,7 +366,7 @@ for (const { room, flags, levels, level, heightM, source, features } of CASES) {
         now: p.draws[p.frame()],
       };
     }, placed.frame);
-    expect(numbers.after! - numbers.before!).toBe(2 * numbers.eyes);
+    expect([2 * numbers.eyes, 3 * numbers.eyes]).toContain(numbers.after! - numbers.before!);
     expect(numbers.sample.draws).toBe(numbers.now); // perf:sample reports the same count
     // The markers' one fade-in at the placement is the only luminance change (UX §9.2), through the page's guard.
     const flashes = await probe.evaluate((p) => p.samples.map((sample) => sample.maxFlashPerS));

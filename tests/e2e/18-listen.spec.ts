@@ -43,6 +43,8 @@ interface Probe {
   /** The right hand's pinch point, while it is tracked. */
   pinchPos(): Vec3 | null;
   isOrbHovered: boolean;
+  /** The tuning ripple (T-142) has ended: room:tuned was heard. */
+  isTuned: boolean;
   caption(): string | null;
 }
 /** IWSDK 1.0.1 puts its dev runtime on the page in a dev build; the app's world is a field of it. */
@@ -123,8 +125,12 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
         return { x: at[0]!, y: at[1]!, z: at[2]! };
       },
       isOrbHovered: false,
+      isTuned: false,
       caption: () => captions.shown,
     };
+    core.bus.on('room:tuned', () => {
+      probe.isTuned = true;
+    });
     core.bus.on('target:hover', ({ hand, target }) => {
       if (hand === 'right') probe.isOrbHovered = target?.kind === 'orb';
     });
@@ -213,6 +219,9 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
   const errors = watch(page);
   const offHost = await openApp(page, readRoom('table'));
   const probe = await inSession(page);
+  // The stand-in garden's signature starts the tuning ripple (T-142); its quads are drawn for 4 s, so the counts
+  // start after room:tuned.
+  await page.waitForFunction((p) => p.isTuned, probe, { timeout: 10_000 });
   const before = await nextSample(probe);
   expect(await probe.evaluate((p) => p.meshes())).toEqual({ halo: false, dome: false, orb: true });
   /** For the pictures only: the head turns down to the bed and back (this changes nothing in Listen; the samples
