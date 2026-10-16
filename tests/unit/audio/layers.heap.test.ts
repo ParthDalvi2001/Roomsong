@@ -26,80 +26,92 @@ const MOST_ROUNDS = 20;
 const MOST_BYTES_A_STEP = 32;
 
 describe('the layers per step (NFR-PERF-08, T-164)', () => {
-  it('style A, 8 plants, every layer in: groove and step make no object, array or closure', () => {
-    const ctx = new FakeAudioContext();
-    let notes = 0;
-    const pool = {
-      ref: { note: null },
-      play: (): boolean => {
-        notes++;
-        return true;
-      },
-    };
-    const stepS = Scheduler.stepDurationFor(84);
-    const compressor = ctx.createDynamicsCompressor();
-    const layers = new Layers({
-      ctx: ctx.audio,
-      pool: pool as never,
-      scheduler: { stepS } as never,
-      recipe: { ...STYLES.A },
-      bell: {} as never,
-      choirPulse: {},
-      bus: ctx.createGain() as never,
-      master: ctx.createGain() as never,
-      compressor: compressor as never,
-      bed: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1],
-      key: () => WANDERER,
-    });
-    layers.restyle(0);
-    // The fake keeps each parameter event as an object: the breathing filter's glide, once a bar, is counted.
-    const breath = (compressor.inputs[0] as FakeNode).frequency;
-    let glides = 0;
-    breath.setTargetAtTime = (): FakeParam => {
-      glides++;
-      return breath;
-    };
-    const voices: VoiceType[] = ['bell', 'pad', 'pluck', 'bass', 'choir', 'bell', 'pluck', 'pad'];
-    const records: Grooved[] = voices.map((voice, i) => ({
-      plant: { id: `p${i}`, voice, cell: { ring: i % 5, step: 2 * i }, height: 0.55, hue: 0.5, plantedAt: 0 },
-      params: { hz: 220, gain: 0.3, release: 1, cutoffMul: 1, detune: 0 },
-      seed: i * 7919,
-    }));
-    let k = 0;
-    let sink = 0;
-    const run = (): void => {
-      for (let i = 0; i < STEPS_RUN; i++) {
-        const abs = ++k;
-        const step = abs % STEPS;
-        const bar = (abs / STEPS) | 0;
-        const time = abs * stepS;
-        for (let r = 0; r < records.length; r++) {
-          const rec = records[r] as Grooved;
-          if (rec.plant.cell.step !== step) continue;
-          layers.groove(rec, step, bar, time);
-          sink += layers.noteTime + layers.note.gain;
+  // Coverage turns off V8's optimizing tier, so every number in the step is boxed (about 200 KB a round): this probe
+  // only means something in `npm run verify`, which runs it without coverage.
+  it.skipIf(process.env.npm_lifecycle_event === 'test:coverage')(
+    'style A, 8 plants, every layer in: groove and step make no object, array or closure',
+    () => {
+      const ctx = new FakeAudioContext();
+      let notes = 0;
+      const pool = {
+        ref: { note: null },
+        play: (): boolean => {
+          notes++;
+          return true;
+        },
+      };
+      const stepS = Scheduler.stepDurationFor(84);
+      const compressor = ctx.createDynamicsCompressor();
+      const layers = new Layers({
+        ctx: ctx.audio,
+        pool: pool as never,
+        scheduler: { stepS } as never,
+        recipe: { ...STYLES.A },
+        bell: {} as never,
+        choirPulse: {},
+        bus: ctx.createGain() as never,
+        master: ctx.createGain() as never,
+        compressor: compressor as never,
+        bed: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1],
+        key: () => WANDERER,
+      });
+      layers.restyle(0);
+      // The fake keeps each parameter event as an object: the breathing filter's glide, once a bar, is counted.
+      const breath = (compressor.inputs[0] as FakeNode).frequency;
+      let glides = 0;
+      breath.setTargetAtTime = (): FakeParam => {
+        glides++;
+        return breath;
+      };
+      const voices: VoiceType[] = ['bell', 'pad', 'pluck', 'bass', 'choir', 'bell', 'pluck', 'pad'];
+      const records: Grooved[] = voices.map((voice, i) => ({
+        plant: {
+          id: `p${i}`,
+          voice,
+          cell: { ring: i % 5, step: 2 * i },
+          height: 0.55,
+          hue: 0.5,
+          plantedAt: 0,
+        },
+        params: { hz: 220, gain: 0.3, release: 1, cutoffMul: 1, detune: 0 },
+        seed: i * 7919,
+      }));
+      let k = 0;
+      let sink = 0;
+      const run = (): void => {
+        for (let i = 0; i < STEPS_RUN; i++) {
+          const abs = ++k;
+          const step = abs % STEPS;
+          const bar = (abs / STEPS) | 0;
+          const time = abs * stepS;
+          for (let r = 0; r < records.length; r++) {
+            const rec = records[r] as Grooved;
+            if (rec.plant.cell.step !== step) continue;
+            layers.groove(rec, step, bar, time);
+            sink += layers.noteTime + layers.note.gain;
+          }
+          layers.step(step, time, bar, records.length);
         }
-        layers.step(step, time, bar, records.length);
-      }
-    };
-    const isClean = (cost: { gcs: number; grewBytes: number }): boolean =>
-      cost.gcs === 0 && cost.grewBytes >= 0 && cost.grewBytes < PROBE_BYTES + MOST_BYTES_A_STEP * STEPS_RUN;
+      };
+      const isClean = (cost: { gcs: number; grewBytes: number }): boolean =>
+        cost.gcs === 0 && cost.grewBytes >= 0 && cost.grewBytes < PROBE_BYTES + MOST_BYTES_A_STEP * STEPS_RUN;
 
-    run(); // warm up, and every layer is in
-    const before = notes;
-    const rounds: { gcs: number; grewBytes: number }[] = [];
-    for (let i = 0; i < MOST_ROUNDS; i++) {
-      const cost = heapCost(run);
-      rounds.push(cost);
-      if (isClean(cost)) break;
-    }
-    expect(
-      isClean(rounds[rounds.length - 1] as { gcs: number; grewBytes: number }),
-      JSON.stringify(rounds),
-    ).toBe(true);
-    // Drone, kick and shaker played: about 11 layer notes a bar.
-    expect((notes - before) / ((rounds.length * STEPS_RUN) / STEPS)).toBeGreaterThan(10);
-    expect(glides).toBeGreaterThan(STEPS_RUN / STEPS);
-    expect(Number.isFinite(sink)).toBe(true);
-  });
+      run(); // warm up, and every layer is in
+      const before = notes;
+      const rounds: { gcs: number; grewBytes: number }[] = [];
+      for (let i = 0; i < MOST_ROUNDS; i++) {
+        const cost = heapCost(run);
+        rounds.push(cost);
+        if (isClean(cost)) break;
+      }
+      expect(
+        isClean(rounds[rounds.length - 1] as { gcs: number; grewBytes: number }),
+        JSON.stringify(rounds),
+      ).toBe(true);
+      // Drone, kick and shaker played: about 11 layer notes a bar.
+      expect((notes - before) / ((rounds.length * STEPS_RUN) / STEPS)).toBeGreaterThan(10);
+      expect(glides).toBeGreaterThan(STEPS_RUN / STEPS);
+      expect(Number.isFinite(sink)).toBe(true);
+    },
+  );
 });
