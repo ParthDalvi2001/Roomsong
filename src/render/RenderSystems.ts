@@ -28,7 +28,7 @@ import type { SeedMove } from './SeedRenderer.js';
 import type { AudioEngine } from '../audio/index.js';
 import type { EventMap, Hand, StringKey } from '../core/index.js';
 import type { Cell, GardenState, Plant, RoomSignature } from '../garden/index.js';
-import type { RoomSurfaces } from '../room/index.js';
+import type { RoomSurfaces, SurfaceRef } from '../room/index.js';
 
 const NOTHING = (): void => {};
 /** UX §7: the caption of a seed let go over a full bed. */
@@ -448,10 +448,20 @@ function isSamePose(now: ArrayLike<number>, kept: Float64Array): boolean {
 }
 
 const SWEEPS = RIPPLE_SWEEP_AT_MS.length; // table, wall, ceiling
+/** Where a chord tone rings: one vector for all three, read by chordTone in the call (no allocation). */
+const NOTE_AT = new Vector3();
+
+/** A surface's centre for chordTone, or undefined for none: its note rings at the bed (LLD §5.8). */
+function noteAt(surface: SurfaceRef | undefined): Vector3 | undefined {
+  return (
+    surface && NOTE_AT.set(surface.pose[12] as number, surface.pose[13] as number, surface.pose[14] as number)
+  );
+}
 
 /**
- * The tuning ripple (FR-ROOM-12, LLD §5.8). Priority 55. configData: `guard`, the page's FlashGuard, and `bed`, the
- * bed entity's Object3D. A ripple needs the surfaces of room:features and the signature of the same placement.
+ * The tuning ripple (FR-ROOM-12, LLD §5.8). Priority 55. configData: `guard`, the page's FlashGuard; `engine`, the
+ * audio engine, which plays the room chord (T-142b); and `bed`, the bed entity's Object3D. A ripple needs the
+ * surfaces of room:features and the signature of the same placement.
  * GardenSystem answers room:features with room:signature, so this system hears the signature first; either way
  * the ripple starts in the next update, in the same frame, and its times count from that frame (API_SPEC §1.10
  * rule 4). Each surface that has a sweep raises its caption on this system's own entity, from the sweep's start
@@ -460,9 +470,14 @@ const SWEEPS = RIPPLE_SWEEP_AT_MS.length; // table, wall, ceiling
  */
 export class TuningRippleSystem extends createSystem(
   { beds: { required: [BedAnchor] } },
-  { guard: { type: Types.Object, default: null }, bed: { type: Types.Object, default: null } },
+  {
+    guard: { type: Types.Object, default: null },
+    engine: { type: Types.Object, default: null },
+    bed: { type: Types.Object, default: null },
+  },
 ) {
   private ripple!: TuningRipple;
+  private engine!: AudioEngine;
   private bed!: Object3D;
   /** Carries the ripple's caption. Its own entity: a Caption added to one that still has one is not seen. */
   private caption!: Entity;
@@ -478,6 +493,7 @@ export class TuningRippleSystem extends createSystem(
   override init(): void {
     this.ripple = new TuningRipple(this.scene, this.config.guard.value as FlashGuard);
     this.bed = this.config.bed.value as Object3D;
+    this.engine = this.config.engine.value as AudioEngine;
     this.caption = this.createEntity();
     this.cleanupFuncs.push(
       bus.on('room:signature', ({ signature, starterSeeds }) => {
@@ -520,6 +536,13 @@ export class TuningRippleSystem extends createSystem(
     this.takeCaption(); // a ripple started again: the last one's caption goes
     this.startedMs = nowMs;
     this.next = 0;
+    // Each note at its sweep's start (LLD §5.8), all three always, before the quads are aimed; Wanderer's at the bed.
+    const { engine } = this;
+    const audioS = engine.clock.now();
+    const [tableMs, wallMs, ceilingMs] = RIPPLE_SWEEP_AT_MS;
+    engine.chordTone(0, audioS + tableMs / 1000, isWanderer ? undefined : noteAt(surfaces.table));
+    engine.chordTone(1, audioS + wallMs / 1000, isWanderer ? undefined : noteAt(surfaces.nearestWall));
+    engine.chordTone(2, audioS + ceilingMs / 1000, isWanderer ? undefined : noteAt(surfaces.ceiling));
     this.ripple.start(
       {
         surfaces,

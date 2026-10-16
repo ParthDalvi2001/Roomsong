@@ -59,7 +59,7 @@ import { Pad } from './voices/Pad.js';
 import { Pluck } from './voices/Pluck.js';
 
 import type { Voice, VoiceParams } from './voices/note.js';
-import type { Mat4 } from '../core/index.js';
+import type { Mat4, Vec3 } from '../core/index.js';
 import type { Cell, Plant, RoomSignature } from '../garden/index.js';
 
 /** API_SPEC §1.2. */
@@ -77,7 +77,8 @@ export interface AudioEngine {
   setSignature(sig: RoomSignature): void;
   /** The listener is the user's head: called every frame with the viewer's world matrix. Allocation-free. */
   setListenerPose(head: Mat4): void;
-  chordTone(note: 0 | 1 | 2, time: number): void;
+  /** One tuning-ripple note of the room chord at audio time `time`, from `at`, else the bed's centre (LLD §5.8). */
+  chordTone(note: 0 | 1 | 2, time: number, at?: Vec3): void;
   /** Idempotent and diff-based; plants sound at their world position, equal-power panned. */
   syncPlants(plants: readonly Plant[], bedPose: Mat4): void;
   preview(plant: Plant): void;
@@ -132,6 +133,9 @@ interface ReverbResponse {
   step: (samples: number) => boolean;
 }
 
+/** LLD §5.8: the voice of each tuning-ripple note: the root on Pad, the third or fourth on Bell, the fifth on Pluck. */
+const CHORD_VOICES = ['pad', 'bell', 'pluck'] as const;
+
 function onBed(cell: Cell): boolean {
   const { ring, step } = cell;
   return (
@@ -164,7 +168,7 @@ export class Engine implements AudioEngine {
   private readonly records = new Map<string, PlantRecord>();
   private readonly steps: PlantRecord[][] = Array.from({ length: STEPS }, () => []);
   private readonly centre = { x: 0, y: 0 };
-  /** The ending chord's notes, one after the other (a voice reads its params in the trigger). */
+  /** The ending chord's and the ripple's notes, one after the other (a voice reads its params in the trigger). */
   private readonly chord: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 };
 
   private reverbMode: 'auto' | 'small' | 'off' = 'auto';
@@ -277,8 +281,29 @@ export class Engine implements AudioEngine {
     this.applyPlants();
   }
 
-  // The next three wait for their tasks: silent and safe to call until then. Of ui(), only 'goodnight' is built.
-  chordTone(): void {} // T-142; needs garden's chordDegrees (T-141)
+  /** A full-height plant of the note's voice; a place that is not finite counts as none (a panner would throw). */
+  chordTone(note: 0 | 1 | 2, time: number, at?: Vec3): void {
+    const g = this.g;
+    if (g === null || g.ctx.state !== 'running') return;
+    const voice = CHORD_VOICES[note];
+    const p = this.chord;
+    p.hz = hzForRing(this.key, chordDegrees(this.key.mode)[note], voice);
+    p.gain = dbToGain(this.recipe.mixDb[voice]);
+    p.release = HEIGHT_RELEASE_S_MAX;
+    const b = this.bed;
+    const isAt = at !== undefined && Number.isFinite(at.x + at.y + at.z); // NaN or ±Infinity in any one: not finite
+    g.pool.play(
+      g[voice],
+      time,
+      p,
+      isAt ? at.x : (b[12] as number),
+      isAt ? at.y : (b[13] as number),
+      isAt ? at.z : (b[14] as number),
+      null,
+    );
+  }
+
+  // The next two wait for their tasks: silent and safe to call until then. Of ui(), only 'goodnight' is built.
   preview(): void {} // T-147
   ui(sound: Parameters<AudioEngine['ui']>[0]): void {
     if (sound === 'goodnight') this.goodnight(); // T-164 builds the others
@@ -347,6 +372,8 @@ export class Engine implements AudioEngine {
     if (now >= this.suspendAt) {
       if (this.timer !== null) clearInterval(this.timer);
       this.timer = null;
+      // A note still scheduled (a tuning ripple cut short) would ring when the next session resumes.
+      g.pool.releaseAll(now);
       this.endSuspend(g.ctx.suspend());
     }
     this.stats.voices = g.pool.active(now);

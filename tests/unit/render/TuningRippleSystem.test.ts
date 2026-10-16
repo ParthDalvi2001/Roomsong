@@ -1,7 +1,8 @@
 // TuningRippleSystem (LLD §3.2, priority 55; FR-ROOM-12, LLD §5.8) on a fake world: the ripple starts on the
 // surfaces of room:features and the signature of the same placement, whichever of the two the system hears first
 // (API_SPEC §1.10 rule 4); it raises one caption per detected surface on its own entity, and emits room:tuned
-// at 4.0 s. A Wanderer session is told by its signature, not by missing surfaces.
+// at 4.0 s. A Wanderer session is told by its signature, not by missing surfaces. The chord's three notes are
+// scheduled on the audio clock in the ripple's first frame (T-142b).
 import { Group, Object3D, type Mesh } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,6 +14,7 @@ import { FlashGuard } from '../../../src/render/FlashGuard.js';
 import { TuningRippleSystem } from '../../../src/render/RenderSystems.js';
 import { TuningRipple } from '../../../src/render/TuningRipple.js';
 
+import type { Vec3 } from '../../../src/core/index.js';
 import type { RoomSurfaces } from '../../../src/room/index.js';
 
 const WALL_START_MS = 1_790_000_000_000;
@@ -28,6 +30,11 @@ const SURFACES: RoomSurfaces = {
   ceiling: { id: 'c', pose: level(2.5, 0), extents: { x: 4, y: 4.5 } },
 };
 const ROOM: RoomSignature = { ...WANDERER, keyRoot: 2, paletteSeed: 0xccfb3565 };
+/** The audio clock in the rig: it stands still, so each note's time is AUDIO_S + its sweep's start. */
+const AUDIO_S = 10;
+const TABLE_AT = { x: 0, y: 0.74, z: -0.5 };
+const WALL_AT = { x: 0, y: 1.25, z: -2.25 };
+const CEILING_AT = { x: 0, y: 2.5, z: 0 };
 
 /** As much of an ECS entity as the system uses, with every add and remove of its Caption. */
 class FakeEntity {
@@ -76,6 +83,15 @@ function rig() {
   system.queries = { beds } as never;
   system.config.guard.value = new FlashGuard();
   system.config.bed.value = bed;
+  /** Each chordTone call: the note, its audio time, and its place as it was in the call (null = the bed). */
+  const notes: [number, number, Vec3 | null][] = [];
+  const engine = {
+    clock: { now: () => AUDIO_S },
+    chordTone: vi.fn((note: number, time: number, at?: Vec3) =>
+      notes.push([note, time, at === undefined ? null : { x: at.x, y: at.y, z: at.z }]),
+    ),
+  };
+  system.config.engine.value = engine;
   system.init();
   const tuned: number[] = [];
   const off = bus.on('room:tuned', () => tuned.push(timeS));
@@ -122,6 +138,7 @@ function rig() {
     signature,
     tunedAfter,
     meshes,
+    notes,
     setTime: (s: number) => (timeS = s),
     /** RoomSystem.replace(): BedAnchor comes off the bed. */
     replace: () => unplaced.forEach((callback) => callback()),
@@ -129,6 +146,49 @@ function rig() {
 }
 
 const at = (ms: number) => ms / 1000;
+/** Note n at its sweep's start on the audio clock, from `from` (null = the bed). */
+const note = (n: number, from: Vec3 | null): [number, number, Vec3 | null] => [
+  n,
+  AUDIO_S + at(RIPPLE_SWEEP_AT_MS[n]!),
+  from,
+];
+
+describe('TuningRippleSystem: the chord tones (T-142b, LLD §5.8)', () => {
+  it("in the first frame, all three notes, each at its sweep's start on the audio clock, from its surface", () => {
+    const r = rig();
+    r.signature();
+    r.features();
+    r.frame();
+    expect(r.notes).toEqual([note(0, TABLE_AT), note(1, WALL_AT), note(2, CEILING_AT)]);
+    r.runFor(6);
+    expect(r.notes).toHaveLength(3); // once
+  });
+
+  it("a missing surface's note rings at the bed; Wanderer rings all three at the bed", () => {
+    const r = rig();
+    r.signature();
+    r.features({ nearestWall: SURFACES.nearestWall!, ceiling: SURFACES.ceiling! });
+    r.frame();
+    expect(r.notes).toEqual([note(0, null), note(1, WALL_AT), note(2, CEILING_AT)]);
+    stop?.();
+    const w = rig();
+    w.signature(WANDERER, true);
+    w.features();
+    w.frame();
+    expect(w.notes).toEqual([note(0, null), note(1, null), note(2, null)]);
+  });
+
+  it('a throw while the quads are aimed still leaves the chord', () => {
+    const r = rig();
+    vi.spyOn(TuningRipple.prototype, 'start').mockImplementation(() => {
+      throw new Error('planted');
+    });
+    r.signature();
+    r.features();
+    expect(() => r.frame()).toThrow('planted');
+    expect(r.notes.map(([n]) => n)).toEqual([0, 1, 2]);
+  });
+});
 
 describe('TuningRippleSystem: when the ripple starts (API_SPEC §1.10 rule 4)', () => {
   it("the app's order, room:signature then room:features: captions at 0.3, 1.5, 2.7 s; room:tuned at 4.0 s, once", () => {

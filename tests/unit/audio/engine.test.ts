@@ -1395,12 +1395,11 @@ describe('the AudioContext (NFR-PERF-10, FR-SYS-05)', () => {
 });
 
 describe('what later tasks fill in', () => {
-  it('chordTone, preview, ui and Listen mode are silent and safe to call until then', async () => {
+  it('preview, ui and Listen mode are silent and safe to call until then', async () => {
     const { ctx, engine } = await start();
     const api: AudioEngine = engine; // the contract's signatures (API_SPEC §1.2)
     const fixed = ctx.nodes.length;
     expect(() => {
-      api.chordTone(0, 1);
       api.preview(plant('a', 'bell', 0, 0));
       api.ui('tick');
       api.enterListen();

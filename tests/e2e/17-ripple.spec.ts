@@ -42,6 +42,8 @@ interface RippleProbe {
   raised: { key: string; ms: number }[];
   tunedMs: number[];
   levels: number[];
+  /** Each engine.chordTone call (T-142b): the note, its time ahead of the audio clock (s), and whether it had a place. */
+  chords: { note: number; aheadS: number; isPlaced: boolean }[];
   // Logged only.
   /** performance.now() at room:features, and per frame of the page: the time and the caption on screen. */
   featuresAtMs: number;
@@ -75,7 +77,7 @@ async function probeRipple(page: Page): Promise<JSHandle<RippleProbe>> {
     const { Caption } = await load<Components>('/src/core/components.ts');
     const render = await load<Render>('/src/render/index.ts');
     const ui = await load<Ui>('/src/ui/index.ts');
-    const { world } = window.__roomsong!;
+    const { world, engine } = window.__roomsong!;
     const captions = world.getSystem(ui.CaptionSystem)!;
     // The system, its ripple and the ripple's quads: wrapped to be watched, passed through unchanged. A quad counts
     // as lit when it is drawn above brightness 0: in the frame a ripple starts one is drawn once, dark.
@@ -93,6 +95,7 @@ async function probeRipple(page: Page): Promise<JSHandle<RippleProbe>> {
       raised: [],
       tunedMs: [],
       levels: [],
+      chords: [],
       featuresAtMs: NaN,
       frames: [],
       queued: [],
@@ -118,6 +121,12 @@ async function probeRipple(page: Page): Promise<JSHandle<RippleProbe>> {
       frameMs = Math.round(time * 1000);
       update(delta, time);
       probe.appFrames.push({ ms: frameMs, lit: lit() });
+    };
+    // The chord's calls, counted where the ripple makes them: stats.triggers would count the starter seeds too.
+    const chordTone = engine.chordTone.bind(engine);
+    engine.chordTone = (note, time, at) => {
+      probe.chords.push({ note, aheadS: time - engine.clock.now(), isPlaced: at !== undefined });
+      chordTone(note, time, at);
     };
     const start = ripple.start.bind(ripple);
     ripple.start = (plan, nowMs) => {
@@ -187,6 +196,13 @@ function expectLitOnTime(p: RippleData, i: number): void {
   ).toBe(false);
 }
 
+/** One ripple, one chord: notes 0, 1, 2, each at its sweep's start on the audio clock (LLD §5.8, T-142b). */
+function expectChord(p: RippleData, isPlaced: boolean): void {
+  expect(p.chords.map((c) => c.note)).toEqual([0, 1, 2]);
+  p.chords.forEach((c, i) => expect(c.aheadS, `note ${i}`).toBeCloseTo(SWEEP_AT_MS[i]! / 1000, 1)); // ±50 ms: the clock may move between two reads
+  expect(p.chords.map((c) => c.isPlaced)).toEqual([isPlaced, isPlaced, isPlaced]);
+}
+
 /** Each ripple caption's time on screen: from the first entry that shows it to the first that does not. */
 function onScreen(series: Shown[]): { key: string; forMs: number }[] {
   const spans: { key: string; forMs: number }[] = [];
@@ -238,6 +254,7 @@ test('T-142 the table room: sweeps at 0.3, 1.5 and 2.7 s, one caption each, room
   expect(spans.map((s) => s.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeiling']);
   for (const span of spans) expect(span.forMs, span.key).toBeGreaterThanOrEqual(CAPTION_MIN_MS);
   expect(p.tunedMs.map((ms) => ms - p.startMs)).toEqual([due(p, TUNED_MS)]);
+  expectChord(p, true);
   expect(p.samples.some((s) => s.isRippleDrawn)).toBe(true);
   for (const sample of p.samples) {
     expect(sample.draws).toBeLessThanOrEqual(60);
@@ -268,6 +285,7 @@ test('T-142 the none room: Wanderer, one ripple on the bed, no surface swept, no
   expect(p.appFrames.some((f) => f.lit[1] || f.lit[2])).toBe(false); // no wall, no ceiling
   expect(p.raised.filter((c) => c.key.startsWith('ripple'))).toEqual([]);
   expect(p.tunedMs.map((ms) => ms - p.startMs)).toEqual([due(p, TUNED_MS)]);
+  expectChord(p, false); // Wanderer: all three at the bed
   for (const sample of p.samples) expect(sample.maxFlashPerS).toBeLessThanOrEqual(3);
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
