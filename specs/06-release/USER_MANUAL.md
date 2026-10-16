@@ -1,11 +1,11 @@
 # Roomsong: Player Guide
 
-**Status:** Living · **Owner:** product-owner · Checked against `develop` at 3ca3392 on 2026-10-13 (T-167).
+**Status:** Living · **Owner:** product-owner · Checked against `develop` at 9730ef6 on 2026-10-16 (T-167; states refreshed after T-127, T-128c, T-142, T-146, T-147).
 The long form of the landing page's Help lines and the source for the "How to test" text of the submission. No task builds a page of its own for it.
 
 *Team note, removed at the feature freeze (12 Nov). Every section and table row carries its state:*
 - *`[app]`: in the app today.*
-- *`[parts]`: built and tested as a part, in the emulator only; not yet joined into the app (T-128c to T-128e do that).*
+- *`[parts]`: built and tested as a part, in the emulator only; not yet joined into the app (T-128d and T-128e do that).*
 - *`[planned T-nnn]`: not on `develop` yet; the task that builds it. Some are being built now.*
 
 *Nothing here has been tried on a headset. Sizes and times come from the code and may change after the headset test (T-129).*
@@ -30,10 +30,10 @@ Roomsong is a small glowing garden on your real table. Every plant sings. Where 
 You see your real room and hands. Roomsong draws no hands of its own.
 
 ## Your first minute `[parts]`, except where marked
-1. Look at your table. The **bed** appears on it: a flat glowing ring, 60 cm across, within reach.
-2. Light ripples over the table, a wall and the ceiling. Each rings one note: your room is tuning the garden `[planned T-142]`.
-3. Hold one hand open, palm up, for half a second. A seed comes to it `[planned T-127: drawing it]`.
-4. Pinch the seed with the other hand and carry it over the bed. The place it will land on lights up `[planned T-119, in its fix round]`.
+1. Look at your table. The **bed** appears on it: a flat glowing ring, 60 cm across, within reach `[app]`.
+2. Light ripples over the table, a wall and the ceiling, with a short label for each: your room is tuning the garden `[parts]`, joined by T-128d. Each ripple will ring one note `[planned T-142b]`.
+3. Hold one hand open, palm up, for half a second. A seed comes to it.
+4. Pinch the seed with the other hand and carry it over the bed. The place it will land on lights up.
 5. Let go. The seed becomes a plant.
 6. A sweep of light goes round the bed. When it passes your plant, the plant sings `[planned T-128d]`.
 7. Plant your other two seeds. That is your first song.
@@ -43,14 +43,14 @@ Round the bed is time: 16 places. Outwards is pitch: 5 circles, low in the middl
 ## Gestures
 | Do this | What happens | State |
 |---|---|---|
-| Open a hand, palm up, for half a second | The next waiting seed comes to that hand. One seed at a time | `[parts]`; seed drawn by T-127 |
+| Open a hand, palm up, for half a second | The next waiting seed comes to that hand. One seed at a time | `[parts]` |
 | Pinch the seed, carry it over the bed, let go | It is planted on the lit place. If that place is taken, it takes the nearest free one | `[parts]` |
 | Let a seed go away from the bed | It goes back to wait for you | `[parts]` |
-| Pinch a plant and pull it up or down | Taller is louder and rings longer. Shorter is softer and briefer. 25 cm of hand travel is the whole range | `[planned T-146, T-147]` |
-| Pinch a plant and drag it sideways | It moves. Round the bed changes when it plays; in or out changes how high | `[planned T-146, T-147]` |
-| Drag a plant past the outer edge, to the side or towards you, and let go | The plant is removed | `[planned T-146]` |
-| Pinch the small petal left over that place, within 5 seconds | The plant comes back | `[planned T-146]`; the 5 second rule is `[parts]` |
-| Let a dragged plant go over the hole in the middle | It goes back to where it was | `[planned T-146]` |
+| Pinch a plant and pull it up or down | Taller is louder and rings longer. Shorter is softer and briefer. 25 cm of hand travel is the whole range | `[parts]` |
+| Pinch a plant and drag it sideways | It moves. Round the bed changes when it plays; in or out changes how high | `[parts]` |
+| Drag a plant past the outer edge, to the side or towards you, and let go | The plant is removed | `[parts]` |
+| Pinch the small petal left over that place, within 5 seconds | The plant comes back | `[parts]` |
+| Let a dragged plant go over the hole in the middle | It goes back to where it was | `[parts]` |
 | Turn the back of your left hand towards your face and pinch the small orb over it | The settings panel opens or closes | `[parts]`, joined by T-128d |
 | Hold both palms out, facing away from you, for 1.5 seconds | Listen: the room dims and the garden plays by itself. Any pinch brings you back. It ends by itself after 10 minutes | `[planned T-148]` |
 
@@ -66,13 +66,13 @@ When the garden finds your table by itself, it measures the room:
 
 The speed is yours; the room never changes it. Another room makes the same plants play a different song.
 
-**No table?** The garden asks where to put it: look at a surface and pinch `[planned T-128c]`. With no pinch in about 10 seconds it places itself, on that surface or floating in front of you. Everything still works. A bed you placed, or a floating one, plays in the "Wanderer" tuning: C major, medium echo.
+**No table?** The garden asks where to put it: look at a surface and pinch `[app]`. With no pinch in about 10 seconds it places itself, on that surface or floating in front of you. Everything still works. A bed you placed, or a floating one, plays in the "Wanderer" tuning: C major, medium echo.
 
-## Coming back `[parts]`, joined by T-128c to T-128e
+## Coming back `[parts]`, joined by T-128d and T-128e
 - Your garden is saved in this browser, half a second after each change.
 - It returns to the same spot on your table. If the headset cannot find the spot, the garden is placed again and your plants are safe.
 - Each new day you visit brings one seed. Up to five wait.
-- Plants grow leaves after one day, more after three, cream blossoms after seven `[planned T-119, in its fix round]`. Nothing wilts while you are away.
+- Plants grow leaves after one day, more after three, cream blossoms after seven. Nothing wilts while you are away.
 
 ## Settings `[parts]`, joined by T-128d
 The settings orb is a small dark disc with three slider lines. It floats over the back of your left hand while that hand's back faces you (your right hand, once **Main hand** is L). Pinch it with the other hand to open the panel. Pinch a control to press it. Close with **x**, or look away for 5 seconds.
@@ -82,10 +82,10 @@ The settings orb is a small dark disc with three slider lines. It floats over th
 
 ## Accessibility modes
 The switches on the first page are `[app]`; the panel's are `[parts]`.
-- **One hand.** The settings orb waits in front of you `[parts]`. A seed rests at your fingertips, and one palm is enough to listen `[planned T-160]`.
+- **One hand.** The settings orb waits in front of you `[parts]`. The hand a seed rests on can pinch it off its own palm, and one palm is enough to listen `[planned T-160]`.
 - **No hands: look and hold.** You aim with your head, not your eyes, and hold the aim on a thing for 0.6, 0.9 or 1.2 seconds to choose it. Works on the settings panel `[parts]`; in the garden `[planned T-160]`.
-- **High contrast.** Messages `[app]` and the panel `[parts]` turn cream on black with outlines; plants get outlines `[planned T-119, in its fix round]`.
-- **Reduce motion.** Ripples become short glows and growth appears at once `[planned T-142, T-119]`. Nothing reads this switch yet.
+- **High contrast.** Messages `[app]` and the panel `[parts]` turn cream on black with outlines; plants get outlines `[parts]`.
+- **Reduce motion.** Ripples become short glows and growth appears at once `[parts]`.
 - **Beat ring.** Marks on the bed show the beat and each note, for players who cannot hear the song `[planned T-160]`.
 
 Nothing flashes more than three times a second, in any mode `[parts]`.
@@ -101,10 +101,10 @@ Nothing flashes more than three times a second, in any mode `[parts]`.
 | "Table detection: not available." and "Saved position: not available." (under This device) | The headset did not share the room's layout, or cannot remember spots | Nothing. The garden asks you where to put it or floats, and it is placed again on each visit | `[app]` |
 | "Hand out of view" | The headset lost the hand that held something | Bring the hand back in front of you. What you held goes back to where it was. Nothing is lost | `[app]` |
 | "Sound unavailable" (5 seconds) | The browser did not start the sound. The garden still works, silent | Check the volume. Leave the garden and press Enter again: sound starts only in that press | `[app]` |
-| "Look at your table, and pinch" (Look and hold: "and wait") | No table was found | Look where the garden should go and pinch | `[planned T-128c]` |
-| "Table: seeds." "Table: colour." "Walls: colour." "Ceiling: scale." | Labels of the opening ripple: what each surface gives the garden | Nothing | words `[app]`; ripple `[planned T-142]`; colour `[planned T-163]` |
+| "Look at your table, and pinch" (Look and hold: "and wait") | No table was found | Look where the garden should go and pinch | `[app]` |
+| "Table: seeds." "Table: colour." "Walls: colour." "Ceiling: scale." | Labels of the opening ripple, one for each surface found: what it gives the garden. The room does not change the colours yet | Nothing | ripple and labels `[parts]`, joined by T-128d; colour tint `[planned T-163]` |
 | "Saving unavailable" | The browser cannot store the garden: private browsing, or storage full or blocked | Keep playing; this visit will not be kept. Leave private browsing or free some space, then reload | `[parts]`, shown from T-128e |
-| "Open your hand" · "Pinch, and plant it" · "Rest your hands to listen" · "Garden is full" · "Goodnight" | First-visit hints, a full bed (80 plants), and the end of Listen | Follow the hint. For a full bed, remove a plant first | `[planned T-150, T-127, T-148]` |
+| "Open your hand" · "Pinch, and plant it" · "Rest your hands to listen" · "Garden is full" · "Goodnight" | First-visit hints, a full bed (80 plants), and the end of Listen | Follow the hint. For a full bed, remove a plant first | hints `[planned T-150]`; "Garden is full" `[parts]`; "Goodnight" `[planned T-148]` |
 
 ## Privacy `[app]`
 Nothing leaves your headset. No account, no adverts, no tracking. What the headset shares about your room and hands stays on the device. Only the garden and the name of its spot are saved, in this browser: clearing the browser's data deletes them.
