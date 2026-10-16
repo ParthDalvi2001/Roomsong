@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import manifest from '../../../src/components.js';
 import { BedAnchor, Caption, Interactable } from '../../../src/core/components.js';
-import { bus, clock } from '../../../src/core/index.js';
+import { bus, clock, DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
 import { cellCentre } from '../../../src/garden/index.js';
 import { HAND_HINT_KEY, HAND_HINT_MAX_MS, HIT_RADIUS_M } from '../../../src/hands/config.js';
 import { GestureMachine } from '../../../src/hands/GestureMachine.js';
@@ -109,7 +109,10 @@ function rig() {
     getSession: () => xr.session,
   };
   const created: FakeEntity[] = [];
+  // A level head at 1.20 m looking down -z (T-148: the Listen poses read it). Column-major.
+  const head = { matrixWorld: { elements: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1.2, 0, 1] } };
   const world = {
+    player: { head },
     renderer: { xr },
     createEntity: () => {
       const entity = new FakeEntity();
@@ -205,6 +208,7 @@ function rig() {
   return {
     system,
     xr,
+    head,
     bed,
     beds,
     targets,
@@ -630,5 +634,138 @@ describe('HandSystem: no allocation per frame', () => {
     // It did the work: a preview and a new hovered cell on every frame, and the drag never ended.
     expect(count).toEqual({ drags: 7 * ROUNDS, cells: 7 * ROUNDS, ended: 0 });
     expect(r.targets.entities.size).toBe(80);
+  }, 60_000);
+});
+
+describe('HandSystem: the Listen poses (T-148, FR-HND-06/07)', () => {
+  const OUT = { x: 0, y: 0, z: -1 }; // the way the rig's head looks
+  const LOW_RIGHT = { x: 0.1, y: 1.0, z: -0.3 };
+  const length = Math.hypot(-0.1, 0.2, 0.3);
+  const TO_FACE = { x: -0.1 / length, y: 0.2 / length, z: 0.3 / length }; // from LOW_RIGHT to the head
+
+  /** The rig, with every palms-out and wake it emitted, by the number of frames run when it came. */
+  function listenRig() {
+    const r = rig();
+    const heard: string[] = [];
+    let frames = 0;
+    const off = [
+      bus.on('gesture:palmsOut', (event) => heard.push(`${event.type} @${frames}`)),
+      bus.on('gesture:wake', (event) => heard.push(`${event.type} @${frames}`)),
+    ];
+    const run = (count: number): void => {
+      for (let i = 0; i < count; i++) {
+        frames++;
+        r.frame();
+      }
+    };
+    const pose = (hand: Hand, palmNormal: Vec3, palmPos: Vec3 = LOW_RIGHT): void => {
+      r.hands[hand].palmNormal = palmNormal;
+      r.hands[hand].palmPos = palmPos;
+    };
+    const stopAll = (): void => {
+      off.forEach((each) => each());
+      r.stop();
+      settings.set(DEFAULT_SETTINGS);
+    };
+    return { ...r, heard, run, pose, stopAll };
+  }
+
+  it('both palms out for 1.5 s: one gesture:palmsOut, on the frame that completes the hold, and no repeat', () => {
+    const r = listenRig();
+    r.pose('left', OUT);
+    r.pose('right', OUT);
+    r.run(200);
+    // The hold starts on frame 1; frame 108 is 1498 ms after it, frame 109 the first at 1.5 s or more.
+    expect(r.heard).toEqual(['gesture:palmsOut @109']);
+    r.stopAll();
+  });
+
+  it('one palm out is not enough, unless one-hand mode is on; a pinching hand does not count', () => {
+    const r = listenRig();
+    r.pose('left', OUT);
+    r.pose('right', { x: 0, y: -1, z: 0 }); // palm down
+    r.run(150);
+    expect(r.heard).toEqual([]);
+    settings.set({ oneHand: true });
+    r.run(110);
+    expect(r.heard).toEqual(['gesture:palmsOut @259']);
+    settings.set({ oneHand: false });
+    r.pose('right', OUT);
+    r.hands.right.pinch = true; // the joint-distance pinch closed, the platform's select not
+    r.run(150);
+    expect(r.heard).toHaveLength(1);
+    r.stopAll();
+  });
+
+  it('a hand lost during the hold restarts it', () => {
+    const r = listenRig();
+    r.pose('left', OUT);
+    r.pose('right', OUT);
+    r.run(100);
+    r.hands.left.tracked = false;
+    r.run(1);
+    r.hands.left.tracked = true;
+    r.run(108); // the hold starts again on frame 102
+    expect(r.heard).toEqual([]);
+    r.run(1);
+    expect(r.heard).toEqual(['gesture:palmsOut @210']);
+    r.stopAll();
+  });
+
+  it('in Listen palms out is not looked for and a palm to the face held 600 ms wakes, once; after it, the other way round', () => {
+    const r = listenRig();
+    bus.emit('listen:enter', {});
+    r.pose('left', OUT);
+    r.pose('right', OUT);
+    r.run(200);
+    expect(r.heard).toEqual([]);
+    r.pose('right', TO_FACE);
+    r.run(100);
+    // The first facing frame is 201; 43 frames of 14 ms later (602 ms) is frame 244.
+    expect(r.heard).toEqual(['gesture:wake @244']);
+    bus.emit('listen:exit', { timedOut: false });
+    r.run(200); // the right palm still faces the head: no wake outside Listen, and only one palm is out
+    expect(r.heard).toEqual(['gesture:wake @244']);
+    r.stopAll();
+  });
+
+  it('update creates nothing with both palms held out, or in Listen with a palm to the face', () => {
+    const ROUNDS = 50_000;
+    const r = listenRig();
+    vi.restoreAllMocks(); // plain functions in place of the spies, as in the heap tests above
+    clock.setSource(() => nowMs);
+    const { sampler } = r.system;
+    sampler.setFrame = () => {};
+    // The poses exist before the loop and are at fractions, as real ones are.
+    const out = { x: 0.0123, y: -0.0311, z: -0.9994 };
+    let isFacing = false;
+    sampler.sample = (hand, _timeMs, frame) => {
+      frame.tracked = true;
+      frame.hand = hand;
+      frame.palmNormal = isFacing && hand === 'right' ? TO_FACE : out;
+      frame.palmPos = LOW_RIGHT;
+    };
+    const TIMES: unknown[] = [null]; // real-size frame times that exist before the loops, as in the tests above
+    for (let i = 1; i <= 14 * ROUNDS; i++) TIMES.push((FRAME_START_MS + i * 13.889) / 1000);
+    let frames = 0;
+    const round = (): void => {
+      for (let i = 0; i < ROUNDS; i++) r.system.update(0.014, TIMES[++frames] as number);
+    };
+    const measure = () => {
+      round(); // warm up: the JIT's own allocations happen here
+      round();
+      return Array.from({ length: 5 }, () => heapCost(round));
+    };
+    const isClean = (cost: { gcs: number; grewBytes: number }) =>
+      cost.gcs === 0 && cost.grewBytes < PROBE_BYTES;
+    const outside = measure();
+    bus.emit('listen:enter', {});
+    isFacing = true;
+    const inside = measure();
+    r.stopAll();
+    expect(outside.filter(isClean).length, JSON.stringify(outside)).toBeGreaterThan(0);
+    expect(inside.filter(isClean).length, JSON.stringify(inside)).toBeGreaterThan(0);
+    // It did the work: one palms-out, then one wake.
+    expect(r.heard.map((each) => each.split(' ')[0])).toEqual(['gesture:palmsOut', 'gesture:wake']);
   }, 60_000);
 });

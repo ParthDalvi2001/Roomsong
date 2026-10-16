@@ -10,6 +10,8 @@ export const STRINGS = {
   // The level-3 placement hint (UX §9.2): room/ raises one of the two while the ghost of the bed shows.
   placeLook: 'Look at your table, and pinch',
   placeLookGaze: 'Look at your table, and wait', // gaze mode (Settings.gazeDwell)
+  // UX §3.5: the end of a Listen that ran its 10 minutes, the one caption that is not an instruction (T-148).
+  goodnight: 'Goodnight',
   // A seed let go over a full bed (UX §7): render's SeedSystem raises it (T-127).
   gardenFull: 'Garden is full',
   // The message of a user-facing failure has its error code (ErrorCode, API_SPEC §5) as its key (LLD §8).

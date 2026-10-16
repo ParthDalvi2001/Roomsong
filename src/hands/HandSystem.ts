@@ -1,23 +1,26 @@
 /// <reference types="webxr" />
 // The per-frame wiring of hands/ (LLD §4, API_SPEC §1.4). Each XR frame: the sampler gets the frame, the gesture
 // context is refreshed, and each hand's sample goes to its machine and into its HandState. It also raises the
-// hand hint for a hand that held something when it was lost (FR-HND-15, D-030).
+// hand hint for a hand that held something when it was lost (FR-HND-15, D-030). The two Listen poses need both
+// hands and the head, so they are read here, after the machines: palms out outside Listen, the wake inside it.
 import { createSystem, Vector3, type Entity } from '@iwsdk/core';
 
 import { BedAnchor, Caption, Interactable } from '../core/components.js';
-import { bus, clock } from '../core/index.js';
+import { bus, clock, settings } from '../core/index.js';
 import { nearestFreeCell } from '../garden/index.js';
 
-import { HAND_HINT_KEY, HAND_HINT_MAX_MS, HIT_RADIUS_M } from './config.js';
+import { HAND_HINT_KEY, HAND_HINT_MAX_MS, HIT_RADIUS_M, PALMS_OUT_HOLD_MS, WAKE_HOLD_MS } from './config.js';
 import { GestureMachine } from './GestureMachine.js';
 import { HandSampler } from './HandSampler.js';
 import { HandState } from './HandState.js';
 import { createHandFrame } from './InputSource.js';
+import { isPalmOut, PoseHold } from './poses/palmsOut.js';
+import { isPalmToFace } from './poses/wake.js';
 
 import type { GestureContext } from './GestureMachine.js';
 import type { HandFrame } from './InputSource.js';
 import type { PickCandidate, TargetRef } from './TargetPicker.js';
-import type { Hand, Vec3 } from '../core/index.js';
+import type { EventMap, Hand, Vec3 } from '../core/index.js';
 import type { GardenState } from '../garden/index.js';
 
 interface Slot {
@@ -29,6 +32,9 @@ interface Slot {
   /** When the hint is taken back at the latest, on the frame time; 0 while there is none. */
   hintUntilMs: number;
 }
+
+const PALMS_OUT: EventMap['gesture:palmsOut'] = Object.freeze({ type: 'gesture:palmsOut' });
+const WAKE: EventMap['gesture:wake'] = Object.freeze({ type: 'gesture:wake' });
 
 /** `view` is a vector field's typed array (`entity.getVectorView`). */
 function put(view: Record<number, number>, from: Vec3): void {
@@ -56,6 +62,13 @@ export class HandSystem extends createSystem({
   private bed: Entity | null = null;
   /** This frame's time, for a hint raised from inside it (`hands:lost` arrives while the machines run). */
   private timeMs = 0;
+  /** Between `listen:enter` and `listen:exit`: the wake is looked for, palms out is not (LLD §4). */
+  private isListening = false;
+  private readonly palmsOut = new PoseHold(PALMS_OUT_HOLD_MS);
+  private readonly wake = new PoseHold(WAKE_HOLD_MS);
+  /** The head's position and forward this frame. Vector3s for the reason `addTarget` gives. */
+  private readonly headAt = new Vector3();
+  private readonly headForward = new Vector3();
   private readonly context: GestureContext & { candidates: PickCandidate[] } = {
     candidates: this.candidates,
     bedPose: null,
@@ -97,6 +110,8 @@ export class HandSystem extends createSystem({
         if (held !== null) this.setHint(hand, true); // an empty hand shows no hint (D-030)
       }),
       bus.on('hands:found', ({ hand }) => this.setHint(hand, false)),
+      bus.on('listen:enter', () => this.setListening(true)),
+      bus.on('listen:exit', () => this.setListening(false)),
       () => this.sampler.detach(),
     );
   }
@@ -121,6 +136,42 @@ export class HandSystem extends createSystem({
       this.write(slot);
       if (slot.hintUntilMs !== 0 && timeMs >= slot.hintUntilMs) this.setHint(slot.hand, false);
     }
+    this.listenPoses(timeMs);
+  }
+
+  /**
+   * FR-HND-06/07, after the machines: outside Listen, both palms out (one in one-hand mode) held 1.5 s emits
+   * `gesture:palmsOut`; in it, either palm to the face held 600 ms emits `gesture:wake`. A pinch's own wake is
+   * its `gesture:pinchStart`. The head is the viewer's (API_SPEC §1.10 rule 3; this runs only in a session).
+   */
+  private listenPoses(timeMs: number): void {
+    const head = this.player.head.matrixWorld.elements;
+    const slots = this.slots;
+    if (this.isListening) {
+      const at = this.headAt;
+      at.x = head[12];
+      at.y = head[13];
+      at.z = head[14];
+      let isFacing = false;
+      for (let i = 0; i < slots.length; i++) isFacing = isFacing || isPalmToFace(slots[i]!.frame, at);
+      if (this.wake.update(isFacing, timeMs)) bus.emit('gesture:wake', WAKE);
+      return;
+    }
+    const forward = this.headForward; // the head's -Z axis; its matrix has no scale
+    forward.x = -head[8];
+    forward.y = -head[9];
+    forward.z = -head[10];
+    let out = 0;
+    for (let i = 0; i < slots.length; i++) if (isPalmOut(slots[i]!.frame, forward)) out++;
+    const isPosed = out > 0 && (settings.get().oneHand || out === slots.length);
+    if (this.palmsOut.update(isPosed, timeMs)) bus.emit('gesture:palmsOut', PALMS_OUT);
+  }
+
+  /** Each Listen pose is timed from the moment it is looked for. */
+  private setListening(isListening: boolean): void {
+    this.isListening = isListening;
+    this.palmsOut.reset();
+    this.wake.reset();
   }
 
   private addTarget(entity: Entity): void {
@@ -187,6 +238,8 @@ export class HandSystem extends createSystem({
   /** Nothing of one session reaches the next: the sampler, a held gesture (reverted), the hint, the hand's state. */
   private endSession(): void {
     this.sampler.detach();
+    this.palmsOut.reset();
+    this.wake.reset();
     for (const slot of this.slots) {
       slot.machine.reset();
       this.setHint(slot.hand, false);

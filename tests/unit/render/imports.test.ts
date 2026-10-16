@@ -90,6 +90,7 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
         'FLASH_MIN_DELTA',
         'FOVEATION_MEDIUM',
         'FlashGuard',
+        'HaloSystem', // T-148
         'PerfSampler',
         'PerfSystem',
         'PetalRenderer',

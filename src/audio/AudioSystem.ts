@@ -1,6 +1,6 @@
 // The one audio file that loads core/ at run time: it makes the engine and wires it to the events core declares
-// (API_SPEC §2). Not wired yet: room:bedPlaced, room:signature, garden:changed, garden:removed, garden:grown,
-// listen:* and the per-frame listener pose. They need the bed entity and the frame loop and join here with the
+// (API_SPEC §2). Not wired yet: room:bedPlaced, room:signature, garden:changed, garden:removed, garden:grown
+// and the per-frame listener pose. They need the bed entity and the frame loop and join here with the
 // integration task (T-128).
 import { bus, log, settings } from '../core/index.js';
 
@@ -30,6 +30,13 @@ export function createAudioEngine(): AudioEngine {
   bus.on('xr:sessionStart', onVisibility);
   bus.on('xr:sessionEnd', onVisibility);
   bus.on('xr:visibility', onVisibility);
+
+  // Listen mode (T-148): the nearest plants forward while it lasts, and the ending chord when it ran its time.
+  bus.on('listen:enter', () => engine.enterListen());
+  bus.on('listen:exit', ({ timedOut }) => {
+    engine.exitListen();
+    if (timedOut) engine.ui('goodnight');
+  });
 
   return engine;
 }

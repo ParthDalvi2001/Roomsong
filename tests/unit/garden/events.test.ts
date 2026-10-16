@@ -32,7 +32,7 @@ describe('garden/events (API_SPEC §2)', () => {
       starterSeeds: boolean;
     }>();
     expectTypeOf<EventMap['listen:enter']>().toEqualTypeOf<Record<string, never>>();
-    expectTypeOf<EventMap['listen:exit']>().toEqualTypeOf<Record<string, never>>();
+    expectTypeOf<EventMap['listen:exit']>().toEqualTypeOf<{ timedOut: boolean }>();
   });
 
   it('events.ts holds declarations only: type imports and the declare module block', () => {

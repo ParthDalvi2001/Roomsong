@@ -74,6 +74,13 @@ export const SUSPEND_FADE_TAUS = 5;
 export const PAN_REF_DISTANCE_M = 0.4;
 export const PAN_ROLLOFF = 1;
 /**
+ * Listen mode's foreground (T-148, "nearest plants foregrounded"; the law chosen in T-148): while it lasts, a
+ * note's channel is at (this distance ÷ the note's distance from the head)², at most 1. The distance is the eye's
+ * to the bed centre (UX §2: 0.62 m), so the near half of the bed keeps its level and the far rim (0.86 m) is
+ * about −6 dB, on top of the panner's own curve.
+ */
+export const LISTEN_FOCUS_REF_M = 0.62;
+/**
  * Sample frames in a Web Audio render quantum. The panners and the listener are k-rate (NFR-PERF-06, T-145): a
  * position changes only at a quantum's start, so a panner is moved at the one at or before its note.
  */

@@ -111,5 +111,7 @@ export const TZ_OFFSET_MAX_MIN = 960;
 
 /** FR-MUS-12: how long a removed plant can be brought back, in milliseconds on core's clock. */
 export const UNDO_LIFE_MS = 5000;
+/** PRD §3.4, UX §3.5 (T-148): Listen mode ends by itself after 10 minutes, with the ending chord. */
+export const LISTEN_MAX_MS = 600_000;
 /** LLD §3.2 (the autoplant flag, API_SPEC §3): plant n goes to cell (seed + 7n) mod 80; 7 shares no factor with 80. */
 export const AUTOPLANT_CELL_STRIDE = 7;

@@ -15,6 +15,7 @@
 // The call makes the buffers, empty; the tick only fills them, and puts no sample on the heap while it does.
 import {
   cellCentre,
+  chordDegrees,
   MODE_DEGREES,
   REVERB_RT60_DEFAULT_S,
   REVERB_RT60_MAX_S,
@@ -23,6 +24,7 @@ import {
 } from '../garden/index.js';
 
 import {
+  HEIGHT_RELEASE_S_MAX,
   IR_SAMPLES_PER_TICK,
   IR_SEED,
   LATE_DROP_S,
@@ -152,6 +154,8 @@ export class Engine implements AudioEngine {
   private readonly records = new Map<string, PlantRecord>();
   private readonly steps: PlantRecord[][] = Array.from({ length: STEPS }, () => []);
   private readonly centre = { x: 0, y: 0 };
+  /** The ending chord's notes, one after the other (a voice reads its params in the trigger). */
+  private readonly chord: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 };
 
   private reverbMode: 'auto' | 'small' | 'off' = 'auto';
   /** Decay of the signature: the default until the first one, like the Wanderer tuning above. */
@@ -245,12 +249,21 @@ export class Engine implements AudioEngine {
     this.applyPlants();
   }
 
-  // The next five wait for their tasks: silent and safe to call until then.
+  // The next three wait for their tasks: silent and safe to call until then. Of ui(), only 'goodnight' is built.
   chordTone(): void {} // T-142; needs garden's chordDegrees (T-141)
   preview(): void {} // T-147
-  ui(): void {} // T-164
-  enterListen(): void {} // T-148
-  exitListen(): void {}
+  ui(sound: Parameters<AudioEngine['ui']>[0]): void {
+    if (sound === 'goodnight') this.goodnight(); // T-164 builds the others
+  }
+
+  /** T-148: the nearest plants come forward in the mix from their next note on (Spatializer.place). */
+  enterListen(): void {
+    if (this.g !== null) this.g.space.isFocused = true;
+  }
+
+  exitListen(): void {
+    if (this.g !== null) this.g.space.isFocused = false;
+  }
 
   /** FR-SYS-05: the master fades out, then the context stops. The tick does the stop, on the audio clock. */
   suspend(): Promise<void> {
@@ -375,6 +388,24 @@ export class Engine implements AudioEngine {
     g.pluck.warmUp();
     this.applyPlants();
     return g;
+  }
+
+  /**
+   * UX §3.5, PRD §3.4: the ending chord of a Listen that ran its 10 minutes. The room chord (garden's
+   * chordDegrees, the chord the tuning ripple plays) on Pad, as a full-height pad plant sounds, from the bed's
+   * centre, now. choice: the contract names the sound only; the garden plays on under it.
+   */
+  private goodnight(): void {
+    const g = this.g;
+    if (g === null) return;
+    const p = this.chord;
+    p.gain = dbToGain(MIX_DB.pad);
+    p.release = HEIGHT_RELEASE_S_MAX;
+    const b = this.bed;
+    for (const ring of chordDegrees(this.key.mode)) {
+      p.hz = hzForRing(this.key, ring, 'pad');
+      g.pool.play(g.pad, g.ctx.currentTime, p, b[12] as number, b[13] as number, b[14] as number, null);
+    }
   }
 
   /** Settle a pending suspend(): with the context's own promise when the fade is over, with nothing when cancelled. */

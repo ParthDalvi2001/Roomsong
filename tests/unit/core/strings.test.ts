@@ -40,6 +40,10 @@ describe('core/strings', () => {
       expect(STRINGS[key].split(' ')).toHaveLength(6);
   });
 
+  it('holds the ending of a Listen that ran its time (UX §3.5, T-148)', () => {
+    expect(STRINGS.goodnight).toBe('Goodnight');
+  });
+
   it('holds the full-bed caption of UX §7 under the key render/ raises it by (T-127)', () => {
     expect(STRINGS.gardenFull).toBe('Garden is full');
   });
@@ -47,7 +51,7 @@ describe('core/strings', () => {
   it('keys the message of a failure by its error code', () => {
     expect(STRINGS.E_SAVE_FAILED).toBe('Saving unavailable');
     expect(STRINGS.E_AUDIO_CONTEXT).toBe('Sound unavailable'); // a session with no sound (API_SPEC §1.10 rule 2)
-    const notices = ['handOutOfView', 'gardenFull'];
+    const notices = ['handOutOfView', 'gardenFull', 'goodnight'];
     const failures = entries.filter(([k]) => !/^(ripple|place)/.test(k) && !notices.includes(k));
     for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);
   });

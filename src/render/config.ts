@@ -27,6 +27,8 @@ export const PERF_HUD_HEAD_OFFSET_M = [-0.1, -0.125, -0.5] as const;
 /** UX §5 palette. */
 export const CREAM = 0xfff8e7;
 export const ICE = 0x48cae4;
+export const MOSS = 0x7dd181;
+export const VIOLET = 0x9b5de5;
 /** UX §5: the bed base is charcoal glass at 40 % alpha, so passthrough stays visible. */
 export const BED_BASE_COLOUR = 0x141a1f;
 export const BED_BASE_ALPHA = 0.4;
@@ -179,6 +181,40 @@ export const RIPPLE_SHADE_M = 0.06;
  *  tints a light surface too (light alone adds nothing to a white table). */
 export const RIPPLE_AFTERGLOW = 0.4;
 export const RIPPLE_AFTERGLOW_COVER = 0.3;
+/** UX §3.5: the scene goes over into Listen mode in 1.2 s and comes back from it in 0.8 s. */
+export const LISTEN_ENTER_MS = 1200;
+export const LISTEN_EXIT_MS = 800;
+/** UX §3.5: in Listen, passthrough dims to 40 % behind a dark see-through dome, never fully hidden. Chosen in
+ *  T-148: the dome is a sphere this wide around the bed's centre, so a seated or standing head at the table is in
+ *  it, of this many faces (it is one flat colour), drawn before everything else that is see-through. */
+export const DOME_DIM = 0.6;
+export const DOME_RADIUS_M = 2;
+export const DOME_DETAIL = 1;
+export const DOME_RENDER_ORDER = -1;
+/** FR-ROOM-04, UX §3.5, chosen in T-148: the aurora halo is a curtain of light round the bed's rim, from this far
+ *  above the glass up this high, strongest at its foot, of this many sides and this additive strength. It rises:
+ *  its height grows with the fade in (reduced motion: it fades in at full height). */
+export const HALO_LIFT_M = 0.02;
+export const HALO_HEIGHT_M = 0.22;
+export const HALO_SEGMENTS = 48;
+export const HALO_PEAK = 0.9;
+/** PRD §3.4 ("pulsing with the music"), UX §5 (the flash cap): the halo breathes between full and this share of
+ *  its brightness (a swing of 0.25: two changes a breath) once every this many beats, at every tempo. Not UX §5's
+ *  "every beat up to 90 BPM": the guard times a swing from its last movement (T-119), so a smooth breath on every
+ *  beat was held still in 39 % of frames at 84 BPM and 63 % at 90 (measured in T-148). Every second beat is never
+ *  held, 60 to 120 BPM. Chosen in T-148: its folds drift round the bed once in HALO_DRIFT_MS (whole cycles of
+ *  it, so the drift has no seam), slower than 0.1 Hz at any point. */
+export const HALO_LOW = 0.75;
+export const HALO_BEATS_PER_BREATH = 2;
+export const HALO_DRIFT_MS = 60_000;
+/** UX §2 (the Listen orb glows in the bed's centre hole), chosen in T-148: this far above the glass, as wide as a
+ *  target, under the supply orb's ring (10 cm up, T-127; not a target). Its pinch target is `orb` / this id. It is
+ *  drawn at a plant's rest brightness, lifted as a plant is when hovered, and at full in Listen. */
+export const LISTEN_ORB_LIFT_M = 0.02;
+export const LISTEN_ORB_ID = 'listen';
+export const LISTEN_ORB_DETAIL = 1;
+/** UX §3.5: the 10-minute end shows "Goodnight". Chosen in T-148: as long as the wiring's own captions. */
+export const GOODNIGHT_CAPTION_MS = 5000;
 
 /** FR-HND-04: a seed is drawn as wide as a target, in the orb and on a hand alike; a sphere of 80 triangles. */
 export const SEED_DIAMETER_M = TARGET_VISIBLE_DIAMETER_M;

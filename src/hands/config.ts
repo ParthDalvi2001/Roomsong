@@ -33,6 +33,17 @@ export const DRAG_DEAD_ZONE_M = 0.02;
 /** FR-HND-05: the palm normal within this angle of world up, held this long, asks for a seed. */
 export const PALM_UP_MAX_ANGLE_DEG = 35;
 export const PALM_UP_HOLD_MS = 400;
+/** FR-HND-06: each open palm's normal within this angle of the head's forward, held this long, asks for Listen. */
+export const PALMS_OUT_MAX_ANGLE_DEG = 40;
+export const PALMS_OUT_HOLD_MS = 1500;
+/** FR-HND-07: a palm facing the head (its normal within this angle of the way to the head), held this long, wakes. */
+export const WAKE_MAX_ANGLE_DEG = 40;
+export const WAKE_HOLD_MS = 600;
+/** D-050, against accidental poses (T-148 review): a palm farther than this from the head does not wake (one face up
+ *  on the lap or the table's edge), and a palm whose normal is within this angle of world down is not out (hands
+ *  resting palm down on the table while the head looks down at it). Neither tried on a hand: device check. */
+export const WAKE_MAX_DISTANCE_M = 0.45;
+export const PALMS_OUT_MIN_DOWN_ANGLE_DEG = 30;
 /** API_SPEC §1.4 `palmPos`: a delivered seed rests this far above the palm, along its normal. Not rated on a headset. */
 export const PALM_REST_OFFSET_M = 0.03;
 /**

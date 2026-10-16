@@ -12,3 +12,5 @@ export { createPerfHud, PerfSampler } from './PerfHud.js';
 export type { PerfHud } from './PerfHud.js';
 // The module's ECS systems (LLD §3.2): the one file of render/ that imports @iwsdk/core.
 export { BedRenderSystem, PerfSystem, SeedSystem, TuningRippleSystem } from './RenderSystems.js';
+// Listen mode's system (T-148), in a file of its own because its task owns it (LLD §3.2).
+export { HaloSystem } from './HaloSystem.js';

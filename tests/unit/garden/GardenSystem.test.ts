@@ -1043,9 +1043,11 @@ describe('garden/GardenSystem: on the bus (API_SPEC §2, LLD §3.2 Bus order)', 
     const listened = subscribed.mock.calls.map(([type]) => type);
     expect(listened.sort()).toEqual([
       'gesture:palmUp',
+      'gesture:palmsOut', // T-148, Listen mode
       'gesture:pinchStart',
       'gesture:release',
       'gesture:trackingLost',
+      'gesture:wake',
       'room:anchored',
       'room:bedPlaced',
       'room:features',

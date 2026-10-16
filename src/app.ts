@@ -13,6 +13,7 @@ import {
   BedRenderSystem,
   FlashGuard,
   FOVEATION_MEDIUM,
+  HaloSystem,
   PerfSystem,
   SeedSystem,
   TuningRippleSystem,
@@ -257,6 +258,7 @@ export async function start(landing: Landing): Promise<void> {
   register(world, SeedSystem, 49, { guard });
   // Everything drawn on the bed is a child of the bed entity's Object3D (API_SPEC §1.10 rule 5).
   register(world, BedRenderSystem, 50, { guard, bed: room.bed.object3D });
+  register(world, HaloSystem, 52, { guard, engine, bed: room.bed.object3D }); // Listen mode (T-148)
   register(world, TuningRippleSystem, 55, { guard, bed: room.bed.object3D });
   register(world, CaptionSystem, 60);
   // PanelSystem (62) is not registered yet: it takes `garden` and `room`, and the step that first holds both

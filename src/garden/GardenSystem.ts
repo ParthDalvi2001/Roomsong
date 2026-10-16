@@ -3,7 +3,7 @@
 // calls into calls of the pure reducers, and every change into one garden:changed.
 import { bus, clock, flags, log, settings } from '../core/index.js';
 
-import { AUTOPLANT_CELL_STRIDE, DAILY_VOICES, RINGS, STEPS, UNDO_LIFE_MS } from './config.js';
+import { AUTOPLANT_CELL_STRIDE, DAILY_VOICES, LISTEN_MAX_MS, RINGS, STEPS, UNDO_LIFE_MS } from './config.js';
 import { applyVisit, newGarden } from './growth.js';
 import {
   heightAfterPull,
@@ -22,6 +22,9 @@ import type { Clock, EventMap, Flags, Hand } from '../core/index.js';
 
 type Release = EventMap['gesture:release'];
 const NONE: readonly string[] = Object.freeze([]);
+const LISTEN: EventMap['listen:enter'] = Object.freeze({});
+const WOKEN: EventMap['listen:exit'] = Object.freeze({ timedOut: false });
+const TIMED_OUT: EventMap['listen:exit'] = Object.freeze({ timedOut: true });
 
 /**
  * The time a new plant gets (T-161): garden time never runs backwards, so never before the last visit. A clock
@@ -46,6 +49,10 @@ export class GardenSystem {
   private readonly pinchedIn = new Map<Hand, number>();
   /** How many of its own garden:changed emits are running. */
   private emitting = 0;
+  /** Listen mode's 10-minute end, while Listen runs; null outside it (FR-HND-06/07, UX §3.5). */
+  private listenEnd: ReturnType<typeof setTimeout> | null = null;
+  /** The hand whose pinch ended Listen: that pinch is the wake, so its press on the orb does not enter again. */
+  private wokeBy: Hand | null = null;
 
   /** Subscribes to the bus, for the life of the page: made before any system, so its handlers run first. */
   constructor(
@@ -63,9 +70,12 @@ export class GardenSystem {
     };
     on('room:features', (s, e) => this.tune(s, e.features));
     on('xr:visibility', (_s, e) => {
-      if (e.visible) this.visit(); // the return from a pause
+      // choice: a pause ends Listen; the return from it is to the garden, not to Listen
+      if (e.visible) this.visit();
+      else this.stopListen(WOKEN);
     });
     on('xr:sessionEnd', () => {
+      this.stopListen(WOKEN);
       this.signature = null;
       this.isVisited = false;
       this.takeBack('reset');
@@ -78,6 +88,10 @@ export class GardenSystem {
     // choice: LLD §3.2 lists no pinchStart for the garden, but without it "the seed that hand carried" (its
     // trackingLost row) cannot be told from a hand that held a plant; rule 8 names this event as the start
     on('gesture:pinchStart', (_s, e) => {
+      if (this.listenEnd !== null) {
+        this.wokeBy = e.hand; // FR-HND-07: any pinch wakes
+        this.stopListen(WOKEN);
+      }
       this.pinchedIn.set(e.hand, this.generation);
       if (this.out !== null && e.target?.kind === 'seed' && e.target.id === this.out.seedId) {
         this.out.carrier = e.hand; // the hand of the latest pinch on it
@@ -86,7 +100,10 @@ export class GardenSystem {
     on('gesture:release', (s, e) => this.release(s, e));
     on('gesture:trackingLost', (_s, e) => {
       if (this.out?.carrier === e.hand) this.takeBack('lost');
+      if (this.wokeBy === e.hand) this.wokeBy = null; // that pinch ended with no release
     });
+    on('gesture:palmsOut', () => this.startListen());
+    on('gesture:wake', () => this.stopListen(WOKEN));
   }
 
   /** The garden; null before load(). A module follows garden:changed, this is for a late reader. */
@@ -178,6 +195,7 @@ export class GardenSystem {
   /** FR-HND-05: the first seed of the supply rests on that hand, and stays in the supply until planted. */
   private handOut(s: GardenState, hand: Hand): void {
     const seed = s.seeds[0];
+    if (this.listenEnd !== null) return; // PRD §3.4: in Listen nothing but the wake is taken
     if (!this.isVisited || this.out !== null || seed === undefined) return;
     this.out = { seedId: seed.id, carrier: null };
     bus.emit('garden:seedOut', { seed, hand });
@@ -193,12 +211,41 @@ export class GardenSystem {
 
   /** The one event that commits (FR-HND-16), by its `gesture`: the table of API_SPEC §1.4. */
   private release(s: GardenState, e: Release): void {
+    const isWake = this.wokeBy === e.hand;
+    if (isWake) this.wokeBy = null;
     const target = e.target;
     if (target === null) return; // a cancelled press, or a pinch on nothing
+    // PRD §3.4: the pinch that woke Listen is the wake and nothing else. choice: a carried seed is still let go
+    // as usual, so it never stays on a hand that nothing will release it from.
+    if (isWake && e.gesture !== 'carry') return;
     if (e.gesture === 'carry') this.plant(s, target.id, e);
     else if (e.gesture === 'drag') this.drop(s, target.id, e);
     else if (e.gesture === 'pull') this.pull(s, target.id, e.dy);
-    else if (e.gesture === 'press' && target.kind === 'undo') this.undo(s, target.id);
+    else if (e.gesture === 'press') this.press(s, target);
+  }
+
+  /** A press let go over what it pressed: the undo petal undoes, the Listen orb listens (API_SPEC §1.4). */
+  private press(s: GardenState, target: NonNullable<Release['target']>): void {
+    if (target.kind === 'undo') this.undo(s, target.id);
+    else if (target.kind === 'orb') this.startListen();
+  }
+
+  /**
+   * FR-HND-06, the orb's press (API_SPEC §1.4): Listen starts, and ends by itself after LISTEN_MAX_MS. Not
+   * before the session's visit: there is no garden to listen to while the room is still being found.
+   */
+  private startListen(): void {
+    if (this.listenEnd !== null || !this.isVisited) return;
+    this.listenEnd = setTimeout(() => this.stopListen(TIMED_OUT), LISTEN_MAX_MS);
+    bus.emit('listen:enter', LISTEN);
+  }
+
+  /** FR-HND-07 and the 10-minute end: Listen stops, once. */
+  private stopListen(how: EventMap['listen:exit']): void {
+    if (this.listenEnd === null) return;
+    clearTimeout(this.listenEnd);
+    this.listenEnd = null;
+    bus.emit('listen:exit', how);
   }
 
   private plant(s: GardenState, seedId: string, e: Release): void {

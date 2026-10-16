@@ -1,7 +1,7 @@
 // The 24 pooled voice channels (LLD §7.1, NFR-PERF-10): input → equal-power PannerNode → dry bus, and input →
 // the shared reverb send, taken before the pan so the reverb stays wide. Built once; a note only moves a panner.
 // No HRTF: at most two "hero" panners may be added, and only after a device A/B (T-129, W1).
-import { PAN_REF_DISTANCE_M, PAN_ROLLOFF, PARAM_SMOOTH_S, VOICE_CAP } from './config.js';
+import { LISTEN_FOCUS_REF_M, PAN_REF_DISTANCE_M, PAN_ROLLOFF, PARAM_SMOOTH_S, VOICE_CAP } from './config.js';
 
 import type { Mat4 } from '../core/index.js';
 
@@ -15,6 +15,10 @@ export class Spatializer {
   /** The pose of the last call, in the order of `params`. */
   private readonly pose = new Float64Array(9);
   private posed = false;
+  /** Listen mode (T-148): the nearer a note to the head, the more of it; off, every note at full level. */
+  isFocused = false;
+  /** Each channel input's level as last set. */
+  private readonly levels = new Float64Array(VOICE_CAP).fill(1);
 
   constructor(
     private readonly ctx: BaseAudioContext,
@@ -58,12 +62,28 @@ export class Spatializer {
   /**
    * Move channel `i` to a world position at audio time `time`: a render-quantum start, when the channel is silent
    * (the position is k-rate: it changes only at a quantum's start; VoicePool picks the one at or before the note).
+   * Its level is set there too, so a change of focus never steps a note that sounds.
    */
   place(i: number, x: number, y: number, z: number, time: number): void {
     const p = this.panners[i] as PannerNode;
     p.positionX.setValueAtTime(x, time);
     p.positionY.setValueAtTime(y, time);
     p.positionZ.setValueAtTime(z, time);
+    let level = 1;
+    // Only once there is a head to measure from: before the first pose the listener sits on the floor.
+    if (this.isFocused && this.posed) {
+      // From the head as last posed (the glide's target): (LISTEN_FOCUS_REF_M / distance)², at most 1.
+      const dx = x - (this.pose[0] as number);
+      const dy = y - (this.pose[1] as number);
+      const dz = z - (this.pose[2] as number);
+      const distanceSq = dx * dx + dy * dy + dz * dz;
+      if (distanceSq > LISTEN_FOCUS_REF_M * LISTEN_FOCUS_REF_M) {
+        level = (LISTEN_FOCUS_REF_M * LISTEN_FOCUS_REF_M) / distanceSq;
+      }
+    }
+    if (level === this.levels[i]) return;
+    this.levels[i] = level;
+    (this.inputs[i] as GainNode).gain.setValueAtTime(level, time);
   }
 
   /**
@@ -89,6 +109,7 @@ export class Spatializer {
         n[7] as number,
         n[8] as number,
       );
+      this.posed = true;
       return;
     }
     const now = this.ctx.currentTime;

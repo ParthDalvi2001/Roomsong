@@ -25,6 +25,7 @@ declare module '../core/index.js' {
     /** FR-ROOM-11/13. `starterSeeds`: this session issued the starter seeds (a new garden). */
     'room:signature': { signature: RoomSignature; starterSeeds: boolean };
     'listen:enter': Record<string, never>;
-    'listen:exit': Record<string, never>;
+    /** `timedOut`: Listen ran its whole 10 minutes (UX §3.5: the ending chord and "Goodnight"); false for a wake. */
+    'listen:exit': { timedOut: boolean };
   }
 }
