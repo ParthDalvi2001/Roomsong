@@ -1,0 +1,74 @@
+body {
+  margin: 0;
+  background: #0b0f12;
+  color: #e8eef2;
+  font:
+    18px/1.45 system-ui,
+    sans-serif;
+}
+main {
+  max-width: 44rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+h1 {
+  font-size: 1.5rem;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 2px solid #4a5a66;
+  border-radius: 0.75rem;
+  background: #16202a;
+}
+button:focus-visible {
+  outline: 3px solid #ffd27a;
+  outline-offset: 2px;
+}
+.play {
+  padding: 0.75rem 2.5rem;
+  font-size: 1.3rem;
+}
+.styles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.styles button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+.styles button[aria-pressed='true'] {
+  border-color: #ffd27a;
+  background: #2b3540;
+}
+.letter {
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.line {
+  font-size: 0.95rem;
+}
+.garden {
+  display: block;
+  margin: 1rem 0;
+}
+.garden input {
+  width: 1.2rem;
+  height: 1.2rem;
+  vertical-align: middle;
+}
+#status {
+  font-family: monospace;
+}
+.small {
+  font-size: 0.85rem;
+  color: #a9b6bf;
+}

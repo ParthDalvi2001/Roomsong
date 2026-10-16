@@ -3,9 +3,10 @@
 // bus wiring), so it also loads in a bare page and renders in an OfflineAudioContext (tests/e2e/09-audio.spec.ts).
 //
 //   note (built per note by a Voice: single-use sources + envelope)
-//      └─► channel[i] ─┬─► PannerNode[i] (equal-power) ──────────────────────► master gain ─┐
-//           i = 0..23  └─► send (one gain, one level) ─► ConvolverNode (×1) ─► wet return ──┤
-//                                    master gain ─► compressor ─► wave-shaper ceiling (−1 dBFS) ─► destination
+//      └─► channel[i] ─┬─► PannerNode[i] (equal-power) ────────────────────────────► master gain ─┐
+//           i = 0..23  └─► bus ─┬─► send (one gain, one level) ─► ConvolverNode (×1) ─► wet return ──┤
+//                               └─► tempo echo (T-164, Layers.ts) ────────────────────────────────┤
+//              master gain ─► breathing low-pass (Layers.ts) ─► compressor ─► ceiling (−1 dBFS) ─► destination
 //
 // Everything in the diagram but the note is built once, in init(). Hot path = tick(): Scheduler → triggerStep →
 // VoicePool.play → Voice.trigger. A trigger makes a note's own nodes (sources are single-use in Web Audio) and
@@ -28,11 +29,9 @@ import {
   IR_SAMPLES_PER_TICK,
   IR_SEED,
   LATE_DROP_S,
-  MIX_DB,
   MUTE_TAU_S,
   PARAM_SMOOTH_S,
   PLUCK_STRINGS_PER_TICK,
-  REVERB_SEND,
   REVERB_SMALL_RT60_S,
   REVERB_SWAP_DELAY_S,
   START_DELAY_S,
@@ -44,11 +43,13 @@ import {
   TICK_MS,
   WET_RETURN,
 } from './config.js';
+import { grooveSeed, Layers } from './Layers.js';
 import { createLimiter } from './limiter.js';
 import { dbToGain, voiceParamsFor } from './mapping.js';
 import { impulseLength, impulseRenderer } from './Reverb.js';
 import { Scheduler } from './Scheduler.js';
 import { Spatializer } from './Spatializer.js';
+import { STYLES, TODAY, type Recipe, type SoundStyle } from './styles.js';
 import { hzForRing, VOICE_OCTAVE } from './theory.js';
 import { VoicePool } from './VoicePool.js';
 import { Bass } from './voices/Bass.js';
@@ -99,6 +100,8 @@ interface PlantRecord {
   plant: Plant;
   voice: Voice;
   params: VoiceParams;
+  /** grooveSeed(plant.id): its humanize draws (T-164). */
+  seed: number;
   x: number;
   y: number;
   z: number;
@@ -114,6 +117,7 @@ interface Graph {
   space: Spatializer;
   pool: VoicePool;
   scheduler: Scheduler;
+  layers: Layers;
   bell: Bell;
   pad: Pad;
   pluck: Pluck;
@@ -150,6 +154,9 @@ export class Engine implements AudioEngine {
   private volume = 1;
   /** Until the first signature: C major pentatonic, the Wanderer tuning (FR-MUS-02). */
   private key: Pick<RoomSignature, 'keyRoot' | 'mode'> = { keyRoot: 0, mode: 'majorPent' };
+  /** T-164: the sound style; null = today's sound. The recipe holds its values; the voices read them from it. */
+  private style: SoundStyle | null = null;
+  private readonly recipe: Recipe = { ...TODAY };
 
   private plants: readonly Plant[] = [];
   /** A copy of the last bed pose: the caller's matrix may change after the call. Starts as the identity. */
@@ -230,6 +237,24 @@ export class Engine implements AudioEngine {
 
   setListenerPose(head: Mat4): void {
     this.g?.space.setListenerPose(head);
+  }
+
+  /**
+   * T-164 (SOUND_PASS_T164.md §4): one of the three styles Parth chooses between by ear, or null for today's sound.
+   * Not in the contract yet: the winner becomes the constants and this goes. The next notes play it; the strings and
+   * the bass wave are made again (the tick renders the strings, as after a re-tune), and the plants re-tuned.
+   */
+  setStyle(style: SoundStyle | null): void {
+    if (style === this.style) return;
+    this.style = style;
+    Object.assign(this.recipe, style === null ? TODAY : STYLES[style]);
+    const g = this.g;
+    if (g === null) return; // init() builds with the recipe
+    g.bass = new Bass(g.ctx, g.pool.ref, this.recipe);
+    g.pluck.dispose();
+    g.layers.restyle(g.ctx.currentTime);
+    this.applyReverb();
+    this.applyPlants();
   }
 
   syncPlants(plants: readonly Plant[], bedPose: Mat4): void {
@@ -329,44 +354,67 @@ export class Engine implements AudioEngine {
     this.stats.cpuEstimate = this.tickMs;
   };
 
-  /** The scheduler's listener: every plant on `step` plays at audio time `time`. */
-  triggerStep(step: number, time: number): void {
+  /** The scheduler's listener: every plant on `step` plays at audio time `time`, then the layers of the step. */
+  triggerStep(step: number, time: number, bar = 0): void {
     const g = this.g;
     // A step found long after its time (a stalled tick, a throttled tab) is skipped: playing it and the ones
     // after it at once would be a burst.
     if (g === null || time < g.ctx.currentTime - LATE_DROP_S) return;
     const list = this.steps[step] as PlantRecord[];
     this.stats.triggers += list.length;
+    const layers = g.layers;
+    // The groove (T-164) moves and weights each note; with today's recipe it is the note as it is. A humanized
+    // note may start before `time`: no note of this step is stolen for another of it (VoicePool.play's guard).
+    const guard = time - this.recipe.humanizeS;
     for (let i = 0; i < list.length; i++) {
       const r = list[i] as PlantRecord;
-      g.pool.play(r.voice, time, r.params, r.x, r.y, r.z, r);
+      layers.groove(r, step, bar, time);
+      g.pool.play(r.voice, layers.noteTime, layers.note, r.x, r.y, r.z, r, guard);
     }
+    layers.step(step, time, bar, this.records.size);
   }
 
   private build(ctx: AudioContext): Graph {
     const master = ctx.createGain();
     master.gain.value = this.volume;
     const limiter = createLimiter(ctx);
-    master.connect(limiter.input);
     limiter.output.connect(ctx.destination);
 
     // One send gain on the bus, not one per channel: every channel has the same level (LLD §7.1), so the sum is
-    // the same signal with 24 nodes fewer.
+    // the same signal with 24 nodes fewer. The bus is that sum; the tempo echo's send takes from it too (T-164).
+    const bus = ctx.createGain();
     const send = ctx.createGain();
-    send.gain.value = REVERB_SEND;
+    send.gain.value = this.recipe.reverbSend;
     const convolver = ctx.createConvolver();
     convolver.normalize = true;
     const wet = ctx.createGain();
     wet.gain.value = WET_RETURN;
-    send.connect(convolver).connect(wet).connect(master);
+    bus.connect(send).connect(convolver).connect(wet).connect(master);
 
-    const space = new Spatializer(ctx, master, send);
+    const space = new Spatializer(ctx, master, bus);
     const pool = new VoicePool(ctx, space);
     const scheduler = new Scheduler(
       { now: () => ctx.currentTime },
-      (step, time) => this.triggerStep(step, time),
+      (step, time, bar) => this.triggerStep(step, time, bar),
       this.bpm,
     );
+    const r = this.recipe;
+    const bell = new Bell(ctx, pool.ref, r);
+    const choir = new Choir(ctx, pool.ref, r);
+    // master → the breathing filter → the limiter; the echo returns into master (Layers.ts).
+    const layers = new Layers({
+      ctx,
+      pool,
+      scheduler,
+      recipe: r,
+      bell,
+      choirPulse: choir.pulse,
+      bus,
+      master,
+      compressor: limiter.input,
+      bed: this.bed,
+      key: () => this.key,
+    });
     const g: Graph = {
       ctx,
       master,
@@ -376,13 +424,15 @@ export class Engine implements AudioEngine {
       space,
       pool,
       scheduler,
-      bell: new Bell(ctx, pool.ref),
-      pad: new Pad(ctx, pool.ref),
-      pluck: new Pluck(ctx, pool.ref),
-      bass: new Bass(ctx, pool.ref),
-      choir: new Choir(ctx, pool.ref),
+      layers,
+      bell,
+      pad: new Pad(ctx, pool.ref, r),
+      pluck: new Pluck(ctx, pool.ref, r),
+      bass: new Bass(ctx, pool.ref, r),
+      choir,
     };
     this.g = g;
+    if (this.style !== null) layers.restyle(ctx.currentTime);
     scheduler.start(START_DELAY_S);
     this.applyReverb();
     // init() runs in the Enter gesture, before any frame of the session, so both renderers run once here: the
@@ -403,7 +453,7 @@ export class Engine implements AudioEngine {
     const g = this.g;
     if (g === null) return;
     const p = this.chord;
-    p.gain = dbToGain(MIX_DB.pad);
+    p.gain = dbToGain(this.recipe.mixDb.pad);
     p.release = HEIGHT_RELEASE_S_MAX;
     const b = this.bed;
     for (const ring of chordDegrees(this.key.mode)) {
@@ -430,7 +480,8 @@ export class Engine implements AudioEngine {
     if (g === null) return;
     const now = g.ctx.currentTime;
     const off = this.reverbMode === 'off';
-    g.send.gain.setTargetAtTime(off ? 0 : REVERB_SEND, now, PARAM_SMOOTH_S);
+    g.send.gain.setTargetAtTime(off ? 0 : this.recipe.reverbSend, now, PARAM_SMOOTH_S);
+    g.layers.openEcho(!off, now); // 'off' is a dry sound: no tempo echo either (T-164)
     const rt60 = Math.min(
       this.reverbMode === 'small' ? REVERB_SMALL_RT60_S : this.signatureRt60,
       REVERB_RT60_MAX_S,
@@ -491,6 +542,7 @@ export class Engine implements AudioEngine {
           plant,
           voice: g.bell,
           params: { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 },
+          seed: grooveSeed(plant.id),
           x: 0,
           y: 0,
           z: 0,
@@ -516,8 +568,9 @@ export class Engine implements AudioEngine {
     // Shimmer has no synth yet (Should S5): until then it rings as a bell, at its own octave.
     const own = plant.voice === 'shimmer' ? 'bell' : plant.voice;
     record.voice = g[own];
-    voiceParamsFor(plant, hzForRing(this.key, plant.cell.ring, plant.voice), record.params);
-    record.params.gain *= dbToGain(MIX_DB[plant.voice]);
+    const r = this.recipe;
+    voiceParamsFor(plant, hzForRing(this.key, plant.cell.ring, plant.voice), record.params, r.heightFloorDb);
+    record.params.gain *= dbToGain(r.mixDb[plant.voice]);
     if (record.voice === g.pluck) g.pluck.prepare(record.params);
     // The cell centre on the bed plane, through the bed's pose (column-major): bed-local (x, 0, z) → world.
     const { x, y: z } = cellCentre(plant.cell, this.centre);

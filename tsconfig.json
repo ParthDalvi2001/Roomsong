@@ -21,6 +21,7 @@
     "proto/spike/**/*.ts",
     "proto/pinch/**/*.ts",
     "proto/bed/**/*.ts",
+    "proto/styles/**/*.ts",
     "*.config.ts"
   ]
 }

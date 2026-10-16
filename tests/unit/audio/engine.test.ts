@@ -33,6 +33,7 @@ import { renderKarplusStrong } from '../../../src/audio/karplus.js';
 import { dbToGain, hueToDetuneCents } from '../../../src/audio/mapping.js';
 import { Scheduler } from '../../../src/audio/Scheduler.js';
 import { hzForRing } from '../../../src/audio/theory.js';
+import { VoicePool } from '../../../src/audio/VoicePool.js';
 import { REVERB_RT60_MAX_S, RINGS, STEPS, WANDERER } from '../../../src/garden/index.js';
 
 import { FakeAudioContext, last, type FakeBuffer, type FakeNode, type FakeParam } from './fakeAudio.js';
@@ -141,20 +142,31 @@ const filled = (buffer: FakeBuffer): number => {
 /** Notes built so far: a pluck is one buffer source, a pad one filter and three saws, a bell two sines. */
 const notes = (ctx: FakeAudioContext): number =>
   ctx.count('bufferSource') + ctx.count('biquad') + (ctx.count('oscillator') - 3 * ctx.count('biquad')) / 2;
+/** The fixed graph's own filters: the breathing low-pass and the tempo echo's low-pass (T-164). */
+const FIXED_BIQUADS = 2;
 /** The fixed graph, found by its connections. */
 function graph(
   ctx: FakeAudioContext,
-): Record<'shaper' | 'compressor' | 'master' | 'convolver' | 'send' | 'wet', FakeNode> {
+): Record<
+  'shaper' | 'compressor' | 'breath' | 'master' | 'convolver' | 'send' | 'bus' | 'wet' | 'echo',
+  FakeNode
+> {
   const shaper = ctx.destination.inputs[0] as FakeNode;
   const compressor = shaper.inputs[0] as FakeNode;
+  const breath = compressor.inputs[0] as FakeNode;
   const convolver = ctx.of('convolver')[0] as FakeNode;
+  const send = convolver.inputs[0] as FakeNode;
+  const bus = send.inputs[0] as FakeNode;
   return {
     shaper,
     compressor,
-    master: compressor.inputs[0] as FakeNode,
+    breath,
+    master: breath.inputs[0] as FakeNode,
     convolver,
-    send: convolver.inputs[0] as FakeNode,
+    send,
+    bus,
     wet: convolver.outputs[0] as FakeNode,
+    echo: bus.outputs[1] as FakeNode,
   };
 }
 /** The panner of the channel a note's source plays through: source → envelope → channel input → panner. */
@@ -207,7 +219,9 @@ describe('graph shape (NFR-PERF-10, TC-PERF-09)', () => {
     expect(ctx.count('convolver')).toBe(1);
     expect(ctx.count('compressor')).toBe(1);
     expect(ctx.count('waveShaper')).toBe(1);
-    expect(ctx.count('oscillator') + ctx.count('bufferSource') + ctx.count('biquad')).toBe(0);
+    expect(ctx.count('delay')).toBe(1); // the tempo echo (T-164)
+    expect(ctx.count('oscillator') + ctx.count('bufferSource')).toBe(0);
+    expect(ctx.count('biquad')).toBe(FIXED_BIQUADS);
   });
 
   it('everything reaches the output through the compressor and then the −1 dBFS ceiling: no way round it', async () => {
@@ -217,15 +231,23 @@ describe('graph shape (NFR-PERF-10, TC-PERF-09)', () => {
     expect(g.shaper.kind).toBe('waveShaper');
     expect(g.shaper.inputs).toEqual([g.compressor]);
     expect(g.compressor.kind).toBe('compressor');
-    expect(g.compressor.inputs).toEqual([g.master]);
+    // The breathing filter (T-164) sits between the master gain and the compressor; today it is wide open.
+    expect(g.compressor.inputs).toEqual([g.breath]);
+    expect(g.breath).toMatchObject({ kind: 'biquad', type: 'lowpass' });
+    expect(g.breath.frequency.value).toBe(ctx.sampleRate / 2);
+    expect(g.breath.inputs).toEqual([g.master]);
     // A wave-shaper clamps its input to the ends of its curve, so the curve's maximum is the output's maximum.
     const peak = (g.shaper.curve as Float32Array).reduce((max, v) => Math.max(max, Math.abs(v)), 0);
     expect(peak).toBeLessThan(dbToGain(CEILING_DBFS));
-    // The 24 panners and the reverb return all feed the master gain.
-    expect(g.master.inputs).toHaveLength(VOICE_CAP + 1);
+    // The 24 panners, the reverb return and the echo return all feed the master gain.
+    expect(g.master.inputs).toHaveLength(VOICE_CAP + 2);
     expect(g.master.inputs.filter((n) => n.kind === 'panner')).toHaveLength(VOICE_CAP);
     expect(g.master.inputs).toContain(g.wet);
-    expect(g.send.inputs).toHaveLength(VOICE_CAP);
+    // The bus sums the 24 channels before their pan and feeds the reverb send and the echo send, which is shut today.
+    expect(g.bus.inputs).toHaveLength(VOICE_CAP);
+    expect(g.send.inputs).toEqual([g.bus]);
+    expect(g.bus.outputs).toEqual([g.send, g.echo]);
+    expect(g.echo.gain.value).toBe(0);
   });
 
   it('a full bed for 13 bars (1040 triggers): the fixed graph is never added to, and voices never pass 24', async () => {
@@ -479,6 +501,58 @@ describe('the tick builds nothing but the notes it schedules', () => {
   );
 
   it(
+    'with a style, every layer on (T-164), the tick still makes no object: 8 plants, a million ticks, under 16 bytes a tick',
+    LOADED,
+    async () => {
+      // A note's nodes are the fake's objects, not the tick's: here the pool takes each note and builds nothing.
+      // Not vi.spyOn: a mock keeps every call's arguments, which is what this probe would measure.
+      const play = Object.getOwnPropertyDescriptor(VoicePool.prototype, 'play') as PropertyDescriptor;
+      let played = 0;
+      VoicePool.prototype.play = (): boolean => {
+        played++;
+        return true;
+      };
+      try {
+        const { ctx, engine } = await start((e) => e.setStyle('A'));
+        // The fake keeps each parameter event as an object: the breathing filter's glide, once a bar, is counted.
+        const breath = graph(ctx).breath.frequency;
+        let glides = 0;
+        breath.setTargetAtTime = (): FakeParam => {
+          glides++;
+          return breath;
+        };
+        const voices: VoiceType[] = ['bell', 'pad', 'pluck', 'bass', 'choir', 'bell', 'pluck', 'pad'];
+        engine.syncPlants(
+          voices.map((v, i) => plant(`s${i}`, v, i % RINGS, 2 * i, { height: 0.55 })),
+          BED,
+        );
+        const tickAll = (): void => {
+          for (let i = 0; i < ROUNDS; i++) {
+            ctx.currentTime += TICK_S;
+            engine.tick();
+          }
+        };
+        tickAll(); // warm up, and every layer is in
+        const before = played;
+        // Measured 6.2 bytes a tick with this test alone and 10.6 after the rest of the file (2026-10-16): the
+        // groove, the echo and the breathing filter alone stay under 4, as today's sound does; the rest is V8
+        // boxing the numbers each layer note hands the pool (its time and the bed centre), 16 bytes each, more of
+        // them once this stubbed call is no longer inlined. Per note, as a plant note's time is. No object, array
+        // or closure: the smallest of those once a tick reads 16 or more.
+        expect(Math.min(bytesPerRound(tickAll), bytesPerRound(tickAll), bytesPerRound(tickAll))).toBeLessThan(
+          16,
+        );
+        // Plant notes, drone, kick and shaker: about 19 notes a bar; one glide a bar.
+        const bars = (3 * ROUNDS * TICK_S) / BAR_S;
+        expect((played - before) / bars).toBeGreaterThan(16);
+        expect(glides).toBeGreaterThan(bars);
+      } finally {
+        Object.defineProperty(VoicePool.prototype, 'play', play);
+      }
+    },
+  );
+
+  it(
     'the per-frame calls make no object: setListenerPose, and syncPlants when nothing changed',
     LOADED,
     async () => {
@@ -641,7 +715,8 @@ describe('syncPlants: diff-based and idempotent (API_SPEC §1.2)', () => {
     expect(hz('custom')).toHaveLength(2);
     expect(hz('custom')[0]).toBeCloseTo(65.4064, 3);
     expect(hz('custom')[1]).toBeCloseTo(130.8128, 3);
-    expect(ctx.count('biquad')).toBe(5); // the pad's low-pass, the bass's, the choir's three formants
+    // The pad's low-pass, the bass's, the choir's three formants; and the graph's breathing filter and echo low-pass.
+    expect(ctx.count('biquad')).toBe(5 + FIXED_BIQUADS);
     // Sines: the choir's vibrato, then the shimmer's bell (carrier at C5 and its modulator).
     expect(hz('sine')).toHaveLength(3);
     expect(hz('sine')[1]).toBeCloseTo(523.2511, 3);

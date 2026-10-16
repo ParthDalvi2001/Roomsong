@@ -1,20 +1,15 @@
 // Choir (LLD §7): a narrow pulse through three formant band-passes in parallel, with a slow vibrato.
 // Hue (cutoffMul) moves the three formants together, so the vowel darkens or brightens and the pitch stays;
-// height sets gain and the hold/release length. The pulse is a PeriodicWave made once. Stateless (see Bell).
+// height sets gain and the hold/release length. The pulse is a PeriodicWave made once. Stateless (see Bell); its
+// values are the recipe's (see Bell).
 import {
-  CHOIR_ATTACK_S,
   CHOIR_FORMANT_HUE_OCTAVES,
-  CHOIR_FORMANT_Q,
-  CHOIR_FORMANTS_HZ,
-  CHOIR_HOLD_MUL,
   CHOIR_PULSE_DUTY,
   CHOIR_PULSE_LEVEL,
   CHOIR_PULSE_PARTIALS,
-  CHOIR_RELEASE_TAU_DIV,
   CHOIR_TAIL_TAUS,
-  CHOIR_VIBRATO_CENTS,
-  CHOIR_VIBRATO_HZ,
 } from '../config.js';
+import { TODAY, type Recipe } from '../styles.js';
 
 import type { NoteRef, Voice, VoiceParams } from './note.js';
 
@@ -31,23 +26,24 @@ export function choirPartials(): Float32Array {
 }
 
 export class Choir implements Voice {
-  private readonly pulse: PeriodicWave;
-
   constructor(
     private readonly ctx: BaseAudioContext,
     private readonly ref: NoteRef,
-  ) {
+    private readonly r: Readonly<Recipe> = TODAY,
     // MDN createPeriodicWave(real, imag, { disableNormalization }): the terms are played as given, so the level
-    // is the one worked out here and not the browser's rescaling to a peak of 1.
-    this.pulse = ctx.createPeriodicWave(choirPartials(), new Float32Array(CHOIR_PULSE_PARTIALS + 1), {
-      disableNormalization: true,
-    });
-  }
+    // is the one worked out here and not the browser's rescaling to a peak of 1. A second choir may share it.
+    readonly pulse: PeriodicWave = ctx.createPeriodicWave(
+      choirPartials(),
+      new Float32Array(CHOIR_PULSE_PARTIALS + 1),
+      { disableNormalization: true },
+    ),
+  ) {}
 
   trigger(time: number, p: VoiceParams, out: AudioNode): void {
     const ctx = this.ctx;
-    const relTau = p.release / CHOIR_RELEASE_TAU_DIV;
-    const releaseAt = time + CHOIR_ATTACK_S + p.release * CHOIR_HOLD_MUL;
+    const r = this.r;
+    const relTau = p.release / r.choirReleaseTauDiv;
+    const releaseAt = time + r.choirAttackS + p.release * r.choirHoldMul;
     const end = releaseAt + CHOIR_TAIL_TAUS * relTau;
 
     const source = ctx.createOscillator();
@@ -58,23 +54,24 @@ export class Choir implements Voice {
     // The vibrato adds to the detune parameter, in cents, so the note wobbles around its own in-tune pitch.
     const lfo = ctx.createOscillator();
     lfo.type = 'sine';
-    lfo.frequency.value = CHOIR_VIBRATO_HZ;
+    lfo.frequency.value = r.choirVibratoHz;
     const depth = ctx.createGain();
-    depth.gain.value = CHOIR_VIBRATO_CENTS;
+    depth.gain.value = r.choirVibratoCents;
     lfo.connect(depth).connect(source.detune);
 
     const env = ctx.createGain();
     env.gain.setValueAtTime(0, time);
-    env.gain.linearRampToValueAtTime(p.gain, time + CHOIR_ATTACK_S);
+    env.gain.linearRampToValueAtTime(p.gain, time + r.choirAttackS);
     env.gain.setTargetAtTime(0, releaseAt, relTau);
     env.connect(out);
 
     const shift = Math.pow(p.cutoffMul, CHOIR_FORMANT_HUE_OCTAVES);
-    for (let i = 0; i < CHOIR_FORMANTS_HZ.length; i++) {
+    const formants = r.choirFormantsHz;
+    for (let i = 0; i < formants.length; i++) {
       const formant = ctx.createBiquadFilter();
       formant.type = 'bandpass';
-      formant.frequency.value = (CHOIR_FORMANTS_HZ[i] as number) * shift;
-      formant.Q.value = CHOIR_FORMANT_Q;
+      formant.frequency.value = (formants[i] as number) * shift;
+      formant.Q.value = r.choirFormantQ;
       source.connect(formant).connect(env);
     }
 

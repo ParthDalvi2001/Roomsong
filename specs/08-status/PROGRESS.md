@@ -108,6 +108,8 @@
 
 34. **Plant colours (T-163), one choice; reply "A", "B" or "C" (plan: `specs/03-design/ART_PASS_T163.md` §0).** Today each plant's colour is a step round the whole colour wheel, so pinks and reds appear and nothing tints by room, although the captions say "Table: colour." and "Walls: colour.". **A (recommended):** keep plants on the design's arc, gold → moss → ice → violet, and shift the arc by up to ±30° per room, with the ring lines; costs nothing to draw and makes the captions true. B: keep the wheel (every room looks the same). C: only the five named colours (too few for 80 plants). Sound is the same in every option.
 
+35. **Sound style (T-164): open https://localhost:8093/proto/styles/ (Chrome; Advanced → Proceed), press Play, then A, B or C; reply with the letter you would leave on for 10 minutes and "boring" or "not boring".** A soft and warm, B bright and glassy, C deep and ambient. All three have the groove, echo, moving chords, breathing filter and soft percussion. The app keeps today's sound until you pick.
+
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|

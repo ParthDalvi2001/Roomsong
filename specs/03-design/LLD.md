@@ -736,6 +736,7 @@ All voices expose `trigger(time, { hz, gain, release, cutoffMul, detune }, out)`
 **Bass has to be audible on small speakers.** Its fundamentals are 55–147 Hz (ring 0: A 55, C 65, D 73, E 82 Hz), which a headset's speakers may not reproduce (not measured). The voice therefore carries audible level above its fundamental. As built (T-144), relative to the fundamental: 2nd harmonic −2.5 dB, 3rd −14.4 dB, 4th −8.0 dB (computed); the 2nd and 4th carry the note. Share of a note's energy above 120 Hz in a desktop Chromium render at the middle hue: 14.8 % for A1 (55 Hz, the one note whose 2nd harmonic is under 120 Hz), 46 % from 61.7 to 116.5 Hz, all of it from 123.5 Hz. Above 200 Hz: 12.5 to 14.7 % up to 98 Hz, 46 % above. Not heard on a headset; if A1 is weak there, `BASS_DRIVE` is the first lever, and the device audio test W1 (T-129) includes a bass-audibility check.
 
 ### 7.1 Audio graph (`audio/AudioEngine.ts`, NFR-PERF-10)
+*T-164 (16 Oct):* with a style set (`setStyle`, API_SPEC §1.2) the voices feed a bus → tempo echo (one DelayNode, feedback ≤ 0.58 in the loop) → breathing low-pass → the compressor; with `null` the low-pass is flat and the echo send 0, so today's sound is unchanged. The values of the picked style replace §7's when Parth picks (SOUND_PASS_T164.md).
 ```
 note graph (built per note by a Voice: single-use sources + envelope)
    └─► channel[i].in ─┬─► PannerNode[i] (equal-power) ─────────────────────────────► master gain ─┐

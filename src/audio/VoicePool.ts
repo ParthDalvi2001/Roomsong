@@ -26,6 +26,8 @@ export class VoicePool {
   /**
    * Play one note of `voice` at audio time `time`, at a world position. `owner` names who plays it, for `release`.
    * A full pool steals a note; false = every channel holds a note of this same instant, and the note is not played.
+   * `guard`: no note that starts at or after it is stolen. It is `time` unless the caller's notes of one step may
+   * start before their step's time (the T-164 groove humanizes them): then the earliest such start.
    */
   play(
     voice: Voice,
@@ -35,6 +37,7 @@ export class VoicePool {
     y: number,
     z: number,
     owner: object | null,
+    guard = time,
   ): boolean {
     const now = this.ctx.currentTime;
     const at = time > now ? time : now; // a late note sounds now
@@ -44,7 +47,7 @@ export class VoicePool {
     let move = this.quantumStart(at);
     let channel = this.freeAt(move);
     if (channel < 0) {
-      channel = this.quietestAt(at, time);
+      channel = this.quietestAt(at, guard);
       if (channel < 0) return false;
       // The stolen note's fade ends where the panner moves, and has its 20 ms from now: on time for a scheduler
       // note (it is about 0.1 s ahead), 20 to 23 ms late for an immediate sound.
@@ -91,15 +94,15 @@ export class VoicePool {
 
   /**
    * Oldest-quietest: the lowest envelope level at `at`, the earliest start on a tie. A note that starts at or after
-   * `time` (the other notes of the same step) is never a candidate; −1 when every channel holds one.
+   * `guard` (the other notes of the same step) is never a candidate; −1 when every channel holds one.
    */
-  private quietestAt(at: number, time: number): number {
+  private quietestAt(at: number, guard: number): number {
     let pick = -1;
     let pickLevel = 0;
     let pickStart = 0;
     for (let i = 0; i < VOICE_CAP; i++) {
       const n = this.notes[i] as Note;
-      if (n.startTime >= time) continue;
+      if (n.startTime >= guard) continue;
       const level = n.levelAt(at);
       if (pick < 0 || level < pickLevel || (level === pickLevel && n.startTime < pickStart)) {
         pick = i;

@@ -37,6 +37,11 @@ export class Scheduler {
     return (BEATS_PER_BAR * SECONDS_PER_MINUTE) / bpm / STEPS;
   }
 
+  /** Seconds per step at the tempo in force (the groove and the tempo echo of T-164 are measured in steps). */
+  get stepS(): number {
+    return this.stepDur;
+  }
+
   /** Begin at step 0, bar 0, `startDelayS` after the current clock time. */
   start(startDelayS: number): void {
     this.anchorTime = this.clock.now() + startDelayS;

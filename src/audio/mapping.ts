@@ -20,9 +20,9 @@ export function dbToGain(db: number): number {
   return Math.pow(10, db / 20);
 }
 
-/** Height 0..1 → −24..0 dB. */
-export function heightToGainDb(height: number): number {
-  return HEIGHT_GAIN_DB_MIN + (HEIGHT_GAIN_DB_MAX - HEIGHT_GAIN_DB_MIN) * clamp01(height);
+/** Height 0..1 → −24..0 dB, or `floorDb`..0 (a T-164 style's −12). */
+export function heightToGainDb(height: number, floorDb = HEIGHT_GAIN_DB_MIN): number {
+  return floorDb + (HEIGHT_GAIN_DB_MAX - floorDb) * clamp01(height);
 }
 
 /** Height 0..1 → 0.2..2.5 s release (sustain). */
@@ -41,9 +41,14 @@ export function hueToDetuneCents(hue: number): number {
 }
 
 /** Fill `out` from the plant and its frequency; returns `out` (no allocation). The voice mix is not in `gain`. */
-export function voiceParamsFor(plant: Plant, hz: number, out: VoiceParams): VoiceParams {
+export function voiceParamsFor(
+  plant: Plant,
+  hz: number,
+  out: VoiceParams,
+  floorDb = HEIGHT_GAIN_DB_MIN,
+): VoiceParams {
   out.hz = hz;
-  out.gain = dbToGain(heightToGainDb(plant.height));
+  out.gain = dbToGain(heightToGainDb(plant.height, floorDb));
   out.release = heightToReleaseS(plant.height);
   out.cutoffMul = hueToCutoffMul(plant.hue);
   out.detune = hueToDetuneCents(plant.hue);

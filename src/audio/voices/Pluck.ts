@@ -8,6 +8,7 @@
 import {
   A4_HZ,
   CENTS_PER_OCTAVE,
+  FLAT_Q_DB,
   HUE_CUTOFF_OCTAVES,
   PLUCK_BUFFER_S,
   PLUCK_DAMPING_BUCKETS,
@@ -16,11 +17,11 @@ import {
   PLUCK_DAMPING_MIN,
   PLUCK_DAMPING_PER_OCTAVE,
   PLUCK_LEVEL,
-  PLUCK_RELEASE_START_MUL,
   PLUCK_RELEASE_TAU_MUL,
   PLUCK_TAIL_TAUS,
 } from '../config.js';
 import { renderKarplusStrong } from '../karplus.js';
+import { TODAY, type Recipe } from '../styles.js';
 
 import type { Note, NoteRef, Voice, VoiceParams } from './note.js';
 
@@ -30,7 +31,10 @@ export function pluckDamping(cutoffMul: number): number {
   return raw < PLUCK_DAMPING_MIN ? PLUCK_DAMPING_MIN : raw > PLUCK_DAMPING_MAX ? PLUCK_DAMPING_MAX : raw;
 }
 
-/** One pluck: `buffer`, a string rendered at `bufferHz`, through an envelope into `out`. Fills `note`. */
+/**
+ * One pluck: `buffer`, a string rendered at `bufferHz`, through an envelope into `out`. Fills `note`. A recipe with
+ * an attack ramps the string in (a felt hammer), one with a low-pass multiplier adds a low-pass at that × the note.
+ */
 export function playString(
   ctx: BaseAudioContext,
   buffer: AudioBuffer,
@@ -39,18 +43,33 @@ export function playString(
   p: VoiceParams,
   out: AudioNode,
   note: Note,
+  r: Readonly<Recipe> = TODAY,
 ): void {
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   const rate = (p.hz / bufferHz) * Math.pow(2, p.detune / CENTS_PER_OCTAVE);
   src.playbackRate.value = rate;
 
-  const releaseAt = time + p.release * PLUCK_RELEASE_START_MUL;
+  const releaseAt = time + p.release * r.pluckReleaseStartMul;
   const tau = p.release * PLUCK_RELEASE_TAU_MUL;
   const env = ctx.createGain();
-  env.gain.setValueAtTime(p.gain * PLUCK_LEVEL, time);
+  if (r.pluckAttackS > 0) {
+    env.gain.setValueAtTime(0, time);
+    env.gain.linearRampToValueAtTime(p.gain * PLUCK_LEVEL, time + r.pluckAttackS);
+  } else {
+    env.gain.setValueAtTime(p.gain * PLUCK_LEVEL, time);
+  }
   env.gain.setTargetAtTime(0, releaseAt, tau);
-  src.connect(env).connect(out);
+  if (r.pluckLpfMul > 0) {
+    const lpf = ctx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.Q.value = FLAT_Q_DB;
+    lpf.frequency.value = p.hz * r.pluckLpfMul;
+    src.connect(lpf).connect(env);
+  } else {
+    src.connect(env);
+  }
+  env.connect(out);
 
   // The buffer lasts PLUCK_BUFFER_S ÷ rate: a string played slower is stopped at its own faded end, not inside it.
   const end = Math.min(time + PLUCK_BUFFER_S / rate, releaseAt + PLUCK_TAIL_TAUS * tau);
@@ -85,6 +104,8 @@ export class Pluck implements Voice {
   constructor(
     private readonly ctx: BaseAudioContext,
     private readonly ref: NoteRef,
+    /** The recipe (see Bell); its strings ring for its T60, so the engine disposes them when it changes style. */
+    private readonly r: Readonly<Recipe> = TODAY,
   ) {}
 
   /**
@@ -129,7 +150,8 @@ export class Pluck implements Voice {
       this.prepare(p);
       i = this.renderWaiting(this.waitingAt(p.hz, b));
     }
-    playString(this.ctx, this.buffers[i] as AudioBuffer, this.hz[i] as number, time, p, out, this.ref.note);
+    const buffer = this.buffers[i] as AudioBuffer;
+    playString(this.ctx, buffer, this.hz[i] as number, time, p, out, this.ref.note, this.r);
   }
 
   /** Drop every string, rendered or asked for: the engine calls this on a re-tune, when none fits the new key. */
@@ -178,7 +200,8 @@ export class Pluck implements Voice {
     // Damping of the middle of the step; the seed is fixed per string (CODING_GUIDELINES §9).
     const mid = Math.pow(2, HUE_CUTOFF_OCTAVES * ((2 * (bucket + 0.5)) / PLUCK_DAMPING_BUCKETS - 1));
     const seed = Math.round(hz) * PLUCK_DAMPING_BUCKETS + bucket + 1;
-    renderKarplusStrong(buffer.getChannelData(0), this.ctx.sampleRate, hz, pluckDamping(mid), seed);
+    const data = buffer.getChannelData(0);
+    renderKarplusStrong(data, this.ctx.sampleRate, hz, pluckDamping(mid), seed, this.r.stringT60LongS);
     this.hz.push(hz);
     this.bucket.push(bucket);
     return this.buffers.push(buffer) - 1;

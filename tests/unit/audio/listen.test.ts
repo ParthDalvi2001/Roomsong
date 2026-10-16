@@ -144,10 +144,11 @@ describe('the engine in Listen mode (T-148)', () => {
     const { ctx, engine } = await start();
     engine.syncPlants([], BED);
     ctx.currentTime = 5;
+    const fixed = ctx.nodes.length; // the graph has two low-passes of its own (T-164)
     engine.ui('tick');
-    expect(ctx.count('biquad')).toBe(0);
+    expect(ctx.nodes).toHaveLength(fixed);
     engine.ui('goodnight');
-    const filters = ctx.of('biquad'); // one low-pass per pad note
+    const filters = ctx.nodes.slice(fixed).filter((n) => n.kind === 'biquad'); // one low-pass per pad note
     expect(filters).toHaveLength(3);
     const saws = ctx.of('oscillator').filter((osc) => osc.type === 'sawtooth');
     const heard = [...new Set(saws.map((osc) => Math.round(osc.frequency.value * 100) / 100))];

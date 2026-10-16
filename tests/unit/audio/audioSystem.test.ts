@@ -26,7 +26,9 @@ afterAll(() => {
   vi.useRealTimers();
 });
 
-const master = (): FakeNode => (ctx.of('compressor')[0] as FakeNode).inputs[0] as FakeNode;
+/** compressor ← breathing filter (T-164) ← master. */
+const master = (): FakeNode =>
+  ((ctx.of('compressor')[0] as FakeNode).inputs[0] as FakeNode).inputs[0] as FakeNode;
 const send = (): FakeNode => (ctx.of('convolver')[0] as FakeNode).inputs[0] as FakeNode;
 
 describe('audio/index.ts', () => {

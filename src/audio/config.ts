@@ -1,6 +1,6 @@
 // Named constants of audio/ (CODING_GUIDELINES §4, LLD §7.1). Each cites the requirement it comes from; a value
 // with no ID is the T-102 prototype's choice and says what it does. Bed sizes (RINGS, STEPS) come from garden/.
-import type { VoiceType } from '../garden/index.js';
+import type { ModeId, VoiceType } from '../garden/index.js';
 
 /** Tide: 4 beats per bar (FR-MUS-03). */
 export const BEATS_PER_BAR = 4;
@@ -213,3 +213,73 @@ export const CHOIR_ATTACK_S = 0.25;
 export const CHOIR_HOLD_MUL = 0.5;
 export const CHOIR_RELEASE_TAU_DIV = 4;
 export const CHOIR_TAIL_TAUS = 6;
+
+// T-164 sound pass (specs/03-design/SOUND_PASS_T164.md §1): what every style shares. A style's own values, and today's
+// (every layer off), are the recipes in styles.ts.
+
+/** Groove (§1.1): a note's level by its step in the bar, dB: the downbeat, the other beats, the 8ths, the 16ths. */
+export const ACCENTS_DB: readonly number[] = [0, -5, -3, -5, -1, -5, -3, -5, -1, -5, -3, -5, -1, -5, -3, -5];
+/**
+ * Seed of the humanize draws, one per (bar, plant) (CODING_GUIDELINES §9). shortcut: the same in every session, so
+ * a garden sways the same way each time; give it a session seed if a listener hears the repeat.
+ */
+export const GROOVE_SEED = 164;
+/** Evolving pad (§1.4): a pad plant's cutoff moves on a sine this many bars long. */
+export const PAD_EVOLVE_BARS = 16;
+/** Tempo echo (§1.2): the DelayNode's longest delay. A style's 6 steps at 60 BPM are 1.5 s. */
+export const ECHO_MAX_S = 2;
+/** The breathing filter (§1.4) and the echo (§1.2) glide to a bar's value with τ = one bar ÷ this. */
+export const BAR_GLIDE_TAUS = 3;
+/**
+ * A low-pass or high-pass with no peak: Butterworth, a Q of 1/√2. Web Audio takes their Q in dB (MDN:
+ * BiquadFilterNode.Q), so that is 20·log10(1/√2); a Q of 0 dB is a linear Q of 1, a +1.25 dB peak at the cutoff.
+ */
+export const FLAT_Q_DB = -3.0103;
+/**
+ * Builds (§1.5): the harmony, texture (shaker, tick, clave, breath) and kick layers each come in at this many plants
+ * or this many bars played, whichever is first, then fade in over BUILD_FADE_BARS. An empty bed plays none.
+ */
+export const BUILD_PLANTS: readonly number[] = [2, 3, 5];
+export const BUILD_BARS: readonly number[] = [4, 8, 16];
+export const BUILD_FADE_BARS = 2;
+/**
+ * Harmony that moves (§1.3): the chord roots, as degrees of the room's mode, one chord after the other. The fifth
+ * is HARMONY_FIFTH_DEGREES degrees up, a perfect fifth for each of these roots, so every note stays in the scale
+ * (D-025). Major C–A–D–G (I–vi–ii–V), minor C–B♭–E♭–F, sus C–B♭–F–G in C.
+ */
+export const HARMONY_ROOTS: Readonly<Record<ModeId, readonly number[]>> = {
+  majorPent: [0, 4, 1, 3],
+  minorPent: [0, 4, 1, 2],
+  susPent: [0, 4, 2, 3],
+};
+export const HARMONY_FIFTH_DEGREES = 3;
+/** A drone note is held to the next chord, then glides out with τ = its hold ÷ this, under the next one. */
+export const DRONE_TAU_DIV = 12;
+/** The drone sits under a new plant: this is its height (garden's NEW_PLANT_HEIGHT; audio/config.ts loads no garden/). */
+export const DRONE_REF_HEIGHT = 0.55;
+/** Felt kick (§1.6): the Bass wave, its pitch falling over KICK_DROP_S; attack, then τ. */
+export const KICK_START_HZ = 140;
+export const KICK_END_HZ = 55;
+export const KICK_DROP_S = 0.06;
+export const KICK_ATTACK_S = 0.003;
+export const KICK_TAU_S = 0.06;
+/** A percussion note's sources stop this many τ after its peak (about −52 dB). */
+export const PERC_TAIL_TAUS = 6;
+/** The one noise buffer that the shaker, the tick and the breath play, rendered once, and its seed. */
+export const NOISE_S = 0.25;
+export const NOISE_SEED = 2000;
+/** A noise hit: its filter (Q in dB for a high-pass, see FLAT_Q_DB), attack and decay τ. */
+export interface NoiseShape {
+  type: BiquadFilterType;
+  hz: number;
+  q: number;
+  attackS: number;
+  tauS: number;
+}
+export const SHAKER: NoiseShape = { type: 'bandpass', hz: 6000, q: 0.7, attackS: 0.001, tauS: 0.025 };
+export const TICK: NoiseShape = { type: 'highpass', hz: 8000, q: FLAT_Q_DB, attackS: 0.0005, tauS: 0.006 };
+/** Style C's breath: a 0.6 s swell of band-passed noise. */
+export const BREATH_NOISE: NoiseShape = { type: 'bandpass', hz: 900, q: 1, attackS: 0.3, tauS: 0.1 };
+/** Style B's clave: a Bell this many octaves over the root, this short. */
+export const CLAVE_OCTAVES = 2;
+export const CLAVE_RELEASE_S = 0.05;

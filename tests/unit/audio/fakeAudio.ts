@@ -74,6 +74,7 @@ export type NodeKind =
   | 'convolver'
   | 'compressor'
   | 'waveShaper'
+  | 'delay'
   | 'destination';
 
 export class FakeNode {
@@ -96,6 +97,10 @@ export class FakeNode {
   readonly ratio = new FakeParam(12);
   readonly attack = new FakeParam(0.003);
   readonly release = new FakeParam(0.25);
+  readonly delayTime = new FakeParam(0);
+  /** createDelay(maxDelayTime); 0 for every other kind. */
+  maxDelayTime = 0;
+  loop = false;
   type = '';
   panningModel = 'equalpower';
   distanceModel = 'inverse';
@@ -194,6 +199,7 @@ export class FakeAudioContext {
   createConvolver = (): FakeNode => this.make('convolver');
   createDynamicsCompressor = (): FakeNode => this.make('compressor');
   createWaveShaper = (): FakeNode => this.make('waveShaper');
+  createDelay = (maxDelayTime = 1): FakeNode => Object.assign(this.make('delay'), { maxDelayTime });
 
   createBuffer(numberOfChannels: number, length: number, sampleRate: number): FakeBuffer {
     if (!(length > 0)) throw new Error('NotSupportedError: the number of frames must be above 0');

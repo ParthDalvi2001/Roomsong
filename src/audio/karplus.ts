@@ -11,8 +11,8 @@ import {
 } from './config.js';
 
 /**
- * Fill `out` with a plucked string at `hz`. `damping` 0..1 shortens the note (T60 2.5 s → 0.4 s); `seed` fixes the
- * excitation noise. Output is peak-normalised to 1.0 with click-free edges.
+ * Fill `out` with a plucked string at `hz`. `damping` 0..1 shortens the note (T60 `t60Long`, 2.5 s, → 0.4 s); `seed`
+ * fixes the excitation noise. Output is peak-normalised to 1.0 with click-free edges.
  */
 export function renderKarplusStrong(
   out: Float32Array,
@@ -20,6 +20,7 @@ export function renderKarplusStrong(
   hz: number,
   damping: number,
   seed: number,
+  t60Long = STRING_T60_LONG_S,
 ): void {
   const period = sampleRate / hz;
   // The 2-point average in the loop adds 0.5 samples of delay, so the fractional line is period − 0.5.
@@ -27,7 +28,7 @@ export function renderKarplusStrong(
   const n = Math.floor(delay);
   const frac = delay - n;
   const d = damping < 0 ? 0 : damping > 1 ? 1 : damping;
-  const t60 = STRING_T60_LONG_S + (STRING_T60_SHORT_S - STRING_T60_LONG_S) * d;
+  const t60 = t60Long + (STRING_T60_SHORT_S - t60Long) * d;
   const loopGain = Math.pow(T60_AMPLITUDE, 1 / (t60 * hz));
   const excitationLen = n + 2;
 
