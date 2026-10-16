@@ -20,6 +20,7 @@ const TRIANGLE_BUDGET = 150_000; // NFR-PERF-04
 // 1, the tide 1, and the HUD panel 1. A session draws both eyes: 20 (18 without the panel), which is over T-125's
 // 15 and inside NFR-PERF-03's 60. UX §9.5 and §9.6 count the same meshes.
 const EVERYTHING_PER_EYE = 2 + 5 + 1 + 1 + 1;
+const OUTLINE_SHELLS = 5; // T-163: in high contrast, one cream shell per silhouette (FR-UI-05)
 const NFR_DRAW_CALLS = 60; // NFR-PERF-03
 const TIDE_PASS_MARK = 3; // UX §9.4: crest to the shade's darkest point, as a luminance ratio
 
@@ -284,6 +285,21 @@ test('T-119 everything at once on a full bed: draw calls, triangles and the flas
   expectInBudget(inXr, NFR_DRAW_CALLS);
   expect(inXr.draws).toBe(2 * EVERYTHING_PER_EYE);
   expect(Math.max(...sessionPeaks)).toBeLessThanOrEqual(3);
+  expect(offHost).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('T-163 high contrast on a full bed: the outline shells draw, within the budgets', async ({ page }) => {
+  const errors = recordErrors(page); // a shell shader that does not compile is a console error
+  const offHost = await openApp(page, readRoom('table'), PAGE);
+  await page.locator('#garden').selectOption('everything');
+  await page.locator('#contrast').check();
+  await page.locator('#week').click();
+  await enterSession(page);
+  const inXr = await nextSample(page, true, await page.evaluate(() => performance.now()));
+  console.log(`T-163 high contrast, everything, emulated session ${JSON.stringify(inXr)} (IWER, both eyes)`);
+  expectInBudget(inXr, NFR_DRAW_CALLS);
+  expect(inXr.draws).toBe(2 * (EVERYTHING_PER_EYE + OUTLINE_SHELLS));
   expect(offHost).toEqual([]);
   expect(errors).toEqual([]);
 });

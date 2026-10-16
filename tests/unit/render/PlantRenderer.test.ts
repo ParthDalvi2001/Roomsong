@@ -14,12 +14,17 @@ import {
   PLANT_BLOSSOM_WIDTH,
   PLANT_CAPACITY,
   PLANT_FLASH_BRIGHTNESS,
+  PLANT_FOOT_SHADE,
   PLANT_HOVER_LIFT,
   PLANT_LIGHTNESS,
+  PLANT_OUTLINE_M,
+  PLANT_REFERENCE_STEM_M,
   PLANT_REST_BRIGHTNESS,
   PLANT_SATURATION,
+  PLANT_STEM_GLOW,
   PLANT_STEM_MAX_M,
   PLANT_STEM_MIN_M,
+  PLANT_SWAY_LEAN,
   PLANT_TINT_BACK_MS,
   PLANT_TINT_BRIGHTNESS,
   PLANT_WHORL_AT,
@@ -229,7 +234,12 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
       plant('f', 0, 5, { voice: 'shimmer' }),
     ]);
     // And the shaping guides (T-147), drawn only while a plant is pulled or dragged off the bed.
-    expect(parent.children).toEqual([...renderer.meshes, renderer.whorls, renderer.guides.mesh]);
+    expect(parent.children).toEqual([
+      ...renderer.meshes,
+      renderer.whorls,
+      ...renderer.outlines,
+      renderer.guides.mesh,
+    ]);
     expect(renderer.meshes).toHaveLength(5);
     expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, 1, 2, 1, 1]);
     expect([0, 1, 2, 3, 4, 5].map((step) => at(renderer, 0, step)!.shape)).toEqual([
@@ -282,12 +292,13 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
       const rows = outline(renderer, 'choir', stemM);
       expect(rows[rows.length - 1]!.y).toBeCloseTo(stemM - 0.024);
       expect(Math.max(...rows.map((row) => row.y))).toBeCloseTo(stemM + 0.01);
+      expect(rows.find((row) => row.y > stemM + 0.009)!.r).toBe(0); // its crown is closed: no hole from above
     }
   });
 
   it('by outline alone, neither new shape is closer to another than Bell and Pad already are (FR-UI-08)', () => {
     const { renderer } = make();
-    // The figures of UX §9.5, worked from the tables as drawn.
+    // The figures of UX §9.5, worked from the tables as drawn; choir and pad 0.51 before the crown closed (T-163).
     const figures = [
       ['bell', 'pad', 0.64],
       ['bass', 'bell', 0.42],
@@ -295,7 +306,7 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
       ['bass', 'pluck', 0.24],
       ['bass', 'choir', 0.42],
       ['choir', 'bell', 0.4],
-      ['choir', 'pad', 0.51],
+      ['choir', 'pad', 0.5],
       ['choir', 'pluck', 0.25],
     ] as const;
     for (const [one, other, share] of figures) {
@@ -684,21 +695,107 @@ describe('PlantRenderer.setHover (FR-HND-16)', () => {
     expect(guard.takePeak()).toBeLessThanOrEqual(FLASH_CAP_PER_S);
   });
 
-  it('high contrast outlines every plant, from the next frame on (FR-UI-05)', () => {
+  it('high contrast draws a cream shell round every plant from the next frame on, and no draw call otherwise (FR-UI-05)', () => {
     const { renderer } = make(pair());
-    const outline = (): unknown => renderer.meshes[0]!.material.uniforms.uOutline!.value;
     renderer.update(Number.NaN, 0);
-    expect(outline()).toBe(0);
+    // One shell per silhouette, on its plant mesh's geometry, instance matrices and count; none for the whorls.
+    expect(renderer.outlines).toHaveLength(renderer.meshes.length);
+    // Switched by count, never hidden: the shell's program compiles at the start, with no draw call.
+    const counts = (): number[] => renderer.outlines.map((shell) => shell.count);
+    renderer.outlines.forEach((shell, shape) => {
+      expect(shell.geometry).toBe(renderer.meshes[shape]!.geometry);
+      expect(shell.instanceMatrix).toBe(renderer.meshes[shape]!.instanceMatrix);
+      expect(shell.visible).toBe(true);
+    });
+    expect(counts()).toEqual([0, 0, 0, 0, 0]);
     settings.set({ highContrast: true });
     renderer.update(Number.NaN, FRAME_MS);
-    expect(outline()).toBe(1);
+    expect(counts()).toEqual(renderer.meshes.map((mesh) => mesh.count));
+    expect(counts()).toEqual([2, 0, 0, 0, 0]);
     expect(level(renderer, ...NEAR)).toBeCloseTo(PLANT_REST_BRIGHTNESS); // the plants' own brightness is not touched
+    // Cream at one strength, PLANT_OUTLINE_M away from the eye: behind the plant but past its silhouette.
+    const { vertexShader, fragmentShader } = renderer.outlines[0]!.material;
+    expect(vertexShader).toContain(`(dot(n, view.xyz) < 0.0 ? -n : n) * ${PLANT_OUTLINE_M.toFixed(5)};`);
+    expect(fragmentShader).toContain(
+      new Color(CREAM)
+        .toArray()
+        .map((channel) => channel.toFixed(5))
+        .join(', '),
+    );
+    expect(renderer.meshes[0]!.material.fragmentShader).not.toMatch(/edge|uOutline/); // no blotches on the surface
+    show(renderer, [...pair(), plant('pad', 2, 3, { voice: 'pad' })]);
+    expect(counts()).toEqual([2, 1, 0, 0, 0]); // the garden changed: the shells follow
     settings.set({ highContrast: false });
     renderer.update(Number.NaN, 2 * FRAME_MS);
-    expect(outline()).toBe(0);
-    // With the uniform at 0 the shader draws what it drew before: the outline is a mix by it.
-    expect(renderer.meshes[0]!.material.fragmentShader).toMatch(/mix\(vColour \* shade, [^;]+, edge\)/);
-    expect(renderer.meshes[0]!.material.fragmentShader).toMatch(/float edge = uOutline \* /);
+    expect(counts()).toEqual([0, 0, 0, 0, 0]);
+    show(renderer, pair());
+    expect(counts()).toEqual([0, 0, 0, 0, 0]); // and a change of the garden outside high contrast draws none
+  });
+});
+
+describe('PlantRenderer look (UX §5, T-163)', () => {
+  afterEach(() => settings.set({ reducedMotion: false }));
+
+  it('the head is the light: a stem row shades by its share of the stem alone, every head and whorl row is full', () => {
+    const { renderer } = make();
+    const { vertexShader, fragmentShader } = renderer.meshes[0]!.material;
+    expect(vertexShader).toContain(`vUp = mix(position.y * ${PLANT_STEM_GLOW.toFixed(5)}, 1.0, aHead);`);
+    expect(fragmentShader).toContain(`mix(${PLANT_FOOT_SHADE.toFixed(5)}, 1.0, vUp)`);
+    // What makes that 0.45 at the foot to 0.81 at the top of any stem: a stem row's y is its share of the stem.
+    // A head row is marked, and every row of a whorl is a head row.
+    for (const mesh of renderer.meshes) {
+      const position = mesh.geometry.getAttribute('position');
+      const head = mesh.geometry.getAttribute('aHead');
+      for (let v = 0; v < position.count; v++) {
+        if (head.getX(v)) continue;
+        expect(position.getY(v)).toBeGreaterThanOrEqual(0);
+        expect(position.getY(v)).toBeLessThanOrEqual(1);
+      }
+    }
+    expect(new Set(renderer.whorls.geometry.getAttribute('aHead').array)).toEqual(new Set([1]));
+  });
+
+  it("a stem row's normal takes the inverse of the stretch: on a 3 cm stem the jug's foot is lit as it stands", () => {
+    const { renderer } = make();
+    const { geometry, material } = renderer.meshes[SHAPES.indexOf('bass')]!;
+    expect(material.vertexShader).toContain(
+      `float ny = normal.y * mix(${PLANT_REFERENCE_STEM_M.toFixed(5)} / stem, 1.0, aHead);`,
+    );
+    // The lathe's first segment lies in the y-z plane: rows 0 and 1 there are the foot and the start of the bulb.
+    const position = geometry.getAttribute('position');
+    const normal = geometry.getAttribute('normal');
+    const stem = PLANT_STEM_MIN_M;
+    const along = [position.getZ(1) - position.getZ(0), (position.getY(1) - position.getY(0)) * stem];
+    const cos = (n: number[]): number =>
+      (n[0]! * along[0]! + n[1]! * along[1]!) / Math.hypot(n[0]!, n[1]!) / Math.hypot(along[0]!, along[1]!);
+    expect(cos([normal.getZ(0), (normal.getY(0) * PLANT_REFERENCE_STEM_M) / stem])).toBeCloseTo(0, 5);
+    expect(Math.abs(cos([normal.getZ(0), normal.getY(0)]))).toBeGreaterThan(0.3); // the 10 cm lathe's was well off
+  });
+
+  it('every plant sways about its foot at 0.2 Hz, half as far under reduced motion, and no target moves', () => {
+    const { renderer } = make([plant('a', 0, 0), plant('b', 4, 9)]);
+    const { uniforms, vertexShader } = renderer.meshes[0]!.material;
+    const sway = uniforms.uSway!.value as Float32Array; // its phase (radians) and its lean
+    const matrices = (): number[] => renderer.meshes.flatMap((mesh) => [...mesh.instanceMatrix.array]);
+    const placed = matrices();
+    const version = renderer.meshes[0]!.instanceMatrix.version;
+    renderer.update(Number.NaN, 0);
+    expect(sway[0]).toBeCloseTo(0);
+    renderer.update(Number.NaN, 1250); // a quarter of its 5 s
+    expect(sway[0]).toBeCloseTo(Math.PI / 2);
+    renderer.update(Number.NaN, 3_600_000 + 2500); // an hour on, half way: the phase stays within one cycle
+    expect(sway[0]).toBeCloseTo(Math.PI);
+    expect(sway[1]).toBeCloseTo(PLANT_SWAY_LEAN, 6);
+    settings.set({ reducedMotion: true });
+    renderer.update(Number.NaN, 3_600_000 + 2600);
+    expect(sway[1]).toBeCloseTo(PLANT_SWAY_LEAN / 2, 6);
+    // The whorls and the shells sway with their plants: the same uniform.
+    expect(renderer.whorls.material.uniforms.uSway).toBe(uniforms.uSway);
+    expect(renderer.outlines[0]!.material.uniforms.uSway).toBe(uniforms.uSway);
+    // On the GPU only, by the height above the foot: the foot stays, and with it every cell a hand aims at.
+    expect(vertexShader).toMatch(/local\.x \+= uSway\.y \* \(local\.y - foot\.y\) \* sin\(uSway\.x - /);
+    expect(matrices()).toEqual(placed);
+    expect(renderer.meshes[0]!.instanceMatrix.version).toBe(version);
   });
 });
 
@@ -779,26 +876,52 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
       expect.closeTo(PLANT_WHORL_AT[0]),
       expect.closeTo(PLANT_WHORL_AT[1]),
     ]);
-    // Leaves take the plant's colour and brightness; blossoms are cream, and their plant is lighter.
-    expectRgb(whorlsAt(renderer, 2, 2)[1]!.rgb, colourAt(PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    // Leaves take the plant's hue, lighter than its stem (T-163), and its brightness; blossoms are cream, and their
+    // plant is lighter.
+    expectRgb(whorlsAt(renderer, 2, 2)[1]!.rgb, colourAt(PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     expectRgb(at(renderer, 2, 2)!.rgb, colourAt(PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     expectRgb(whorlsAt(renderer, 2, 3)[0]!.rgb, cream(PLANT_REST_BRIGHTNESS));
     expectRgb(at(renderer, 2, 3)!.rgb, colourAt(PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
-    // One more mesh for all whorls of all voices: a ring of four leaves, 2.4 cm across, 32 triangles.
-    expect(parent.children).toEqual([...renderer.meshes, renderer.whorls, renderer.guides.mesh]);
+    // One more mesh for all whorls of all voices: a ring of four leaves, 2.4 cm across, 64 triangles.
+    expect(parent.children).toEqual([
+      ...renderer.meshes,
+      renderer.whorls,
+      ...renderer.outlines,
+      renderer.guides.mesh,
+    ]);
     const { geometry } = renderer.whorls;
-    expect(geometry.index!.count / 3).toBe(32);
+    expect(geometry.index!.count / 3).toBe(64);
     const position = geometry.getAttribute('position');
     const radii = Array.from({ length: position.count }, (_, v) =>
       Math.hypot(position.getX(v), position.getZ(v)),
     );
     expect(2 * Math.max(...radii)).toBeCloseTo(0.024);
-    // Four leaves, not a square plate: between two tips its edge (the middle of its three rows) comes well in.
-    const edge = radii.filter((_, v) => v % 3 === 1).slice(0, 8);
+    // Four rounded leaves, not a square plate nor four points: round its edge (the middle of its three rows) a
+    // tip, a shoulder, the notch between two leaves, a shoulder (T-163).
+    const edge = radii.filter((_, v) => v % 3 === 1).slice(0, 16);
+    const shoulder = Number((1 - PLANT_WHORL_LOBE_DEPTH * (1 - Math.SQRT1_2)).toFixed(2));
     expect(edge.map((radius) => Number((radius / 0.012).toFixed(2)))).toEqual(
-      [0, 1, 2, 3, 4, 5, 6, 7].map((corner) => (corner % 2 ? 1 - PLANT_WHORL_LOBE_DEPTH : 1)),
+      Array.from({ length: 16 }, (_, corner) =>
+        corner % 4 === 0 ? 1 : corner % 2 ? shoulder : 1 - PLANT_WHORL_LOBE_DEPTH,
+      ),
     );
+    expect(shoulder).toBe(0.82);
     expect(renderer.whorls.material).toBe(renderer.meshes[0]!.material);
+  });
+
+  it('the upper whorl is turned half a leaf about the stem, so from above the two make one rosette (T-163)', () => {
+    const { renderer } = make();
+    show(renderer, [aged('two', 4, { plantedAt: -3 * DAY })], 0);
+    expect(renderer.whorls.count).toBe(2);
+    const matrix = new Matrix4();
+    const facing = (index: number): number => {
+      renderer.whorls.getMatrixAt(index, matrix);
+      const x = new Vector3().setFromMatrixColumn(matrix, 0);
+      return Math.atan2(x.z, x.x);
+    };
+    const turn = facing(1) - facing(0);
+    expect(Math.abs(Math.atan2(Math.sin(turn), Math.cos(turn)))).toBeCloseTo(Math.PI / 4);
+    expect(widths(renderer, 4)).toEqual([1, 1]); // the turn keeps its size
   });
 
   it('a visit keeps the plants array and is still drawn: the early return follows lastVisitAt too', () => {
@@ -853,7 +976,7 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
     show(renderer, plants, 7.5 * DAY);
     expect(widths(renderer, 5)).toEqual([1, 1]); // two leaf whorls, as before the visit
     expectRgb(at(renderer, 2, 5)!.rgb, colourAt(PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
-    expectRgb(whorlsAt(renderer, 2, 5)[0]!.rgb, colourAt(PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    expectRgb(whorlsAt(renderer, 2, 5)[0]!.rgb, colourAt(PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
 
     // What the eye gets of the plant and of a whorl, frame by frame, as a share of each one's lightest colour.
     const pale = colourAt(PLANT_BLOSSOM_LIGHTNESS, 1);
@@ -916,7 +1039,7 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
     expect(widths(renderer, 9)).toEqual([PLANT_BLOSSOM_WIDTH, PLANT_BLOSSOM_WIDTH]);
     // No rise was granted, so no colour moved: that would be a change the guard never counted.
     expectRgb(at(renderer, 2, 9)!.rgb, colourAt(PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
-    expectRgb(whorlsAt(renderer, 2, 9)[0]!.rgb, colourAt(PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    expectRgb(whorlsAt(renderer, 2, 9)[0]!.rgb, colourAt(PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     renderer.setHover('right', 'old'); // a hover's glow is a rise too
     run(renderer, t, 300, null);
     const glowing = PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT);
@@ -1002,12 +1125,12 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
     show(renderer, [old, aged('leafy', 9, { plantedAt: -DAY })], 0);
     renderer.update(5 / STEPS, 0); // the crest on the blossomed plant
     expectRgb(whorlsAt(renderer, 2, 5)[1]!.rgb, cream(PLANT_FLASH_BRIGHTNESS));
-    expectRgb(whorlsAt(renderer, 2, 9)[0]!.rgb, colourAt(PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    expectRgb(whorlsAt(renderer, 2, 9)[0]!.rgb, colourAt(PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     renderer.setTint('left', 'leafy', 60_000);
     renderer.update(Number.NaN, 2000);
     expectRgb(
       whorlsAt(renderer, 2, 9)[0]!.rgb,
-      colourAt(PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS * PLANT_TINT_BRIGHTNESS),
+      colourAt(PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS * PLANT_TINT_BRIGHTNESS),
     );
 
     show(renderer, [{ ...old, cell: { ring: 4, step: 1 }, height: 1 }], 0); // moved and stretched; `leafy` removed

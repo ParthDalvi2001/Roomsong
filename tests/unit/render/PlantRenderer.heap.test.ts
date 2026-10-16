@@ -18,8 +18,9 @@
 import { Group, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 
-import { MS_PER_DAY } from '../../../src/core/index.js';
+import { MS_PER_DAY, settings } from '../../../src/core/index.js';
 import { BedRenderer } from '../../../src/render/BedRenderer.js';
+import { PLANT_SWAY_LEAN, PLANT_SWAY_LEAN_REDUCED } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
 import { PlantRenderer } from '../../../src/render/PlantRenderer.js';
 import { TideRenderer } from '../../../src/render/TideRenderer.js';
@@ -118,6 +119,41 @@ describe('render/ per frame (NFR-PERF-08)', () => {
       expect(plants.whorls.count).toBe(160);
       expect(plants.whorls.instanceMatrix.version - unfurled).toBeGreaterThan(80 * 30); // it unfurled, frame by frame
       expect(plants.whorls.instanceColor!.version).toBeGreaterThan(ROUNDS); // and whorls were painted with plants
+    },
+  );
+
+  it(
+    'PlantRenderer.update allocates nothing as the sway runs and high contrast and reduced motion turn on and off',
+    { timeout: 30_000 },
+    () => {
+      // T-163: the sway's phase is written every frame. The settings flip before each round (set() itself creates
+      // its new settings, which is not update's), so each round's first frame turns the outline shells and the
+      // sway's lean on or off.
+      const plants = new PlantRenderer(new Group(), new FlashGuard());
+      plants.setState({ plants: fullBedExcept(), lastVisitAt: 0 });
+      let isOn = false;
+      const prepare = (): void => {
+        isOn = !isOn;
+        settings.set({ highContrast: isOn, reducedMotion: isOn });
+      };
+      let frame = 0;
+      const round = (): void => {
+        for (let i = 0; i < ROUNDS; i++) {
+          frame++;
+          plants.update(phaseAt(frame), frame * 14);
+        }
+      };
+      prepare();
+      round(); // warm up: the JIT's own allocations happen here
+      try {
+        expectClean(costsUntilClean(round, prepare));
+      } finally {
+        settings.set({ highContrast: false, reducedMotion: false });
+      }
+      // Every measured round flipped the switches, and its frames took them up.
+      expect(plants.outlines[0]!.count).toBe(isOn ? 80 : 0);
+      const lean = (plants.meshes[0]!.material.uniforms.uSway!.value as Float32Array)[1];
+      expect(lean).toBeCloseTo(isOn ? PLANT_SWAY_LEAN_REDUCED : PLANT_SWAY_LEAN, 6);
     },
   );
 

@@ -85,6 +85,9 @@ export const PLANT_LIGHTNESS = 0.63;
  *  this much brighter where its surface turns away from the eye. No light is involved (NFR-PERF-09). */
 export const PLANT_FOOT_SHADE = 0.45;
 export const PLANT_RIM_GLOW = 0.6;
+/** T-163 (ART_PASS §2.2): the head is the light. A stem row's shade rises with its share of the stem up to this
+ *  (0.81 at the stem's top); every head and whorl row is at full, whatever the plant's height. */
+export const PLANT_STEM_GLOW = 0.65;
 /** FR-UI-07: a plant's brightness at rest, and when the tide triggers it. One flash is two changes per bar. */
 export const PLANT_REST_BRIGHTNESS = 0.7;
 export const PLANT_FLASH_BRIGHTNESS = 1;
@@ -98,6 +101,9 @@ export const PLANT_HOVER_LIFT = 0.2;
  *  2, at these shares of the stem's height. At stage 3 they open into cream blossoms this many times as wide
  *  (3.1 cm for 2.4), and the plant's colour takes this lightness in place of PLANT_LIGHTNESS. */
 export const PLANT_WHORL_AT = [0.4, 0.6] as const;
+/** T-163 (ART_PASS §2.4): each whorl's turn about the stem; the upper one by half a leaf, so from above the two
+ *  make one rosette of eight leaves. */
+export const PLANT_WHORL_TURN_RAD = [0, Math.PI / 4] as const;
 export const PLANT_BLOSSOM_WIDTH = 1.3;
 export const PLANT_BLOSSOM_LIGHTNESS = 0.75;
 /** Chosen in T-119: how far a whorl is pressed in between its four leaves, as a share of its radius. At
@@ -107,10 +113,17 @@ export const PLANT_WHORL_LOBE_DEPTH = 0.6;
  *  that no crest has reached after the wait unfurls then. */
 export const PLANT_BLOOM_MS = 600;
 export const PLANT_BLOOM_WAIT_MS = 10_000;
-/** FR-UI-05 (outlines on all targets), chosen in T-119: in high contrast a plant's surface turns cream where it
- *  turns away from the eye: from the first number on (0 = facing the eye, 1 = edge on), fully at the second. */
-export const PLANT_OUTLINE_FROM = 0.55;
-export const PLANT_OUTLINE_FULL = 0.75;
+/** FR-UI-05 (outlines on all targets), T-163 (ART_PASS §2.8): in high contrast a cream shell this thick round each
+ *  plant's silhouette (about 3.6 px at 0.6 m), at one strength whatever the plant does: it cannot flash. */
+export const PLANT_OUTLINE_M = 0.0015;
+/** UX §5 (idle sway 0.2 Hz), T-163 (ART_PASS §2.7): every plant leans about its foot along the bed's x by this
+ *  share of each point's height above the foot (3.4 degrees: 0.4 cm at the head of a 3 cm stem, 1.1 cm on the
+ *  tallest), half that under reduced motion; the phase runs across the bed's diagonal in waves this long. The foot
+ *  never moves, so no target does. */
+export const PLANT_SWAY_HZ = 0.2;
+export const PLANT_SWAY_LEAN = 0.06;
+export const PLANT_SWAY_LEAN_REDUCED = PLANT_SWAY_LEAN / 2;
+export const PLANT_SWAY_WAVE_M = 0.6;
 
 /** UX §3.4 (pinch on a plant): the plant a hand holds is drawn this much higher, and glows by PLANT_HOVER_LIFT for
  *  as long as it is held. Every jump of a held plant's place or stem (the lift, the pull or drag deciding, the

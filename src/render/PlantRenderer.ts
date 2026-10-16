@@ -1,7 +1,8 @@
 // The plants (LLD §1, UX §5): one InstancedMesh per silhouette, 80 instances each at most, and one more for the
 // leaf whorls that count a plant's age (UX §9.6), all with one shared unlit material: six draw calls at most,
-// whatever grows. A plant's cell gives the instance its place, its height the stem, its hue the colour; the
-// brightness of the colour is whatever the FlashGuard hands out.
+// whatever grows; in high contrast five more, the cream outline shells (FR-UI-05). A plant's cell gives the instance
+// its place, its height the stem, its hue the colour; the brightness of the colour is whatever the FlashGuard
+// hands out.
 // setState runs when the garden changes and rewrites the instances; update runs per frame and allocates nothing.
 import {
   BufferAttribute,
@@ -35,20 +36,25 @@ import {
   PLANT_LIGHTNESS,
   PLANT_LOBE_DEPTH,
   PLANT_OFF_BED_BRIGHTNESS,
-  PLANT_OUTLINE_FROM,
-  PLANT_OUTLINE_FULL,
+  PLANT_OUTLINE_M,
   PLANT_PINCH_LIFT_M,
   PLANT_TURN_MIN_R_M,
   PLANT_REFERENCE_STEM_M,
   PLANT_REST_BRIGHTNESS,
   PLANT_RIM_GLOW,
   PLANT_SATURATION,
+  PLANT_STEM_GLOW,
   PLANT_STEM_MAX_M,
   PLANT_STEM_MIN_M,
+  PLANT_SWAY_HZ,
+  PLANT_SWAY_LEAN,
+  PLANT_SWAY_LEAN_REDUCED,
+  PLANT_SWAY_WAVE_M,
   PLANT_TINT_BACK_MS,
   PLANT_TINT_BRIGHTNESS,
   PLANT_WHORL_AT,
   PLANT_WHORL_LOBE_DEPTH,
+  PLANT_WHORL_TURN_RAD,
 } from './config.js';
 import { ShapingGuides } from './ShapingGuides.js';
 import { stepGlow } from './TideRenderer.js';
@@ -139,12 +145,13 @@ const SHAPES: readonly Shape[] = [
     lobes: 0,
   },
   {
-    // Choir: an umbrella. A canopy of three rounded petals that hangs over the top of the stem, open underneath.
+    // Choir: an umbrella. A canopy of three rounded petals that hangs over the top of the stem, open underneath;
+    // its crown is closed (T-163), so from above it has no hole.
     profile: [
       [0.0125, 0, 0],
       [0.004, 0.08, 0],
       [0.004, 1, 0],
-      [0.004, 0.01, 1],
+      [0, 0.01, 1],
       [0.013, 0.006, 1],
       [0.02, -0.006, 1],
       [0.021, -0.016, 1],
@@ -154,15 +161,16 @@ const SHAPES: readonly Shape[] = [
     lobes: 3,
   },
 ];
-// A leaf whorl (UX §9.6): a flat ring of four leaves round the stem, 2.4 cm across and 0.3 cm thick, 32
-// triangles. Its rows are head rows, so it rides at the top of its own instance's height and keeps its shape.
+// A leaf whorl (UX §9.6): a flat ring of four rounded leaves round the stem, 2.4 cm across and 0.3 cm thick, 64
+// triangles (T-163: 16 segments, so a leaf is round, not a point). Its rows are head rows, so it rides at the top
+// of its own instance's height and keeps its shape.
 const WHORL: Shape = {
   profile: [
     [0.002, 0, 1],
     [0.012, 0.0015, 1],
     [0.002, 0.003, 1],
   ],
-  segments: 8,
+  segments: 16,
   lobes: 4,
   lobeDepth: PLANT_WHORL_LOBE_DEPTH,
 };
@@ -179,40 +187,59 @@ const SHAPE_OF: Readonly<Record<VoiceType, number>> = {
   choir: 4,
   shimmer: 2,
 };
-const TALLEST_HEAD_M = Math.max(...SHAPES.map((shape) => shape.profile[shape.profile.length - 1]![1]));
 /** A number as a GLSL float literal. */
 const glsl = (value: number): string => value.toFixed(5);
 /** UX §5 cream as the shader and the instance colours take it: linear. */
 const CREAM_RGB = new Color(CREAM).toArray();
+/** Each whorl's turn about its stem (PLANT_WHORL_TURN_RAD), as the columns of its matrix take it. */
+const WHORL_COS = Float64Array.from(PLANT_WHORL_TURN_RAD, Math.cos);
+const WHORL_SIN = Float64Array.from(PLANT_WHORL_TURN_RAD, Math.sin);
+/** One cycle of the sway, in radians, and its phase per metre of x + z (a wave along the bed's diagonal). */
+const TURN_RAD = 2 * Math.PI;
+const SWAY_RAD_PER_M = TURN_RAD / (Math.SQRT2 * PLANT_SWAY_WAVE_M);
+/** The sway's lean in normal and in reduced motion, indexed by the switch (a typed array: see ease()). */
+const LEANS = Float64Array.of(PLANT_SWAY_LEAN, PLANT_SWAY_LEAN_REDUCED);
 
-// No idle sway yet: it comes with the art pass (T-163), together with the reduced-motion switch.
-const VERTEX = /* glsl */ `
+// Where a vertex of an instance stands in the bed frame (`local`) and its normal before the view (`turned`): the
+// plant's and its outline shell's, so the two never part.
+const PLACE = /* glsl */ `
 attribute float aHead;
+uniform vec2 uSway; // the idle sway's phase (radians) and lean
+vec4 local;
+vec3 turned;
+void place() {
+  float stem = length(instanceMatrix[1].xyz); // the instance's y scale is the stem's height in metres
+  // The stem stretches with the plant; the head rides on its top and keeps its shape.
+  float y = mix(position.y, 1.0 + position.y / stem, aHead);
+  local = instanceMatrix * vec4(position.x, y, position.z, 1.0);
+  // The idle sway (UX §5): a lean along the bed's x about the foot, by the height above it, in a wave across the
+  // bed. The foot stays where it is, and with it every target. The normal is not swayed.
+  vec3 foot = instanceMatrix[3].xyz;
+  local.x += uSway.y * (local.y - foot.y) * sin(uSway.x - ${glsl(SWAY_RAD_PER_M)} * (foot.x + foot.z));
+  // The instance turns and stretches but never tilts. The outlines were turned on a stem of
+  // PLANT_REFERENCE_STEM_M, so a stem row's normal takes the inverse of the stretch; a head row keeps its own.
+  float ny = normal.y * mix(${glsl(PLANT_REFERENCE_STEM_M)} / stem, 1.0, aHead);
+  turned = instanceMatrix[0].xyz * normal.x + vec3(0.0, ny, 0.0) + instanceMatrix[2].xyz * normal.z;
+}`;
+
+const VERTEX = /* glsl */ `${PLACE}
 varying vec3 vColour;
 varying vec3 vNormal;
 varying vec3 vView;
 varying float vUp;
 void main() {
-  float stem = length(instanceMatrix[1].xyz); // the instance's y scale is the stem's height in metres
-  // The stem stretches with the plant; the head rides on its top and keeps its shape.
-  float y = mix(position.y, 1.0 + position.y / stem, aHead);
-  vec4 local = instanceMatrix * vec4(position.x, y, position.z, 1.0);
+  place();
   vec4 view = modelViewMatrix * local;
-  // The instance turns and stretches but never tilts, and the stretch does not reach the head: the normal
-  // only needs the turn.
-  vec3 turned = instanceMatrix[0].xyz * normal.x + vec3(0.0, normal.y, 0.0) + instanceMatrix[2].xyz * normal.z;
   vNormal = normalMatrix * turned;
   vView = -view.xyz;
-  vUp = clamp((local.y - instanceMatrix[3].y) / (stem + ${glsl(TALLEST_HEAD_M)}), 0.0, 1.0);
+  // The head is the light (T-163): a stem row by its share of the stem, every head and whorl row at full.
+  vUp = mix(position.y * ${glsl(PLANT_STEM_GLOW)}, 1.0, aHead);
   vColour = instanceColor;
   gl_Position = projectionMatrix * view;
 }`;
 
 // Unlit (NFR-PERF-09: no light at all): darker at the foot, brighter at the head, and a rim that reads as glass.
-// In high contrast (FR-UI-05) the edge of the silhouette is cream, at one strength whatever the plant's own
-// brightness does: an outline that never changes cannot flash.
 const FRAGMENT = /* glsl */ `
-uniform float uOutline;
 varying vec3 vColour;
 varying vec3 vNormal;
 varying vec3 vView;
@@ -220,8 +247,26 @@ varying float vUp;
 void main() {
   float rim = 1.0 - abs(dot(normalize(vNormal), normalize(vView)));
   float shade = mix(${glsl(PLANT_FOOT_SHADE)}, 1.0, vUp) + ${glsl(PLANT_RIM_GLOW)} * rim * rim;
-  float edge = uOutline * smoothstep(${glsl(PLANT_OUTLINE_FROM)}, ${glsl(PLANT_OUTLINE_FULL)}, rim);
-  gl_FragColor = vec4(mix(vColour * shade, vec3(${CREAM_RGB.map(glsl).join(', ')}), edge), 1.0);
+  gl_FragColor = vec4(vColour * shade, 1.0);
+  #include <colorspace_fragment>
+}`;
+
+// High contrast (FR-UI-05): the plant again, every point pushed PLANT_OUTLINE_M away from the eye along its
+// normal, whichever way that points, so the shell lies behind the plant and shows only past its silhouette. Away
+// from the eye, not out along the normal: the choir's canopy is an open sheet whose normals face under it.
+// Cream at one strength whatever the plant's brightness does: an outline that never changes cannot flash.
+const OUTLINE_VERTEX = /* glsl */ `${PLACE}
+void main() {
+  place();
+  vec4 view = modelViewMatrix * local;
+  vec3 n = normalize(normalMatrix * turned);
+  view.xyz += (dot(n, view.xyz) < 0.0 ? -n : n) * ${glsl(PLANT_OUTLINE_M)};
+  gl_Position = projectionMatrix * view;
+}`;
+
+const OUTLINE_FRAGMENT = /* glsl */ `
+void main() {
+  gl_FragColor = vec4(${CREAM_RGB.map(glsl).join(', ')}, 1.0);
   #include <colorspace_fragment>
 }`;
 
@@ -272,7 +317,13 @@ export class PlantRenderer {
   readonly meshes: readonly InstancedMesh<LatheGeometry, ShaderMaterial>[];
   /** The leaf whorls and blossoms of every plant: two per plant at most (UX §9.6). */
   readonly whorls: InstancedMesh<LatheGeometry, ShaderMaterial>;
+  /** FR-UI-05: one cream outline shell per silhouette. Each shares its plant mesh's geometry and instance
+   *  matrices, and in high contrast its count (0 otherwise: no draw call); whorls have none. */
+  readonly outlines: readonly InstancedMesh<LatheGeometry, ShaderMaterial>[];
   private readonly material: ShaderMaterial;
+  private readonly outlineMaterial: ShaderMaterial;
+  /** Whether the shells draw (high contrast), as update last saw the setting. */
+  private isOutlined = false;
   private readonly firstElement: number;
   // A slot is a plant's place in the arrays below and its FlashGuard element; it keeps it while it lives.
   private readonly slotOf = new Map<string, number>();
@@ -320,8 +371,9 @@ export class PlantRenderer {
   private readonly lift = new Float64Array(PLANT_CAPACITY);
   /** Per slot: what the tide's glow is multiplied by before the one request: the dim times the hover's lift. */
   private readonly gain = new Float64Array(PLANT_CAPACITY).fill(1);
-  /** FR-UI-05: 1 draws every plant's outline (high contrast), 0 none. */
-  private readonly outline = { value: 0 };
+  /** UX §5: the idle sway's phase (radians) and lean, the plants' and their shells' uSway. A typed array, which
+   *  three.js uploads as a vec2: a fraction written into it is not boxed per frame (as `{ value }` was). */
+  private readonly sway = Float32Array.of(0, PLANT_SWAY_LEAN);
   /** UX §3.4: the scale ladder of a pull and the dimmed rim of a drag off the bed. */
   readonly guides: ShapingGuides;
   // Shaping (T-147, UX §3.4), per hand (left, right): the plant it holds and what it does with it; its height at
@@ -356,11 +408,19 @@ export class PlantRenderer {
     private readonly guard: FlashGuard,
   ) {
     this.firstElement = guard.claim(PLANT_CAPACITY, PLANT_REST_BRIGHTNESS);
+    const uniforms = { uSway: { value: this.sway } };
     this.material = new ShaderMaterial({
       vertexShader: VERTEX,
       fragmentShader: FRAGMENT,
-      uniforms: { uOutline: this.outline },
+      uniforms,
       side: DoubleSide, // the pad's fan is open: its inside shows
+    });
+    // Both sides: every point of a shell lies behind the plant (see OUTLINE_VERTEX), whichever way it faces.
+    this.outlineMaterial = new ShaderMaterial({
+      vertexShader: OUTLINE_VERTEX,
+      fragmentShader: OUTLINE_FRAGMENT,
+      uniforms,
+      side: DoubleSide,
     });
     const instanced = (shape: Shape, capacity: number): InstancedMesh<LatheGeometry, ShaderMaterial> => {
       const mesh = new InstancedMesh(silhouette(shape), this.material, capacity);
@@ -373,6 +433,15 @@ export class PlantRenderer {
     };
     this.meshes = SHAPES.map((shape) => instanced(shape, PLANT_CAPACITY));
     this.whorls = instanced(WHORL, PLANT_WHORL_AT.length * PLANT_CAPACITY);
+    this.outlines = this.meshes.map((mesh) => {
+      const shell = new InstancedMesh(mesh.geometry, this.outlineMaterial, 0);
+      shell.instanceMatrix = mesh.instanceMatrix; // the plant's own places: written once, drawn twice
+      shell.frustumCulled = false;
+      shell.matrixAutoUpdate = false;
+      // Always visible, switched by its count: so its program compiles with the plants', not on the first switch.
+      parent.add(shell);
+      return shell;
+    });
     this.guides = new ShapingGuides(parent, guard);
   }
 
@@ -422,6 +491,7 @@ export class PlantRenderer {
       mesh.instanceMatrix.needsUpdate = true;
       mesh.instanceColor!.needsUpdate = true;
     }
+    this.countOutlines();
     this.isWhorlPaintDue = false;
     this.aim();
     this.plants = plants; // last: a throw above leaves it unset, and the next call starts over
@@ -546,18 +616,26 @@ export class PlantRenderer {
   /**
    * Per frame: each plant's glow as the tide passes its step (FR-UI-07), times the dim of a lost hand's tint and
    * the lift of a hover, as one request through the flash cap (FR-UI-11); and the unfurling of the plants that
-   * grew (UX §9.6). `barPhase` is audio's clock.barPhase (0..1); one that is not finite means no tide, and every
-   * plant rests. `nowMs` is the frame's time.
+   * grew (UX §9.6); the idle sway (UX §5) and, in high contrast, the outlines (FR-UI-05). `barPhase` is audio's
+   * clock.barPhase (0..1); one that is not finite means no tide, and every plant rests. `nowMs` is the frame's time.
    */
   update(barPhase: number, nowMs: number): void {
     stepGlow(barPhase, this.glow);
-    const outline = settings.get().highContrast ? 1 : 0;
-    if (this.outline.value !== outline) this.outline.value = outline;
+    const { highContrast, reducedMotion } = settings.get();
+    if (this.isOutlined !== highContrast) {
+      this.isOutlined = highContrast;
+      this.countOutlines();
+    }
+    this.sway[1] = LEANS[reducedMotion ? 1 : 0]!;
     const { frame } = this;
     // How long an ease may run this frame: not at all on the first one, or when the clock stood still or went back.
     const passedMs = nowMs - frame[NOW]!;
     frame[PASSED] = passedMs > 0 && Number.isFinite(nowMs) ? passedMs : 0;
-    if (Number.isFinite(nowMs)) frame[NOW] = nowMs;
+    if (Number.isFinite(nowMs)) {
+      frame[NOW] = nowMs;
+      // The phase within one cycle, not the angle since time 0: a 32-bit uniform keeps its precision for hours.
+      this.sway[0] = TURN_RAD * (((nowMs * PLANT_SWAY_HZ) / 1000) % 1);
+    }
     this.ease();
     for (let shape = 0; shape < this.meshes.length; shape++) {
       const mesh = this.meshes[shape]!;
@@ -591,8 +669,17 @@ export class PlantRenderer {
       mesh.geometry.dispose();
       mesh.dispose();
     }
+    for (const shell of this.outlines) shell.removeFromParent(); // its geometry is its plant mesh's
     this.material.dispose();
+    this.outlineMaterial.dispose();
     this.guides.dispose();
+  }
+
+  /** FR-UI-05: each shell draws its plant mesh's instances in high contrast, and none otherwise. */
+  private countOutlines(): void {
+    for (let shape = 0; shape < this.outlines.length; shape++) {
+      this.outlines[shape]!.count = this.isOutlined ? this.meshes[shape]!.count : 0;
+    }
   }
 
   /** Gives back the slots of the plants that are not in `plants`, so new plants can take them in the same call. */
@@ -705,9 +792,17 @@ export class PlantRenderer {
       const at = PLANT_WHORL_AT[k]!;
       // The plant's own matrix, its x and z columns scaled to the whorl's width and its y column to its height:
       // the whorl's rows are head rows, so the shader sets it on top of that height (see WHORL).
+      const w = (first + k) * 16;
       for (let e = 0; e < 16; e++) {
         const factor = e >= 12 ? 1 : e >= 4 && e < 8 ? at : width;
-        whorl[(first + k) * 16 + e] = plant[index * 16 + e]! * factor;
+        whorl[w + e] = plant[index * 16 + e]! * factor;
+      }
+      // Turned about its stem by its PLANT_WHORL_TURN_RAD: the x and z columns, after the plant's own turn.
+      for (let row = 0; row < 3; row++) {
+        const x = whorl[w + row]!;
+        const z = whorl[w + 8 + row]!;
+        whorl[w + row] = WHORL_COS[k]! * x - WHORL_SIN[k]! * z;
+        whorl[w + 8 + row] = WHORL_SIN[k]! * x + WHORL_COS[k]! * z;
       }
     }
     this.whorls.instanceMatrix.needsUpdate = true;
@@ -867,7 +962,8 @@ export class PlantRenderer {
 
   /**
    * Writes an instance's colour, and its whorls': the plant's tint at the brightness the guard last handed out.
-   * A whorl has no element of its own (UX §9.6): it takes its plant's brightness. A blossom is cream.
+   * A whorl has no element of its own (UX §9.6): it takes its plant's brightness. A leaf whorl is the plant's hue
+   * at a blossom's lightness, lighter than its stem (T-163); a blossom is cream.
    */
   private paint(mesh: InstancedMesh, index: number, slot: number): void {
     // Straight into the buffer: Color.setRGB and setColorAt would box three numbers per plant per frame.
@@ -882,7 +978,7 @@ export class PlantRenderer {
     const isCream = this.lit[slot] === 1;
     const end = (first + Math.min(PLANT_WHORL_AT.length, this.stage[slot]!)) * 3;
     for (let i = first * 3; i < end; i++) {
-      leaves[i] = (isCream ? CREAM_RGB[i % 3]! : this.tint[slot * 3 + (i % 3)]!) * brightness;
+      leaves[i] = (isCream ? CREAM_RGB[i % 3]! : this.pale[slot * 3 + (i % 3)]!) * brightness;
     }
     this.isWhorlPaintDue = true;
   }
