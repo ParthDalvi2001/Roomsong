@@ -106,6 +106,8 @@
 
 33. **Video (T-153), five calls; reply with numbers (script: `specs/06-release/VIDEO_SCRIPT_V0.md` §5).** (1) Chinmay: the two rooms at 0:20 rather than 0:52; (2) Chinmay: captions only, no voice-over; (3) both: the end-card link shows the handle "parthdalvi2001" (a rule risk: a person's handle on screen); (4) Parth: open a task for the capture rig (a hand drawn only for recording), done by 24 Oct, since every in-headset shot needs it (same as item 32 (7)); (5) Parth: choose the main room by ear (the large room's 2.0 s echo may blur the first 10 s).
 
+34. **Plant colours (T-163), one choice; reply "A", "B" or "C" (plan: `specs/03-design/ART_PASS_T163.md` §0).** Today each plant's colour is a step round the whole colour wheel, so pinks and reds appear and nothing tints by room, although the captions say "Table: colour." and "Walls: colour.". **A (recommended):** keep plants on the design's arc, gold → moss → ice → violet, and shift the arc by up to ±30° per room, with the ring lines; costs nothing to draw and makes the captions true. B: keep the wheel (every room looks the same). C: only the five named colours (too few for 80 plants). Sound is the same in every option.
+
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
