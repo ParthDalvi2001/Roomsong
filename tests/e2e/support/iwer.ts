@@ -169,6 +169,44 @@ function roomCapture(room: Room) {
 }
 
 /**
+ * `E2E_FRAME_MS=250 npx playwright test 12-settings`: while an XR session runs, every animation frame of the page,
+ * the emulator's XR frames among them, comes at least that many ms late. A slow host without loading this one
+ * (BUG-004); the page loads at full speed, and unset nothing changes.
+ */
+const FRAME_MS = Number(process.env.E2E_FRAME_MS ?? 0);
+
+/** In the page, before its own scripts: holds each requestAnimationFrame of a session back by `ms`. Cancel works. */
+function slowFrames(ms: number): void {
+  const request = window.requestAnimationFrame.bind(window);
+  const cancel = window.cancelAnimationFrame.bind(window);
+  const inSession = () =>
+    (window as unknown as { IWER_DEVICE?: IwerDevice }).IWER_DEVICE?.activeSession !== undefined;
+  // Held-back frames have negative ids, so they never meet the browser's own.
+  const waiting = new Map<number, { timer: number; frame?: number }>();
+  let last = 0;
+  window.requestAnimationFrame = (callback) => {
+    if (!inSession()) return request(callback);
+    const id = --last;
+    const entry: { timer: number; frame?: number } = { timer: 0 };
+    entry.timer = window.setTimeout(() => {
+      entry.frame = request((time) => {
+        waiting.delete(id);
+        callback(time);
+      });
+    }, ms);
+    waiting.set(id, entry);
+    return id;
+  };
+  window.cancelAnimationFrame = (id) => {
+    const entry = waiting.get(id);
+    waiting.delete(id);
+    if (entry === undefined) return cancel(id);
+    clearTimeout(entry.timer);
+    if (entry.frame !== undefined) cancel(entry.frame);
+  };
+}
+
+/**
  * (a) Open the app with `room` as the emulated room. Resolves once the emulator holds exactly the fixture's
  * planes and meshes, which is always before a session can start. Nothing leaves localhost: the emulator's
  * room request is answered from the fixture; every other HTTP(S) request is aborted, every WebSocket to
@@ -176,6 +214,7 @@ function roomCapture(room: Room) {
  * `path` opens another page of the same site, for example '/proto/spike/'.
  */
 export async function openApp(page: Page, room: Room, path = '/'): Promise<string[]> {
+  if (FRAME_MS > 0) await page.addInitScript(slowFrames, FRAME_MS);
   const offHost: string[] = [];
   const leavesLocalhost = (url: URL) => url.hostname !== 'localhost';
   // page.route does not see WebSockets. A routed socket is never connected to its server.

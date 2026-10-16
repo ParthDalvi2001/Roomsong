@@ -212,12 +212,14 @@ function hands(page: Page, d: JSHandle<Device>, probe: JSHandle<Probe>) {
     dispatch('set_select_value', { device: `hand-${hand}`, value });
   /**
    * From the root of the right hand to its pinch point, open and closed. IWER's hand is rigid but for the pinch,
-   * and its pinch point jumps when it closes (7.7 cm, measured below): a real hand that comes to a target has
-   * its fingers nearly together already. So the hand comes to rest with its open pinch point on the target, and
-   * in the frame it closes it is moved by that jump: the pinch point stays where it was, as a real one would.
-   * Measured once, on a pinch at nothing.
+   * and its pinch point jumps when it closes or opens (7.7 cm, measured below): a real hand that comes to a target
+   * has its fingers nearly together already. So the hand comes to rest with its open pinch point on the target, and
+   * in the frame it closes, and again in the frame it opens, it is moved by that jump: the pinch point stays where
+   * it was, as a real one would. Measured once, on a pinch at nothing.
    */
   let reach: { open: Vec3; closed: Vec3 } | null = null;
+  /** Where the right hand's pinch point was put by the last `pinch`. */
+  let pinchedAt: Vec3 | null = null;
   const measureReach = async () => {
     const root = { x: 0.3, y: 1.1, z: -0.25 };
     const from = (tip: Vec3): Vec3 => ({ x: tip.x - root.x, y: tip.y - root.y, z: tip.z - root.z });
@@ -238,28 +240,60 @@ function hands(page: Page, d: JSHandle<Device>, probe: JSHandle<Probe>) {
     if (target === undefined) throw new Error(`no target ${id}`);
     return target.pos;
   };
-  /** The right hand comes to rest with its pinch point on a target and closes on it. */
-  const pinch = async (id: string): Promise<void> => {
+  /**
+   * The move that takes up the jump, and the pinch or its release, in one frame: IWER runs every command queued
+   * before a frame in that frame. Awaited one after the other they fell in two, and for the frame between the
+   * pinch point was 7.7 cm off; the app's filter moves the point a share of that which grows with the frame's
+   * length, so on a slow host the press lost its target (BUG-004).
+   */
+  const closeOn = (position: Vec3, value: 0 | 1) => {
+    const turn = { device: 'hand-right', position, orientation: PALM_DOWN };
+    return d.evaluate(
+      (d, [turn, value]) =>
+        Promise.all([
+          d.remote.dispatch('set_transform', turn),
+          d.remote.dispatch('set_select_value', { device: turn.device, value }),
+        ]),
+      [turn, value] as const,
+    );
+  };
+  /**
+   * The right hand comes to rest with its pinch point on a target and closes on it. Returns how many pinch starts
+   * the app had reported before it closed.
+   */
+  const pinch = async (id: string): Promise<number> => {
     reach ??= await measureReach();
     const pos = await find(id);
     const tip = await put('right', rootFor(pos, reach.open));
     const off = Math.hypot(tip.x - pos.x, tip.y - pos.y, tip.z - pos.z);
     expect(off, `the hand on ${id}`).toBeLessThan(HIT_RADIUS_M / 4);
-    // The move that takes up the jump, and the pinch, in one frame.
-    const turn = { device: 'hand-right', position: rootFor(pos, reach.closed), orientation: PALM_DOWN };
-    await d.evaluate(async (d, turn) => {
-      await d.remote.dispatch('set_transform', turn);
-      await d.remote.dispatch('set_select_value', { device: turn.device, value: 1 });
-    }, turn);
+    const started = (await events(probe, 'gesture:pinchStart')).length;
+    await closeOn(rootFor(pos, reach.closed), 1);
+    pinchedAt = pos;
+    return started;
   };
-  /** A real pinch on a target and its release. The app's hand system reports both. */
+  /** The right hand opens where it pinched. */
+  const release = async (): Promise<void> => {
+    if (reach === null || pinchedAt === null) throw new Error('release needs a pinch');
+    await closeOn(rootFor(pinchedAt, reach.open), 0);
+  };
+  /**
+   * A real pinch on a target and its release. The app's hand system reports both; the release waits for the
+   * report of the start (a wait on state: right after a release a pinch starts only after its 130 ms lockout).
+   */
   const press = async (id: string): Promise<void> => {
-    await pinch(id);
-    await xrFrames(page, 4);
-    await select('right', 0);
+    const started = await pinch(id);
+    await page.waitForFunction(
+      ([p, n]) => p.heard.filter((e) => e.type === 'gesture:pinchStart').length > n,
+      [probe, started] as const,
+      { timeout: HOLD_LIMIT_MS },
+    );
+    const starts = (await events(probe, 'gesture:pinchStart')).slice(started);
+    expect(starts, `the pinch on ${id}`).toEqual([{ hand: 'right', id }]);
+    await release();
     await xrFrames(page, 4);
   };
-  return { put, select, pinch, press };
+  return { put, select, pinch, release, press };
 }
 
 test('settings panel: by real pinches the orb opens it, each tab shows, a control on each tab acts, it closes', async ({
@@ -269,7 +303,7 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
   const offHost = await openApp(page, readRoom('table'));
   const d = await enter(page);
   const probe = await probePanel(page);
-  const { put, select, pinch, press } = hands(page, d, probe);
+  const { put, pinch, release, press } = hands(page, d, probe);
   const head = await probe.evaluate((p) => p.head());
   const below = (right: number, down: number, ahead: number): Vec3 => ({
     x: head[12]! + right,
@@ -363,7 +397,7 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
   await page.screenshot({ path: '.tmp/settings-hold-ring.png' });
   await page.waitForFunction((p) => p.system.panel.fill[0] === 1, probe, { timeout: HOLD_LIMIT_MS });
   expect(await events(probe, 'garden.newGarden')).toEqual([]); // nothing before the release (FR-HND-16)
-  await select('right', 0);
+  await release();
   await xrFrames(page, 4);
   expect(await events(probe, 'garden.newGarden')).toHaveLength(1);
   expect(await probe.evaluate((p) => p.fill.visible)).toBe(false);
@@ -550,6 +584,9 @@ test('settings panel: the gaze alone opens it, changes a setting and closes it, 
   expect(await probe.evaluate((p) => p.ring.visible)).toBe(false);
   await lookAt(await target('dwell:900'));
   await page.waitForFunction((p) => p.settings().dwellMs === 900, probe, { timeout: HOLD_LIMIT_MS });
+  // What the gaze meets in the frame right after a selection counts as selected already (Panel.dwell). The
+  // emulated head jumps to the next control at once, and on slow frames it landed in that very frame (BUG-004).
+  await xrFrames(page, 2);
 
   // A look at Close shuts the panel, and the orb is back.
   await lookAt(await target('close'));
