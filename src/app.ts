@@ -9,7 +9,14 @@ import { createAudioEngine, type AudioEngine } from './audio/index.js';
 import { Caption } from './core/components.js';
 import { bus, clock, flags, log, type StringKey } from './core/index.js';
 import { HandSystem } from './hands/index.js';
-import { BedRenderSystem, FlashGuard, FOVEATION_MEDIUM, PerfSystem, SeedSystem } from './render/index.js';
+import {
+  BedRenderSystem,
+  FlashGuard,
+  FOVEATION_MEDIUM,
+  PerfSystem,
+  SeedSystem,
+  TuningRippleSystem,
+} from './render/index.js';
 import { RoomSystem } from './room/index.js';
 import { CaptionSystem } from './ui/index.js';
 
@@ -250,6 +257,7 @@ export async function start(landing: Landing): Promise<void> {
   register(world, SeedSystem, 49, { guard });
   // Everything drawn on the bed is a child of the bed entity's Object3D (API_SPEC §1.10 rule 5).
   register(world, BedRenderSystem, 50, { guard, bed: room.bed.object3D });
+  register(world, TuningRippleSystem, 55, { guard, bed: room.bed.object3D });
   register(world, CaptionSystem, 60);
   // PanelSystem (62) is not registered yet: it takes `garden` and `room`, and the step that first holds both
   // (T-128d, d1) registers it here, after CaptionSystem.

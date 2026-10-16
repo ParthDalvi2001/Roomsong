@@ -118,6 +118,7 @@ describe('the systems start() registers (API_SPEC §1.10, the priorities table)'
       ['HandSystem', '20'],
       ['SeedSystem', '49', '{ guard }'], // T-127
       ['BedRenderSystem', '50', '{ guard, bed: room.bed.object3D }'],
+      ['TuningRippleSystem', '55', '{ guard, bed: room.bed.object3D }'],
       ['CaptionSystem', '60'],
     ]);
     expect(source.indexOf('breakOtherSystems(world);')).toBeGreaterThan(

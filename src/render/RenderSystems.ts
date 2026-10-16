@@ -1,21 +1,29 @@
-// The ECS systems of render/ (LLD §3.2): PerfSystem; SeedSystem, the seeds and their orb (T-127); and
-// BedRenderSystem, which draws the bed today and gets its plants, tide and targets with T-128d. The renderers
-// themselves stay plain classes that read no clock (API_SPEC §1.8).
+// The ECS systems of render/ (LLD §3.2): PerfSystem; SeedSystem, the seeds and their orb (T-127);
+// BedRenderSystem, which draws the bed today and gets its plants, tide and targets with T-128d; and
+// TuningRippleSystem. The renderers themselves stay plain classes that read no clock (API_SPEC §1.8).
 import { createSystem, Types, Vector3, type Entity, type Object3D } from '@iwsdk/core';
 
 import { BedAnchor, Caption, Interactable } from '../core/components.js';
-import { bus, clock, log } from '../core/index.js';
+import { bus, clock, log, settings } from '../core/index.js';
 import { HandState, HIT_RADIUS_M } from '../hands/index.js';
 
 import { BedRenderer } from './BedRenderer.js';
-import { GARDEN_FULL_CAPTION_MS, PERF_HUD_HEAD_OFFSET_M } from './config.js';
+import {
+  GARDEN_FULL_CAPTION_MS,
+  PERF_HUD_HEAD_OFFSET_M,
+  RIPPLE_SWEEP_AT_MS,
+  RIPPLE_TUNED_MS,
+} from './config.js';
 import { createPerfHud, PerfSampler } from './PerfHud.js';
 import { SeedRenderer } from './SeedRenderer.js';
+import { TuningRipple } from './TuningRipple.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { SeedMove } from './SeedRenderer.js';
 import type { AudioEngine } from '../audio/index.js';
 import type { EventMap, Hand, StringKey } from '../core/index.js';
+import type { RoomSignature } from '../garden/index.js';
+import type { RoomSurfaces } from '../room/index.js';
 
 const NOTHING = (): void => {};
 /** UX §7: the caption of a seed let go over a full bed. */
@@ -229,5 +237,117 @@ export class BedRenderSystem extends createSystem(
     } catch (error) {
       log.error('render', 'the bed could not be drawn as placed or as a ghost', error);
     }
+  }
+}
+
+const SWEEPS = RIPPLE_SWEEP_AT_MS.length; // table, wall, ceiling
+
+/**
+ * The tuning ripple (FR-ROOM-12, LLD §5.8). Priority 55. configData: `guard`, the page's FlashGuard, and `bed`, the
+ * bed entity's Object3D. A ripple needs the surfaces of room:features and the signature of the same placement.
+ * GardenSystem answers room:features with room:signature, so this system hears the signature first; either way
+ * the ripple starts in the next update, in the same frame, and its times count from that frame (API_SPEC §1.10
+ * rule 4). Each surface that has a sweep raises its caption on this system's own entity, from the sweep's start
+ * to the next one's; room:tuned follows at RIPPLE_TUNED_MS. A Wanderer session is told by its signature
+ * (paletteSeed 0), not by missing surfaces: one ripple over the bed and no caption.
+ */
+export class TuningRippleSystem extends createSystem(
+  { beds: { required: [BedAnchor] } },
+  { guard: { type: Types.Object, default: null }, bed: { type: Types.Object, default: null } },
+) {
+  private ripple!: TuningRipple;
+  private bed!: Object3D;
+  /** Carries the ripple's caption. Its own entity: a Caption added to one that still has one is not seen. */
+  private caption!: Entity;
+  // What the next ripple waits for. Both are used once.
+  private surfaces: RoomSurfaces | null = null;
+  private signature: RoomSignature | null = null;
+  private starterSeeds = false;
+  /** The running ripple: the frame time it started (ms; NaN = none), each sweep's caption (null = none), the next sweep. */
+  private startedMs = Number.NaN;
+  private readonly keys: (StringKey | null)[] = [null, null, null];
+  private next = 0;
+
+  override init(): void {
+    this.ripple = new TuningRipple(this.scene, this.config.guard.value as FlashGuard);
+    this.bed = this.config.bed.value as Object3D;
+    this.caption = this.createEntity();
+    this.cleanupFuncs.push(
+      bus.on('room:signature', ({ signature, starterSeeds }) => {
+        this.signature = signature;
+        this.starterSeeds = starterSeeds;
+      }),
+      bus.on('room:features', ({ surfaces }) => {
+        this.surfaces = surfaces;
+      }),
+      bus.on('xr:sessionEnd', () => this.end()),
+      // A Re-place starts by taking BedAnchor off the bed (API_SPEC §1.10 rule 5); no bus event says so. The
+      // callback runs inside RoomSystem's removeComponent, where no circuit breaker reaches: it catches its own.
+      this.queries.beds.subscribe('disqualify', () => {
+        try {
+          this.end();
+        } catch (error) {
+          log.error('render', 'the tuning ripple could not be stopped', error);
+        }
+      }),
+      () => this.ripple.dispose(),
+    );
+  }
+
+  /** `time`: IWSDK's frame time in seconds, in whole milliseconds as BedRenderSystem takes it. */
+  override update(_delta: number, time: number): void {
+    const nowMs = Math.round(time * 1000);
+    if (this.surfaces !== null && this.signature !== null) this.begin(this.surfaces, this.signature, nowMs);
+    if (!Number.isNaN(this.startedMs)) this.follow(nowMs - this.startedMs);
+    this.ripple.update(nowMs);
+  }
+
+  /** The timeline is set before the quads are aimed: a throw there costs the light, never room:tuned (T-150). */
+  private begin(surfaces: RoomSurfaces, signature: RoomSignature, nowMs: number): void {
+    this.surfaces = this.signature = null;
+    const isWanderer = signature.paletteSeed === 0; // LLD §5.8: no room tuple hashes to 0
+    const table = this.starterSeeds ? 'rippleTableSeeds' : 'rippleTableColour';
+    this.keys[0] = !isWanderer && surfaces.table !== undefined ? table : null;
+    this.keys[1] = !isWanderer && surfaces.nearestWall !== undefined ? 'rippleWalls' : null;
+    this.keys[2] = !isWanderer && surfaces.ceiling !== undefined ? 'rippleCeiling' : null;
+    this.takeCaption(); // a ripple started again: the last one's caption goes
+    this.startedMs = nowMs;
+    this.next = 0;
+    this.ripple.start(
+      {
+        surfaces,
+        bedPose: this.bed.matrixWorld.elements,
+        isWanderer,
+        paletteSeed: signature.paletteSeed,
+        isReducedMotion: settings.get().reducedMotion,
+      },
+      nowMs,
+    );
+  }
+
+  /** Raises each sweep's caption as its time comes, then room:tuned. A caption whose time went by unseen is skipped. */
+  private follow(elapsedMs: number): void {
+    for (; this.next < SWEEPS && elapsedMs >= RIPPLE_SWEEP_AT_MS[this.next]!; this.next++) {
+      const endMs = this.next + 1 < SWEEPS ? RIPPLE_SWEEP_AT_MS[this.next + 1]! : RIPPLE_TUNED_MS;
+      const key = this.keys[this.next] ?? null;
+      if (key === null || elapsedMs >= endMs) continue;
+      this.takeCaption();
+      this.caption.addComponent(Caption, { key, expiresAt: clock.now() + endMs - elapsedMs });
+    }
+    if (this.next < SWEEPS || elapsedMs < RIPPLE_TUNED_MS) return;
+    this.startedMs = Number.NaN;
+    bus.emit('room:tuned', {});
+  }
+
+  /** The session ended: no ripple, no caption, and nothing kept for the next session. */
+  private end(): void {
+    this.surfaces = this.signature = null;
+    this.startedMs = Number.NaN;
+    this.ripple.stop();
+    this.takeCaption();
+  }
+
+  private takeCaption(): void {
+    if (this.caption.hasComponent(Caption)) this.caption.removeComponent(Caption);
   }
 }

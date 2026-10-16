@@ -160,6 +160,26 @@ export const PETAL_FADE_MS = 300;
 export const PETAL_ASPECT = 0.6;
 export const PETAL_SEGMENTS = 12;
 
+/** FR-ROOM-12, LLD §5.8: the tuning ripple, timed from the frame of room:features (the bed placed). The sweeps of
+ *  the table (in a Wanderer session: the bed), the nearest wall and the ceiling start at these times and run this
+ *  long; room:tuned is emitted at RIPPLE_TUNED_MS. Each caption is up from its sweep's start to the next one's. */
+export const RIPPLE_SWEEP_AT_MS = [300, 1500, 2700] as const;
+export const RIPPLE_SWEEP_MS = [600, 1000, 800] as const;
+export const RIPPLE_TUNED_MS = 4000;
+/** UX §5: the crest is 3 to 5 cm wide, and each point it passed glows for this long after it. */
+export const RIPPLE_CREST_M = 0.04;
+export const RIPPLE_AFTERGLOW_MS = 1000;
+/** UX §5, FR-UI-06: under reduced motion each surface glows this long in turn, with no sweep. */
+export const RIPPLE_GLOW_MS = 400;
+/** Chosen in T-142, as the tide's shade (UX §9.4): a band of the bed's charcoal leads the crest, so it reads on a
+ *  light surface. It begins this far ahead of the crest's middle and is fullest (TIDE_SHADE_COVER) where the
+ *  crest's light begins. */
+export const RIPPLE_SHADE_M = 0.06;
+/** Chosen in T-142: the afterglow's light right behind the crest, and the cover it carries there, so the glow
+ *  tints a light surface too (light alone adds nothing to a white table). */
+export const RIPPLE_AFTERGLOW = 0.4;
+export const RIPPLE_AFTERGLOW_COVER = 0.3;
+
 /** FR-HND-04: a seed is drawn as wide as a target, in the orb and on a hand alike; a sphere of 80 triangles. */
 export const SEED_DIAMETER_M = TARGET_VISIBLE_DIAMETER_M;
 export const SEED_DETAIL = 1;
