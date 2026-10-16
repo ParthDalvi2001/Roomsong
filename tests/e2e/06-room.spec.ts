@@ -3,8 +3,8 @@
 // Enter starts a session; RoomSystem places the bed in the emulator's room, or brings it back from its anchor,
 // reads the room once and says both on the bus. The events are read from the app's own bus (the dev server's
 // /src/core/index.ts), the bed from `window.__roomsong.world`.
-// The app's own GardenSystem answers `room:features` (T-128d). Where a test needs a saved anchor pair it gives
-// it to that garden before Enter with a `room:anchored`, as an earlier session would have (no save loads yet).
+// The app's own GardenSystem answers `room:features` (T-128d). A saved anchor pair comes back from the app's own
+// save on the next page load (T-128e).
 // Emulator results (E). IWER's planes are not a real room, its hit-test meets only the fixture's planes, and it
 // restores every anchor it knows in the next frame: this says nothing about a headset (T-129).
 import { expect, test, type JSHandle, type Page } from '@playwright/test';
@@ -90,18 +90,11 @@ function watch(page: Page): string[] {
   return errors;
 }
 
-/**
- * Waits for the world, then listens in the page. Made before Enter: placement starts with the session's first
- * frame. `saved`: the anchor pair a saved garden would hold, given to the app's own garden as an earlier
- * session's `room:anchored` would (the saved garden itself is loaded from T-128e on).
- */
-async function watchRoom(
-  page: Page,
-  saved: { handle: string; level: 1 | 2 | 3 | 4 } | null = null,
-): Promise<JSHandle<RoomProbe>> {
+/** Waits for the world, then listens in the page. Made before Enter: placement starts with the session's first frame. */
+async function watchRoom(page: Page): Promise<JSHandle<RoomProbe>> {
   const enter = page.getByRole('main').getByRole('button', { name: 'Enter the garden' });
   await expect(enter).toBeEnabled({ timeout: WORLD_READY_MS });
-  return page.evaluateHandle(async (saved) => {
+  return page.evaluateHandle(async () => {
     const load = (url: string): Promise<unknown> => import(/* @vite-ignore */ url);
     const core = (await load('/src/core/index.ts')) as Core;
     const { BedAnchor, Caption } = (await load('/src/core/components.ts')) as Components;
@@ -111,10 +104,6 @@ async function watchRoom(
     const system = world.getSystem(room.RoomSystem)!;
     const captions = world.getSystem(ui.CaptionSystem)!;
     const object = system.bed.object3D!;
-    // Before the probe listens: the app's GardenSystem keeps the pair (setAnchor) and says so with garden:changed,
-    // which RoomSystem reads.
-    if (saved !== null) core.bus.emit('room:anchored', saved);
-
     let frame = 0;
     let startedMs = 0;
     let updateMs = 0;
@@ -222,7 +211,7 @@ async function watchRoom(
       },
     };
     return probe;
-  }, saved);
+  });
 }
 
 /** Resolves once the page has heard `count` events of `type`. */
@@ -665,9 +654,18 @@ test('T-128c anchors: a second visit brings the bed back at the same pose, and w
   const saved = only(made, 'room:anchored').payload as { handle: string; level: 1 };
   const pose = placedOf(only(made, 'room:bedPlaced')).placement.pose;
 
-  // The next visit: the page is loaded again, and the garden's saved pair is there before Enter.
+  // The next visit: the garden keeps the pair and saves it like any change; once it is written, the page is loaded
+  // again, and the saved garden brings the pair back before Enter.
+  const savedHandle = () =>
+    page.evaluate(async (url) => {
+      const { openStore } = (await import(
+        /* @vite-ignore */ url
+      )) as typeof import('../../src/persistence/index');
+      return (await (await openStore()).load())?.anchorHandle;
+    }, '/src/persistence/index.ts');
+  await expect.poll(savedHandle).toBe(saved.handle);
   await page.reload();
-  const second = await watchRoom(page, saved);
+  const second = await watchRoom(page);
   await enterXR(page);
   await heardOf(page, second, 'room:features');
   await xrFrames(page, 30);
@@ -692,7 +690,7 @@ test('T-128c anchors: a second visit brings the bed back at the same pose, and w
 
   // With noAnchors the store answers null: the chain places the bed, and no anchor is announced.
   await page.goto('/?flags=noAnchors');
-  const flagged = await watchRoom(page, saved);
+  const flagged = await watchRoom(page);
   await enterXR(page);
   await heardOf(page, flagged, 'room:features');
   await xrFrames(page, 30);

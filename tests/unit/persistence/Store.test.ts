@@ -2,8 +2,8 @@
 // the adapter in idb.ts (openIndexedDb) is run in a browser by tests/e2e/10-persistence.spec.ts.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { log } from '../../../src/core/index.js';
-import { cellCentre, snapToCell } from '../../../src/garden/index.js';
+import { DEFAULT_SETTINGS, log } from '../../../src/core/index.js';
+import { cellCentre, newGarden, snapToCell } from '../../../src/garden/index.js';
 import { IDB_OPEN_TIMEOUT_MS } from '../../../src/persistence/config.js';
 import { createStore, openStore, webStorageBackend } from '../../../src/persistence/Store.js';
 import { plant } from '../garden/fixtures.js';
@@ -50,6 +50,13 @@ describe('persistence/Store save and load (TC-PER-01)', () => {
     expect(loaded).toEqual(savedGarden());
     expect(loaded).toMatchObject({ anchorHandle: 'anchor-uuid', anchorLevel: 2 });
     expect(loaded?.settings.dwellMs).toBe(1200);
+  });
+
+  it('a new garden passes the save check: what the app makes at first launch and after a corrupt save (LLD §3.3 J)', async () => {
+    const store = createStore([memoryBackend()]);
+    const made = newGarden(NOW, DEFAULT_SETTINGS);
+    await store.save(made);
+    expect(await store.load()).toEqual(made);
   });
 
   it('loads null and writes nothing when nothing was saved', async () => {
@@ -147,20 +154,50 @@ describe('persistence/Store corrupt data (TC-PER-02, TC-PER-04)', () => {
     expect([...backend.data.keys()].sort()).toEqual([...notOurs, 'state.backup.2', 'state.backup.3'].sort());
   });
 
-  it('still returns null, and keeps the corrupt state where it is, when the backup cannot be written', async () => {
+  it('still returns null, and keeps the corrupt state where it is, when the backup cannot be written; never writes over it', async () => {
     const backend = memoryBackend();
     backend.data.set('state', { version: 7 });
     backend.failing.add('set');
-    await expect(createStore([backend]).load()).resolves.toBeNull();
+    const store = createStore([backend]);
+    await expect(store.load()).resolves.toBeNull();
+    backend.failing.clear();
+    await expect(store.save(savedGarden())).rejects.toThrow(); // the new garden: no storage may take it
+    expect(store.saveNow(savedGarden())).toBe(false);
     expect(backend.data.get('state')).toEqual({ version: 7 });
   });
 
-  it('returns null, with no throw, when the storage cannot be read', async () => {
+  it('returns null, with no throw, when the storage cannot be read; the new garden goes to the next storage', async () => {
+    const [first, fallback] = [memoryBackend(), memoryBackend()];
+    first.data.set('state', savedGarden());
+    first.failing.add('get');
+    const store = createStore([first, fallback]);
+    await expect(store.load()).resolves.toBeNull();
+    first.failing.clear();
+    const made = savedGarden({ createdAt: NOW, plants: [], seeds: [] });
+    await store.save(made);
+    expect(first.data.get('state')).toEqual(savedGarden());
+    expect(fallback.data.get('state')).toEqual(made);
+    // The next page: both read, two gardens, and the older one, the one that did not load, comes back (D-033).
+    expect(await createStore([first, fallback]).load()).toEqual(savedGarden());
+  });
+
+  it('a save of a newer version is kept: moved to its backup, never written over', async () => {
     const backend = memoryBackend();
-    backend.data.set('state', savedGarden());
-    backend.failing.add('get');
-    await expect(createStore([backend]).load()).resolves.toBeNull();
-    expect(backend.data.get('state')).toEqual(savedGarden());
+    const newer = { ...savedGarden(), version: 7 };
+    backend.data.set('state', newer);
+    const store = createStore([backend]);
+    await expect(store.load()).resolves.toBeNull();
+    await store.save(savedGarden({ createdAt: NOW }));
+    expect(backend.data.get(`state.backup.${NOW}`)).toEqual(newer);
+  });
+
+  it('keeps the backup it just wrote when the clock is behind the older backups', async () => {
+    const backend = memoryBackend();
+    for (const at of [NOW + 5000, NOW + 6000]) backend.data.set(`state.backup.${at}`, { at });
+    backend.data.set('state', 'bad');
+    await createStore([backend]).load();
+    expect([...backend.data.keys()].sort()).toEqual([`state.backup.${NOW}`, `state.backup.${NOW + 6000}`]);
+    expect(backend.data.get(`state.backup.${NOW}`)).toBe('bad');
   });
 });
 
@@ -245,6 +282,21 @@ describe('persistence/Store fallback storage (FR-PER-01, LLD §8)', () => {
     expect([...fallback.data.keys()]).toEqual(['state']);
   });
 
+  it('of two gardens, a newer one whose backup fails is never written over, by any save', async () => {
+    const [first, fallback] = [memoryBackend(), memoryBackend()];
+    const older = savedGarden({ createdAt: 1000, plants: [plant('old', 1, 1)] });
+    const younger = savedGarden({ createdAt: 2000, plants: [plant('new', 2, 2)] });
+    first.data.set('state', older);
+    fallback.data.set('state', younger);
+    fallback.failing.add('set');
+    const store = createStore([first, fallback]);
+    expect(await store.load()).toEqual(older);
+    fallback.failing.clear();
+    await store.save(older).catch(() => undefined);
+    store.saveNow(older);
+    expect(fallback.data.get('state')).toEqual(younger);
+  });
+
   it('of two copies of one garden returns the one with the later visit, and backs nothing up', async () => {
     // A fallback copy that could not be removed after the first storage took a later write.
     const [first, fallback] = [memoryBackend(), memoryBackend()];
@@ -262,6 +314,35 @@ describe('persistence/Store fallback storage (FR-PER-01, LLD §8)', () => {
     await expect(createStore([first, fallback]).save(newer)).rejects.toThrow();
     await expect(createStore([]).save(newer)).rejects.toThrow();
     await expect(createStore([]).load()).resolves.toBeNull();
+  });
+});
+
+describe('persistence/Store saveNow (a page that is closing)', () => {
+  it('writes the fallback synchronously; a save begun before it does not remove that newer copy, one begun after does', async () => {
+    const first = memoryBackend();
+    const storage = fakeStorage();
+    const store = createStore([first, webStorageBackend(storage)]);
+    const read = () => JSON.parse(storage.items.get('roomsong.garden.state') ?? 'null') as unknown;
+    const saving = store.save(savedGarden({ visits: 1 })); // IndexedDB's write, under way as the page closes
+    expect(store.saveNow(savedGarden({ visits: 2 }))).toBe(true);
+    expect(read()).toEqual(savedGarden({ visits: 2 })); // already there: nothing was awaited
+    await saving;
+    expect(read()).toEqual(savedGarden({ visits: 2 }));
+    expect(await store.load()).toEqual(savedGarden({ visits: 2 })); // one garden twice: the fallback on a tie
+    await store.save(savedGarden({ visits: 3 }));
+    expect(storage.items.has('roomsong.garden.state')).toBe(false);
+  });
+
+  it('writes nothing for a state load would refuse, and gives false with no throw when the storage is full', () => {
+    const storage = fakeStorage();
+    const store = createStore([memoryBackend(), webStorageBackend(storage)]);
+    expect(store.saveNow({ ...savedGarden(), visits: -1 })).toBe(false);
+    storage.setItem = () => {
+      throw new DOMException('full', 'QuotaExceededError');
+    };
+    expect(store.saveNow(savedGarden())).toBe(false);
+    expect(createStore([memoryBackend()]).saveNow(savedGarden())).toBe(false); // no synchronous storage
+    expect(storage.items.size).toBe(0);
   });
 });
 

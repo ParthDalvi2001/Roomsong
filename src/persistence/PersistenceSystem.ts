@@ -43,6 +43,15 @@ export class PersistenceSystem {
     return this.writing;
   }
 
+  /**
+   * The page is closing: the pending state, if any, written at once and synchronously to the localStorage fallback
+   * (Store.saveNow), because the browser drops an IndexedDB write that is under way when the page goes. The state
+   * stays pending, so the flush() that follows still writes it to IndexedDB. Never throws.
+   */
+  flushNow(): void {
+    if (this.pending !== null) this.store.saveNow(this.pending);
+  }
+
   private async write(): Promise<void> {
     const state = this.pending;
     if (state === null) return;

@@ -7,10 +7,22 @@ import { readFileSync } from 'node:fs';
 import { createSystem, Types } from '@iwsdk/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { BREAKER_PAUSE_S, breakOtherSystems, followSession, register } from '../../src/app.js';
-import { bus, clock, log } from '../../src/core/index.js';
+import {
+  BREAKER_PAUSE_S,
+  breakOtherSystems,
+  followSession,
+  inSession,
+  keepSaved,
+  register,
+  restoreSettings,
+} from '../../src/app.js';
+import { bus, clock, DEFAULT_SETTINGS, log, settings } from '../../src/core/index.js';
+
+import { savedGarden } from './persistence/fixtures.js';
 
 import type { SystemHost } from '../../src/app.js';
+import type { Settings } from '../../src/core/index.js';
+import type { GardenState } from '../../src/garden/index.js';
 import type { MockInstance } from 'vitest';
 
 // src/app.ts imports the project file through the dev plugin's virtual module, which only Vite's plugin provides.
@@ -139,11 +151,18 @@ describe('the systems start() registers (API_SPEC §1.10, the priorities table)'
       return index;
     };
     expect(at('const garden = new GardenSystem();')).toBeLessThan(at('register(world,'));
-    expect(at('garden.load(newGarden(clock.now(), settings.get()));')).toBeGreaterThan(
+    expect(at('garden.load(saved ?? newGarden(clock.now(), settings.get()));')).toBeGreaterThan(
       at('breakOtherSystems(world);'),
     );
     expect(at('garden.load(')).toBeLessThan(at('followSession(world,'));
     expect(at('garden.load(')).toBeLessThan(at('landing.ready('));
+    // A3: the store loads beside World.create, not after it. A8: the save handlers come after the load, so the
+    // garden just loaded is not written back, and before Enter is usable.
+    expect(source).toMatch(/Promise\.all\(\[\s*World\.create\(.*\),\s*opening,\s*opening\.then\(/);
+    expect(
+      at('keepSaved(garden, saver, window, saved?.settings ?? DEFAULT_SETTINGS, tabs);'),
+    ).toBeGreaterThan(at('garden.load('));
+    expect(at('keepSaved(')).toBeLessThan(at('landing.ready('));
     expect(at('window.__roomsong = { world, engine, garden };')).toBeGreaterThan(0); // rule 14, dev only
   });
 });
@@ -496,5 +515,144 @@ describe('"Sound unavailable" (API_SPEC §1.10 rule 2; LLD §3.3 B)', () => {
     expect(warns).not.toHaveBeenCalled();
     bus.emit('xr:sessionStart', { visible: true }); // e.g. the window opened while a session ran
     expect(warns).toHaveBeenCalledOnce();
+  });
+});
+
+/**
+ * keepSaved on a garden whose state the test sets, a saver that records, a page that is shown, hidden or left,
+ * and a channel to the other tabs. `stored`: the settings on disk (the defaults when nothing loaded).
+ */
+function saveRig(
+  state: GardenState | null = savedGarden({ settings: settings.get() }),
+  stored: Settings = state?.settings ?? DEFAULT_SETTINGS,
+) {
+  const garden = { state };
+  const saved: GardenState[] = [];
+  const calls: string[] = [];
+  const saver = {
+    save: (s: GardenState) => void saved.push(s),
+    flush: () => {
+      calls.push('flush');
+      return Promise.resolve();
+    },
+    flushNow: () => void calls.push('flushNow'),
+  };
+  const on = new Map<string, () => void>();
+  const listeners = {
+    addEventListener: (type: string, handler: () => void) => void on.set(type, handler),
+    removeEventListener: (type: string) => void on.delete(type),
+  };
+  const page = { ...listeners, document: { ...listeners, visibilityState: 'visible' } };
+  const tabs = { postMessage: vi.fn(), addEventListener: listeners.addEventListener };
+  const stop = keepSaved(garden, saver, page as never, stored, tabs as never);
+  stops.push(stop);
+  return {
+    garden,
+    saved,
+    calls,
+    tabs,
+    stop,
+    show(state: DocumentVisibilityState) {
+      page.document.visibilityState = state;
+      on.get('visibilitychange')?.();
+    },
+    leave: () => on.get('pagehide')?.(),
+    /** Another tab of the garden was opened. */
+    opened: () => on.get('message')?.(),
+  };
+}
+
+describe('saving (LLD §3.3 G; API_SPEC §1.10 rule 9)', () => {
+  afterEach(() => settings.set(DEFAULT_SETTINGS));
+
+  it("garden:changed saves garden.state, not the event's payload, with the live settings in it", () => {
+    settings.set({ tempo: 96 });
+    const rig = saveRig(savedGarden({ settings: { ...DEFAULT_SETTINGS, tempo: 96 } }));
+    expect(rig.saved).toEqual([]); // the garden just loaded is not written back
+    const next = savedGarden({ visits: 4 });
+    rig.garden.state = next;
+    bus.emit('garden:changed', {
+      state: savedGarden({ visits: 99 }),
+      diff: { added: [], removed: [], changed: [] },
+    });
+    expect(rig.saved).toEqual([{ ...next, settings: settings.get() }]);
+    expect(rig.saved[0]?.settings.tempo).toBe(96);
+  });
+
+  it('settings:changed saves the last state seen with the new settings; GardenState.settings is never left behind', () => {
+    const rig = saveRig(savedGarden({ settings: DEFAULT_SETTINGS }));
+    settings.set({ oneHand: true });
+    expect(rig.saved).toEqual([{ ...savedGarden({ settings: DEFAULT_SETTINGS }), settings: settings.get() }]);
+    expect(rig.saved[0]?.settings.oneHand).toBe(true);
+  });
+
+  it('live settings that differ from the ones on disk are saved at once: also on a first launch, with nothing on disk', () => {
+    settings.set({ highContrast: true });
+    expect(saveRig(savedGarden({ settings: DEFAULT_SETTINGS })).saved).toHaveLength(1);
+    expect(saveRig(savedGarden({ settings: settings.get() })).saved).toHaveLength(0);
+    // Nothing loaded: the new garden was made with the live settings, and the disk has none of them.
+    expect(saveRig(savedGarden({ settings: settings.get() }), DEFAULT_SETTINGS).saved).toHaveLength(1);
+    settings.set({ highContrast: false });
+    expect(saveRig(savedGarden({ settings: settings.get() }), DEFAULT_SETTINGS).saved).toHaveLength(0);
+    expect(saveRig(null, DEFAULT_SETTINGS).saved).toHaveLength(0); // before load(): nothing to save
+  });
+
+  it('flushes on a hidden session and at session end; a hidden or departing page also writes at once, first', () => {
+    const rig = saveRig();
+    bus.emit('xr:visibility', { visible: true });
+    rig.show('visible');
+    expect(rig.calls).toEqual([]);
+    bus.emit('xr:visibility', { visible: false });
+    bus.emit('xr:sessionEnd', { visible: false });
+    expect(rig.calls).toEqual(['flush', 'flush']);
+    rig.show('hidden');
+    rig.leave();
+    expect(rig.calls).toEqual(['flush', 'flush', 'flushNow', 'flush', 'flushNow', 'flush']);
+    rig.stop();
+    bus.emit('xr:sessionEnd', { visible: false });
+    rig.show('hidden');
+    rig.leave();
+    settings.set({ tempo: 100 });
+    expect(rig.calls).toHaveLength(6);
+    expect(rig.saved).toEqual([]);
+  });
+
+  it('says "opened" to the other tabs, and stops saving once a newer tab says it', () => {
+    const rig = saveRig();
+    expect(rig.tabs.postMessage).toHaveBeenCalledExactlyOnceWith('opened');
+    vi.spyOn(log, 'warn').mockImplementation(() => {});
+    rig.opened();
+    settings.set({ tempo: 100 });
+    bus.emit('garden:changed', { state: savedGarden(), diff: { added: [], removed: [], changed: [] } });
+    rig.leave();
+    expect(rig.saved).toEqual([]);
+    expect(rig.calls).toEqual([]);
+  });
+});
+
+describe('"Saving unavailable" where it can be seen (LLD §3.3 G)', () => {
+  it('raised at once in a session; raised outside one, at the next xr:sessionStart, once', () => {
+    const raiseNow = vi.fn();
+    const caption = inSession(raiseNow);
+    stops.push(caption.stop);
+    caption.raise(); // on the landing page
+    expect(raiseNow).not.toHaveBeenCalled();
+    bus.emit('xr:sessionStart', { visible: true });
+    expect(raiseNow).toHaveBeenCalledOnce();
+    caption.raise();
+    expect(raiseNow).toHaveBeenCalledTimes(2);
+    bus.emit('xr:sessionEnd', { visible: false });
+    bus.emit('xr:sessionStart', { visible: true });
+    expect(raiseNow).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('the saved settings go live under what the page changed (LLD §3.3 A4)', () => {
+  afterEach(() => settings.set(DEFAULT_SETTINGS));
+
+  it('a toggle changed on the page while the save loads is kept; every other setting is the saved one', () => {
+    settings.set({ oneHand: true }); // ticked on the landing page during the load
+    restoreSettings({ ...DEFAULT_SETTINGS, oneHand: false, tempo: 96, volume: 0.5 });
+    expect(settings.get()).toEqual({ ...DEFAULT_SETTINGS, oneHand: true, tempo: 96, volume: 0.5 });
   });
 });

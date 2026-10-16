@@ -13,12 +13,14 @@ import type { Store } from '../../../src/persistence/Store.js';
 /** A store that records what it was asked to write. `gate` holds every write until it is released. */
 function fakeStore(): Store & {
   written: GardenState[];
+  writtenNow: GardenState[];
   started: number;
   fail: boolean;
   gate: Promise<void> | null;
 } {
   const store = {
     written: [] as GardenState[],
+    writtenNow: [] as GardenState[],
     started: 0,
     fail: false,
     gate: null as Promise<void> | null,
@@ -30,6 +32,7 @@ function fakeStore(): Store & {
       if (store.fail) throw new Error('disk full');
       store.written.push(state);
     },
+    saveNow: (state: GardenState) => store.writtenNow.push(state) > 0,
   };
   return store;
 }
@@ -186,5 +189,19 @@ describe('persistence/PersistenceSystem', () => {
     system.save(visit(2));
     await Promise.all([first, system.flush()]);
     expect(store.written).toEqual([visit(2)]);
+  });
+
+  it('flushNow writes the pending state at once, synchronously, and leaves it pending for the flush', async () => {
+    const store = fakeStore();
+    const system = new PersistenceSystem(store);
+    system.flushNow();
+    expect(store.writtenNow).toEqual([]); // nothing pending: nothing written
+    system.save(visit(1));
+    system.flushNow();
+    expect(store.writtenNow).toEqual([visit(1)]);
+    await system.flush();
+    expect(store.written).toEqual([visit(1)]);
+    system.flushNow();
+    expect(store.writtenNow).toHaveLength(1); // written to IndexedDB: nothing pending any more
   });
 });

@@ -21,6 +21,12 @@ export interface Store {
    * and rejects when no storage took the write.
    */
   save(state: GardenState): Promise<void>;
+  /**
+   * Writes now and synchronously, to the localStorage fallback: for a page that is closing, whose IndexedDB write
+   * would be dropped with it. False, writing nothing, for a state load() would refuse, with no such storage, or
+   * when it refused (full: every site of an origin shares its quota). Never throws.
+   */
+  saveNow(state: GardenState): boolean;
 }
 
 /** A key-value storage. A call rejects when it fails; `get` resolves undefined for a key that holds nothing. */
@@ -29,6 +35,8 @@ export interface Backend {
   set(key: string, value: unknown): Promise<void>;
   delete(key: string): Promise<void>;
   keys(): Promise<string[]>;
+  /** `set`, synchronously, where the storage has a synchronous call (localStorage). Throws when it fails. */
+  setNow?(key: string, value: unknown): void;
 }
 
 /** A valid state as load() found it: where it lies and the stored value, should it have to be moved to a backup. */
@@ -50,13 +58,26 @@ const isBackup = (key: string): boolean =>
  * Two storages that hold different gardens: the older garden is loaded, the newer is backed up (D-033).
  */
 export function createStore(backends: readonly Backend[]): Store {
+  // A storage whose saved state could not be read, or could not be backed up: it is never written again by this
+  // store, so a garden that did not load is not overwritten by the new one (FR-PER-02). The write goes to the
+  // next storage, and the next load's two-garden rule keeps the older garden.
+  const readOnly = new Set<Backend>();
+  let nowWrites = 0; // saveNow calls so far: a save begun before one must not remove the copy it wrote
+
   /** Moves a stored value to `state.backup.<now>` in its own storage and keeps the latest 2 there (FR-PER-02). */
   async function backUp(backend: Backend, raw: unknown, why: string): Promise<void> {
     const key = BACKUP_KEY_PREFIX + String(clock.now());
-    await backend.set(key, raw);
-    await backend.delete(STATE_KEY); // moved, not copied: a second load does not back it up again
-    const backups = (await backend.keys()).filter(isBackup).sort((a, b) => backupTime(b) - backupTime(a));
-    for (const old of backups.slice(BACKUPS_KEPT)) await backend.delete(old);
+    try {
+      await backend.set(key, raw);
+      await backend.delete(STATE_KEY); // moved, not copied: a second load does not back it up again
+    } catch (err) {
+      readOnly.add(backend);
+      throw err;
+    }
+    // Without `key`: with the clock behind the older backups, the one just written would sort last.
+    const others = (await backend.keys()).filter((k) => isBackup(k) && k !== key);
+    others.sort((a, b) => backupTime(b) - backupTime(a));
+    for (const old of others.slice(BACKUPS_KEPT - 1)) await backend.delete(old);
     log.warn('persistence', `${why}: moved to ${key}`);
   }
 
@@ -85,7 +106,8 @@ export function createStore(backends: readonly Backend[]): Store {
           await backUp(newer.backend, newer.raw, 'a second, newer garden was found');
         }
       } catch (err) {
-        log.warn('persistence', 'a storage could not be read or backed up', err);
+        readOnly.add(backend);
+        log.warn('persistence', 'a storage could not be read or backed up: it is not written', err);
       }
     }
     return found?.state ?? null;
@@ -95,12 +117,17 @@ export function createStore(backends: readonly Backend[]): Store {
     // Never write what load would refuse: that would cost the whole garden at the next start, not one save.
     const valid = validateState(state);
     if (valid === null) throw new Error('the garden state is not valid; not saved');
+    const nowWritesAtStart = nowWrites;
     let isSaved = false;
     for (const backend of backends) {
+      if (readOnly.has(backend)) continue;
       try {
-        if (isSaved) await backend.delete(STATE_KEY);
-        else await backend.set(STATE_KEY, valid);
-        isSaved = true;
+        if (!isSaved) {
+          await backend.set(STATE_KEY, valid);
+          isSaved = true;
+        } else if (nowWrites === nowWritesAtStart) {
+          await backend.delete(STATE_KEY); // else saveNow wrote a newer copy there while this write ran
+        }
       } catch (err) {
         log.warn('persistence', 'a storage refused a write', err);
       }
@@ -108,7 +135,21 @@ export function createStore(backends: readonly Backend[]): Store {
     if (!isSaved) throw new Error('no storage took the garden state');
   }
 
-  return { load, save };
+  function saveNow(state: GardenState): boolean {
+    const valid = validateState(state);
+    const fallback = backends.find((backend) => backend.setNow !== undefined && !readOnly.has(backend));
+    if (valid === null || fallback?.setNow === undefined) return false;
+    nowWrites++;
+    try {
+      fallback.setNow(STATE_KEY, valid);
+      return true;
+    } catch (err) {
+      log.warn('persistence', 'the fallback refused a write at once', err);
+      return false;
+    }
+  }
+
+  return { load, save, saveNow };
 }
 
 /** localStorage as a Backend: each value is JSON under `roomsong.garden.<key>`. */
@@ -117,6 +158,8 @@ export function webStorageBackend(
 ): Backend {
   // What the storage throws (blocked, full) becomes a rejection: a throw inside a promise's executor rejects it.
   const attempt = <T>(call: () => T): Promise<T> => new Promise((resolve) => resolve(call()));
+  const setNow = (key: string, value: unknown): void =>
+    storage.setItem(WEB_STORAGE_PREFIX + key, JSON.stringify(value));
   return {
     get: (key) =>
       attempt(() => {
@@ -128,7 +171,8 @@ export function webStorageBackend(
           return text; // not JSON: handed on as it is, so the store refuses it and backs it up
         }
       }),
-    set: (key, value) => attempt(() => storage.setItem(WEB_STORAGE_PREFIX + key, JSON.stringify(value))),
+    set: (key, value) => attempt(() => setNow(key, value)),
+    setNow,
     delete: (key) => attempt(() => storage.removeItem(WEB_STORAGE_PREFIX + key)),
     keys: () =>
       attempt(() => {

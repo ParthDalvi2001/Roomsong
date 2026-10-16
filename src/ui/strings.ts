@@ -2,8 +2,8 @@
 // STRINGS is the caption table, six words at most, and a page sentence does not belong in it. Same character set as
 // STRINGS. A failure message that has an error code (API_SPEC §5) has it as its key.
 // Every sentence states what the app does. The wording is UX §9.7 (applied in T-128a): a visitor's words in the
-// text, the browser's feature names only in the keys. Re-read them against the working app when the save and
-// the room are wired (T-128e) and at release.
+// text, the browser's feature names only in the keys. Re-read against the working app once the save and the room
+// were wired (T-128e, emulator: every line held, none changed); re-read them again at release.
 export const LANDING = {
   title: 'Roomsong',
   tagline: 'Grow a song on your table.',

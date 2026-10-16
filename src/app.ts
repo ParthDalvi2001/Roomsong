@@ -2,14 +2,24 @@
 // with `import()` once the landing page is on screen. Where a spec says "src/index.ts wires, saves or emits",
 // the code is here. It makes the one of each the page has (world, audio engine, flash guard) and registers the
 // systems; nothing else makes one.
-import { World, XRInputVisualAdapter } from '@iwsdk/core';
+import { World, XRInputVisualAdapter, type Entity } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 
 import { createAudioEngine, GardenAudioSystem, type AudioEngine } from './audio/index.js';
 import { Caption } from './core/components.js';
-import { bus, clock, flags, log, settings, type StringKey } from './core/index.js';
+import {
+  bus,
+  clock,
+  DEFAULT_SETTINGS,
+  flags,
+  log,
+  settings,
+  type Settings,
+  type StringKey,
+} from './core/index.js';
 import { GardenSystem, newGarden } from './garden/index.js';
 import { HandSystem } from './hands/index.js';
+import { openStore, PersistenceSystem } from './persistence/index.js';
 import {
   BedRenderSystem,
   FlashGuard,
@@ -45,6 +55,9 @@ const AUDIO_START_GRACE_MS = 3000;
 const WIRING_CAPTION_MS = 5000;
 /** The caption of a session with no sound (API_SPEC §1.10 rule 2). */
 const NO_SOUND: StringKey = 'E_AUDIO_CONTEXT';
+/** The caption of writes that fail (LLD §3.3 G, §8): "Saving unavailable". */
+const SAVE_FAILED: StringKey = 'E_SAVE_FAILED';
+const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[];
 
 declare global {
   interface Window {
@@ -135,6 +148,116 @@ export function breakOtherSystems(world: SystemHost): void {
   for (const system of world.getSystems()) addBreaker(system, system.constructor.name);
 }
 
+/**
+ * A caption the wiring raises itself, for WIRING_CAPTION_MS, on an entity of the raiser's own: a Caption added to
+ * an entity that still has one does not qualify again, so the old one is taken back first.
+ */
+function raise(entity: Entity, key: StringKey): void {
+  if (entity.hasComponent(Caption)) entity.removeComponent(Caption);
+  entity.addComponent(Caption, { key, expiresAt: clock.now() + WIRING_CAPTION_MS });
+}
+
+/**
+ * LLD §3.3 A4: the saved settings go live under what the visitor already changed on the page while the save
+ * loaded (a live value that differs from the default), so a box ticked during the load is not unticked. Exported
+ * for its unit test.
+ */
+export function restoreSettings(saved: Settings): void {
+  const live = settings.get();
+  const touched = SETTING_KEYS.filter((key) => live[key] !== DEFAULT_SETTINGS[key]);
+  settings.set({ ...saved, ...Object.fromEntries(touched.map((key) => [key, live[key]])) });
+}
+
+/** As much of the page as the saver's handlers listen to: `window`. */
+type SavePage = Pick<Window, 'addEventListener' | 'removeEventListener'> & {
+  document: Pick<Document, 'visibilityState' | 'addEventListener' | 'removeEventListener'>;
+};
+
+/**
+ * Saving, all of it (LLD §3.3 G; API_SPEC §1.10 rule 9). Every `garden:changed` and every `settings:changed` hands
+ * the saver `garden.state` (not the event's payload) with the live settings in it; the saver is flushed on a
+ * hidden session and at a session's end. When the page is hidden or goes (`pagehide`) it may be closing, and the
+ * browser drops an IndexedDB write under way with it: the pending state is then also written at once
+ * (`flushNow`). Called right after `garden.load()`, so the garden just loaded is not written back; live settings
+ * that differ from `stored` (the saved ones, or the defaults when nothing loaded) are saved at once, so a box
+ * ticked while the save loaded, or with no session after it, is kept. `tabs`: a newer tab of the garden says
+ * "opened", and this one stops saving, or it would write its older garden over the one that tab loaded.
+ * Exported for its unit test; returns what stops it.
+ */
+export function keepSaved(
+  garden: Pick<GardenSystem, 'state'>,
+  saver: Pick<PersistenceSystem, 'save' | 'flush' | 'flushNow'>,
+  page: SavePage,
+  stored: Readonly<Settings>,
+  tabs: Pick<BroadcastChannel, 'postMessage' | 'addEventListener'> | null,
+): () => void {
+  let last = garden.state;
+  const save = (): void => {
+    if (last !== null) saver.save({ ...last, settings: settings.get() });
+  };
+  const flush = (): void => void saver.flush(); // it never rejects
+  const leave = (): void => {
+    saver.flushNow();
+    flush();
+  };
+  const onVisibility = (): void => {
+    if (page.document.visibilityState === 'hidden') leave();
+  };
+  page.document.addEventListener('visibilitychange', onVisibility);
+  page.addEventListener('pagehide', leave);
+  const offs = [
+    bus.on('garden:changed', () => {
+      last = garden.state;
+      save();
+    }),
+    bus.on('settings:changed', save),
+    bus.on('xr:visibility', ({ visible }) => {
+      if (!visible) flush();
+    }),
+    bus.on('xr:sessionEnd', flush),
+  ];
+  const stop = (): void => {
+    for (const off of offs) off();
+    page.document.removeEventListener('visibilitychange', onVisibility);
+    page.removeEventListener('pagehide', leave);
+  };
+  const onOpened = (): void => {
+    log.warn('app', 'the garden was opened in another tab: this one saves no more');
+    stop();
+  };
+  tabs?.addEventListener('message', onOpened, { once: true });
+  tabs?.postMessage('opened');
+  const live = settings.get();
+  if (SETTING_KEYS.some((key) => stored[key] !== live[key])) save();
+  return stop;
+}
+
+/**
+ * "Saving unavailable" where it can be seen (LLD §3.3 G): raised at once in a session, else at the next
+ * `xr:sessionStart`, because the landing page shows no caption. Exported for its unit test.
+ */
+export function inSession(raiseNow: () => void): { raise: () => void; stop: () => void } {
+  let isOpen = false;
+  let isOwed = false;
+  const offs = [
+    bus.on('xr:sessionStart', () => {
+      isOpen = true;
+      if (isOwed) raiseNow();
+      isOwed = false;
+    }),
+    bus.on('xr:sessionEnd', () => {
+      isOpen = false;
+    }),
+  ];
+  return {
+    raise: () => {
+      if (isOpen) raiseNow();
+      else isOwed = true;
+    },
+    stop: () => offs.forEach((off) => off()),
+  };
+}
+
 /** What the Enter click tells the session's start about the sound (LLD §3.3 B). */
 interface SoundState {
   /** True until an Enter click has called `engine.init()`, and again when that call rejected. */
@@ -200,12 +323,8 @@ export function followSession(
   sound: SoundState,
 ): () => void {
   const xr = world.renderer.xr;
-  // On an entity of its own: a Caption added to an entity that still has one does not qualify again.
   const caption = world.createEntity();
-  const raiseNoSound = (): void => {
-    if (caption.hasComponent(Caption)) caption.removeComponent(Caption);
-    caption.addComponent(Caption, { key: NO_SOUND, expiresAt: clock.now() + WIRING_CAPTION_MS });
-  };
+  const raiseNoSound = (): void => raise(caption, NO_SOUND);
   // Three.js listens for the session's end before it announces its start, so a session that ends in between
   // gives an end with no start. An `xr:sessionEnd` is emitted only for a session whose start was emitted.
   let started = false;
@@ -273,10 +392,16 @@ export async function start(landing: Landing): Promise<void> {
   // `projectOptions` is iwsdk.config.json: an AR session with hands required, and `xr.offer: "none"`, so the
   // page's Enter click is the only way in (API_SPEC §1.10 rule 2). IWSDK's default would also offer the session
   // to the browser, and a session started from that offer never passes through the click that starts the sound.
-  const world = await World.create(
-    document.getElementById('scene-container') as HTMLDivElement,
-    projectOptions,
-  );
+  // A3: the world and the saved garden side by side. The store never rejects and settles within
+  // IDB_OPEN_TIMEOUT_MS; its load gives null for nothing saved, unreadable storage or a corrupt save, which it
+  // has moved to a backup key (API_SPEC §4). A4: the saved settings go live before any system reads them.
+  const opening = openStore();
+  const [world, store, saved] = await Promise.all([
+    World.create(document.getElementById('scene-container') as HTMLDivElement, projectOptions),
+    opening,
+    opening.then((opened) => opened.load()),
+  ]);
+  if (saved !== null) restoreSettings(saved.settings);
   const engine = createAudioEngine();
   const guard = new FlashGuard();
   // Before any system: it subscribes to the bus in its constructor, so its handlers run first (LLD §3.2).
@@ -302,8 +427,15 @@ export async function start(landing: Landing): Promise<void> {
   register(world, PanelSystem, 62, { garden, room });
   breakOtherSystems(world);
   if (flags.dev) window.__roomsong = { world, engine, garden };
-  // A7: every system hears the first garden:changed, and before Enter is usable (the saved garden joins in T-128e).
-  garden.load(newGarden(clock.now(), settings.get()));
+  // A7: every system hears the first garden:changed, and before Enter is usable. A restored garden is drawn when
+  // its bed is placed and sounds from room:signature on, like any other (LLD §3.3 J).
+  garden.load(saved ?? newGarden(clock.now(), settings.get()));
+  // A8: only now the save handlers, with the caption of failed writes on an entity of its own.
+  const saveFailed = world.createEntity();
+  const failed = inSession(() => raise(saveFailed, SAVE_FAILED));
+  const tabs = 'BroadcastChannel' in window ? new BroadcastChannel('roomsong') : null;
+  const saver = new PersistenceSystem(store, failed.raise);
+  keepSaved(garden, saver, window, saved?.settings ?? DEFAULT_SETTINGS, tabs);
 
   const sound: SoundState = { failed: true };
   followSession(world, engine, landing, sound);
