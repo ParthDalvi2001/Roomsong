@@ -1,6 +1,6 @@
 # Device script S1 — the sittings with a headset (T-129)
 
-**Status:** the blocks marked "can be run today" are ready to run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8.
+**Status:** the blocks marked "can be run today" are ready to run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8; the tuning ripple's look (T-142) added to block 17 on 2026-10-16 against `develop` af94284.
 
 This script produces results. It contains none.
 
@@ -35,7 +35,7 @@ You need only this file during the sitting.
 | 14 | The app: ten minutes with a full garden | frame rate with sound and hands · steady time · Bass on the speakers · drift of the bed · what a hand lights up (T-119) | 30 min | needs T-128d |
 | 15 | The app: a key change listened to | the re-tune, rated | 10 min | needs T-128d |
 | 16 | The app: the garden comes back | the saved place: does the bed return, in how many seconds, how many cm off · the reach slack · the anchor count · a week later, in bloom (T-119) | 35 min | needs T-128e |
-| 17 | Rooms against the tape measure | what the app reads of a room, against your tape · two rooms sound different | 10 min a room | needs T-128c |
+| 17 | Rooms against the tape measure | what the app reads of a room, against your tape · two rooms sound different · the tuning ripple's look, once (T-142) | 10 min a room, and 12 min once for the ripple | needs T-128c; the ripple needs T-128d |
 | 18 | Say no: the room permission, and hand tracking off | P2 permission decline · what the app says | 15 min | today |
 | 19 | Clear the site's data | do the saved places go with it | 10 min | part A today (USB cable) · part B needs T-128e |
 | 20 | Hand the results to Claude | the filled results sheet | 10 min | today |
@@ -46,7 +46,7 @@ All of it is about 5 h 15 of blocks, over 6 hours with setup and breaks. That is
 |---|---|---|
 | **Sitting 1, the test pages and the app's entry.** Can be run today | 0 to 9 · 18 · 20 (and 19 part A only if time is left and you have a USB cable) | 2 h 50 of blocks; about 3 h 35 with 30 minutes of setup and two short breaks |
 | **Sitting 2, the garden in the app.** Needs T-128c, T-128d and T-128e | 0 again for the new build (10 min) · the listening steps of 9 (5 min) · 10 to 16 · 19 (part A, if not done in sitting 1, and part B) · 20 | 2 h 40 of blocks; about 3 h 20 with setup and breaks |
-| **Room walk.** Needs T-128c | 17, in each other room you can reach | 10 minutes a room; any day you have the headset |
+| **Room walk.** Needs T-128c | 17, in each other room you can reach; its ripple steps once, in room 1 (needs T-128d) | 10 minutes a room, and 12 minutes once; any day you have the headset |
 | **One hour, a friend's headset.** Can be run today | see "One-hour version" near the end | 1 hour |
 
 If only part of the integration is merged on the day of sitting 2, run the blocks whose "Needs" line is met and skip the rest. Blocks 10 and 17 need the least (T-128c), then 11 to 15 (T-128d), then 16 and 19 part B (T-128e).
@@ -1180,7 +1180,7 @@ Whether the time to load the page (T1) is added to these counts waits for the sa
 | The Bass, the late plant, the drift | write down what you see and hear | from T-144, T-143, T-162 |
 | The dark band, the glow, the lit cells, high contrast | write down what you see. A hovered plant you cannot pick out in high contrast, even with its cell lit, goes back to D-044 | from T-119, D-044 |
 
-Listen mode is part of TC-DEV-07 and is not built yet (T-148): that half is device script S2.
+Listen mode is part of TC-DEV-07 and is not on `develop` yet (T-148): that half is device script S2, block 6D.
 
 ### If it fails
 
@@ -1417,6 +1417,70 @@ Do this part last in this block. The flag `fakeDay=+7` makes the garden a week o
 - No `room:features` line: the address lacks `dev=1&flags=eventLog`, or **Verbose** is not ticked in the console.
 - Every room gives the default tuning: check `level`. At level 3 or 4 the room does not tune the song. If the level is 1 or 2 and the numbers are all unknown, tell Claude, and name block 1's `planes.labels`.
 - The numbers are far from the tape (a floor twice the size, a ceiling half a metre off): nothing to do in the sitting. Write both down. Claude decides after the sitting whether the room's tuning is built as planned (gate G1, T-130).
+
+### Also, the tuning ripple's look (T-142; 12 min, room 1 only)
+
+**Needs: T-128d.** The ripple is on `develop` (T-142, checked against `develop` af94284), but it starts only on the room's signature, which comes from the app's garden, and the app makes its garden with T-128d: that part is **(from the plan)**. **The ripple's three notes are not built (T-142b):** it is silent. The song you hear at that moment is the garden's own. Do not rate a chord.
+
+**Answers:** the first half of TC-DEV-13 for the eye (each caption names its surface; the ripple in each room) · FR-ROOM-12 (the order, the captions, at least 1.2 s each) · from T-142: does the crest read on a light and on a dark real table; is the wall sweep seen through passthrough; is the ceiling sweep seen from a seat at all; the stall in the frame where the bed appears.
+
+**You need:** the "app, dev" bookmark; the white sheet; a dark cloth or towel (if your table is dark, the white sheet alone is enough: the table itself is the dark run). Know before you start which wall is nearest to the bed.
+
+**Checked against:** `src/render/config.ts` (`RIPPLE_SWEEP_AT_MS` 300 / 1500 / 2700, `RIPPLE_SWEEP_MS` 600 / 1000 / 800, `RIPPLE_TUNED_MS` 4000, `RIPPLE_CREST_M` 0.04, `RIPPLE_AFTERGLOW_MS` 1000, `RIPPLE_GLOW_MS` 400, `RIPPLE_SHADE_M` 0.06, `TIDE_SHADE_COVER` 0.6), `src/render/TuningRipple.ts` (the shader drawn once, dark, in the frame the bed appears), `src/core/strings.ts` (the four captions), `src/core/config.ts` (`CAPTION_MIN_MS` 1200; at most 3 words and 16 characters), `src/app.ts` (`TuningRippleSystem` at 55); LLD §5.8 (the timeline and "As built (T-142)"), §3.3 D (the placement frame's 50 ms); UX §5 ("Tuning ripple"); API_SPEC §1.9 (captions: 0.6 m ahead, 8° below the gaze where each appears).
+
+**Know this first:**
+
+- The ripple runs once each time the bed is placed: at every Enter, and after "Re-place bed". It is over in 4 s. To see it again, leave the session and enter.
+- From the moment the bed lands: at 0.3 s the table (0.6 s, out from the bed across the table), at 1.5 s the nearest wall (1.0 s, up from its foot), at 2.7 s the ceiling (0.8 s, from above the bed to its far side); `room:tuned` at 4.0 s. Each is a thin cream crest, 4 cm wide, led by a 6 cm dark band (so it shows on a light table), leaving a 1 s afterglow in the room's own tint.
+- Captions, one at a time, only for a surface the headset found: "Table: seeds." (in the session that hands out a new garden's first seeds) or "Table: colour." (every other session), "Walls: colour.", "Ceiling: scale.". Each is up from its sweep's start to the next one's: 1.2, 1.2 and 1.3 s. A caption appears where you look and stays at that spot in the room.
+- A room the app could not read (level 3 or 4, "Wanderer") gets one ripple on the bed and no caption. With reduced motion each surface glows for 0.4 s in the same order, with the same captions.
+
+#### Steps
+
+1. **Eyes on the bed (the bare table).** Sit at your table. Open the "app, dev" bookmark and enter. Keep your eyes on the bed for 5 seconds and do not look for anything. Write down what you noticed, and whether anything drew your eye to the wall or up. Did the picture hitch: as the bed appeared, or a moment later, during the first sweep?
+2. Read each caption aloud as it appears. Write down the words, in order, and whether any changed before you had finished it.
+3. **Looking for it.** Leave and enter again. This time follow it: the table at once, then turn to the nearest wall (by about the count of one and a half), then look up (by about three). Write down what you saw on each.
+4. **A light table.** Leave. Lay the white sheet flat under the bed's place and around it, and enter. Watch the table: the cream crest, and the dark band just ahead of it.
+5. **A dark table.** The same with the dark cloth (skip if your table is dark: step 1 was that run).
+6. **Reduced motion.** Leave. On the landing page tick **Reduce motion**, enter: the table, the wall and the ceiling each glow briefly in turn, with no sweep, and the same captions. Leave, untick it.
+7. **No room (optional).** Add `,forceSignature=wanderer` to the address and enter: one ripple on the bed, no caption.
+8. In every run, read the panel during the 4 s: the lowest `fps`, the highest `draws` and `flash`.
+
+#### Write down
+
+| Field | Value |
+|---|---|
+| Your table's colour; the room's light | light / dark; bright / normal / dim |
+| Eyes on the bed: what you noticed; drawn to the wall, drawn up | words; yes / no, each |
+| The hitch: as the bed appeared / during the first sweep / none | which; small / large |
+| Captions: the words, in order | words |
+| Each caption up long enough to read aloud; readable over what was behind it | yes / no, which one failed |
+| Bare table: the crest; the afterglow | seen / faint / not seen, each |
+| White sheet: the crest; the dark band ahead of it | seen / faint / not seen, each |
+| Dark cloth (or dark table): the crest | seen / faint / not seen |
+| The wall sweep through passthrough, looking for it | seen / faint / not seen / no wall swept |
+| The ceiling sweep, looking for it; did you have to tip your head far back | seen / faint / not seen / no ceiling swept; yes / no |
+| Reduced motion: glows in turn, no sweep, same captions | yes / no |
+| No room: one ripple on the bed, no caption (optional) | yes / no |
+| Panel during the ripple | lowest `fps`; highest `draws`, `flash` |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The captions | one at a time; only for surfaces found; the words above, with "Table: seeds." only in a new garden's first session; none in a room that was not read | FR-ROOM-12, LLD §5.8 |
+| Up long enough | each at least 1.2 s on screen (as built 1.2 / 1.2 / 1.3 s): every caption read aloud to its end before the next | FR-ROOM-12, `CAPTION_MIN_MS` 1200 (API_SPEC §1.0) |
+| The order | table, then wall, then ceiling, all over within about 4 s | FR-ROOM-12, LLD §5.8 |
+| Flashing | `flash` at most 3 | FR-UI-11, LLD §5.9 |
+| Drawing budget | the ripple adds at most 3 draw calls and 100 triangles (as built: 3 quads, 6 triangles); the panel counts both eyes, so at most 6 more `draws` while it runs | LLD §5.8 |
+| Frame rate | usual `fps` at least 72, never below 60. One hitch as the bed appears is the placement frame's known cost (up to 50 ms of script, LLD §3.3 D): write it down. A hitch in the middle of the first sweep is a bug: the shader is compiled in the placement frame so that it does not stall 0.3 s later (about 140 ms in the emulator, T-142) | Golden Rule 5, LLD §3.3, T-142 |
+| The look: crest on light and dark, the wall, the ceiling from a seat | write down what you see. Parth decides with it whether the ceiling sweep stays, and the art pass (T-163) takes the rest. UX §5 gives no number | from T-142, UX §5 |
+
+#### If it fails
+
+- No ripple, but the garden plays: the signature came (plants sound only from it on), so the ripple failed. Write down the `level`; Claude files it against T-142. Even at level 3 or 4 there is one ripple on the bed.
+- No ripple and no sound: the build lacks T-128d (block 0).
+- A caption you could not read in time: write down which, and where you were looking when it came.
 
 ---
 
@@ -1671,6 +1735,16 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 83 | High contrast: does the cream rim read as an outline | | 4, 14 | T-163 |
 | 84 | The glow with a real, moving hand: late, or flickering between two plants | | 14 | T-163 |
 
+### The tuning ripple's look (T-142) — block 17, once
+
+| # | What | Your answer | From block | Who waits for it |
+|---|---|---|---|---|
+| 85 | Captions: the words in order; each read to its end; readable over what was behind | | 17 | FR-ROOM-12; TC-DEV-13 |
+| 86 | The crest on your table, on the white sheet, on a dark cloth; the dark band; the afterglow | | 17 | T-163 art pass |
+| 87 | The wall sweep and the ceiling sweep: noticed with eyes on the bed; seen when looked for | | 17 | Parth: keep the ceiling sweep or not; T-163 |
+| 88 | The hitch: as the bed appeared or during the first sweep; lowest `fps`, highest `draws`, `flash` | | 17 | T-142; T-165 perf pass |
+| 89 | Reduced motion: glows in turn, same captions; no room: one bed ripple, no caption | | 17 | FR-ROOM-12; FR-UI-06 |
+
 ---
 
 ## One-hour version, for a borrowed headset
@@ -1727,6 +1801,7 @@ You hand them over (block 20). Claude files them:
 | D-044: up to 20 draw calls with every effect on; a hovered plant lights its own cell | blocks 4, 14 and 16 |
 | The drawing of T-119: the dark edge, the shapes, growth, the unfurl, high contrast, the glow (art pass T-163) | blocks 4, 14 and 16 |
 | Room signature: build it or not (gate G1, T-130) | block 1, then block 17 |
+| The tuning ripple's look and whether its ceiling sweep stays (T-142; art pass T-163) | block 17, the ripple |
 | Voice limit and audio latency setting (T-145) | blocks 1 and 14 |
 | Anchors as a must-have (D-021, T-162) | blocks 1, 6, 7 and 16 |
 | The garden's look (art pass T-163) and how early the performance work starts (T-165) | blocks 4 and 14 |
@@ -1754,7 +1829,7 @@ Not in this script, because no review note asks for it here and its own task or 
 |---|---|
 | Pull, drag and drag-off, with the 2 cm of movement that decides between them (TC-DEV-03) | device script S2 (T-154), once T-146 is in. Block 13, step 11, only covers a hand lost while shaping |
 | Listen mode; one-hand and look-and-hold modes over a full loop; the policy sweep on the headset (TC-DEV-04, 06, 11); the Listen half of TC-DEV-07 | device script S2 (T-154) |
-| The tuning ripple and its three captions (the first half of TC-DEV-13) | T-142 |
+| The tuning ripple's three notes, heard (the chord of FR-ROOM-12; its light and captions are in block 17) | T-142b, not built; a listening step joins block 17 when it is |
 | The 3D-sound comparison (HRTF A/B) | T-145 |
 | The same blocks on a Quest 3S (TC-DEV-12) | a second run of this script, if a 3S is at hand |
 
@@ -1876,6 +1951,12 @@ Not in this script, because no review note asks for it here and its own task or 
 | PROGRESS items 23 and 26c | block 10, part C |
 | PROGRESS item 26b | blocks 0 and 8 (two numbers, kept apart; the rule is not decided) |
 | PROGRESS item 27 | block 15 |
+| **From T-142 (the tuning ripple)** | |
+| The crest on a light and a dark real table | block 17, the ripple, steps 1, 4 and 5 |
+| The wall sweep through passthrough; the ceiling sweep from a seat | block 17, the ripple, steps 1 and 3 |
+| The captions readable and up at least 1.2 s | block 17, the ripple, step 2 |
+| The stall in the placement frame | block 17, the ripple, step 1 |
+| The notes (T-142b) | not built: "Left for device script S2 and for later tasks" |
 | **From the earlier reviews** | |
 | The real pinch thresholds | block 2 counts pinches that got no tone and tones you did not mean; the gap in cm: last section |
 | Caption legibility over a bright wall | block 10, step 15; block 13, step 9 |

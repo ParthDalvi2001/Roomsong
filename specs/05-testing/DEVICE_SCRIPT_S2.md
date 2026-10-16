@@ -1,16 +1,17 @@
 # Device script S2 — shaping, Listen, restore, pause (T-154)
 
-**Status:** the shaping blocks (TC-DEV-03) are written. Only block 1 can be run today. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-15 against `develop` ce33e46 (T-146 the shaping gestures, T-147 their drawing, T-127 seed delivery, T-128c the bed on the table). Blocks 6, 7 and 8 are stubs: each is written when the task it waits for is merged.
+**Status:** the shaping blocks (TC-DEV-03) are written. Only block 1 can be run today. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-15 against `develop` ce33e46 (T-146 the shaping gestures, T-147 their drawing, T-127 seed delivery, T-128c the bed on the table). Blocks 6A to 6D (Listen, TC-DEV-04) were written on 2026-10-16 against the T-148 branch at 088ea07, before its merge. Blocks 7 and 8 are stubs: each is written when the task it waits for is merged.
 
 This script produces results. It contains none.
 
-**What S2 covers.** TC-DEV-03, shaping a plant with bare hands: pinch and hold (the lift), pull to grow or shrink, drag to another cell, drag off the bed to remove it, the 5-second undo, and the glide home when the headset loses the hand mid-gesture. Later: TC-DEV-04 Listen, TC-DEV-05 the garden coming back, TC-DEV-08 pause. Listening review #1 (the other half of T-154) is not in this file.
+**What S2 covers.** TC-DEV-03, shaping a plant with bare hands: pinch and hold (the lift), pull to grow or shrink, drag to another cell, drag off the bed to remove it, the 5-second undo, and the glide home when the headset loses the hand mid-gesture. Then TC-DEV-04, Listen: going in and out with bare hands, the dim and the halo over a real room, the near plants louder, the poses that must not fire by accident, and the 10-minute end. Later: TC-DEV-05 the garden coming back, TC-DEV-08 pause. Listening review #1 (the other half of T-154) is not in this file.
 
 How sure each step is (the marks of DEVICE_SCRIPT_S1):
 
 - **No mark:** a step about our own pages or code, checked against the source on `develop` ce33e46.
 - **(unchecked):** a step about the headset's own menus, the browser or the Mac's console, which nobody on the team has seen yet. If it looks different, do the nearest thing and write down what it was called.
 - **(from the plan):** a step about a part of the app that is not on `develop` yet (the wiring of T-128d). It is written from API_SPEC "Who calls it (T-128d)", not from code. When T-128d lands, Claude checks the step against the code and takes the mark off.
+- **Blocks 6A to 6D** are checked against the T-148 branch at 088ea07 (Listen, in review when written), not against `develop`. When T-148 is merged, Claude checks them against `develop` and takes this line off.
 
 Every block starts with **Can be run today** or **Needs: a task**. "Today" means `develop` at ce33e46. In the app today you can enter a session and see the bed on your table, but you cannot plant, shape or hear a plant: `GardenSystem` and the plants' drawing are joined to the app by T-128d (the first loop, in progress). The only stand-in today is the bed preview, `proto/bed/`: its four buttons **play** each shaping with a scripted hand (`proto/bed/README.md`, "Shaping a plant (T-147)"). It shows the drawing, never your hand: it cannot answer a TC-DEV-03 pass rule.
 
@@ -26,14 +27,17 @@ Every block starts with **Can be run today** or **Needs: a task**. "Today" means
 | 3 | Drag to another cell | TC-DEV-03 drag: 10 tries · the ghost shows the cell before release, the plant lands there · the hole | 15 min | needs T-128d |
 | 4 | Drag off the bed, and undo in 5 s | TC-DEV-03 drag-off and undo: 10 tries each · sideways and towards the body · after 5 s it is final · flash cap | 20 min | needs T-128d |
 | 5 | The hand lost mid-shaping: the glide home | FR-HND-15 for a drag and a pull · no plant lost or doubled | 10 min | needs T-128d |
-| 6 | Listen (stub) | TC-DEV-04 | — | needs T-148 |
+| 6A | Listen: in and out | TC-DEV-04 (starts within 2 s) · palms out, the orb, the wake, the waking pinch, one hand, a pause · no Listen before the garden (D-050) | 20 min | needs T-148 and T-128d |
+| 6B | Listen: the look and the sound | TC-DEV-04 (the halo; the sound from each plant as you turn) · the dim over real passthrough · the near plants louder · frame rate | 10 min | needs T-148 and T-128d |
+| 6C | Listen by accident | D-050: palms down over the bed, a palm up on the lap or the table edge, palm up for a seed against the wake, the Quest's own palm gesture | 15 min | needs T-148 and T-128d |
+| 6D | Ten minutes of Listen, and "Goodnight" | the 10-minute end · the Listen half of TC-DEV-07 · wakes at rest | 12 min | needs T-148 and T-128d |
 | 7 | The garden comes back (stub) | TC-DEV-05 | — | needs T-128e |
 | 8 | Pause and resume (stub) | TC-DEV-08 | — | needs T-128e and T-152 |
 | 9 | Hand the results to Claude | the filled results sheet | 5 min | today |
 
-**Time.** Blocks 0 to 5 and 9: 90 minutes; about 1 h 55 with 15 minutes of setup and one 10-minute break. Block 1 can also be run alone today, right after S1 block 4 (same page, same bookmark): then the S2 sitting is 75 minutes of blocks. Blocks 6 to 8 get their minutes when they are written.
+**Time.** Blocks 0 to 5 and 9: 90 minutes; about 1 h 55 with 15 minutes of setup and one 10-minute break. Block 1 can also be run alone today, right after S1 block 4 (same page, same bookmark): then the S2 sitting is 75 minutes of blocks. Listen (6A to 6D) adds 57 minutes: with it the sitting is about 3 h with setup and two breaks. Listen can also be its own sitting: blocks 0, 6A to 6D and 9, 72 minutes of blocks, about 1 h 35 with setup and one break. Blocks 7 and 8 get their minutes when they are written.
 
-**Order.** 0, then 1, then 2 to 5 in order: block 2 makes the plants of different heights that block 3 moves; block 4 removes and brings back; block 5 needs plants in their cells. If S1 sitting 2 is on the same day, run S2 blocks 2 to 5 after S1 block 11 and before S1 block 12 (which ends with New garden), and skip S1 block 13 step 11: block 5 here asks the same, with the numbers.
+**Order.** 0, then 1, then 2 to 5 in order: block 2 makes the plants of different heights that block 3 moves; block 4 removes and brings back; block 5 needs plants in their cells. Then 6A to 6D in order (6D last: it is ten minutes of sitting still), then 9. If S1 sitting 2 is on the same day, run S2 blocks 2 to 5 after S1 block 11 and before S1 block 12 (which ends with New garden), and skip S1 block 13 step 11: block 5 here asks the same, with the numbers.
 
 **A try, and first try.** A try is one pinch and one release, aimed at a plan you made before the pinch ("this plant, up to the top ring"). Moving your hand while you hold is part of the try: the ghost is there to guide it. A **first-try success** is a try that gives the planned result without a second pinch. A miss is not corrected and not repeated: count it and go on (the rule of TC-DEV-00).
 
@@ -404,9 +408,260 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 
 ---
 
-## Block 6 — Listen (stub)
+## Block 6A — Listen: in and out (20 min)
 
-**Needs: T-148** (with T-128d). Will test TC-DEV-04: Listen starts within 2 s, the aurora halo over the bed, and the sound comes from where each plant is when you turn your head.
+**Needs: T-148 and T-128d.** Listen needs the app's garden (D-050: no Listen before it), and the app makes its garden with T-128d: that part is **(from the plan)**. The rest is checked against the T-148 branch (the mark at the top).
+
+**Purpose:** go into Listen both ways and out of it every way, with bare hands, and count the tries.
+
+**Answers:** TC-DEV-04 (Listen starts within 2 s) · US-10 · FR-HND-06 and FR-HND-07 with real hands · FR-HND-01 (hands only; Stage-1 pass/fail) · D-050 (no Listen before the garden; the wake only within 0.45 m of the head; the waking pinch does nothing else) · the one-palm half of TC-DEV-06.
+
+**You need:** the "S2, shaping" bookmark of block 0 and a garden with plants (block 0, step 4). No console.
+
+**Checked against (T-148 branch, 088ea07):** `src/hands/config.ts` (`PALMS_OUT_MAX_ANGLE_DEG` 40, `PALMS_OUT_HOLD_MS` 1500, `WAKE_MAX_ANGLE_DEG` 40, `WAKE_HOLD_MS` 600, `WAKE_MAX_DISTANCE_M` 0.45, `PALMS_OUT_MIN_DOWN_ANGLE_DEG` 30), `src/hands/poses/palmsOut.ts`, `src/hands/poses/wake.ts`, `src/hands/HandSystem.ts` (`listenPoses`), `src/garden/GardenSystem.ts` (`startListen`, `stopListen`, the waking pinch, a pause), `src/render/config.ts` (`LISTEN_ENTER_MS` 1200, `LISTEN_EXIT_MS` 800, `LISTEN_ORB_LIFT_M` 0.02), `src/render/OrbRenderer.ts`, `src/render/HaloSystem.ts`; SRS FR-HND-06/07; PRD §3.4; UX §3.5; API_SPEC §1.4 (the `press` row: orb → Listen); D-050; `src/room/config.ts` (`HIT_TEST_TIMEOUT_MS` 10 000) for step 1.
+
+**Know this first:**
+
+- **Palms out:** both hands open (no pinch), palms facing away from you the way you look, each within 40° of where your head points, held 1.5 s. In one-hand mode one palm is enough; in two-hand mode one palm does nothing (FR-HND-06). A palm within 30° of straight down never counts, so hands resting flat on the table are not "out" (D-050). Losing a hand restarts the count (LLD §4).
+- **The orb:** a small cream pearl, 2.5 cm across, 2 cm above the middle of the bed's hole, picked within 4 cm. Pinch it and let go over it: Listen starts at the release (UX §3.5, API_SPEC §1.4). The seed supply floats 10 cm higher; it is not the orb. Dwelling on it by gaze is T-160, not here.
+- **Going in:** over 1.2 s the room dims and a curtain of light rises round the bed (block 6B looks at it closely).
+- **The wake:** one palm turned to your face, within 40°, no farther than 45 cm from your head, held 0.6 s (FR-HND-07, D-050); or any pinch anywhere. The waking pinch only wakes: it moves, pulls and presses nothing (D-050). One exception, by T-148's choice: a seed already on your hand is still planted if the waking pinch carries it, so a seed never sticks to a hand. A pause (the Quest button, the headset off) and the session's end also end Listen; after a pause you are back in the garden, not in Listen. The room comes back over 0.8 s.
+- **Counting to 2 s:** say "one thousand and one, one thousand and two" from the moment both palms are out. The room should start to dim at about "and one and a half".
+
+### Steps
+
+1. **Not before the garden, two tries.** Add `,forceLevel=3` to the end of the "S2, shaping" address and open it. Pinch **Enter the garden**. The pale copy of the ring shows with "Look at your table, and pinch"; the bed waits for that pinch, at most 10 s. While it waits, hold both palms out at the table for 3 seconds: nothing may dim. Then look at the table and pinch: the bed lands. Leave the session (S1, "Leaving a session with hands only") and do it once more.
+2. Open the plain "S2, shaping" bookmark and enter. Let the garden play for 10 seconds.
+3. **Palms out, five tries.** Sit back, hands at chest height, open, palms facing the bed as if saying "stop", and hold. Count (see above). Write down the count at which the room began to dim. Stay 5 seconds, then wake with a pinch in the air. Vary the tries a little: hands lower, higher, fingers together, spread.
+4. **One palm only, two-hand mode, one try.** One palm out for 3 seconds, the other hand in your lap: nothing may dim.
+5. **The orb, five tries.** Pinch the orb and let go over it. Did Listen start at the release, first try? Wake each time with a palm (step 6). Then once: pinch the orb, move your hand 10 cm away, let go: nothing may start (a cancelled press).
+6. **Wake by palm, five tries.** In Listen, turn one palm to your face, about a forearm's length away, and hold. Count: the room should start to come back at about "and one", and be back by "and two". Then one try with the arm straight out (farther than 45 cm): it must not wake. Wake that one with a pinch.
+7. **The waking pinch does nothing else, three tries.** In Listen, pinch a plant at its foot as if to drag it, move it to a free cell and let go. Listen ends at the pinch. The plant may follow your fingers while you hold (the drawing follows the hand's gesture, and no test has looked at it after a wake); after the release it must be in its own cell, as tall as before. Write down whether it followed. Then once: in Listen, pinch the orb and let go over it. Listen ends and must not start again at the release.
+8. **One hand, three tries.** Leave. On the landing page tick **One hand**, enter, and hold one palm out: Listen must start. Wake with the same palm. Leave, untick **One hand**.
+9. **A pause.** Enter, go into Listen by the orb, press the Quest button (unchecked: the button and its menu) and come back after 10 seconds. Listen must be over: the room bright, no curtain; the garden plays (whether the sound comes back by itself is block 8, TC-DEV-08). Leave the session.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Before the garden: dimmed while the ghost showed | n/2 |
+| Palms out: Listen started | n/5; the count at which it dimmed, each try |
+| One palm in two-hand mode: Listen started | yes / no |
+| Orb: started at the release, first try | n/5; the cancelled press started it: yes / no |
+| Wake by palm, near: first try | n/5; the count until the room was back |
+| Wake by palm, arm straight out: woke | yes / no |
+| Waking pinch: Listen ended and the plant stayed, as tall | n/3; it followed the fingers while held: yes / no; the orb's pinch started Listen again: yes / no |
+| One hand: one palm started Listen | n/3 |
+| After the pause: Listen over, garden playing | yes / no |
+| Anything you could only do with a controller | words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Starts in time | every try that starts Listen dims within 2 s of both palms out, or of the release over the orb | TC-DEV-04; the 1.5 s hold of FR-HND-06 |
+| How often a pose is read | the documents give no rate: write down n/5. Parth decides with these counts whether 40° and 1.5 s stay (D-050: provisional until this script) | FR-HND-06, D-050 |
+| Hands only | Listen entered and left with bare hands, both ways in and both ways out; no controller | FR-HND-01 |
+| Not before the garden | 2 of 2: nothing dims before the bed lands | D-050 |
+| One palm | two-hand mode: no Listen; one-hand mode: Listen | FR-HND-06 |
+| The orb | starts at the release over it; a release off it starts nothing | API_SPEC §1.4 (`press`), UX §3.5 |
+| The wake | near: the room comes back; arm straight out: no wake | FR-HND-07, D-050 (0.45 m) |
+| The waking pinch | 3 of 3: no plant moved or changed height; the orb's waking pinch does not start Listen again | D-050, PRD §3.4 |
+| A pause | ends Listen; on return the garden, not Listen | T-148 (`GardenSystem`, "a pause ends Listen") |
+
+### If it fails
+
+- Nothing ever dims, by palms or the orb: ask Claude whether the build holds T-148 and T-128d (block 0). Then check that the bed had landed: before the garden there is no Listen.
+- Palms out never starts it, the orb does: write down how you held your hands. The pose is read from the palm's direction only; the headset may report a real palm a little turned.
+- It wakes when you did not mean to: write down what your hands were doing. Block 6C counts this on purpose.
+
+---
+
+## Block 6B — Listen: the look and the sound (10 min)
+
+**Needs: T-148 and T-128d**, as block 6A.
+
+**Purpose:** see whether the dim reads over a real room, whether the halo is seen all round your real table, and hear whether the near plants come forward.
+
+**Answers:** TC-DEV-04 (the aurora halo over the bed; the sound comes from each plant as you turn your head) · FR-ROOM-04 (the halo is the whole Listen picture: Must) · UX §3.5 (40 %, never fully hidden; 1.2 s in, 0.8 s out) · FR-UI-11 · FR-UI-06 (reduced motion) · NFR-PERF-10 · from T-148: does the dim read over real passthrough; does the breath feel like the music; can you hear the near plants come forward.
+
+**You need:** as block 6A; read the panel for frame rate.
+
+**Checked against (T-148 branch, 088ea07):** `src/render/config.ts` (`DOME_DIM` 0.6, `DOME_RADIUS_M` 2, `HALO_LIFT_M` 0.02, `HALO_HEIGHT_M` 0.22, `HALO_LOW` 0.75, `HALO_BEATS_PER_BREATH` 2, `HALO_DRIFT_MS` 60 000, `LISTEN_ENTER_MS` 1200, `LISTEN_EXIT_MS` 800), `src/render/HaloRenderer.ts`, `src/audio/config.ts` (`LISTEN_FOCUS_REF_M` 0.62), `src/audio/Spatializer.ts` (`place`), `tests/e2e/18-listen.spec.ts` (the draw calls Listen adds); UX §3.5, §5; PRD §3.4.
+
+**Know this first:**
+
+- **The dim:** a dark see-through dome, 2 m round the bed's middle, lets 40 % of the room through. You should still see your table, your hands and the door, darker.
+- **The halo:** a curtain of light on the bed's rim, from 2 cm above the glass to 22 cm high, brightest at its foot: green and blue at the foot, violet towards the top. It rises as the room dims; its folds drift round the bed once a minute. It breathes from full to three quarters and back once every two beats (UX §5's "every beat" is not built: on every beat the flash cap held it still in 39 to 63 % of frames, measured in T-148). With reduced motion it does not rise or drift; the dim and the breath stay.
+- **The orb** shines at full brightness while Listen lasts.
+- **The near plants:** while Listen lasts, a plant farther from your head than 62 cm sounds at (0.62 ÷ its distance)² of its level, at most full: the near half of the bed keeps its level, the far rim (about 86 cm) is about 6 dB quieter, on top of the usual fall-off with distance. The change lands on each plant's next note, not at once, and it follows your head: lean in and the far plants come up.
+- **Not built** (write down only if you see or hear them): the bed glowing brighter and the light turning into "a soft comet" (UX §3.5), vines to the wall (Could, D-021), the pad's filter sweep and a wider echo (UX §5: not in the contract), a second orb by the wrist in one-hand mode (UX §9.1).
+
+### Steps
+
+1. Enter Listen by palms out. For 30 seconds look round the room: the table, your hands, the door, a window, the wall behind the bed. Is the room plainly darker? Can you still see each of them?
+2. Look at the halo for four breaths. Did it rise as the room dimmed? Is it there all round the bed, also on the near side by your chest? Does it breathe in time with the song? Any flicker?
+3. Wake with a palm and watch the room come back: smooth or a jump?
+4. **Near plants.** Out of Listen, close your eyes and listen for 20 seconds. Open them, go into Listen by the orb, close them again for 20 seconds. Do the plants nearest you stand out more in Listen? Rate 1 (no difference) to 5 (clearly). Wake.
+5. **Turn your head.** In Listen, look at one plant you can pick out by ear (a Bell or a Bass), then turn your head slowly 45° to the left and to the right. Does its sound stay where the plant is?
+6. **Lean.** In Listen, lean towards the far rim for 10 seconds, then sit back. Did the far plants come up as you leaned?
+7. Read the panel in Listen and out of it: the lowest `fps`, the highest `draws`, `tris` and `flash`.
+8. **Reduced motion.** Leave. On the landing page tick **Reduce motion**, enter, go into Listen: the curtain is there at full height at once and its folds are still; the dim and the breath stay. Leave, untick it.
+9. **Optional, standing.** In Listen, stand up and take two steps back from the table, so your head is more than 2 m from the bed's middle: you leave the dome. Write down what you see, and sit down again.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Lighting in the room | bright / normal / dim |
+| The dim: plainly darker; table, hands, door still seen | yes / no, each |
+| The halo: rose; all round, the near side too; breath in time; flicker | yes / no, each |
+| The way out (0.8 s) | smooth / a jump |
+| Near plants forward | rating 1 to 5, words |
+| Turning the head: the sound stayed at the plant | yes / no |
+| Leaning in: the far plants came up | yes / no / not sure |
+| Panel in Listen and out of it | lowest `fps`; highest `draws`, `tris`, `flash` |
+| Reduced motion: full height at once, folds still | yes / no |
+| Standing, out of the dome (optional) | words |
+| The look, in your words | for the art pass |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The halo | seen round the whole bed every time Listen is on | FR-ROOM-04 (Must), TC-DEV-04 |
+| The dim | plainly darker, and table, hands and door still seen through it | UX §3.5 (40 %, never fully hidden) |
+| The sound from each plant | it stays at its plant as you turn your head | TC-DEV-04, NFR-PERF-10 |
+| Frame rate | usual `fps` at least 72, never below 60 | Golden Rule 5, TC-PERF-01 |
+| Drawing budget | `draws` at most 60, `tris` at most 150,000. Listen adds 2 draw calls per eye, the dome (80 triangles) and the halo (96): 4 more in a session with both eyes | Golden Rule 5; measured in `tests/e2e/18-listen.spec.ts` |
+| Flashing | `flash` at most 3 (the dome and the halo are one flash-guard element each) | FR-UI-11 |
+| Reduced motion | no rise, no drift; the dim and the breath stay | FR-UI-06, UX §5 |
+| The near plants, the breath, the fades, the look | write down. The near-plants law is T-148's own choice (`LISTEN_FOCUS_REF_M` 0.62); Parth's rating keeps or changes it, and the look goes to the art pass (T-163) | from T-148 |
+
+### If it fails
+
+- No dim, but the halo shows (or the other way round): write down which. They are two meshes; Claude files it.
+- The dome reads as a black wall: write down the room's lighting. 40 % is UX §3.5's number, so a change is Parth's.
+- No breath: the halo holds full brightness while the song has not started; check that you hear the garden.
+
+---
+
+## Block 6C — Listen by accident: poses that must not fire (15 min)
+
+**Needs: T-148 and T-128d**, as block 6A. Step 7 is about the headset's own gesture: **(unchecked)**.
+
+**Purpose:** do, on purpose, the things a player does by habit near the bed, and count every Listen that starts or ends when nobody asked.
+
+**Answers:** D-050 (its numbers are provisional until this script: the wake only within 0.45 m of the head; palms out ignores a palm within 30° of world down) · FR-HND-05 against FR-HND-07 (palm up for a seed and the wake) · from the T-148 review: before D-050 a resting palm woke Listen at 29 to 33°, and palms out fired for palm-down hands when the head's pitch and the palm's tilt added up to 50° or more.
+
+**You need:** as block 6A; the tape measure. **Before the headset goes on:** sit as you will, and have someone measure from between your eyes to your palm when it rests face up on your lap, and on the table's near edge. Write both down: the wake needs 45 cm or less.
+
+**Checked against (T-148 branch, 088ea07):** as block 6A, and `src/hands/config.ts` (`PALM_UP_MAX_ANGLE_DEG` 35, `PALM_UP_HOLD_MS` 400: a seed is asked for by a palm within 35° of up, held 0.4 s), `src/garden/GardenSystem.ts` (`handOut`: no seed is handed out in Listen).
+
+**Know this first:**
+
+- **The geometry of palms down** (from the numbers, not measured): a palm tipped from flat-down towards the far side of the bed by an angle t, while the head looks down by an angle p, points within 40° of the head's forward when p + t is 50° or more. D-050 never counts a tip of 30° or less, so the risk left is a tip past 30° with the head down by 20° or more: a hand reaching over the bed, palm angled at it.
+- **Palm up near the face is the wake by design:** in Listen a palm closer than 45 cm that faces your face wakes it. A palm held up for a seed, close under your chin, is that pose. Outside Listen the wake is not looked for, and a palm up never counts as palms out.
+- **No seed in Listen:** a palm up in Listen hands out no seed (PRD §3.4: in Listen nothing but the wake is taken).
+
+### Steps
+
+1. **Palms down, looking down, three tries.** Not in Listen. Bend your head until you look straight at the bed's middle. Hold both hands open and flat, palms down, a hand's width above the bed, still, for 5 seconds. Nothing may dim.
+2. **Palms tipped, looking down.** Head as in step 1. From flat, tip both palms to face the far side of the bed, about 30° (a third of the way to upright), 5 seconds; then about 45° (half way), 5 seconds. Write down whether Listen started, and at which tip. Wake it with a pinch if it did.
+3. **Two minutes of ordinary shaping.** Pull and drag plants as in blocks 2 and 3, with your head down over the bed, without thinking about Listen. Count every Listen you did not want, and what your hands were doing.
+4. **A palm up on the lap, two tries.** Go into Listen by the orb. Rest one hand palm up on your lap for 10 seconds, eyes on the bed. Listen must stay on.
+5. **A palm up on the table's edge, two tries.** The same with the hand palm up on the table's near edge.
+6. **Palm up for a seed.**
+   - In Listen, three tries: hold a palm up as you do to ask for a seed, at your usual height, for 2 seconds. Write down: did Listen end, did a seed come? If Listen ended, keep the palm up 2 seconds more: does a seed come now, or only after you lower the hand and raise it again?
+   - Out of Listen, three tries: ask for a seed the usual way. Listen must not start. Put the seed back or plant it.
+7. **The Quest's own palm gesture (unchecked).** With hand tracking, the Quest shows its own menu button when you look at a palm turned to your face, and a pinch on that button opens the Quest's menu.
+   - (a) In Listen: turn a palm to your face as you would for the Quest's button, and hold without pinching for 2 seconds. Which came first: the room coming back (the wake, 0.6 s) or the Quest's button?
+   - (b) Out of Listen, the same: nothing of Roomsong may change.
+   - (c) In Listen, the whole Quest gesture with its pinch: the Quest menu opens. Come back to the session: Listen must be over and the garden playing (as block 6A step 9).
+   - (d) Did the Quest ever show anything while you held palms out?
+8. Leave the session.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Eyes to palm: on the lap; on the table's edge | cm, cm |
+| Palms flat down, looking down: Listen started | n/3 |
+| Palms tipped about 30°; about 45° | started: yes / no, each |
+| Two minutes of shaping: Listen you did not want | count; what the hands did |
+| A palm up on the lap: woke | n/2 |
+| A palm up on the table's edge: woke | n/2 |
+| Palm up for a seed, in Listen: woke; a seed came | n/3; n/3; after the wake: a seed with the palm still up, or only after raising it again |
+| Palm up for a seed, out of Listen: Listen started | n/3 |
+| The Quest's gesture: (a) which came first; (b) a change; (c) Listen over after the menu; (d) a Quest reaction to palms out | words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Palms flat down while looking down | 0 of 3 start Listen | D-050 (30° of world down) |
+| Palms tipped | write down the tip that starts it. Past 30° the pose can count by design (geometry above); Parth decides with D-050 | D-050, from the T-148 review |
+| Ordinary shaping | the documents give no rate: write down every start you did not want. Any one is a finding for D-050 | D-050 |
+| A palm up on the lap or the table's edge | no wake where your measured distance is over 45 cm. Where it is 45 cm or less the wake is by design: write it down for D-050 | D-050 (0.45 m), FR-HND-07 |
+| Palm up for a seed in Listen | no seed while Listen is on, 3 of 3. Whether it wakes: write down | PRD §3.4, `GardenSystem.handOut`; FR-HND-07 |
+| Palm up for a seed out of Listen | 0 of 3 start Listen | FR-HND-06 (palms facing away) |
+| The Quest's gesture | write down. If its button shows before the wake, a player who looks at a palm may get both: that is Parth's call with D-050. After the Quest menu, Listen is over | T-148 (a pause ends Listen) |
+
+### If it fails
+
+- Listen starts with palms flat: write down how far your head was bent. D-050's 30° may be too small for real hands; Claude files it as a bug against T-148.
+- A palm on the lap wakes Listen though it was over 45 cm away: write down both distances. The headset's head point may sit in front of the eyes; Claude checks the number.
+
+---
+
+## Block 6D — Ten minutes of Listen, and "Goodnight" (12 min)
+
+**Needs: T-148 and T-128d**, as block 6A.
+
+**Purpose:** sit back in Listen for its whole ten minutes, as a player would, and see it end by itself.
+
+**Answers:** the 10-minute end (PRD §3.4, UX §3.5: the ending chord, "Goodnight", still in the session) · the Listen half of TC-DEV-07 (24 or more plants, frame rate) · TC-PERF-06 (no clicks) · wakes you did not want, with hands at rest (D-050).
+
+**You need:** a third bookmark, **"S2, Listen":** the app with `?dev=1&flags=perfHud,autoplant=24` at the end of its address (24 plants, TC-DEV-07; autoplant fills only an empty garden: block 0, step 4). A clock or a watch you can read through passthrough, or someone beside you with a stopwatch. Nothing in your hands. Sit where you can lean back.
+
+**Checked against (T-148 branch, 088ea07):** `src/garden/config.ts` (`LISTEN_MAX_MS` 600 000), `src/garden/GardenSystem.ts` (the 10-minute timer, on the page's own clock, from the moment Listen starts), `src/audio/AudioEngine.ts` (`goodnight`: the room's chord on the Pad voice from the bed's middle, the garden playing on under it), `src/render/HaloSystem.ts` and `src/render/config.ts` (`GOODNIGHT_CAPTION_MS` 5000), `src/core/strings.ts` (`goodnight`); UX §3.5.
+
+### Steps
+
+1. Open the "S2, Listen" bookmark and enter. Wait until the garden plays.
+2. Go into Listen by the orb. Note the time.
+3. Lean back and listen for ten minutes. Rest your hands where they fall: lap, armrest, the table's edge. Once in a while do what people do: scratch your nose, push your hair back, take a sip of water. Do not pinch and do not turn a palm to your face on purpose.
+4. About every 2 minutes glance at the panel: write down the lowest `fps` and the highest `flash` you see.
+5. If Listen ends before ten minutes: write down the minute and what your hands were doing. Go into Listen again by the orb and note the new time: the ten minutes start again.
+6. At ten minutes: a soft chord from the bed, the word "Goodnight" for about 5 seconds, and the room comes back. You are still in the session and the garden plays on.
+7. Leave the session.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Plants on the bed | count, or 24 |
+| Listen ended before its time | count; the minute and the hands, each time |
+| The end: minutes from the start; the chord heard; "Goodnight" read; still in the session | min; yes / no, each |
+| `fps` lowest and usual over the ten minutes; highest `flash` | numbers |
+| Stutters, gaps or clicks | count, words |
+| Ten minutes of Listen: pleasant, too long, too short | words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The end | at 10 minutes after the last start: the chord, "Goodnight", the room back, still in the session | PRD §3.4, UX §3.5, `LISTEN_MAX_MS` 600 000 |
+| The caption | "Goodnight", readable, about 5 s | UX §3.5 (the one caption that is not an instruction), `GOODNIGHT_CAPTION_MS` 5000 |
+| Frame rate, 24 or more plants, in Listen | lowest `fps` at least 60, usual at least 72 | TC-DEV-07, TC-PERF-01, Golden Rule 5 |
+| Flashing | `flash` at most 3 | FR-UI-11 |
+| Clicks | none | TC-PERF-06 |
+| Wakes at rest | the documents give no rate: write down each one with the hands | D-050 |
+
+### If it fails
+
+- No "Goodnight" after more than 10 minutes: check that Listen was not woken and restarted (step 5). If it was on the whole time, Claude files it against T-148.
+- The chord is heard, but no word: write it down. The caption waits its turn behind any other caption (API_SPEC §1.9).
 
 ## Block 7 — The garden comes back (stub)
 
@@ -450,7 +705,20 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 | 4 | `flash` in and out past the edge | | FR-UI-11 |
 | 5 | Held plant back after a loss, n/5; lost or doubled plants | | FR-HND-15, NFR-REL-02 |
 | 5 | The hint: words or icon | | UX §3.4 vs `src/core/strings.ts` |
-| 2–5 | `fps` usual and lowest with plants and hands | | Golden Rule 5, TC-PERF-01 |
+| 6A | Palms out n/5 and the count to the dim; orb n/5; wake by palm n/5 | | TC-DEV-04; D-050 (40°, 1.5 s, 0.6 s) |
+| 6A | Before the garden n/2 dimmed; one palm in two-hand mode; arm straight out woke | | D-050; FR-HND-06/07 |
+| 6A | Waking pinch: plant stayed n/3; orb restarted Listen; one hand n/3; after a pause | | D-050; TC-DEV-06; T-148 |
+| 6B | The dim over the room; the halo all round; sound stays at its plant on a head turn | | TC-DEV-04; FR-ROOM-04; UX §3.5 |
+| 6B | Near plants forward, rating 1 to 5; leaning in | | T-148 (`LISTEN_FOCUS_REF_M`) |
+| 6B | `fps`, `draws`, `tris`, `flash` in Listen and out | | Golden Rule 5; FR-UI-11 |
+| 6B | The look of the dome and the halo, in your words | | T-163 art pass |
+| 6C | Eyes to palm on the lap and the table edge (cm); wakes there | | D-050 (0.45 m) |
+| 6C | Palms flat down n/3; the tip that starts Listen; unwanted Listen in 2 min of shaping | | D-050 (30°) |
+| 6C | Palm up for a seed: in Listen woke, seed came; out of Listen started | | FR-HND-05/07; PRD §3.4 |
+| 6C | The Quest's palm gesture: which came first; Listen after its menu | | D-050; T-148 |
+| 6D | The end at 10 min: chord, "Goodnight", still in the session; early wakes at rest | | PRD §3.4; UX §3.5; D-050 |
+| 6D | `fps` lowest and usual, 24 plants in Listen; `flash`; clicks | | TC-DEV-07; TC-PERF-06 |
+| 2–6 | `fps` usual and lowest with plants and hands | | Golden Rule 5, TC-PERF-01 |
 | 2–5 | Anything you could only do with a controller | | FR-HND-01 (Stage-1 pass/fail) |
 
 ---
@@ -460,3 +728,4 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 - When T-128d lands: check blocks 2 to 5 against `BedRenderSystem`'s handlers and `app.ts` (the enter button's words, the bookmarks, `__roomsong.garden`), and take the "(from the plan)" marks off.
 - If the pinch test (S1 blocks 2 and 3) changes the hit radius or the outer radius (D-020), update the 4 cm, 35 cm, 57 cm and 10 cm figures here.
 - When T-164 or T-128d builds the shaping sounds, give the sound rows of blocks 2 to 4 their rule.
+- When T-148 is merged: check blocks 6A to 6D against `develop` (the constants, the waking pinch's seed exception, the pause, `18-listen.spec.ts`'s draw count) and take the branch mark off. If D-050's numbers (40°, 1.5 s, 0.6 s, 0.45 m, 30°) change after a sitting, change them here. When the gaze dwell on the orb (T-160) or the wrist orb of one-hand mode (UX §9.1) is built, add a step to 6A.
