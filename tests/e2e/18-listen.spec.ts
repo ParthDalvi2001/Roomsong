@@ -32,7 +32,8 @@ interface Heard {
 }
 interface Probe {
   heard: Heard[];
-  samples: { draws: number; tris: number; maxFlashPerS: number }[];
+  /** `tide`: the tide wedge's own draws and triangles in the sampled frame (it turns in and out of the view). */
+  samples: { draws: number; tris: number; maxFlashPerS: number; tide: { draws: number; tris: number } }[];
   /** The halo's guarded brightness and what passthrough is seen at behind the dome (1 = undimmed). */
   lit(): number;
   seen(): number;
@@ -83,6 +84,7 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
       orb: { mesh: Mesh };
     };
     if (system === undefined) throw new Error('src/app.ts did not register HaloSystem');
+    const bed = world.getSystem(render.BedRenderSystem) as unknown as { tide: { mesh: Mesh } };
     const captions = world.getSystem(ui.CaptionSystem)!;
 
     // Noted as each is emitted, before any handler runs: the app's garden subscribed first, and it emits the
@@ -103,8 +105,19 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
       emit(type as never, payload as never);
     }) as typeof core.bus.emit;
     const samples: Probe['samples'] = [];
+    // The tide (T-128d) turns with the bar, so looking ahead it is frustum-culled for part of each bar: its draws
+    // in the frame that perf:sample reports are counted, from the start of that frame's render.
+    const tide = { draws: 0, tris: 0 };
+    const tideTris = bed.tide.mesh.geometry.index!.count / 3;
+    world.scene.onBeforeRender = () => {
+      tide.draws = tide.tris = 0;
+    };
+    bed.tide.mesh.onBeforeRender = () => {
+      tide.draws++;
+      tide.tris += tideTris;
+    };
     core.bus.on('perf:sample', ({ draws, tris, maxFlashPerS }) =>
-      samples.push({ draws, tris, maxFlashPerS }),
+      samples.push({ draws, tris, maxFlashPerS, tide: { ...tide } }),
     );
     const targets = world.queryManager.registerQuery({ required: [Interactable] }).entities;
     const states = world.queryManager.registerQuery({ required: [hands.HandState] }).entities;
@@ -269,15 +282,21 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
 
   console.log(
     `T-148 Listen: draws ${before.draws} -> ${during.draws} -> ${after.draws}, triangles ${before.tris} -> ` +
-      `${during.tris} -> ${after.tris}, flash ${during.maxFlashPerS}; palms out after ` +
+      `${during.tris} -> ${after.tris} (of these the tide's draws ${before.tide.draws} -> ${during.tide.draws} -> ` +
+      `${after.tide.draws}), flash ${during.maxFlashPerS}; palms out after ` +
       `${out.atMs - posedAt} ms; audio clock ${audioS.toFixed(1)} s (emulator, perf:sample)`,
   );
   // Two meshes, the dome and the halo, drawn once per view (the emulated session has two), with no pass over the
-  // frame: nothing else is added. The dome has 80 triangles and the halo 96.
-  const draws = during.draws - before.draws;
+  // frame: nothing else is added. The dome has 80 triangles and the halo 96. The tide's own draws are left out.
+  const drawn = (s: Probe['samples'][number]) => ({
+    draws: s.draws - s.tide.draws,
+    tris: s.tris - s.tide.tris,
+  });
+  const [b, d, a] = [drawn(before), drawn(during), drawn(after)];
+  const draws = d.draws - b.draws;
   expect([2, 4]).toContain(draws);
-  expect(during.tris - before.tris).toBe((draws / 2) * (80 + 96));
-  expect(after.draws).toBe(before.draws);
+  expect(d.tris - b.tris).toBe((draws / 2) * (80 + 96));
+  expect(a).toEqual(b);
   expect(during.maxFlashPerS).toBeLessThanOrEqual(3);
   expect((await probe.evaluate((p) => p.heard)).map((each) => each.name)).toEqual([
     'gesture:palmsOut',

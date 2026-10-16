@@ -91,9 +91,14 @@ async function probeSession(page: Page): Promise<JSHandle<SessionProbe>> {
     const heard: SessionProbe['heard'] = [];
     for (const type of ['xr:sessionStart', 'xr:sessionEnd', 'xr:visibility'] as const)
       core.bus.on(type, ({ visible }) => heard.push({ type, visible, atMs: performance.now() }));
-    // The wiring raises its caption after its emit of `xr:sessionStart` has returned, so the start is noted first.
+    // Noted as the emit of `xr:sessionStart` begins: the wiring's handler, subscribed at boot before this one, raises
+    // its caption inside that emit.
     let startedAtMs = NaN;
-    core.bus.on('xr:sessionStart', () => (startedAtMs = performance.now()));
+    const emit = core.bus.emit.bind(core.bus);
+    core.bus.emit = (type, payload) => {
+      if (type === 'xr:sessionStart') startedAtMs = performance.now();
+      emit(type, payload);
+    };
     const raised: SessionProbe['raised'] = [];
     world.queryManager.registerQuery({ required: [Caption] }).subscribe('qualify', (entity) => {
       const key = entity.getValue(Caption, 'key') ?? '';
