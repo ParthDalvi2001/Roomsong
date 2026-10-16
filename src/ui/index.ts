@@ -3,6 +3,8 @@
 export { clampToFov } from './FovGuard.js';
 export type { FovElement } from './FovGuard.js';
 export { CaptionSystem } from './Captions.js';
+// The hints (T-150): an ECS system for priority 61 that takes `bed`, drawing the onboarding steps and the hand hint.
+export { HintSystem } from './Hints.js';
 export { mountLanding } from './Landing.js';
 export { LANDING } from './strings.js';
 export type { Landing } from './Landing.js';

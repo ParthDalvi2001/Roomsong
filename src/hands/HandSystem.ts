@@ -1,15 +1,15 @@
 /// <reference types="webxr" />
 // The per-frame wiring of hands/ (LLD §4, API_SPEC §1.4). Each XR frame: the sampler gets the frame, the gesture
-// context is refreshed, and each hand's sample goes to its machine and into its HandState. It also raises the
-// hand hint for a hand that held something when it was lost (FR-HND-15, D-030). The two Listen poses need both
+// context is refreshed, and each hand's sample goes to its machine and into its HandState. The hand hint of
+// FR-HND-15 is ui/Hints' icon, from `hands:lost` (T-150). The two Listen poses need both
 // hands and the head, so they are read here, after the machines: palms out outside Listen, the wake inside it.
 import { createSystem, Vector3, type Entity } from '@iwsdk/core';
 
-import { BedAnchor, Caption, Interactable } from '../core/components.js';
-import { bus, clock, settings } from '../core/index.js';
+import { BedAnchor, Interactable } from '../core/components.js';
+import { bus, settings } from '../core/index.js';
 import { nearestFreeCell } from '../garden/index.js';
 
-import { HAND_HINT_KEY, HAND_HINT_MAX_MS, HIT_RADIUS_M, PALMS_OUT_HOLD_MS, WAKE_HOLD_MS } from './config.js';
+import { HIT_RADIUS_M, PALMS_OUT_HOLD_MS, WAKE_HOLD_MS } from './config.js';
 import { GestureMachine } from './GestureMachine.js';
 import { HandSampler } from './HandSampler.js';
 import { HandState } from './HandState.js';
@@ -27,10 +27,8 @@ interface Slot {
   hand: Hand;
   frame: HandFrame;
   machine: GestureMachine;
-  /** Carries the hand's HandState, and its hint while that shows. */
+  /** Carries the hand's HandState. */
   entity: Entity;
-  /** When the hint is taken back at the latest, on the frame time; 0 while there is none. */
-  hintUntilMs: number;
 }
 
 const PALMS_OUT: EventMap['gesture:palmsOut'] = Object.freeze({ type: 'gesture:palmsOut' });
@@ -63,8 +61,6 @@ export class HandSystem extends createSystem({
   private readonly targets: Entity[] = [];
   /** The BedAnchor entity: the one added last of those there are. */
   private bed: Entity | null = null;
-  /** This frame's time, for a hint raised from inside it (`hands:lost` arrives while the machines run). */
-  private timeMs = 0;
   /** Between `listen:enter` and `listen:exit`: the wake is looked for, palms out is not (LLD §4). */
   private isListening = false;
   private readonly palmsOut = new PoseHold(PALMS_OUT_HOLD_MS);
@@ -86,7 +82,6 @@ export class HandSystem extends createSystem({
       frame: createHandFrame(hand),
       machine: new GestureMachine(hand),
       entity: this.createEntity().addComponent(HandState, { hand }),
-      hintUntilMs: 0,
     }));
     const { targets, beds } = this.queries;
     this.cleanupFuncs.push(
@@ -109,10 +104,6 @@ export class HandSystem extends createSystem({
       bus.on('garden:changed', ({ state }) => {
         this.garden = state;
       }),
-      bus.on('hands:lost', ({ hand, held }) => {
-        if (held !== null) this.setHint(hand, true); // an empty hand shows no hint (D-030)
-      }),
-      bus.on('hands:found', ({ hand }) => this.setHint(hand, false)),
       bus.on('listen:enter', () => this.setListening(true)),
       bus.on('listen:exit', () => this.setListening(false)),
       () => this.sampler.detach(),
@@ -127,18 +118,16 @@ export class HandSystem extends createSystem({
     // The garden window's source runs with no XR frame (LLD §11); the sampler has nothing to read without one.
     if (frame !== null && space !== null) this.sampler.setFrame(frame, space);
     else if (this.source === this.sampler) return;
-    // Everything here runs on the frame time. Core's clock is wall time and can step back; it is read once per
-    // hint, for the caption's expiry, which is on it.
+    // Everything here runs on the frame time. Core's clock is wall time and can step back.
     // Whole milliseconds: a fraction handed to the sampler and the machines was boxed, 32 bytes a frame
     // (measured), and a whole number is not. The filter's time step is then a millisecond coarse.
-    const timeMs = (this.timeMs = Math.round(time * 1000));
+    const timeMs = Math.round(time * 1000);
     this.fillContext();
     for (let i = 0; i < this.slots.length; i++) {
       const slot = this.slots[i]!;
       this.source.sample(slot.hand, timeMs, slot.frame);
       slot.machine.update(slot.frame, timeMs, this.context);
       this.write(slot);
-      if (slot.hintUntilMs !== 0 && timeMs >= slot.hintUntilMs) this.setHint(slot.hand, false);
     }
     // A pointer has no palm: the window's Listen is the orb, and a click's pinchStart is its wake (LLD §11).
     if (this.source === this.sampler) this.listenPoses(timeMs);
@@ -231,28 +220,13 @@ export class HandSystem extends createSystem({
     put(entity.getVectorView(HandState, 'velocity'), frame.velocity);
   }
 
-  /**
-   * Raises the hint as a caption on the hand's own entity (API_SPEC §1.9), or takes it back. A caption that is
-   * still there is taken back first, so the one raised is always a new one.
-   */
-  private setHint(hand: Hand, on: boolean): void {
-    // shortcut: a caption stands in for the icon of UX section 7 ("no caption"), T-119 settles which
-    const slot = this.slots.find((each) => each.hand === hand);
-    if (slot === undefined) return;
-    if (slot.entity.hasComponent(Caption)) slot.entity.removeComponent(Caption);
-    slot.hintUntilMs = on ? this.timeMs + HAND_HINT_MAX_MS : 0;
-    if (!on) return;
-    slot.entity.addComponent(Caption, { key: HAND_HINT_KEY, expiresAt: clock.now() + HAND_HINT_MAX_MS });
-  }
-
-  /** Nothing of one session reaches the next: the sampler, a held gesture (reverted), the hint, the hand's state. */
+  /** Nothing of one session reaches the next: the sampler, a held gesture (reverted), the hand's state. */
   private endSession(): void {
     this.sampler.detach();
     this.palmsOut.reset();
     this.wake.reset();
     for (const slot of this.slots) {
       slot.machine.reset();
-      this.setHint(slot.hand, false);
       slot.frame.tracked = slot.frame.pinch = slot.frame.select = false;
       this.write(slot);
     }

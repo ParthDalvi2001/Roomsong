@@ -29,10 +29,6 @@ describe('core/strings', () => {
     }
   });
 
-  it('holds the hand hint of FR-HND-15 under the key hands/ raises it by', () => {
-    expect(STRINGS.handOutOfView).toBe('Hand out of view');
-  });
-
   it('holds the two level-3 placement hints of UX §9.2, six words each (FR-UI-01)', () => {
     expect(STRINGS.placeLook).toBe('Look at your table, and pinch');
     expect(STRINGS.placeLookGaze).toBe('Look at your table, and wait');
@@ -48,11 +44,23 @@ describe('core/strings', () => {
     expect(STRINGS.gardenFull).toBe('Garden is full');
   });
 
+  it('holds the onboarding captions of UX §3.3, one instruction each, at most six words (FR-UI-01, T-150)', () => {
+    const onboarding = entries.filter(([key]) => key.startsWith('onboard'));
+    expect(onboarding.map(([, text]) => text)).toEqual([
+      'Open your hand',
+      'Pinch, and plant it',
+      'Click or tap to plant',
+      'Rest your hands to listen',
+      'Click the orb to listen',
+    ]);
+    for (const [key, text] of onboarding) expect(text.split(' ').length, key).toBeLessThanOrEqual(6);
+  });
+
   it('keys the message of a failure by its error code', () => {
     expect(STRINGS.E_SAVE_FAILED).toBe('Saving unavailable');
     expect(STRINGS.E_AUDIO_CONTEXT).toBe('Sound unavailable'); // a session with no sound (API_SPEC §1.10 rule 2)
-    const notices = ['handOutOfView', 'gardenFull', 'goodnight'];
-    const failures = entries.filter(([k]) => !/^(ripple|place)/.test(k) && !notices.includes(k));
+    const notices = ['gardenFull', 'goodnight'];
+    const failures = entries.filter(([k]) => !/^(ripple|place|onboard)/.test(k) && !notices.includes(k));
     for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);
   });
 });

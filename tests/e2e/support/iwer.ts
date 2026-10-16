@@ -212,8 +212,15 @@ function slowFrames(ms: number): void {
  * room request is answered from the fixture; every other HTTP(S) request is aborted, every WebSocket to
  * another host is closed unconnected, and their URLs are returned (the array keeps filling while the page lives).
  * `path` opens another page of the same site, for example '/proto/spike/'.
+ * The app itself ('/') opens with the `skipOnboarding` flag added (T-150): a spec about something else is not held
+ * up by the tutorial's captions and icons, which wait for the player. `onboarding: true` keeps the tutorial.
  */
-export async function openApp(page: Page, room: Room, path = '/'): Promise<string[]> {
+export async function openApp(
+  page: Page,
+  room: Room,
+  path = '/',
+  { onboarding = false }: { onboarding?: boolean } = {},
+): Promise<string[]> {
   if (FRAME_MS > 0) await page.addInitScript(slowFrames, FRAME_MS);
   const offHost: string[] = [];
   const leavesLocalhost = (url: URL) => url.hostname !== 'localhost';
@@ -230,7 +237,7 @@ export async function openApp(page: Page, room: Room, path = '/'): Promise<strin
     offHost.push(url);
     return route.abort();
   });
-  await page.goto(path);
+  await page.goto(onboarding ? path : withoutOnboarding(path));
   const want = [
     ...room.planes.map((plane) => `plane:${plane.label}`),
     ...(room.meshes ?? []).map((mesh) => `mesh:${mesh.label}`),
@@ -251,6 +258,18 @@ export async function openApp(page: Page, room: Room, path = '/'): Promise<strin
       throw new Error(`The emulator did not load the room fixture as written: ${String(cause)}`);
     });
   return offHost;
+}
+
+/** The app's own page with `skipOnboarding` among its flags; any other page as it is. */
+function withoutOnboarding(path: string): string {
+  const url = new URL(path, 'http://localhost');
+  if (url.pathname !== '/') return path;
+  const flags = url.searchParams.get('flags');
+  url.searchParams.set(
+    'flags',
+    flags === null || flags === '' ? 'skipOnboarding' : `${flags},skipOnboarding`,
+  );
+  return url.pathname + url.search;
 }
 
 /** Resolves after `count` more XR frames of the running session: time for the app to react, with no sleep. */

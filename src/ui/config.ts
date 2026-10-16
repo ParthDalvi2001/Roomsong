@@ -1,4 +1,5 @@
 // Named constants of ui/ (CODING_GUIDELINES §4). Each cites the requirement it comes from.
+import type { Cell } from '../garden/index.js';
 
 /** FR-UI-03, NFR-FOV-01: essential UI stays within this many degrees of the forward gaze, to each side and up or down. */
 export const FOV_HALF_H_DEG = 25;
@@ -122,3 +123,48 @@ export const ORB_OFF_HAND_M = 0.09;
 export const ORB_DISTANCE_M = 0.45;
 export const ORB_SIDE_DEG = 20;
 export const ORB_BELOW_GAZE_DEG = 12;
+
+// The hints (T-150, UX §3.3, §3.4): the onboarding icons, the hint ring, the remove arrow and the hand hint. Each is
+// a quad of one icon atlas, drawn on a canvas once (UX §1: an icon, never a paragraph; no hand model, D-027).
+
+/** The icon atlas: ATLAS_GRID by ATLAS_GRID cells of ATLAS_CELL_PX. Powers of two. */
+export const ATLAS_CELL_PX = 128;
+export const ATLAS_GRID = 4;
+/** UX §5 palette: cream strokes on a charcoal outline, so every icon is outlined (UX §8, high contrast). */
+export const HINT_INK = CAPTION_TEXT_COLOUR;
+export const HINT_OUTLINE = 'rgba(20, 26, 31, 0.9)';
+/** Under the panel (PANEL_RENDER_ORDER) and the captions, over the garden; no depth test, like a caption. */
+export const HINT_RENDER_ORDER = 980;
+/**
+ * T-150: the one glowing cell the ghost hand pinches over, on the middle ring nearest the seated player (bed-local
+ * step 4 is nearest, D-029): the easiest reach for either hand. No requirement fixes the cell.
+ */
+export const GUIDE_CELL: Readonly<Cell> = Object.freeze({ ring: 2, step: 4 });
+/** The ring round a cell (the glowing cell, the hint ring): its quad lies on the bed, a little above the glass. */
+export const RING_SIZE_M = 0.07;
+export const RING_LIFT_M = 0.004;
+/** The ghost hand: its quad, the top and bottom of its loop over the cell, and the loop's period. */
+export const GHOST_SIZE_M = 0.06;
+export const GHOST_TOP_M = 0.1;
+export const GHOST_BOTTOM_M = 0.045;
+export const GHOST_LOOP_MS = 2000;
+/** Of the loop: down with the fingers open until this fraction, closed until the next, then up open again. */
+export const GHOST_CLOSE_AT = 0.35;
+export const GHOST_OPEN_AT = 0.7;
+/** The grow and move icons stand this far over their plant's cell; the palm and Listen icons over the bed centre. */
+export const ICON_SIZE_M = 0.05;
+export const RING_ICON_LIFT_M = 0.12;
+/** Above the seed supply (render SUPPLY_ORB_LIFT_M 0.10 plus its 0.03 radius): where the seeds come from. */
+export const PALM_ICON_LIFT_M = 0.17;
+export const LISTEN_ICON_LIFT_M = 0.14;
+/** UX §3.4: the remove arrow lies on the bed, just past the rim (0.30 m), on the side of the dragging hand. */
+export const REMOVE_ARROW_SIZE_M = 0.06;
+export const REMOVE_ARROW_AT_M = 0.34;
+/** UX §3.4: the hand hint is 4 cm across, 4 cm above where the hand was last seen, held in the FoV box. */
+export const HAND_HINT_SIZE_M = 0.04;
+export const HAND_HINT_LIFT_M = 0.04;
+/** The hand hint is clamped as if it stood this far ahead (a seated hand is 0.3 to 0.6 m from the eyes). */
+export const HAND_HINT_DISTANCE_M = 0.45;
+/** UX §3.4: the hand hint fades in over 150 ms and out over 200 ms; the other hints take 200 ms both ways. */
+export const HAND_HINT_FADE_IN_MS = 150;
+export const HINT_FADE_MS = 200;

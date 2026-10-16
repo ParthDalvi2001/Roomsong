@@ -2,7 +2,6 @@
 // files inside the folder (CODING_GUIDELINES §3). The module's events are declared in ./events.ts (API_SPEC §2).
 export {
   DRAG_DEAD_ZONE_M,
-  HAND_HINT_KEY,
   HAND_HINT_MAX_MS,
   HIT_RADIUS_M,
   HOVER_DEAD_BAND_M,

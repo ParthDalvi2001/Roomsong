@@ -99,7 +99,7 @@ Nothing flashes more than three times a second, in any mode `[parts]`.
 | "The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking." | The headset refused to start. Hand tracking is off, or you answered no | Switch hand tracking on, press Enter again and say yes | `[app]` |
 | "Roomsong needs JavaScript. Turn it on and reload the page." | The browser blocks scripts | Allow scripts and reload | `[app]` |
 | "Table detection: not available." and "Saved position: not available." (under This device) | The headset did not share the room's layout, or cannot remember spots | Nothing. The garden asks you where to put it or floats, and it is placed again on each visit | `[app]` |
-| "Hand out of view" | The headset lost the hand that held something | Bring the hand back in front of you. What you held goes back to where it was. Nothing is lost | `[app]` |
+| A palm in a dashed ring (an icon, since T-150) | The headset lost the hand that held something | Bring the hand back in front of you. What you held goes back to where it was. Nothing is lost | `[app]` |
 | "Sound unavailable" (5 seconds) | The browser did not start the sound. The garden still works, silent | Check the volume. Leave the garden and press Enter again: sound starts only in that press | `[app]` |
 | "Look at your table, and pinch" (Look and hold: "and wait") | No table was found | Look where the garden should go and pinch | `[app]` |
 | "Table: seeds." "Table: colour." "Walls: colour." "Ceiling: scale." | Labels of the opening ripple, one for each surface found: what it gives the garden. The room does not change the colours yet | Nothing | ripple and labels `[parts]`, joined by T-128d; colour tint `[planned T-163]` |

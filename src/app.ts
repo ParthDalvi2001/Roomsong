@@ -19,6 +19,7 @@ import {
 } from './core/index.js';
 import { GardenSystem, newGarden } from './garden/index.js';
 import { HandSystem } from './hands/index.js';
+import { OnboardingSystem } from './onboarding/index.js';
 import { openStore, PersistenceSystem } from './persistence/index.js';
 import {
   BedRenderSystem,
@@ -30,7 +31,7 @@ import {
   TuningRippleSystem,
 } from './render/index.js';
 import { RoomSystem } from './room/index.js';
-import { CaptionSystem, PanelSystem } from './ui/index.js';
+import { CaptionSystem, HintSystem, PanelSystem } from './ui/index.js';
 import { PointerSource, shouldOpenWindow, WindowStage } from './window/index.js';
 
 import type { Landing } from './ui/Landing.js';
@@ -417,6 +418,7 @@ export async function start(landing: Landing): Promise<void> {
   // The room before the hands: it moves the bed before hands reads its pose, in the frame and on the bus.
   const room = register(world, RoomSystem, 10);
   const hands = register(world, HandSystem, 20);
+  register(world, OnboardingSystem, 35); // T-150: the guided first minute
   register(world, GardenAudioSystem, 40, { engine });
   register(world, SeedSystem, 49, { guard });
   // Everything drawn on the bed is a child of the bed entity's Object3D (API_SPEC §1.10 rule 5).
@@ -424,6 +426,7 @@ export async function start(landing: Landing): Promise<void> {
   register(world, HaloSystem, 52, { guard, engine, bed: room.bed.object3D }); // Listen mode (T-148)
   register(world, TuningRippleSystem, 55, { guard, bed: room.bed.object3D });
   register(world, CaptionSystem, 60);
+  register(world, HintSystem, 61, { bed: room.bed.object3D }); // T-150: its icons stand on the bed
   register(world, PanelSystem, 62, { garden, room });
   breakOtherSystems(world);
   if (flags.dev) window.__roomsong = { world, engine, garden };

@@ -1,15 +1,15 @@
 /// <reference types="webxr" />
 // T-116, the part of TC-E2E-16 that can be shown today (FR-HND-15, NFR-REL-02): the app's own HandSystem and
-// CaptionSystem on IWER's emulated hands. A hand that carries a seed is taken away: hands:lost at once and the hint
-// on screen, gesture:trackingLost after the grace, no release; the hand comes back: hands:found, the hint goes,
-// and a new pinch works. An empty hand that is lost shows nothing (D-030).
+// HintSystem on IWER's emulated hands. A hand that carries a seed is taken away: hands:lost at once and the hand
+// hint (ui/Hints' icon, T-150; no caption) on screen, gesture:trackingLost after the grace, no release; the hand
+// comes back: hands:found, the hint goes, and a new pinch works. An empty hand that is lost shows nothing (D-030).
 // Not here, because nothing draws or drags yet: a dragged plant gliding back (T-146), the tint (T-119), the bed.
 // The seed is a stand-in the test adds, an Interactable like the one T-127 will attach. The 5 s limit of the hint
-// and a return inside the grace are in tests/unit/hands/ against a fake clock; here time is the machine's own.
+// and a return inside the grace are in tests/unit/ui/Hints.test.ts and tests/unit/hands/; here time is the machine's own.
 // Emulator result (E): IWER can only take a whole hand away, at once. How real hands lose tracking is not shown.
 import { expect, test, type JSHandle, type Page } from '@playwright/test';
 
-import { HAND_HINT_KEY, TRACKING_GRACE_MS } from '../../src/hands/config';
+import { TRACKING_GRACE_MS } from '../../src/hands/config';
 
 import { enterXR, openApp, readRoom, xrFrames } from './support/iwer';
 
@@ -29,6 +29,8 @@ interface Heard {
 interface Probe {
   heard: Heard[];
   captions: InstanceType<Ui['CaptionSystem']>;
+  /** The hand hint of each hand (left, right) is up: HintSystem's own read-out (T-150). */
+  hinted(): boolean[];
   /** The session's tuning ripple has ended (`room:tuned`). */
   isTuned: boolean;
 }
@@ -106,7 +108,14 @@ test('TC-E2E-16 a hand lost while it carries a seed: hint, revert after the grac
     // A radius of 5 m around the user's chest: wherever the emulated hand pinches, it pinches this seed.
     const seed = world.createEntity().addComponent(Interactable, { kind: 'seed', id: seedId, radius: 5 });
     seed.getVectorView(Interactable, 'worldPos').set([0, 1, -0.3]);
-    const held: Probe = { heard, captions, isTuned: false };
+    const hints = world.getSystem(ui.HintSystem);
+    if (hints === undefined) throw new Error('src/app.ts did not register HintSystem');
+    const held: Probe = {
+      heard,
+      captions,
+      hinted: () => hints.shows.hands.map((frame) => frame >= 0),
+      isTuned: false,
+    };
     core.bus.on('room:tuned', () => void (held.isTuned = true));
     return held;
   }, SEED_ID);
@@ -123,8 +132,8 @@ test('TC-E2E-16 a hand lost while it carries a seed: hint, revert after the grac
   await connect(page, 'right', false);
   const lost = await heard(probe, 'hands:lost', 'right');
   expect(lost.id).toBe(SEED_ID);
-  await page.waitForFunction((p) => p.captions.shown !== null, probe);
-  expect(await probe.evaluate((p) => p.captions.shown)).toBe(HAND_HINT_KEY);
+  await page.waitForFunction((p) => p.hinted()[1] === true, probe);
+  expect(await probe.evaluate((p) => [p.hinted(), p.captions.shown])).toEqual([[false, true], null]);
 
   // The grace runs out: reverted, and nothing was released (so nothing was committed).
   const reverted = await heard(probe, 'gesture:trackingLost', 'right');
@@ -139,10 +148,10 @@ test('TC-E2E-16 a hand lost while it carries a seed: hint, revert after the grac
     'gesture:trackingLost',
   ]);
 
-  // The hand is back: hands:found, once, and the hint goes (a caption stays its minimum time).
+  // The hand is back: hands:found, once, and the hint goes.
   await connect(page, 'right', true);
   await heard(probe, 'hands:found', 'right');
-  await page.waitForFunction((p) => p.captions.shown === null, probe);
+  await page.waitForFunction((p) => p.hinted()[1] === false, probe);
 
   // A new pinch works, and its release is the first release there has been.
   await pinch(page, 'right', 0);
@@ -166,7 +175,7 @@ test('TC-E2E-16 a hand lost while it carries a seed: hint, revert after the grac
   await connect(page, 'left', false);
   expect(await heard(probe, 'hands:lost', 'left')).toMatchObject({ id: null });
   await xrFrames(page, 30); // longer than the grace at any frame rate the emulator reaches
-  expect(await probe.evaluate((p) => p.captions.shown)).toBeNull();
+  expect(await probe.evaluate((p) => [p.hinted(), p.captions.shown])).toEqual([[false, false], null]);
   await connect(page, 'left', true);
   await heard(probe, 'hands:found', 'left');
   expect(

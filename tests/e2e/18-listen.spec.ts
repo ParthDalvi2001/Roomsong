@@ -4,7 +4,8 @@
 // aurora halo drawn by the app's renderer (its own perf:sample), a pinch → listen:exit and both gone; a press on
 // the Listen orb → listen:enter, the palm to the face → the wake; and the 10-minute end on Playwright's clock.
 // The garden is the app's own GardenSystem (T-128d). Vines (Could C4) are not built, so there is no vines entity
-// to look for.
+// to look for. The first-minute tutorial runs beside it (T-150): its hints and its caption go in Listen, so their
+// draws are counted apart, like the tide's.
 // Emulator result (E): IWER's hands are rigid; whether a real hand's palms out reads as this pose, how the dome
 // looks over real passthrough and how the halo feels are headset questions.
 import { expect, test, type JSHandle, type Page } from '@playwright/test';
@@ -33,7 +34,13 @@ interface Heard {
 interface Probe {
   heard: Heard[];
   /** `tide`: the tide wedge's own draws and triangles in the sampled frame (it turns in and out of the view). */
-  samples: { draws: number; tris: number; maxFlashPerS: number; tide: { draws: number; tris: number } }[];
+  samples: {
+    draws: number;
+    tris: number;
+    maxFlashPerS: number;
+    tide: { draws: number; tris: number };
+    hints: { draws: number; tris: number };
+  }[];
   /** The halo's guarded brightness and what passthrough is seen at behind the dome (1 = undimmed). */
   lit(): number;
   seen(): number;
@@ -109,15 +116,25 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
     // in the frame that perf:sample reports are counted, from the start of that frame's render.
     const tide = { draws: 0, tris: 0 };
     const tideTris = bed.tide.mesh.geometry.index!.count / 3;
+    // The tutorial's hints and the caption quad (T-150, one quad each): up before Listen, gone in it.
+    const hints = { draws: 0, tris: 0 };
     world.scene.onBeforeRender = () => {
       tide.draws = tide.tris = 0;
+      hints.draws = hints.tris = 0;
     };
     bed.tide.mesh.onBeforeRender = () => {
       tide.draws++;
       tide.tris += tideTris;
     };
+    world.scene.traverse((object) => {
+      if (!object.name.startsWith('hint-') && object.name !== 'caption') return;
+      object.onBeforeRender = () => {
+        hints.draws++;
+        hints.tris += 2;
+      };
+    });
     core.bus.on('perf:sample', ({ draws, tris, maxFlashPerS }) =>
-      samples.push({ draws, tris, maxFlashPerS, tide: { ...tide } }),
+      samples.push({ draws, tris, maxFlashPerS, tide: { ...tide }, hints: { ...hints } }),
     );
     const targets = world.queryManager.registerQuery({ required: [Interactable] }).entities;
     const states = world.queryManager.registerQuery({ required: [hands.HandState] }).entities;
@@ -235,7 +252,7 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
   page,
 }) => {
   const errors = watch(page);
-  const offHost = await openApp(page, readRoom('table'));
+  const offHost = await openApp(page, readRoom('table'), '/', { onboarding: true });
   const probe = await inSession(page);
   // The garden's signature starts the tuning ripple (T-142); its quads are drawn for 4 s, so the counts
   // start after room:tuned.
@@ -283,14 +300,15 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
   console.log(
     `T-148 Listen: draws ${before.draws} -> ${during.draws} -> ${after.draws}, triangles ${before.tris} -> ` +
       `${during.tris} -> ${after.tris} (of these the tide's draws ${before.tide.draws} -> ${during.tide.draws} -> ` +
-      `${after.tide.draws}), flash ${during.maxFlashPerS}; palms out after ` +
+      `${after.tide.draws}; the hints' ${before.hints.draws} -> ${during.hints.draws} -> ${after.hints.draws}), flash ${during.maxFlashPerS}; palms out after ` +
       `${out.atMs - posedAt} ms; audio clock ${audioS.toFixed(1)} s (emulator, perf:sample)`,
   );
   // Two meshes, the dome and the halo, drawn once per view (the emulated session has two), with no pass over the
-  // frame: nothing else is added. The dome has 80 triangles and the halo 96. The tide's own draws are left out.
+  // frame: nothing else is added. The dome has 80 triangles and the halo 96. The tide's, the hints' and the caption's draws
+  // are left out.
   const drawn = (s: Probe['samples'][number]) => ({
-    draws: s.draws - s.tide.draws,
-    tris: s.tris - s.tide.tris,
+    draws: s.draws - s.tide.draws - s.hints.draws,
+    tris: s.tris - s.tide.tris - s.hints.tris,
   });
   const [b, d, a] = [drawn(before), drawn(during), drawn(after)];
   const draws = d.draws - b.draws;
@@ -298,6 +316,7 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
   expect(d.tris - b.tris).toBe((draws / 2) * (80 + 96));
   expect(a).toEqual(b);
   expect(during.maxFlashPerS).toBeLessThanOrEqual(3);
+  expect(during.hints.draws).toBe(0); // the tutorial's hints and caption go in Listen
   expect((await probe.evaluate((p) => p.heard)).map((each) => each.name)).toEqual([
     'gesture:palmsOut',
     'listen:enter',
@@ -310,7 +329,7 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
 
 test('TC-E2E-05 a pinch on the Listen orb enters; a palm turned to the face wakes', async ({ page }) => {
   const errors = watch(page);
-  const offHost = await openApp(page, readRoom('table'));
+  const offHost = await openApp(page, readRoom('table'), '/', { onboarding: true });
   const probe = await inSession(page);
   const orb = (await probe.evaluate((p) => p.orbAt()))!;
 
@@ -391,7 +410,7 @@ test('TC-E2E-05 the 10-minute end on a fake clock: listen:exit timed out, "Goodn
 }) => {
   const errors = watch(page);
   await page.clock.install(); // time flows as usual until the test moves it on
-  const offHost = await openApp(page, readRoom('table'));
+  const offHost = await openApp(page, readRoom('table'), '/', { onboarding: true });
   const probe = await inSession(page);
   await palmsOut(page);
   await heard(probe, 'listen:enter');

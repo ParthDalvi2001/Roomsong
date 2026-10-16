@@ -1,6 +1,5 @@
 // Every gesture threshold of hands/ (API_SPEC §1.4, CODING_GUIDELINES §6). render and tests read these too.
 // All of them are provisional until the device pinch test (TC-DEV-00): none has been tuned on a headset.
-import type { StringKey } from '../core/index.js';
 
 /** FR-HND-02: thumb tip to index tip below this starts a pinch; above the release value ends it (hysteresis). */
 export const PINCH_ENTER_M = 0.02;
@@ -25,8 +24,6 @@ export const TRACKING_GRACE_MS = 200;
 export const REVERT_LERP_MS = 150;
 /** FR-HND-15, D-030: the hand hint and the tint last until `hands:found`, and at most this long after `hands:lost`. */
 export const HAND_HINT_MAX_MS = 5000;
-/** The caption that is the hand hint until ui/Hints draws the icon of UX §3.4 (T-151). */
-export const HAND_HINT_KEY: StringKey = 'handOutOfView';
 /** FR-HND-08/10: a pinched plant does not react inside this; then the dominant axis decides pull or drag. */
 export const DRAG_DEAD_ZONE_M = 0.02;
 

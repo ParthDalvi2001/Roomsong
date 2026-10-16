@@ -1,4 +1,4 @@
-// HandSystem (T-116, LLD §4): the order of one frame, the session events and the hand hint. Fake entities and a
+// HandSystem (T-116, LLD §4): the order of one frame, the session events and a lost hand. Fake entities and a
 // fake sampler: no XR session, no ECS world. What the real sampler does with joints is HandSampler.test.ts; what
 // the emulator's hands do with the whole chain is tests/e2e/11-tracking-loss.spec.ts.
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -7,7 +7,7 @@ import manifest from '../../../src/components.js';
 import { BedAnchor, Caption, Interactable } from '../../../src/core/components.js';
 import { bus, clock, DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
 import { cellCentre } from '../../../src/garden/index.js';
-import { HAND_HINT_KEY, HAND_HINT_MAX_MS, HIT_RADIUS_M } from '../../../src/hands/config.js';
+import { HAND_HINT_MAX_MS, HIT_RADIUS_M } from '../../../src/hands/config.js';
 import { GestureMachine } from '../../../src/hands/GestureMachine.js';
 import { HandState } from '../../../src/hands/HandState.js';
 import { HandSystem } from '../../../src/hands/HandSystem.js';
@@ -84,7 +84,7 @@ const BED = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1]; // flat, it
 const SEED_AT: Vec3 = { x: -0.25, y: 1, z: -0.25 };
 const ON_BED: Vec3 = { x: 0.25, y: 0.75, z: -0.45 }; // 0.25 m right of the centre: ring 3, step 0
 // Two clocks, at the sizes they have in the app, so a test shows which one a time was read from: core's wall
-// clock (ms since 1970) for the hint, and IWSDK's frame time (seconds since the render loop started) for the rest.
+// clock (ms since 1970), which the system's timing must not use, and IWSDK's frame time (seconds since the render loop started) for the rest.
 const WALL_START_MS = 1_790_000_000_000;
 const FRAME_START_MS = 12_345_678;
 
@@ -393,16 +393,14 @@ describe('HandSystem: the session', () => {
     r.stop();
   });
 
-  it('a session that ends during the grace: detached, the carried seed reverted once, hint and state cleared', () => {
+  it('a session that ends during the grace: detached, the carried seed reverted once, state cleared', () => {
     const r = rig();
     r.carry();
     r.hands.right.tracked = false;
     r.frame();
-    expect(r.entityOf('right').hasComponent(Caption)).toBe(true);
     bus.emit('xr:sessionEnd', { visible: false });
     expect(r.detach).toHaveBeenCalledTimes(1);
     expect(r.heard).toEqual(['hands:lost right', 'gesture:trackingLost right']);
-    expect(r.entityOf('right').hasComponent(Caption)).toBe(false);
     expect(r.entityOf('right').data.get(HandState)).toMatchObject({
       tracked: false,
       pinch: false,
@@ -443,42 +441,39 @@ describe('HandSystem: the session', () => {
   });
 });
 
-describe('HandSystem: the hand hint (FR-HND-15, D-030)', () => {
-  it('a hand lost while it carries a seed raises the caption on its own entity, for at most 5 s', () => {
+describe("HandSystem: a lost hand (FR-HND-15, D-030); its hint is ui/Hints' icon (T-150)", () => {
+  const noCaption = (r: ReturnType<typeof rig>) =>
+    expect([r.entityOf('left').hasComponent(Caption), r.entityOf('right').hasComponent(Caption)]).toEqual([
+      false,
+      false,
+    ]);
+
+  it('a hand lost while it carries a seed: hands:lost at once, the revert after the grace, and no caption', () => {
     const r = rig();
     r.carry();
     r.hands.right.tracked = false;
     r.frame();
-    expect(HAND_HINT_MAX_MS).toBe(5000);
-    expect(r.entityOf('right').data.get(Caption)).toEqual({ key: HAND_HINT_KEY, expiresAt: nowMs + 5000 });
-    expect(r.entityOf('left').hasComponent(Caption)).toBe(false);
-    r.frame(200); // the grace runs out: the seed is reverted, the hint stays
+    expect(r.heard).toEqual(['hands:lost right']);
+    noCaption(r);
+    r.frame(200); // the grace runs out: the seed is reverted
     expect(r.heard).toEqual(['hands:lost right', 'gesture:trackingLost right']);
-    expect(r.entityOf('right').hasComponent(Caption)).toBe(true);
-    r.frame(4799); // 4999 ms after the loss
-    expect(r.entityOf('right').hasComponent(Caption)).toBe(true);
-    r.frame(1); // 5000 ms: taken back, with the hand still away
-    expect(r.entityOf('right').hasComponent(Caption)).toBe(false);
-    r.frame(5000);
-    expect(r.entityOf('right').hasComponent(Caption)).toBe(false);
+    r.frame(HAND_HINT_MAX_MS);
+    noCaption(r);
     r.stop();
   });
 
-  it('the hint goes when the hand is seen again, inside the grace or after it', () => {
+  it('hands:found when the hand is seen again, inside the grace or after it', () => {
     const r = rig();
     r.carry();
     r.hands.right.tracked = false;
     r.frame();
     r.hands.right.tracked = true;
     r.frame(100); // back inside the grace: the seed is still carried
-    expect(r.entityOf('right').hasComponent(Caption)).toBe(false);
     r.hands.right.tracked = false;
     r.frame();
-    expect(r.entityOf('right').hasComponent(Caption)).toBe(true); // lost again, still holding
     r.frame(1000);
     r.hands.right.tracked = true;
     r.frame();
-    expect(r.entityOf('right').hasComponent(Caption)).toBe(false);
     expect(r.heard).toEqual([
       'hands:lost right',
       'hands:found right',
@@ -486,31 +481,27 @@ describe('HandSystem: the hand hint (FR-HND-15, D-030)', () => {
       'gesture:trackingLost right',
       'hands:found right',
     ]);
+    noCaption(r);
     r.stop();
   });
 
-  it('an empty hand that is lost raises nothing, however long it stays away', () => {
+  it('an empty hand that is lost: hands:lost and nothing else, however long it stays away', () => {
     const r = rig();
     r.frame();
     r.hands.left.tracked = false;
     r.frame();
-    // Looked at in the frame of the loss: later, the 5 s limit would have taken a wrong hint back already.
-    expect(r.heard).toEqual(['hands:lost left']);
-    expect(r.entityOf('left').hasComponent(Caption)).toBe(false);
     r.frame(1000);
-    expect(r.entityOf('left').hasComponent(Caption)).toBe(false);
     expect(r.heard).toEqual(['hands:lost left']);
     r.stop();
   });
 
-  it('both hands lost at once, one of them holding: one hint, on that hand', () => {
+  it('both hands lost at once, one of them holding: one hands:lost each, in hand order', () => {
     const r = rig();
     r.carry();
     r.hands.left.tracked = r.hands.right.tracked = false;
     r.frame();
     expect(r.heard).toEqual(['hands:lost left', 'hands:lost right']);
-    expect(r.entityOf('left').hasComponent(Caption)).toBe(false);
-    expect(r.entityOf('right').hasComponent(Caption)).toBe(true);
+    noCaption(r);
     r.stop();
   });
 });

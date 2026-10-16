@@ -94,6 +94,8 @@ Captions are drawn inside the scene (the projection layer), not in a separate We
 
 Budget to the first sound (FR-UI-02, ≤ 20 s): session start ≤ 5 s + scanning ≤ 3 s + tuning 4.0 s = 12 s at worst, which leaves 8 s for the first seed, pinch and sweep. No slack in the worst case; unverified until the stranger test (UAT-16).
 
+
+*As built (T-150, 16 Oct):* the grow and move hints come one at a time (the pull icon until the first pull, then the drag icon); the garden window shows only the drag icon (a pointer cannot pull) and the click captions "Click or tap to plant" and "Click the orb to listen"; the guide starts on any session's empty bed (D-053) and no step waits more than 60 s.
 ### 3.4 Shaping feedback
 Nothing changes the garden before a pinch ends: everything in this table up to the release is a preview, and the release commits it (FR-HND-16, LLD §4).
 

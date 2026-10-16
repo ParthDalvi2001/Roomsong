@@ -31,7 +31,7 @@ You need only this file during the sitting.
 | 10 | The app: the bed on your table | the bed on the real table · the hint when no table is found · the table limits of D-034 | 15 min | needs T-128c |
 | 11 | The app: plant, first sound, first loop | first sound within 20 s, first loop within 90 s · does a plant land where your fingers are | 10 min | needs T-128d (with T-127) |
 | 12 | The app: the settings panel and its orb | the orb · reading the panel · hitting its buttons · the long hold · by looking | 15 min | needs T-128d |
-| 13 | The app: hands lost | the "Hand out of view" words · the 0.2 s grace | 10 min | needs T-128d (with T-127) |
+| 13 | The app: hands lost | the the hand-out-of-view icon (a palm in a dashed ring) words · the 0.2 s grace | 10 min | needs T-128d (with T-127) |
 | 14 | The app: ten minutes with a full garden | frame rate with sound and hands · steady time · Bass on the speakers · drift of the bed · what a hand lights up (T-119) | 30 min | needs T-128d |
 | 15 | The app: a key change listened to | the re-tune, rated | 10 min | needs T-128d |
 | 16 | The app: the garden comes back | the saved place: does the bed return, in how many seconds, how many cm off · the reach slack · the anchor count · a week later, in bloom (T-119) | 35 min | needs T-128e |
@@ -1043,20 +1043,20 @@ Whether the time to load the page (T1) is added to these counts waits for the sa
 
 **Needs: T-128d, with T-127** (a seed to carry). The last step also needs T-146. That a seed can be carried in the app is **(from the plan)**; the hand rules are checked against code.
 
-**Purpose:** see what happens when the headset loses a hand that is holding something: the words "Hand out of view", where the seed goes, and whether a lost moment can plant a seed you never let go of.
+**Purpose:** see what happens when the headset loses a hand that is holding something: the hand-out-of-view icon (a palm in a dashed ring), where the seed goes, and whether a lost moment can plant a seed you never let go of.
 
 **Answers:** TC-DEV-09 · NFR-REL-02, FR-HND-15 · D-030 (the words only for a hand that held something, for at most 5 seconds) · from T-116: does the browser end the pinch when a hand drops out for an instant and start it again a moment late (a carried seed would then be let go: say what happened); how real hands are lost and whether a grace of 0.2 seconds suits; do the words stay at least 1.2 seconds, also after a very short loss and when the headset's menu takes the hands away, or do they flicker; can the words be read, also over a bright wall.
 
 **You need:** the empty garden with three seeds from block 12; the "app, dev" bookmark. The console is a bonus: it shows `hands:lost`, `gesture:trackingLost` and `garden:seedBack`.
 
-**Checked against:** `src/hands/config.ts` (the grace is 200 ms; the words stay at most 5 s), `src/hands/HandSystem.ts`, `src/core/strings.ts` ("Hand out of view"), `tests/e2e/11-tracking-loss.spec.ts` (what the emulator already shows: a whole hand removed while it carries a seed).
+**Checked against:** `src/hands/config.ts` (the grace is 200 ms; the words stay at most 5 s), `src/hands/HandSystem.ts`, `src/core/strings.ts` (the hand-out-of-view icon (a palm in a dashed ring)), `tests/e2e/11-tracking-loss.spec.ts` (what the emulator already shows: a whole hand removed while it carries a seed).
 
 **Know this first:** do not plant a seed in this block. To put a seed back, let go of it away from the ring.
 
 ### Steps
 
 1. Open the "app, dev" bookmark and enter. Open a palm: a seed comes. Pinch it with the other hand. You now carry it.
-2. Put the carrying hand behind your back for 3 seconds. The words "Hand out of view" should show, and the seed should be back in the supply: not planted, not gone. Bring the hand back. Do the words go? Did they stay at least a second?
+2. Put the carrying hand behind your back for 3 seconds. The words the hand-out-of-view icon (a palm in a dashed ring) should show, and the seed should be back in the supply: not planted, not gone. Bring the hand back. Do the words go? Did they stay at least a second?
 3. Take the seed again. Slide the carrying hand slowly out of view, down past the table's edge. The same questions.
 4. Take the seed again. Flick the carrying hand out of view and straight back, as fast as you can. The seed should still be at your fingers. Did the words flash up?
 5. Carry the seed over the ring. Pass your other hand quickly between your face and the carrying hand, three times. Did the seed get planted, or drop, although you never let go? Say exactly what happened.
