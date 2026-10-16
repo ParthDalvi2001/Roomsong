@@ -112,7 +112,7 @@ async function watchRoom(page: Page): Promise<JSHandle<RoomProbe>> {
       source: system.bed.hasComponent(BedAnchor) ? system.bed.getValue(BedAnchor, 'source') : null,
       isShown: object.visible,
       // The first instanced mesh on the bed is BedRenderer's markers; the plants' come after it.
-      hasMarkers: object.children.find((child) => 'isInstancedMesh' in child)?.visible === true,
+      hasMarkers: object.getObjectByName('bed-markers')?.visible === true,
       pose: Array.from(object.matrixWorld.elements),
     });
     const heard: Heard[] = [];

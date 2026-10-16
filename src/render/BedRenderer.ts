@@ -139,6 +139,7 @@ export class BedRenderer {
       }),
       RINGS * STEPS,
     );
+    this.markers.name = 'bed-markers'; // tests find the markers by name: the beat ring is an instanced child of the bed too
     this.markers.geometry.setAttribute('aStrength', this.drawn);
     const matrix = new Matrix4();
     const centre = { x: 0, y: 0 };
