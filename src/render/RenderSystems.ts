@@ -1,28 +1,33 @@
 // The ECS systems of render/ (LLD §3.2): PerfSystem; SeedSystem, the seeds and their orb (T-127);
-// BedRenderSystem, which draws the bed today and gets its plants, tide and targets with T-128d; and
-// TuningRippleSystem. The renderers themselves stay plain classes that read no clock (API_SPEC §1.8).
-import { createSystem, Types, Vector3, type Entity, type Object3D } from '@iwsdk/core';
+// BedRenderSystem, the bed with its plants, tide and targets (T-128c, T-128d); and TuningRippleSystem (T-142).
+// The renderers themselves stay plain classes that read no clock (API_SPEC §1.8).
+import { createSystem, Types, Vector3, type Entity, type Matrix4, type Object3D } from '@iwsdk/core';
 
 import { BedAnchor, Caption, Interactable } from '../core/components.js';
 import { bus, clock, log, settings } from '../core/index.js';
-import { HandState, HIT_RADIUS_M } from '../hands/index.js';
+import { cellCentre } from '../garden/index.js';
+import { HAND_HINT_MAX_MS, HandState, HIT_RADIUS_M } from '../hands/index.js';
 
-import { BedRenderer } from './BedRenderer.js';
+import { BedRenderer, onBed } from './BedRenderer.js';
 import {
   GARDEN_FULL_CAPTION_MS,
   PERF_HUD_HEAD_OFFSET_M,
+  PETAL_LIFT_M,
   RIPPLE_SWEEP_AT_MS,
   RIPPLE_TUNED_MS,
 } from './config.js';
 import { createPerfHud, PerfSampler } from './PerfHud.js';
+import { PetalRenderer } from './PetalRenderer.js';
+import { PlantRenderer } from './PlantRenderer.js';
 import { SeedRenderer } from './SeedRenderer.js';
+import { TideRenderer } from './TideRenderer.js';
 import { TuningRipple } from './TuningRipple.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { SeedMove } from './SeedRenderer.js';
 import type { AudioEngine } from '../audio/index.js';
 import type { EventMap, Hand, StringKey } from '../core/index.js';
-import type { RoomSignature } from '../garden/index.js';
+import type { Cell, GardenState, Plant, RoomSignature } from '../garden/index.js';
 import type { RoomSurfaces } from '../room/index.js';
 
 const NOTHING = (): void => {};
@@ -193,38 +198,157 @@ export class SeedSystem extends createSystem(
   }
 }
 
+/** A pinch target on the bed (API_SPEC §1.10 rule 7): its entity, and where on the bed it stands. */
+interface BedTarget {
+  readonly id: string;
+  readonly entity: Entity;
+  cell: Cell;
+  readonly liftM: number;
+  /** The frame time it goes at, ms: a petal's end; Infinity for a plant's. */
+  readonly untilMs: number;
+}
+const HANDS: readonly Hand[] = ['left', 'right'];
+const NO_PLANTS: Plant[] = []; // shared, never written: the plants drawn while no bed is placed
+const CENTRE = { x: 0, y: 0 };
+const AT = new Vector3();
+const DISSOLVED_AT = new Vector3(); // where a removed plant was last drawn, bed frame (PlantRenderer.heldAt)
 /**
- * Draws what stands on the bed (LLD §3.2). Priority 50. configData: `guard`, the page's FlashGuard, and `bed`,
- * the Object3D of the bed's entity (`RoomSystem.bed.object3D`): it carries the bed's pose, and RoomSystem shows
- * and hides it. The bed is placed exactly while an entity carries BedAnchor (API_SPEC §1.10 rule 5). Until then,
- * and so while the level-3 ghost of UX §9.2 shows, the cell markers are faded out: the glass with its ring lines
- * is the ghost. The plants, the tide and the targets join with T-128d, and with them the hover cue
- * (`bedRenderer.setHover`).
+ * The bar phase as the plants and the tide get it: in steps of 1/PHASE_STEPS of a bar (0.7 ms at 84 BPM, far
+ * under a frame), taken from numbers made once. A fraction made in the frame is boxed when it is handed to a call
+ * V8 does not inline, as PlantRenderer.update is not: 16 bytes a frame (BedRenderSystem.heap.test.ts). The array
+ * starts with null so that V8 keeps its elements as the boxed numbers they are; a number[] holds them raw and
+ * boxes again at each read.
+ */
+const PHASE_STEPS = 4096; // a power of two: `& (PHASE_STEPS - 1)` wraps a phase outside 0..1 back into the bar
+const PHASES: unknown[] = [null];
+for (let i = 0; i < PHASE_STEPS; i++) PHASES.push(i / PHASE_STEPS);
+const phaseOf = (phase: number): number =>
+  PHASES[1 + (Math.floor(phase * PHASE_STEPS) & (PHASE_STEPS - 1))] as number;
+
+/**
+ * Draws what stands on the bed (LLD §3.2). Priority 50. configData: `guard`, the page's FlashGuard; `engine`, the
+ * audio engine, whose clock the tide follows; and `bed`, the Object3D of the bed's entity (`RoomSystem.bed.object3D`):
+ * it carries the bed's pose, and RoomSystem shows and hides it. The bed is placed exactly while an entity carries
+ * BedAnchor (API_SPEC §1.10 rule 5). Until then, and so while the level-3 ghost of UX §9.2 shows, the cell markers
+ * are faded out (the glass with its ring lines is the ghost), and no plant is drawn or has a target. While placed:
+ * the plants of the latest `garden:changed`, one `Interactable { kind: 'plant' }` per plant at its cell, the tide
+ * from the session's `room:signature` on (rule 11), the hover cue and the tint of a lost hand (D-044), and the
+ * undo petal with its own target (T-146).
  */
 export class BedRenderSystem extends createSystem(
   { beds: { required: [BedAnchor] } },
-  { guard: { type: Types.Object, default: null }, bed: { type: Types.Object, default: null } },
+  {
+    guard: { type: Types.Object, default: null },
+    engine: { type: Types.Object, default: null },
+    bed: { type: Types.Object, default: null },
+  },
 ) {
+  private bed!: Object3D;
+  private engine!: AudioEngine;
   private bedRenderer!: BedRenderer;
+  private plants!: PlantRenderer;
+  private tide!: TideRenderer;
+  private petals!: PetalRenderer;
+  /** The latest garden; null until the first `garden:changed`. */
+  private state: GardenState | null = null;
+  private createdAt = Number.NaN;
+  private isPlaced = false;
+  /** This session has its signature: the tide may run (rule 11). */
+  private isTuned = false;
+  /** The plants' targets, by plant id and as a list (a frame loops the list, no Map iterator), and the undo
+   *  petals' (each lives as long as its petal). */
+  private readonly targets = new Map<string, BedTarget>();
+  private readonly plantTargets: BedTarget[] = [];
+  private readonly undoTargets: BedTarget[] = [];
+  /** The bed's world matrix when the targets were last placed: a bed moved under them moves them (LLD §3.2). */
+  private readonly aimedFrom = new Float64Array(16);
+  /** The latest frame's time, ms: a tint or a petal set from a bus handler is timed on it. */
+  private frameMs = 0;
 
   override init(): void {
-    this.bedRenderer = new BedRenderer(
-      this.config.bed.value as Object3D,
-      this.config.guard.value as FlashGuard,
-    );
+    const guard = this.config.guard.value as FlashGuard;
+    this.bed = this.config.bed.value as Object3D;
+    this.engine = this.config.engine.value as AudioEngine;
+    this.bedRenderer = new BedRenderer(this.bed, guard);
+    this.plants = new PlantRenderer(this.bed, guard);
+    this.tide = new TideRenderer(this.bed, guard);
+    this.petals = new PetalRenderer(this.bed, guard);
     this.setPlaced(false);
     const { beds } = this.queries;
     this.cleanupFuncs.push(
       // `true`: a bed that was placed before this system was registered counts too
       beds.subscribe('qualify', () => this.setPlaced(true), true),
       beds.subscribe('disqualify', () => this.setPlaced(false)),
-      () => this.bedRenderer.dispose(),
+      bus.on('garden:changed', ({ state, diff }) => {
+        this.state = state;
+        for (const id of diff.added) this.petals.hide(id); // the undo
+        // New garden drops every undo token, and no event says so (API_SPEC §1.8)
+        if (state.createdAt !== this.createdAt) this.petals.clear();
+        this.createdAt = state.createdAt;
+        // The whole state, before the visit and after it: the renderer unfurls what grew (T-119)
+        if (this.isPlaced) this.draw();
+      }),
+      bus.on('garden:removed', ({ plantId, undoToken, expiresAt }) =>
+        this.showPetal(plantId, undoToken.plant, expiresAt),
+      ),
+      bus.on('room:signature', () => void (this.isTuned = true)),
+      bus.on('xr:sessionEnd', () => {
+        this.isTuned = false;
+        for (const hand of HANDS) this.onHover(hand, null, null);
+        for (const hand of HANDS) this.plants.setTint(hand, null, 0);
+      }),
+      bus.on('target:hover', ({ hand, target, cell }) =>
+        this.onHover(hand, target?.kind === 'plant' ? target.id : null, cell),
+      ),
+      // FR-HND-15 (D-030): the plant a lost hand held is dimmed until the hint's longest time, or its return
+      bus.on('hands:lost', ({ hand, held }) => {
+        if (held?.kind === 'plant') this.plants.setTint(hand, held.id, this.frameMs + HAND_HINT_MAX_MS);
+      }),
+      bus.on('hands:found', ({ hand }) => this.plants.setTint(hand, null, 0)),
+      // The shaping drawn (T-147, API_SPEC §1.8 "Who calls it"): the garden's handlers have run first.
+      bus.on('gesture:pinchStart', (e) => this.plants.onPinchStart(e)),
+      bus.on('gesture:pull', (e) => this.plants.onPull(e)),
+      bus.on('gesture:drag', (e) => this.plants.onDrag(e)),
+      bus.on('gesture:release', (e) => this.plants.onRelease(e)),
+      bus.on('gesture:trackingLost', (e) => this.plants.onRelease(e)),
+      () => {
+        this.setPlaced(false);
+        for (const renderer of [this.bedRenderer, this.plants, this.tide, this.petals]) renderer.dispose();
+      },
     );
   }
 
   /** `time`: IWSDK's frame time in seconds. Whole milliseconds: a fraction handed on can cost an object a frame. */
   override update(_delta: number, time: number): void {
-    this.bedRenderer.update(Math.round(time * 1000));
+    const nowMs = (this.frameMs = Math.round(time * 1000));
+    // The targets first, so a renderer that throws every frame cannot leave one behind. A petal's target lives
+    // exactly as long as its petal: the end of its 5 s, the undo, New garden, a newer petal over the same cell.
+    const undo = this.undoTargets;
+    for (let i = undo.length - 1; i >= 0; i--) {
+      const target = undo[i]!;
+      if (nowMs < target.untilMs && this.petals.has(target.id)) continue;
+      target.entity.destroy();
+      undo[i] = undo[undo.length - 1]!;
+      undo.pop();
+    }
+    // A bed moved with no event (a recentre or a pause re-reads its anchor, LLD §3.2) moves the targets with it.
+    if (this.isPlaced && !isSamePose(this.bed.matrixWorld.elements, this.aimedFrom)) this.aimAll();
+    // Rule 11: before init() the engine says phase 0, a valid phase; during Re-place there is no bed to sweep;
+    // a phase that is not a number is no tide. Two branches, not `cond ? phase : NaN`: V8 may unbox such a
+    // value and box it again for the calls.
+    const audioClock = this.engine.clock;
+    const barPhase =
+      this.isPlaced && this.isTuned && audioClock.now() > 0 ? audioClock.barPhase() : Number.NaN;
+    if (Number.isFinite(barPhase)) this.sweep(phaseOf(barPhase), nowMs);
+    else this.sweep(Number.NaN, nowMs);
+    this.bedRenderer.update(nowMs);
+    this.petals.update(nowMs);
+  }
+
+  /** The tide and each plant's glow as it passes (FR-UI-07): one phase for both. */
+  private sweep(phase: number, nowMs: number): void {
+    this.tide.update(phase, nowMs);
+    this.plants.update(phase, nowMs);
   }
 
   /**
@@ -233,11 +357,94 @@ export class BedRenderSystem extends createSystem(
    */
   private setPlaced(isPlaced: boolean): void {
     try {
+      this.isPlaced = isPlaced;
       this.bedRenderer.setGhost(!isPlaced);
+      if (!isPlaced) this.petals.clear(); // nothing stands on a bed that is not placed; the token runs out alone
+      this.draw();
     } catch (error) {
       log.error('render', 'the bed could not be drawn as placed or as a ghost', error);
     }
   }
+
+  /** The plants of the latest state and their targets, or none while the bed is not placed. On a change only. */
+  private draw(): void {
+    const plants = this.isPlaced ? (this.state?.plants ?? NO_PLANTS) : NO_PLANTS;
+    this.plants.setState({ plants, lastVisitAt: this.state?.lastVisitAt ?? 0 });
+    const live = new Set<string>();
+    for (const plant of plants) {
+      if (!onBed(plant.cell)) continue; // not drawn, as in PlantRenderer: no target either
+      live.add(plant.id);
+      const kept = this.targets.get(plant.id);
+      if (kept !== undefined) {
+        kept.cell = plant.cell; // moved
+        continue;
+      }
+      // hands reads kind, id and radius once, when the component is added (rule 7)
+      const entity = this.createEntity();
+      entity.addComponent(Interactable, { kind: 'plant', id: plant.id, radius: HIT_RADIUS_M });
+      this.targets.set(plant.id, { id: plant.id, entity, cell: plant.cell, liftM: 0, untilMs: Infinity });
+    }
+    this.plantTargets.length = 0;
+    for (const [id, target] of this.targets) {
+      if (live.has(id)) {
+        this.plantTargets.push(target);
+        continue;
+      }
+      target.entity.destroy();
+      this.targets.delete(id);
+    }
+    this.aimAll();
+  }
+
+  /** Rule 7: every target at its cell's centre on the bed, raised by its lift, in world space. */
+  private aimAll(): void {
+    const pose = this.bed.matrixWorld;
+    for (let i = 0; i < this.plantTargets.length; i++) aim(this.plantTargets[i]!, pose);
+    for (let i = 0; i < this.undoTargets.length; i++) aim(this.undoTargets[i]!, pose);
+    this.aimedFrom.set(pose.elements);
+  }
+
+  /**
+   * D-044: an empty hand over a plant lights the plant and that plant's own cell marker (in high contrast every
+   * plant is outlined, and under the tide's crest the guard clamps the glow away). Any other hover: its cell.
+   */
+  private onHover(hand: Hand, plantId: string | null, cell: Cell | null): void {
+    this.plants.setHover(hand, plantId);
+    this.bedRenderer.setHover(hand, plantId === null ? cell : (this.targets.get(plantId)?.cell ?? null));
+  }
+
+  /** UX §9.3, on garden:removed: the petal over the plant's own cell, and its target while it is up. */
+  private showPetal(plantId: string, plant: Plant, expiresAt: number): void {
+    // No bed, no petal: a plant held through Re-place and dragged off would leave an unseen target at the old pose.
+    if (!this.isPlaced) return;
+    // The token's end is on core's wall clock; the petal's on the frame clock (API_SPEC §1.8). A plant dragged
+    // off the bed bursts from where the hand left it (T-147).
+    const untilMs = this.frameMs + (expiresAt - clock.now());
+    const from = this.plants.heldAt(plantId, DISSOLVED_AT) ? DISSOLVED_AT : null;
+    this.petals.show(plantId, plant, untilMs, from);
+    if (!this.petals.has(plantId)) return;
+    const entity = this.createEntity();
+    entity.addComponent(Interactable, { kind: 'undo', id: plantId, radius: HIT_RADIUS_M });
+    const target = { id: plantId, entity, cell: plant.cell, liftM: PETAL_LIFT_M, untilMs };
+    this.undoTargets.push(target);
+    aim(target, this.bed.matrixWorld);
+  }
+}
+
+/** Writes a target's `worldPos`: its cell's centre on the bed (bed-local x and z, D-029), `liftM` above it. */
+function aim(target: BedTarget, bedPose: Matrix4): void {
+  cellCentre(target.cell, CENTRE);
+  AT.set(CENTRE.x, target.liftM, CENTRE.y).applyMatrix4(bedPose);
+  const view = target.entity.getVectorView(Interactable, 'worldPos');
+  view[0] = AT.x;
+  view[1] = AT.y;
+  view[2] = AT.z;
+}
+
+/** The 16 numbers of a pose against a kept copy: no allocation. */
+function isSamePose(now: ArrayLike<number>, kept: Float64Array): boolean {
+  for (let i = 0; i < 16; i++) if (now[i] !== kept[i]) return false;
+  return true;
 }
 
 const SWEEPS = RIPPLE_SWEEP_AT_MS.length; // table, wall, ceiling

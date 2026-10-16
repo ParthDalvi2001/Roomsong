@@ -1,9 +1,8 @@
 /// <reference types="webxr" />
-// T-151: the settings panel in the emulator (UX §3.6; FR-UI-03/04/05/10, FR-HND-12). Nothing registers PanelSystem
-// in src/index.ts before T-128, so the test registers it on the app's own world (IWSDK's dev-build hook), as
-// 08-landing.spec.ts does for captions, at the priority and with the `garden` and `room` of API_SPEC §1.10 (stand-ins
-// that note each call). Everything else is the app's own: its HandSystem on IWER's emulated hands reports the
-// pinches, the orb rides the emulated left hand, and in the gaze test the emulated head is the input.
+// T-151: the settings panel in the emulator (UX §3.6; FR-UI-03/04/05/10, FR-HND-12). All of it is the app's own:
+// src/app.ts registers PanelSystem at 62 with its GardenSystem and RoomSystem (T-128d), whose methods the test
+// only notes as the panel calls them; its HandSystem on IWER's emulated hands reports the pinches, the orb rides
+// the emulated left hand, and in the gaze test the emulated head is the input.
 // Emulator results (E): they say nothing about a headset, about comfort, or about how the panel looks.
 import { expect, test, type JSHandle, type Page } from '@playwright/test';
 
@@ -24,8 +23,8 @@ type Core = typeof import('../../src/core/index');
 type Components = typeof import('../../src/core/components');
 type Ui = typeof import('../../src/ui/index');
 type Hands = typeof import('../../src/hands/index');
-type Garden = typeof import('../../src/garden/index');
-type Audio = typeof import('../../src/audio/index');
+type RoomModule = typeof import('../../src/room/index');
+type Render = typeof import('../../src/render/index');
 type Settings = ReturnType<Core['settings']['get']>;
 type PanelSystem = InstanceType<Ui['PanelSystem']>;
 type Hand = 'left' | 'right';
@@ -45,8 +44,6 @@ interface Target {
 interface Probe {
   system: PanelSystem;
   info: { render: { calls: number; triangles: number } };
-  /** Draw calls of a frame before the panel's system was registered. */
-  bare: number;
   board: { visible: boolean; material: { map: { version: number } } };
   orb: { visible: boolean };
   ring: { visible: boolean };
@@ -66,6 +63,10 @@ interface Probe {
   /** Resolves when that hand's pinch point has stopped moving (its position is filtered, FR-HND-03). */
   atRest(hand: Hand): Promise<Vec3>;
   words(): string[];
+  /** No ripple quad is drawn and no caption is up: nothing on screen changes by the clock alone. */
+  quiet(): boolean;
+  /** Every mesh of the scene drawn whenever it is visible: none drops out at the edge of the emulated view. */
+  noCull(): void;
 }
 
 const device = (page: Page) =>
@@ -96,40 +97,50 @@ async function enter(page: Page): Promise<JSHandle<Device>> {
   return d;
 }
 
-/** Registers PanelSystem on the app's world and returns the probe. */
+/** Finds the app's PanelSystem and returns the probe. */
 function probePanel(page: Page): Promise<JSHandle<Probe>> {
   return page.evaluateHandle(async () => {
     const load = <T>(url: string) => import(/* @vite-ignore */ url) as Promise<T>;
     const core = await load<Core>('/src/core/index.ts');
     const { Interactable } = await load<Components>('/src/core/components.ts');
     const ui = await load<Ui>('/src/ui/index.ts');
+    const render = await load<Render>('/src/render/index.ts');
     const hands = await load<Hands>('/src/hands/index.ts');
-    const garden = await load<Garden>('/src/garden/index.ts');
-    const audio = await load<Audio>('/src/audio/index.ts');
+    const room = await load<RoomModule>('/src/room/index.ts');
     const { world } = (window as unknown as DevPage).FRAMEWORK_MCP_RUNTIME;
-    if (!world.hasSystem(hands.HandSystem)) throw new Error('src/index.ts did not register HandSystem');
-    const bare = world.renderer.info.render.calls;
+    if (!world.hasSystem(hands.HandSystem)) throw new Error('src/app.ts did not register HandSystem');
+    const system = world.getSystem(ui.PanelSystem);
+    if (system === undefined) throw new Error('src/app.ts did not register PanelSystem');
     const heard: Probe['heard'] = [];
     for (const type of ['gesture:pinchStart', 'gesture:release'] as const)
       core.bus.on(type, (event) =>
         heard.push({ type, payload: { hand: event.hand, id: event.target?.id ?? null } }),
       );
 
-    // Stand-ins for the app's GardenSystem and RoomSystem (API_SPEC §1.10; to build, T-128): they note each call.
-    // The garden also does what the real one will: the reducer, then `garden:changed`.
-    let state = garden.newGarden(core.clock.now(), core.settings.get());
-    const standInGarden = {
-      newGarden: () => heard.push({ type: 'garden.newGarden', payload: null }),
-      setBedHeightOffset(metres: number) {
-        heard.push({ type: 'garden.setBedHeightOffset', payload: metres });
-        state = garden.setBedHeightOffset(state, metres);
-        core.bus.emit('garden:changed', { state, diff: { added: [], removed: [], changed: [] } });
-      },
+    // The app's own GardenSystem and RoomSystem, the panel's configData (API_SPEC §1.10): each call the panel
+    // makes on them is noted, then made.
+    const { garden, engine } = window.__roomsong!;
+    const roomSystem = world.getSystem(room.RoomSystem)!;
+    const captions = world.getSystem(ui.CaptionSystem)!;
+    // A private field of TuningRippleSystem: its renderer's quads.
+    const { ripple } = world.getSystem(render.TuningRippleSystem) as unknown as {
+      ripple: { meshes: readonly { visible: boolean }[] };
     };
-    const standInRoom = { replace: () => heard.push({ type: 'room.replace', payload: null }) };
-    const configData = { garden: standInGarden, room: standInRoom };
-    world.registerSystem(ui.PanelSystem, { priority: 62, configData });
-    const system = world.getSystem(ui.PanelSystem) as PanelSystem;
+    const newGarden = garden.newGarden.bind(garden);
+    garden.newGarden = () => {
+      heard.push({ type: 'garden.newGarden', payload: null });
+      newGarden();
+    };
+    const setBedHeightOffset = garden.setBedHeightOffset.bind(garden);
+    garden.setBedHeightOffset = (metres) => {
+      heard.push({ type: 'garden.setBedHeightOffset', payload: metres });
+      setBedHeightOffset(metres);
+    };
+    const replace = roomSystem.replace.bind(roomSystem);
+    roomSystem.replace = () => {
+      heard.push({ type: 'room.replace', payload: null });
+      replace();
+    };
     // Two private fields: the system's target entities (the hand system finds them with its own query on
     // Interactable) and the HandState entity it keeps for each hand.
     const { entities, palms } = system as unknown as {
@@ -147,7 +158,6 @@ function probePanel(page: Page): Promise<JSHandle<Probe>> {
     const probe: Probe = {
       system,
       info: world.renderer.info,
-      bare,
       board: named('settings-panel') as Probe['board'],
       orb: named('settings-orb') as Probe['orb'],
       ring: named('settings-cue') as Probe['ring'],
@@ -155,8 +165,8 @@ function probePanel(page: Page): Promise<JSHandle<Probe>> {
       head: () => [...world.player.head.matrixWorld.elements],
       settings: () => ({ ...core.settings.get() }),
       set: (patch) => core.settings.set(patch),
-      // `bpm` and `volume` are private fields of audio's engine: read, never written.
-      engine: audio.createAudioEngine() as unknown as Probe['engine'],
+      // `bpm` and `volume` are private fields of the app's engine: read, never written.
+      engine: engine as unknown as Probe['engine'],
       heard,
       targets: () =>
         entities
@@ -186,13 +196,31 @@ function probePanel(page: Page): Promise<JSHandle<Probe>> {
           look();
         }),
       words: () => system.panel.texts().map((text) => text.text),
+      quiet: () => !ripple.meshes.some((mesh) => mesh.visible) && captions.shown === null,
+      noCull: () =>
+        world.scene.traverse((o) => {
+          (o as unknown as { frustumCulled: boolean }).frustumCulled = false;
+        }),
     };
     return probe;
   });
 }
 
 const ids = (probe: JSHandle<Probe>) => probe.evaluate((p) => p.targets().map((target) => target.id));
-const draws = (probe: JSHandle<Probe>) => probe.evaluate((p) => p.info.render.calls);
+/**
+ * Draw calls of a frame in which nothing else on screen changes by the clock: since T-128d the garden's own
+ * ripple and captions come and go in the app, and a count taken under one is not the panel's.
+ */
+const draws = async (probe: JSHandle<Probe>) => {
+  await probe.evaluate(
+    (p) =>
+      new Promise<void>((done) => {
+        const look = () => (p.quiet() ? done() : setTimeout(look, 20));
+        look();
+      }),
+  );
+  return probe.evaluate((p) => p.info.render.calls);
+};
 const uploads = (probe: JSHandle<Probe>) => probe.evaluate((p) => p.board.material.map.version);
 const events = (probe: JSHandle<Probe>, type: string) =>
   probe.evaluate((p, type) => p.heard.filter((e) => e.type === type).map((e) => e.payload), type);
@@ -382,7 +410,8 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
   expect(await events(probe, 'garden.setBedHeightOffset')).toEqual([0.02]);
   await xrFrames(page, 2);
   const gardenWords = await probe.evaluate((p) => p.words());
-  expect(gardenWords).toEqual(expect.arrayContaining(['+2 cm', 'Day 1, Seeds 0, Key C major']));
+  // The app's own garden after its first visit: three starter seeds, in the key the table room gives.
+  expect(gardenWords).toEqual(expect.arrayContaining(['+2 cm', 'Day 1, Seeds 3, Key C minor (room)']));
   await page.screenshot({ path: '.tmp/settings-garden.png' });
 
   // New garden: a short pinch does nothing; a pinch held to the end and let go on the control asks once. The ring
@@ -432,11 +461,17 @@ test('settings panel: what it costs to draw and to run (NFR-PERF-03, NFR-PERF-05
   const head = await probe.evaluate((p) => p.head());
   const leftAt = { x: head[12]! - 0.2, y: head[13]! - 0.35, z: head[14]! - 0.35 };
 
-  // Draw calls per frame, for both eyes.
+  // Draw calls per frame, for both eyes, each in a quiet frame (`draws`), with frustum culling off: the orb at
+  // this hand and other meshes of the live garden lie near the edge of the emulated view and would drop in and
+  // out of the count (measured: 8 visible meshes, 12 draws culled, 16 not).
+  await probe.evaluate((p) => p.noCull());
   await put('left', leftAt, 180); // palm up: no orb
   await xrFrames(page, 3);
   const bare = await draws(probe);
-  expect(bare).toBe(await probe.evaluate((p) => p.bare)); // the system draws nothing while nothing shows
+  // The system draws nothing while nothing of it shows
+  expect(
+    await probe.evaluate((p) => [p.orb.visible, p.board.visible, p.ring.visible, p.fill.visible]),
+  ).toEqual([false, false, false, false]);
   await put('left', leftAt, 0);
   await xrFrames(page, 3);
   const withOrb = await draws(probe);

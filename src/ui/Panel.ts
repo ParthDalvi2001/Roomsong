@@ -574,7 +574,15 @@ export class ArrayVec3 {
 
 // Scratch of placePanel, which runs once per opening: the head it places the panel for, and the panel's centre.
 const LEVELLED = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-const CENTRE = new ArrayVec3(new Float64Array(3), 0);
+// Data fields, as every caller of clampToFov passes them: an accessor object at one call site (an ArrayVec3) made
+// V8 box the numbers at every call, 24 bytes a frame in Chromium (T-128d review). A class, like THREE.Vector3,
+// which ui/ code here may not import: a number written to an object literal is boxed (FovGuard.ts).
+class Point implements Vec3 {
+  x = 0;
+  y = 0;
+  z = 0;
+}
+const CENTRE = new Point();
 
 /**
  * Copies `head` to `out`, turned up about its own right-hand axis until it looks down no more than

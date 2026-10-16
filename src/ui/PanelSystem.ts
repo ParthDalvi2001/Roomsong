@@ -458,7 +458,12 @@ export class PanelSystem extends createSystem(
         orbHome(head, s.dominantHand, this.home);
         this.homeFor = s.dominantHand;
       }
-      clampToFov(head, this.home, ORB_ELEMENT, this.orbAt);
+      // Into a Vector3, then copied: clampToFov gets plain fields from every caller (an accessor object at one
+      // call site made V8 box its numbers at all of them, T-128d review).
+      clampToFov(head, this.home, ORB_ELEMENT, this.scratch);
+      this.orbAt.x = this.scratch.x;
+      this.orbAt.y = this.scratch.y;
+      this.orbAt.z = this.scratch.z;
       return true;
     }
     this.homeFor = null;

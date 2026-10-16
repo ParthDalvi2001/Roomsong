@@ -29,6 +29,8 @@ interface Heard {
 interface Probe {
   heard: Heard[];
   captions: InstanceType<Ui['CaptionSystem']>;
+  /** The session's tuning ripple has ended (`room:tuned`). */
+  isTuned: boolean;
 }
 /** IWSDK 1.0.1 puts its dev runtime on the page in a dev build; the app's world is a field of it. */
 interface DevPage {
@@ -104,9 +106,13 @@ test('TC-E2E-16 a hand lost while it carries a seed: hint, revert after the grac
     // A radius of 5 m around the user's chest: wherever the emulated hand pinches, it pinches this seed.
     const seed = world.createEntity().addComponent(Interactable, { kind: 'seed', id: seedId, radius: 5 });
     seed.getVectorView(Interactable, 'worldPos').set([0, 1, -0.3]);
-    const held: Probe = { heard, captions };
+    const held: Probe = { heard, captions, isTuned: false };
+    core.bus.on('room:tuned', () => void (held.isTuned = true));
     return held;
   }, SEED_ID);
+  // The app's garden tunes the room when the bed lands (T-128d): the ripple's captions go first, one caption at a
+  // time, and the hand hint would wait behind them.
+  await page.waitForFunction((p) => p.isTuned && p.captions.shown === null, probe, { timeout: 20_000 });
   await xrFrames(page, 3);
 
   // The right hand picks the seed up.

@@ -33,6 +33,7 @@ interface Device {
 type Core = typeof import('../../src/core/index');
 type Components = typeof import('../../src/core/components');
 type Ui = typeof import('../../src/ui/index');
+type Render = typeof import('../../src/render/index');
 /** IWSDK 1.0.1 puts its dev runtime on the page in a dev build; the app's world is a field of it. */
 interface DevPage {
   FRAMEWORK_MCP_RUNTIME: { world: import('@iwsdk/core').World };
@@ -48,6 +49,10 @@ interface CaptionProbe {
   info: { render: { calls: number; triangles: number } };
   raise(): void;
   set(patch: Partial<ReturnType<Core['settings']['get']>>): void;
+  /** The session's own tuning ripple and its captions are over (T-142; it runs from T-128d on). */
+  quiet(): boolean;
+  /** Turns frustum culling off for every mesh of the scene. */
+  noCull(): void;
 }
 
 const device = (page: Page) =>
@@ -354,16 +359,30 @@ test('TC-E2E-11 a caption is drawn in the scene and stays inside 25 by 20 degree
       const expiresAt = core.clock.now() + 50_000;
       world.createEntity().addComponent(Caption, { key: 'rippleCeiling', expiresAt });
     };
+    // A private field of TuningRippleSystem: its renderer's quads.
+    const renderUrl = '/src/render/index.ts';
+    const render = (await import(/* @vite-ignore */ renderUrl)) as Render;
+    const { ripple } = world.getSystem(render.TuningRippleSystem) as unknown as {
+      ripple: { meshes: readonly { visible: boolean }[] };
+    };
+    const captions = world.getSystem(ui.CaptionSystem) as CaptionProbe['captions'];
     const held: CaptionProbe = {
-      captions: world.getSystem(ui.CaptionSystem) as CaptionProbe['captions'],
+      captions,
       mesh: world.scene.getObjectByName('caption') as unknown as CaptionProbe['mesh'],
       info: world.renderer.info,
       raise,
       set: (patch) => core.settings.set(patch),
+      quiet: () => captions.shown === null && !ripple.meshes.some((mesh) => mesh.visible),
+      noCull: () => world.scene.traverse((object) => void (object.frustumCulled = false)),
     };
     return held;
   });
   await xrFrames(page, 2);
+  // The app's garden tunes the room at the bed's placement: its ripple and captions go first (T-128d).
+  await page.waitForFunction((p) => p.quiet(), probe, { timeout: 20_000 });
+  // Every mesh drawn whenever it is visible: the head turns between the two counts, and a mesh of the live garden
+  // near the edge of the emulated view (the Listen orb) would leave the count as the caption joins it.
+  await probe.evaluate((p) => p.noCull());
   const before = await probe.evaluate((p) => ({ ...p.info.render }));
   await probe.evaluate((p) => p.raise());
   await page.waitForFunction((p) => p.captions.shown === 'rippleCeiling', probe);

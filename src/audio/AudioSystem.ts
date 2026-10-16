@@ -1,12 +1,17 @@
-// The one audio file that loads core/ at run time: it makes the engine and wires it to the events core declares
-// (API_SPEC §2). Not wired yet: room:bedPlaced, room:signature, garden:changed, garden:removed, garden:grown
-// and the per-frame listener pose. They need the bed entity and the frame loop and join here with the
-// integration task (T-128).
+// The one audio file that loads core/ and the SDK at run time: it makes the engine and wires it to the events
+// core declares (API_SPEC §2) and to Listen mode (T-148), and GardenAudioSystem (T-128d) wires it to the garden,
+// the room, the bed and the frame. Not wired yet: garden:removed and garden:grown, whose sounds are T-164's.
+import { createSystem, Types, type Entity } from '@iwsdk/core';
+
+import { BedAnchor } from '../core/components.js';
 import { bus, log, settings } from '../core/index.js';
 
 import { Engine, type AudioEngine } from './AudioEngine.js';
 
 import type { EventMap, Settings } from '../core/index.js';
+import type { Plant } from '../garden/index.js';
+
+const NO_PLANTS: readonly Plant[] = Object.freeze([]);
 
 /** The app's audio engine, following the user's settings and the session. Call it once; `init()` it in the Enter gesture. */
 export function createAudioEngine(): AudioEngine {
@@ -39,4 +44,79 @@ export function createAudioEngine(): AudioEngine {
   });
 
   return engine;
+}
+
+/**
+ * The engine in the frame and on the garden's events (LLD §3.2, priority 40; API_SPEC §1.10 rules 4 and 11).
+ * configData `engine`. Not named AudioSystem: IWSDK registers a system of that name. Nothing is synced before
+ * the session's `room:signature`: the engine's own tuning is C major pentatonic, and a restored garden must not
+ * be heard in it first. From the signature on, the plants follow every `garden:changed` and `room:bedPlaced`
+ * (the engine diffs); a bed moved with no event (an anchor re-read after a recentre or a pause) is synced when
+ * its `matrixWorld` differs from the pose of the last sync. Each frame the listener is the head.
+ */
+export class GardenAudioSystem extends createSystem(
+  { beds: { required: [BedAnchor] } },
+  { engine: { type: Types.Object, default: null } },
+) {
+  private engine!: AudioEngine;
+  private plants: readonly Plant[] = NO_PLANTS;
+  /** The bed: the entity that carries BedAnchor, while one does (rule 5). */
+  private bed: Entity | null = null;
+  /** The bed's pose at the last sync. Kept: at xr:sessionEnd BedAnchor has already gone. */
+  private readonly syncedPose = new Float64Array(16);
+  /** This session has its signature. */
+  private isTuned = false;
+
+  override init(): void {
+    this.engine = this.config.engine.value as AudioEngine;
+    const { beds } = this.queries;
+    this.cleanupFuncs.push(
+      // `true`: a bed placed before this system was registered counts too
+      beds.subscribe('qualify', (entity) => void (this.bed = entity), true),
+      beds.subscribe('disqualify', (entity) => {
+        if (this.bed === entity) this.bed = null; // Re-place: the garden sounds from its old place meanwhile
+      }),
+      bus.on('room:signature', ({ signature }) => {
+        this.engine.setSignature(signature); // tuned first, then the plants: none is heard in the old key
+        this.isTuned = true;
+        this.sync();
+      }),
+      bus.on('garden:changed', ({ state }) => {
+        this.plants = state.plants;
+        if (this.isTuned) this.sync();
+      }),
+      bus.on('room:bedPlaced', () => {
+        if (this.isTuned) this.sync();
+      }),
+      // The next session must not start with this one's plants at this one's place.
+      bus.on('xr:sessionEnd', () => {
+        this.isTuned = false;
+        this.engine.syncPlants(NO_PLANTS, this.syncedPose);
+      }),
+      bus.on('garden:seedBack', ({ reason }) => {
+        if (reason === 'offBed') this.engine.ui('bump'); // UX §7: a seed let go off the bed
+      }),
+    );
+  }
+
+  override update(): void {
+    // The head, as every system takes it (LLD §3.2): the camera gets the pose only when the frame is rendered.
+    const head = this.xrManager.isPresenting ? this.player.head : this.camera;
+    this.engine.setListenerPose(head.matrixWorld.elements);
+    const pose = this.bed?.object3D?.matrixWorld.elements;
+    if (this.isTuned && pose !== undefined && !isSamePose(pose, this.syncedPose)) this.sync();
+  }
+
+  /** The plants to the engine at the bed's pose: on a change only. */
+  private sync(): void {
+    const pose = this.bed?.object3D?.matrixWorld.elements;
+    if (pose !== undefined) this.syncedPose.set(pose);
+    this.engine.syncPlants(this.plants, this.syncedPose);
+  }
+}
+
+/** The 16 numbers of a pose against a kept copy: no allocation. */
+function isSamePose(now: ArrayLike<number>, kept: Float64Array): boolean {
+  for (let i = 0; i < 16; i++) if (now[i] !== kept[i]) return false;
+  return true;
 }

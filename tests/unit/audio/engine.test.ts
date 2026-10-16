@@ -330,6 +330,17 @@ describe('scheduling (FR-MUS-03, TC-AUD-02)', () => {
     }
   });
 
+  it('stats.triggers counts the notes started since init(): one per plant on each step reached, none skipped late', async () => {
+    const { engine, run, stall } = await start();
+    expect(engine.stats.triggers).toBe(0);
+    engine.syncPlants([plant('a', 'pluck', 2, 3), plant('b', 'bell', 0, 3), plant('c', 'pad', 4, 9)], BED);
+    run(2 * BAR_S);
+    expect(engine.stats.triggers).toBe(6); // three plants, two bars
+    stall(BAR_S); // a stalled main thread: the steps it finds long after their time are skipped
+    run(TICK_S);
+    expect(engine.stats.triggers).toBe(6);
+  });
+
   it('no step is scheduled twice or missed, also when syncPlants runs on every tick', async () => {
     const { ctx, engine, run } = await start();
     const plants = sixteenPlucks();

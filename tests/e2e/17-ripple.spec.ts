@@ -1,8 +1,7 @@
 // T-142, the tuning ripple's visual and caption half (FR-ROOM-12, LLD §5.8; TC-E2E-13 in part): in the emulator's
-// `table` room RoomSystem places the bed and emits room:features for real. The garden is not constructed in the
-// app yet, so this test stands in for GardenSystem: it answers room:features with room:signature, computed by
-// garden's own roomSignature from those features, as GardenSystem does (API_SPEC §1.10 rule 4). The sweeps, the
-// captions and room:tuned are then the app's own. In the `none` room the signature is Wanderer: one ripple on the
+// `table` room RoomSystem places the bed and emits room:features for real, and the app's GardenSystem answers
+// with room:signature (API_SPEC §1.10 rule 4, T-128d). The sweeps, the captions and room:tuned are the app's
+// own. In the `none` room the signature is Wanderer: one ripple on the
 // bed, no surface swept, no caption.
 // The times are asserted on the app's own frame clock, the one the ripple runs on: each step must come in the
 // first frame at or after its time. The page's own clock is only logged: on a loaded machine a software-rendered
@@ -18,7 +17,6 @@ import { enterXR, openApp, readRoom, WORLD_READY_MS } from './support/iwer';
 
 type Core = typeof import('../../src/core/index');
 type Components = typeof import('../../src/core/components');
-type Garden = typeof import('../../src/garden/index');
 type Render = typeof import('../../src/render/index');
 type Ui = typeof import('../../src/ui/index');
 
@@ -75,7 +73,6 @@ async function probeRipple(page: Page): Promise<JSHandle<RippleProbe>> {
     const load = <T>(url: string) => import(/* @vite-ignore */ url) as Promise<T>;
     const core = await load<Core>('/src/core/index.ts');
     const { Caption } = await load<Components>('/src/core/components.ts');
-    const garden = await load<Garden>('/src/garden/index.ts');
     const render = await load<Render>('/src/render/index.ts');
     const ui = await load<Ui>('/src/ui/index.ts');
     const { world } = window.__roomsong!;
@@ -129,12 +126,11 @@ async function probeRipple(page: Page): Promise<JSHandle<RippleProbe>> {
       start(plan, nowMs);
     };
     core.bus.on('room:placementLevel', ({ level }) => probe.levels.push(level));
-    // GardenSystem's part, which the app does not construct yet (T-128d). RoomSystem (priority 10) emits it,
-    // before TuningRippleSystem's update in the same frame.
-    core.bus.on('room:features', ({ features }) => {
+    // RoomSystem (priority 10) emits it, before TuningRippleSystem's update in the same frame; the app's
+    // GardenSystem answers it with room:signature (T-128d).
+    core.bus.on('room:features', () => {
       probe.featuresFrame = probe.appFrames.length;
       probe.featuresAtMs = performance.now();
-      core.bus.emit('room:signature', { signature: garden.roomSignature(features), starterSeeds: true });
     });
     core.bus.on('room:tuned', () => probe.tunedMs.push(frameMs));
     world.queryManager

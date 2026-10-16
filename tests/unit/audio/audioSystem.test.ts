@@ -31,7 +31,7 @@ const send = (): FakeNode => (ctx.of('convolver')[0] as FakeNode).inputs[0] as F
 
 describe('audio/index.ts', () => {
   it('exports the public surface, and nothing else', () => {
-    expect(Object.keys(audio).sort()).toEqual(['VOICE_CAP', 'createAudioEngine']);
+    expect(Object.keys(audio).sort()).toEqual(['GardenAudioSystem', 'VOICE_CAP', 'createAudioEngine']);
     expect(audio.VOICE_CAP).toBe(24);
   });
 

@@ -95,12 +95,12 @@ async function probeSession(page: Page): Promise<JSHandle<SessionProbe>> {
     let startedAtMs = NaN;
     core.bus.on('xr:sessionStart', () => (startedAtMs = performance.now()));
     const raised: SessionProbe['raised'] = [];
-    world.queryManager.registerQuery({ required: [Caption] }).subscribe('qualify', (entity) =>
-      raised.push({
-        key: entity.getValue(Caption, 'key') ?? '',
-        afterStartMs: performance.now() - startedAtMs,
-      }),
-    );
+    world.queryManager.registerQuery({ required: [Caption] }).subscribe('qualify', (entity) => {
+      const key = entity.getValue(Caption, 'key') ?? '';
+      // The tuning ripple's own captions (T-142) come in every session the garden tunes (T-128d): not the wiring's.
+      if (key.startsWith('ripple')) return;
+      raised.push({ key, afterStartMs: performance.now() - startedAtMs });
+    });
     const probe: SessionProbe = {
       heard,
       captions,
@@ -396,7 +396,8 @@ test('a4 the Enter click starts the session and the sound: one audio context, ma
   expect(log).toContain('info app audio started');
   expect(log.filter((line) => line.includes(NO_SOUND))).toEqual([]);
   expect(await probe.evaluate((p) => p.raised)).toEqual([]);
-  expect(await probe.evaluate((p) => p.captions.shown)).toBeNull();
+  // A tuning-ripple caption may be up meanwhile (the garden tunes the room, T-128d); "Sound unavailable" is not.
+  expect(await probe.evaluate((p) => p.captions.shown)).not.toBe(NO_SOUND);
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
 });

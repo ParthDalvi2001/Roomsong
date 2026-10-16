@@ -116,15 +116,35 @@ describe('the systems start() registers (API_SPEC §1.10, the priorities table)'
       ['PerfSystem', '-100', '{ guard, engine }'],
       ['RoomSystem', '10'],
       ['HandSystem', '20'],
+      ['GardenAudioSystem', '40', '{ engine }'], // T-128d
       ['SeedSystem', '49', '{ guard }'], // T-127
-      ['BedRenderSystem', '50', '{ guard, bed: room.bed.object3D }'],
+      ['BedRenderSystem', '50', '{ guard, engine, bed: room.bed.object3D }'],
       ['HaloSystem', '52', '{ guard, engine, bed: room.bed.object3D }'], // T-148
-      ['TuningRippleSystem', '55', '{ guard, bed: room.bed.object3D }'],
+      ['TuningRippleSystem', '55', '{ guard, bed: room.bed.object3D }'], // T-142
       ['CaptionSystem', '60'],
+      ['PanelSystem', '62', '{ garden, room }'], // T-151, with the app's own garden and room (T-128d)
     ]);
     expect(source.indexOf('breakOtherSystems(world);')).toBeGreaterThan(
       source.lastIndexOf('register(world,'),
     );
+  });
+
+  it('the garden: made before the first system, loaded after the last and before the session is followed (A5, A7)', () => {
+    // GardenSystem subscribes in its constructor, so its handlers run before every system's (LLD §3.2); load()
+    // emits the first garden:changed, which every system must hear, and Enter must not be usable before it.
+    const source = readFileSync(new URL('../../src/app.ts', import.meta.url), 'utf8');
+    const at = (text: string): number => {
+      const index = source.indexOf(text);
+      expect(index, text).toBeGreaterThan(-1);
+      return index;
+    };
+    expect(at('const garden = new GardenSystem();')).toBeLessThan(at('register(world,'));
+    expect(at('garden.load(newGarden(clock.now(), settings.get()));')).toBeGreaterThan(
+      at('breakOtherSystems(world);'),
+    );
+    expect(at('garden.load(')).toBeLessThan(at('followSession(world,'));
+    expect(at('garden.load(')).toBeLessThan(at('landing.ready('));
+    expect(at('window.__roomsong = { world, engine, garden };')).toBeGreaterThan(0); // rule 14, dev only
   });
 });
 

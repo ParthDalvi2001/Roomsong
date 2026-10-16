@@ -5,9 +5,10 @@
 import { World, XRInputVisualAdapter } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 
-import { createAudioEngine, type AudioEngine } from './audio/index.js';
+import { createAudioEngine, GardenAudioSystem, type AudioEngine } from './audio/index.js';
 import { Caption } from './core/components.js';
-import { bus, clock, flags, log, type StringKey } from './core/index.js';
+import { bus, clock, flags, log, settings, type StringKey } from './core/index.js';
+import { GardenSystem, newGarden } from './garden/index.js';
 import { HandSystem } from './hands/index.js';
 import {
   BedRenderSystem,
@@ -19,7 +20,7 @@ import {
   TuningRippleSystem,
 } from './render/index.js';
 import { RoomSystem } from './room/index.js';
-import { CaptionSystem } from './ui/index.js';
+import { CaptionSystem, PanelSystem } from './ui/index.js';
 
 import type { Landing } from './ui/Landing.js';
 
@@ -47,7 +48,7 @@ const NO_SOUND: StringKey = 'E_AUDIO_CONTEXT';
 declare global {
   interface Window {
     /** For browser tests, with `Flags.dev` only (API_SPEC §1.10 rule 14). Nothing in src/ reads it. */
-    __roomsong?: { world: World; engine: AudioEngine };
+    __roomsong?: { world: World; engine: AudioEngine; garden: GardenSystem };
   }
 }
 
@@ -244,27 +245,31 @@ export async function start(landing: Landing): Promise<void> {
   );
   const engine = createAudioEngine();
   const guard = new FlashGuard();
+  // Before any system: it subscribes to the bus in its constructor, so its handlers run first (LLD §3.2).
+  const garden = new GardenSystem();
   const xr = world.renderer.xr;
   // NFR-PERF-09. Set once: Three.js keeps the value and applies it at each session start. Its own default is 1,
   // the strongest.
   xr.setFoveation(FOVEATION_MEDIUM);
 
-  // In ascending priority, with the numbers of API_SPEC §1.10. A system subscribes to the bus in `init()`, so
-  // every system is registered before the first `xr:sessionStart` can be emitted.
+  // In ascending priority, with the numbers of API_SPEC §1.10, one line each. A system subscribes to the bus in
+  // `init()`, so every system is registered before the first `xr:sessionStart` can be emitted.
   register(world, PerfSystem, -100, { guard, engine });
   // The room before the hands: it moves the bed before hands reads its pose, in the frame and on the bus.
   const room = register(world, RoomSystem, 10);
   register(world, HandSystem, 20);
+  register(world, GardenAudioSystem, 40, { engine });
   register(world, SeedSystem, 49, { guard });
   // Everything drawn on the bed is a child of the bed entity's Object3D (API_SPEC §1.10 rule 5).
-  register(world, BedRenderSystem, 50, { guard, bed: room.bed.object3D });
+  register(world, BedRenderSystem, 50, { guard, engine, bed: room.bed.object3D });
   register(world, HaloSystem, 52, { guard, engine, bed: room.bed.object3D }); // Listen mode (T-148)
   register(world, TuningRippleSystem, 55, { guard, bed: room.bed.object3D });
   register(world, CaptionSystem, 60);
-  // PanelSystem (62) is not registered yet: it takes `garden` and `room`, and the step that first holds both
-  // (T-128d, d1) registers it here, after CaptionSystem.
+  register(world, PanelSystem, 62, { garden, room });
   breakOtherSystems(world);
-  if (flags.dev) window.__roomsong = { world, engine };
+  if (flags.dev) window.__roomsong = { world, engine, garden };
+  // A7: every system hears the first garden:changed, and before Enter is usable (the saved garden joins in T-128e).
+  garden.load(newGarden(clock.now(), settings.get()));
 
   const sound: SoundState = { failed: true };
   followSession(world, engine, landing, sound);

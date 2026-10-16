@@ -24,6 +24,7 @@ type Core = typeof import('../../src/core/index');
 type Components = typeof import('../../src/core/components');
 type Hands = typeof import('../../src/hands/index');
 type Render = typeof import('../../src/render/index');
+type Ui = typeof import('../../src/ui/index');
 type Hand = 'left' | 'right';
 type Vec3 = { x: number; y: number; z: number };
 type Cell = { ring: number; step: number };
@@ -400,8 +401,20 @@ test('T-146 the undo petal is drawn by the app renderer: its draw call while it 
       session.requestAnimationFrame(tick);
     };
     session.requestAnimationFrame(tick);
-    return { samples, petals, clock };
+    // The session's own tuning ripple and its captions (T-142; the app's garden tunes the room, T-128d) change
+    // what is drawn in its first seconds: the counts are taken after them. Private: the ripple's quads.
+    const ui = await load<Ui>('/src/ui/index.ts');
+    const captions = world.getSystem(ui.CaptionSystem)!;
+    const { ripple } = world.getSystem(render.TuningRippleSystem) as unknown as {
+      ripple: { meshes: readonly { visible: boolean }[] };
+    };
+    const quiet = () => captions.shown === null && !ripple.meshes.some((mesh) => mesh.visible);
+    // Every mesh drawn whenever it is visible: one near the edge of the emulated view (the Listen orb, T-148)
+    // would drop in and out of the count between two samples.
+    world.scene.traverse((object) => void (object.frustumCulled = false));
+    return { samples, petals, clock, quiet };
   }, BED);
+  await page.waitForFunction((s) => s.quiet(), stage, { timeout: 20_000 });
   /** The first `perf:sample` taken from now on: the draw calls and triangles of one frame. */
   const nextSample = () =>
     stage.evaluate(

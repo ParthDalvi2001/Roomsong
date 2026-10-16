@@ -3,8 +3,8 @@
 // hands, in the table room where the app places the bed itself: palms out → listen:enter, the dim dome and the
 // aurora halo drawn by the app's renderer (its own perf:sample), a pinch → listen:exit and both gone; a press on
 // the Listen orb → listen:enter, the palm to the face → the wake; and the 10-minute end on Playwright's clock.
-// The garden is a stand-in the test makes, the app's own GardenSystem class: src/app.ts makes the app's one with
-// T-128d (API_SPEC §1.10 rule 14). Vines (Could C4) are not built, so there is no vines entity to look for.
+// The garden is the app's own GardenSystem (T-128d). Vines (Could C4) are not built, so there is no vines entity
+// to look for.
 // Emulator result (E): IWER's hands are rigid; whether a real hand's palms out reads as this pose, how the dome
 // looks over real passthrough and how the halo feels are headset questions.
 import { expect, test, type JSHandle, type Page } from '@playwright/test';
@@ -18,7 +18,6 @@ const DOME_DIM = 0.6;
 
 type Core = typeof import('../../src/core/index');
 type Components = typeof import('../../src/core/components');
-type Garden = typeof import('../../src/garden/index');
 type Hands = typeof import('../../src/hands/index');
 type Render = typeof import('../../src/render/index');
 type Ui = typeof import('../../src/ui/index');
@@ -69,13 +68,12 @@ function watch(page: Page) {
   return errors;
 }
 
-/** Listens on the app's bus and makes the stand-in garden. Before the session, so it tunes with the room. */
+/** Listens on the app's bus, before the session: the app's garden tunes with the room. */
 function stage(page: Page): Promise<JSHandle<Probe>> {
   return page.evaluateHandle(async () => {
     const load = <T>(url: string) => import(/* @vite-ignore */ url) as Promise<T>;
     const core = await load<Core>('/src/core/index.ts');
     const { Interactable } = await load<Components>('/src/core/components.ts');
-    const garden = await load<Garden>('/src/garden/index.ts');
     const hands = await load<Hands>('/src/hands/index.ts');
     const render = await load<Render>('/src/render/index.ts');
     const ui = await load<Ui>('/src/ui/index.ts');
@@ -87,15 +85,23 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
     if (system === undefined) throw new Error('src/app.ts did not register HaloSystem');
     const captions = world.getSystem(ui.CaptionSystem)!;
 
-    // Subscribed before the garden: a handler runs in subscription order, so each gesture is noted before the
-    // listen:* event the garden emits from inside it.
+    // Noted as each is emitted, before any handler runs: the app's garden subscribed first, and it emits the
+    // listen:* event from inside its handler of the gesture, so a listener would hear the gesture second.
     const heard: Heard[] = [];
     const note = (name: string, more: Partial<Heard> = {}) =>
       heard.push({ name, atMs: core.clock.now(), ...more });
-    for (const name of ['gesture:palmsOut', 'gesture:wake', 'gesture:pinchStart', 'listen:enter'] as const) {
-      core.bus.on(name, () => note(name));
-    }
-    core.bus.on('listen:exit', ({ timedOut }) => note('listen:exit', { timedOut }));
+    const noted = new Set([
+      'gesture:palmsOut',
+      'gesture:wake',
+      'gesture:pinchStart',
+      'listen:enter',
+      'listen:exit',
+    ]);
+    const emit = core.bus.emit.bind(core.bus);
+    core.bus.emit = ((type: string, payload: { timedOut: boolean }) => {
+      if (noted.has(type)) note(type, type === 'listen:exit' ? { timedOut: payload.timedOut } : {});
+      emit(type as never, payload as never);
+    }) as typeof core.bus.emit;
     const samples: Probe['samples'] = [];
     core.bus.on('perf:sample', ({ draws, tris, maxFlashPerS }) =>
       samples.push({ draws, tris, maxFlashPerS }),
@@ -134,7 +140,6 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
     core.bus.on('target:hover', ({ hand, target }) => {
       if (hand === 'right') probe.isOrbHovered = target?.kind === 'orb';
     });
-    new garden.GardenSystem().load(garden.newGarden(core.clock.now(), core.settings.get()));
     return probe;
   });
 }
@@ -219,7 +224,7 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
   const errors = watch(page);
   const offHost = await openApp(page, readRoom('table'));
   const probe = await inSession(page);
-  // The stand-in garden's signature starts the tuning ripple (T-142); its quads are drawn for 4 s, so the counts
+  // The garden's signature starts the tuning ripple (T-142); its quads are drawn for 4 s, so the counts
   // start after room:tuned.
   await page.waitForFunction((p) => p.isTuned, probe, { timeout: 10_000 });
   const before = await nextSample(probe);

@@ -17,6 +17,13 @@ export class FakeEntity {
   readonly added: [unknown, Record<string, unknown>][] = [];
   private readonly views = new Map<unknown, Map<string, Float32Array>>();
   object3D: { matrixWorld: Matrix4 } | undefined;
+  /** False once destroyed: elics then drops its components (and tells the queries). */
+  active = true;
+
+  destroy(): void {
+    this.active = false;
+    this.data.clear();
+  }
 
   addComponent(component: unknown, values: Record<string, unknown> = {}): this {
     this.data.set(component, { ...values });

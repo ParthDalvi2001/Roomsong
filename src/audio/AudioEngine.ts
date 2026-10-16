@@ -87,8 +87,11 @@ export interface AudioEngine {
   resume(): Promise<void>;
   /** Audio-clock based. */
   readonly clock: { now(): number; barPhase(): number; stepIndex(): number };
-  /** `voices` ≤ VOICE_CAP, always. `cpuEstimate`: main-thread ms of one scheduler tick, a moving average. */
-  readonly stats: { voices: number; cpuEstimate: number };
+  /**
+   * `voices` ≤ VOICE_CAP, always. `cpuEstimate`: main-thread ms of one scheduler tick, a moving average.
+   * `triggers`: the notes the scheduler has started since init() (T-128d), for tests: `voices` is a sample.
+   */
+  readonly stats: { voices: number; cpuEstimate: number; triggers: number };
 }
 
 /** One plant as the tick needs it: everything worked out on sync, so a trigger computes nothing. */
@@ -138,7 +141,7 @@ export class Engine implements AudioEngine {
     barPhase: (): number => this.g?.scheduler.barPhase() ?? 0,
     stepIndex: (): number => this.g?.scheduler.stepIndex() ?? 0,
   };
-  readonly stats = { voices: 0, cpuEstimate: 0 };
+  readonly stats = { voices: 0, cpuEstimate: 0, triggers: 0 };
 
   private g: Graph | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -333,6 +336,7 @@ export class Engine implements AudioEngine {
     // after it at once would be a burst.
     if (g === null || time < g.ctx.currentTime - LATE_DROP_S) return;
     const list = this.steps[step] as PlantRecord[];
+    this.stats.triggers += list.length;
     for (let i = 0; i < list.length; i++) {
       const r = list[i] as PlantRecord;
       g.pool.play(r.voice, time, r.params, r.x, r.y, r.z, r);

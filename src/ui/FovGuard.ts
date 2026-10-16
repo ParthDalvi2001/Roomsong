@@ -47,6 +47,9 @@ function toHeadSpace(head: Mat4, p: Vec3): void {
  * too. A point beside or behind the head comes to the nearer side edge at its own elevation.
  * `head` is the head's world matrix (THREE.Matrix4.elements, no scale). Returns whether the direction had to change.
  * Creates no objects. Per frame, pass a THREE.Vector3 as `out`: V8 may box a number written to a plain object.
+ * Every caller passes `wanted` and `out` with plain x, y, z fields, never an accessor object (an ArrayVec3, IWSDK's
+ * SyncedVector3): one accessor shape at any call site makes V8 box the numbers at all of them (24 bytes a call in
+ * Chromium with the panel open and a caption up, T-128d review).
  */
 export function clampToFov(head: Mat4, wanted: Vec3, element: Readonly<FovElement>, out: Vec3): boolean {
   toHeadSpace(head, wanted);

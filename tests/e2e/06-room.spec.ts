@@ -3,8 +3,8 @@
 // Enter starts a session; RoomSystem places the bed in the emulator's room, or brings it back from its anchor,
 // reads the room once and says both on the bus. The events are read from the app's own bus (the dev server's
 // /src/core/index.ts), the bed from `window.__roomsong.world`.
-// The app has no GardenSystem before T-128d: nothing answers `room:features`, and where a test needs a saved
-// anchor pair it plays the garden's part itself, with a `garden:changed` before Enter.
+// The app's own GardenSystem answers `room:features` (T-128d). Where a test needs a saved anchor pair it gives
+// it to that garden before Enter with a `room:anchored`, as an earlier session would have (no save loads yet).
 // Emulator results (E). IWER's planes are not a real room, its hit-test meets only the fixture's planes, and it
 // restores every anchor it knows in the next frame: this says nothing about a headset (T-129).
 import { expect, test, type JSHandle, type Page } from '@playwright/test';
@@ -21,7 +21,6 @@ import {
 
 type Core = typeof import('../../src/core/index');
 type Components = typeof import('../../src/core/components');
-type Garden = typeof import('../../src/garden/index');
 type RoomModule = typeof import('../../src/room/index');
 type Ui = typeof import('../../src/ui/index');
 type PerfSample = import('../../src/core/index').EventMap['perf:sample'];
@@ -63,7 +62,7 @@ interface RoomProbe {
   placedFrames: { frame: number; updateMs: number; scriptMs: number }[];
   /** `RoomSystem.update` since `reset`: how many, and their time together. */
   cost: { frames: number; ms: number };
-  samples: PerfSample[];
+  samples: (PerfSample & { frame: number })[];
   frame(): number;
   bed(): BedNow;
   /** How many entities carry BedAnchor. */
@@ -93,7 +92,8 @@ function watch(page: Page): string[] {
 
 /**
  * Waits for the world, then listens in the page. Made before Enter: placement starts with the session's first
- * frame. `saved`: the anchor pair a saved garden would hold, said with a `garden:changed` as GardenSystem will.
+ * frame. `saved`: the anchor pair a saved garden would hold, given to the app's own garden as an earlier
+ * session's `room:anchored` would (the saved garden itself is loaded from T-128e on).
  */
 async function watchRoom(
   page: Page,
@@ -105,13 +105,15 @@ async function watchRoom(
     const load = (url: string): Promise<unknown> => import(/* @vite-ignore */ url);
     const core = (await load('/src/core/index.ts')) as Core;
     const { BedAnchor, Caption } = (await load('/src/core/components.ts')) as Components;
-    const garden = (await load('/src/garden/index.ts')) as Garden;
     const room = (await load('/src/room/index.ts')) as RoomModule;
     const ui = (await load('/src/ui/index.ts')) as Ui;
     const { world } = window.__roomsong!;
     const system = world.getSystem(room.RoomSystem)!;
     const captions = world.getSystem(ui.CaptionSystem)!;
     const object = system.bed.object3D!;
+    // Before the probe listens: the app's GardenSystem keeps the pair (setAnchor) and says so with garden:changed,
+    // which RoomSystem reads.
+    if (saved !== null) core.bus.emit('room:anchored', saved);
 
     let frame = 0;
     let startedMs = 0;
@@ -120,7 +122,8 @@ async function watchRoom(
       isPlaced: system.bed.hasComponent(BedAnchor),
       source: system.bed.hasComponent(BedAnchor) ? system.bed.getValue(BedAnchor, 'source') : null,
       isShown: object.visible,
-      hasMarkers: object.children.some((child) => 'isInstancedMesh' in child && child.visible),
+      // The first instanced mesh on the bed is BedRenderer's markers; the plants' come after it.
+      hasMarkers: object.children.find((child) => 'isInstancedMesh' in child)?.visible === true,
       pose: Array.from(object.matrixWorld.elements),
     });
     const heard: Heard[] = [];
@@ -151,8 +154,9 @@ async function watchRoom(
     const captionLog: RoomProbe['captionLog'] = [];
     raised.subscribe('qualify', (entity) => captionLog.push({ key: entity.getValue(Caption, 'key'), frame }));
     raised.subscribe('disqualify', () => captionLog.push({ key: null, frame }));
-    const samples: PerfSample[] = [];
-    core.bus.on('perf:sample', (sample) => samples.push({ ...sample }));
+    // With the frame it was taken on: what is drawn changes from frame to frame (the garden, the ripple).
+    const samples: RoomProbe['samples'] = [];
+    core.bus.on('perf:sample', (sample) => samples.push({ ...sample, frame }));
 
     // A frame: IWSDK's loop calls world.update, then renders, and the scene's onAfterRender ends the render.
     const update = world.update.bind(world);
@@ -185,10 +189,6 @@ async function watchRoom(
       cost.frames++;
     };
 
-    if (saved !== null) {
-      const state = garden.setAnchor(garden.newGarden(Date.now(), core.settings.get()), saved);
-      core.bus.emit('garden:changed', { state, diff: { added: [], removed: [], changed: [] } });
-    }
     const probe: RoomProbe = {
       room: system,
       heard,
@@ -363,14 +363,18 @@ for (const { room, flags, levels, level, heightM, source, features } of CASES) {
         before: p.draws[frame - 1],
         after: p.draws[frame],
         sample,
-        now: p.draws[p.frame()],
+        now: p.draws[sample.frame],
       };
     }, placed.frame);
-    expect([2 * numbers.eyes, 3 * numbers.eyes]).toContain(numbers.after! - numbers.before!);
-    expect(numbers.sample.draws).toBe(numbers.now); // perf:sample reports the same count
-    // The markers' one fade-in at the placement is the only luminance change (UX §9.2), through the page's guard.
+    // At least the bed's two in each eye: since T-128d the same frame also brings what the visit puts on the bed
+    // (the starter seeds' orb, the tide fading in), the Listen orb (T-148) and the tuning ripple, by frame timing.
+    expect(numbers.after! - numbers.before!).toBeGreaterThanOrEqual(2 * numbers.eyes);
+    expect(placed.bed).toMatchObject({ isShown: true, hasMarkers: true });
+    expect(numbers.sample.draws).toBe(numbers.now); // perf:sample reports the count of the frame it was taken on
+    // Through the page's guard, inside the cap (FR-UI-11). The markers' fade-in at the placement is one change;
+    // since T-128d the tide's fade-in and the tuning ripple's sweeps come in the same seconds.
     const flashes = await probe.evaluate((p) => p.samples.map((sample) => sample.maxFlashPerS));
-    expect(Math.max(...flashes)).toBeLessThanOrEqual(1);
+    expect(Math.max(...flashes)).toBeLessThanOrEqual(3);
 
     // The numbers: the placed frame, and RoomSystem.update once the bed is placed.
     await xrFrames(page, 200);
