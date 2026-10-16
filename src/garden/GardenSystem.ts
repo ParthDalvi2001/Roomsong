@@ -198,6 +198,9 @@ export class GardenSystem {
     if (this.listenEnd !== null) return; // PRD §3.4: in Listen nothing but the wake is taken
     if (!this.isVisited || this.out !== null || seed === undefined) return;
     this.out = { seedId: seed.id, carrier: null };
+    // BUG-006's check reads the hand's latest pinchStart; a seed planted with none (the gaze, T-160) must not meet
+    // a pinch from before a New garden.
+    this.pinchedIn.delete(hand);
     bus.emit('garden:seedOut', { seed, hand });
   }
 

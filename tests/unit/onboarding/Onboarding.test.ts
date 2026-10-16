@@ -74,9 +74,11 @@ describe('Onboarding: the start (UX §3.3 step 0, D-053)', () => {
     expect(m.step).toBe('more');
   });
 
-  it('gaze dwell (no seed path until T-160): the gates are skipped, at room:tuned or when it is turned on', () => {
+  it('gaze dwell (T-160): straight to the plant step, then past the pull and the drag; also when turned on', () => {
     const m = at('tune');
     m.tuned(true, true);
+    expect(m.step).toBe('plant'); // no hand to open
+    m.changed(1); // a look planted the seed
     expect(m.step).toBe('free');
     m.tick(T0 + LISTEN_AFTER_MS);
     expect(m.step).toBe('listen'); // Listen is still taught

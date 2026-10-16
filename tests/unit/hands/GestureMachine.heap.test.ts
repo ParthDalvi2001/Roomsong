@@ -38,6 +38,7 @@ describe('GestureMachine: no allocation per frame while a plant is shaped (T-146
     const context: GestureContext = {
       candidates: [{ target: { kind: 'plant', id: 'p' }, radius: 0.04, pos: { x: 0.21, y: 1.0004, z: -1 } }],
       bedPose: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, -1, 1],
+      oneHand: false,
       nearestFreeCell: (cell) => cell,
     };
     const machine = new GestureMachine('right');

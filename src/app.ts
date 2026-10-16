@@ -5,6 +5,7 @@
 import { World, XRInputVisualAdapter, type Entity } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 
+import { BeatRingSystem, GazeDwellSystem } from './access/index.js';
 import { createAudioEngine, GardenAudioSystem, type AudioEngine } from './audio/index.js';
 import { Caption } from './core/components.js';
 import {
@@ -418,6 +419,8 @@ export async function start(landing: Landing): Promise<void> {
   // The room before the hands: it moves the bed before hands reads its pose, in the frame and on the bus.
   const room = register(world, RoomSystem, 10);
   const hands = register(world, HandSystem, 20);
+  register(world, GazeDwellSystem, 25, { room, guard }); // gaze dwell and its reticle (T-160)
+  register(world, BeatRingSystem, 26, { guard, engine, bed: room.bed.object3D }); // the beat ring (T-160)
   register(world, OnboardingSystem, 35); // T-150: the guided first minute
   register(world, GardenAudioSystem, 40, { engine });
   register(world, SeedSystem, 49, { guard });

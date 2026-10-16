@@ -17,6 +17,7 @@ export const STRINGS = {
   onboardPalm: 'Open your hand',
   onboardPlant: 'Pinch, and plant it',
   onboardPlantClick: 'Click or tap to plant',
+  onboardPlantGaze: 'Look at a cell to plant', // gaze mode (Settings.gazeDwell): a dwell on a free cell plants (T-160)
   onboardListen: 'Rest your hands to listen',
   onboardListenClick: 'Click the orb to listen',
   // The message of a user-facing failure has its error code (ErrorCode, API_SPEC §5) as its key (LLD §8).

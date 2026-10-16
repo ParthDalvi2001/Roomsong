@@ -90,6 +90,7 @@ function rig(plants: Plant[]) {
   const context: GestureContext = {
     candidates,
     bedPose: BED,
+    oneHand: false,
     nearestFreeCell: (wanted, ignorePlantId) => nearestFreeCell(state, wanted, ignorePlantId),
   };
   const hands = (['left', 'right'] as const).map((hand) => {

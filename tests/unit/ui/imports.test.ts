@@ -68,13 +68,23 @@ describe('ui/ dependency direction (API_SPEC §1)', () => {
   });
 
   it('index.ts exports the public surface, and nothing else', () => {
-    expect(Object.keys(ui).sort()).toEqual([
-      'CaptionSystem',
-      'HintSystem', // T-150
-      'LANDING',
-      'PanelSystem',
-      'clampToFov',
-      'mountLanding',
-    ]);
+    expect(Object.keys(ui).sort()).toEqual(
+      [
+        'CaptionSystem',
+        'HintSystem', // T-150
+        'LANDING',
+        'PanelSystem',
+        'clampToFov',
+        'mountLanding',
+        // T-160, for access/: the gaze pick, the head-turn rule and the reticle's palette and distances
+        'CAPTION_TEXT_COLOUR',
+        'CUE_FILL_COLOUR',
+        'PANEL_DISTANCE_M',
+        'PANEL_INK',
+        'PANEL_MAX_FRAME_MS',
+        'gazeTarget',
+        'isHeadTurning',
+      ].sort(),
+    );
   });
 });

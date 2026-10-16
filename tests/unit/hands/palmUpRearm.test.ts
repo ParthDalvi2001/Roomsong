@@ -52,6 +52,7 @@ function rig() {
   const context: GestureContext = {
     candidates,
     bedPose: BED,
+    oneHand: false,
     nearestFreeCell: (cell, ignore) =>
       system.state === null ? cell : nearestFreeCell(system.state, cell, ignore),
   };

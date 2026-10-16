@@ -90,6 +90,7 @@ function rig(hand: Hand = 'right') {
   const context: GestureContext = {
     candidates,
     bedPose: BED,
+    oneHand: false,
     nearestFreeCell(cell, ignorePlantId) {
       garden.asked.push(cell);
       garden.ignored.push(ignorePlantId);
@@ -121,7 +122,7 @@ function rig(hand: Hand = 'right') {
     machine.update(frame, timeMs, context);
     return timeMs;
   };
-  return { step, context, candidates, garden, machine };
+  return { step, context, candidates, garden, machine, frame };
 }
 
 const types = () => seen.map((event) => event.type);
@@ -1096,6 +1097,63 @@ describe('GestureMachine: the hover (TC-HND-08, TC-HND-05, FR-HND-16)', () => {
   });
 });
 
+describe('GestureMachine: one-hand mode takes the seed off its own palm (UX §9.1, D-048, FR-UI-09)', () => {
+  /** One hand, its palm (where a delivered seed rests) at `palm` and its fingertips at `tips`. */
+  function oneHand(palm: Vec3, tips: Vec3, isOn = true) {
+    const r = rig();
+    r.context.oneHand = isOn;
+    Object.assign(r.frame.palmPos, palm);
+    r.step({ at: tips });
+    return r;
+  }
+
+  it('nothing at the fingertips and the seed on this palm: the seed is the hover, and a select carries it', () => {
+    const { step } = oneHand(SEED_AT, NOWHERE);
+    expect(lastHover()).toEqual({ name: 'target:hover', hand: 'right', target: SEED, cell: null });
+    step({ select: true });
+    expect(last()).toMatchObject({ type: 'gesture:pinchStart', hand: 'right', target: SEED });
+    step({ at: ON_BED });
+    step({ select: false });
+    expect(last()).toMatchObject({ type: 'gesture:release', gesture: 'carry', target: SEED, cell: SNAPPED });
+  });
+
+  it('a target within reach of the fingertips comes first: a plant there is the hover, never the seed', () => {
+    oneHand(SEED_AT, moved(PLANT_AT, { x: 0.039 }));
+    expect(lastHover()?.target).toEqual(PLANT);
+  });
+
+  it('a plant nearer the palm than the seed does not block the take: the palm pick looks at seeds only (D-048)', () => {
+    const r = rig();
+    r.context.oneHand = true;
+    const palm = moved(PLANT_AT, { y: 0.03 }); // 3 cm over the plant's foot
+    r.candidates[0] = { target: { ...SEED }, radius: 0.04, pos: moved(palm, { x: 0.035 }) }; // the seed 3.5 cm off
+    Object.assign(r.frame.palmPos, palm);
+    r.step({ at: NOWHERE });
+    expect(lastHover()?.target).toEqual(SEED);
+  });
+
+  it('one-hand mode off: the asking hand takes nothing off its own palm', () => {
+    oneHand(SEED_AT, NOWHERE, false);
+    expect(hovers()).toEqual([]);
+  });
+
+  it('a seed that is not on this palm (on the other hand, 4.1 cm away) is not the hover', () => {
+    oneHand(moved(SEED_AT, { x: 0.041 }), NOWHERE);
+    expect(hovers()).toEqual([]);
+  });
+
+  it('only an idle hand: a pinch on nothing that comes to rest by the seed does not turn into a pick-up', () => {
+    const { step, frame } = oneHand(moved(SEED_AT, { x: 0.3 }), NOWHERE);
+    step({ select: true });
+    expect(last()).toMatchObject({ type: 'gesture:pinchStart', target: null });
+    Object.assign(frame.palmPos, SEED_AT);
+    step();
+    expect(hovers()).toEqual([]);
+    step({ select: false });
+    expect(last()).toMatchObject({ type: 'gesture:release', gesture: 'none', target: null });
+  });
+});
+
 describe('GestureMachine: palm up (TC-HND-03, FR-HND-05)', () => {
   /** Feeds samples until `untilMs` on the rig clock and returns the times a palm-up event arrived. */
   function palmUpTimes(step: ReturnType<typeof rig>['step'], untilMs: number): number[] {
@@ -1161,6 +1219,7 @@ describe('GestureMachine: no allocation per frame', () => {
     const context: GestureContext = {
       candidates: [{ target: { kind: 'seed', id: 's' }, radius: 0.04, pos: { x: 0.01, y: 1, z: -1 } }],
       bedPose: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, -1, 1],
+      oneHand: false,
       nearestFreeCell: (cell) => cell,
     };
     const machine = new GestureMachine('right');
@@ -1222,6 +1281,7 @@ describe('GestureMachine: no allocation per frame', () => {
     const context: GestureContext = {
       candidates: [{ target: { kind: 'seed', id: 's' }, radius: 0.04, pos: { x: 2.01, y: 1, z: -1 } }],
       bedPose: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, -1, 1],
+      oneHand: false,
       nearestFreeCell: (cell) => cell,
     };
     const machine = new GestureMachine('right');

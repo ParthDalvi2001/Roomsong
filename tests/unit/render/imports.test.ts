@@ -91,6 +91,8 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
         'FOVEATION_MEDIUM',
         'FlashGuard',
         'HaloSystem', // T-148
+        'PLANT_FLASH_BRIGHTNESS', // T-160: the beat ring lights as the plants do
+        'PLANT_REST_BRIGHTNESS',
         'PerfSampler',
         'PerfSystem',
         'PetalRenderer',
@@ -99,6 +101,7 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
         'TideRenderer',
         'TuningRippleSystem',
         'createPerfHud',
+        'stepGlow', // T-160
       ].sort(),
     );
   });

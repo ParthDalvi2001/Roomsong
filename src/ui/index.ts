@@ -11,3 +11,12 @@ export type { Landing } from './Landing.js';
 // The settings panel and its orb (T-151): an ECS system for priority 62 that takes `garden` and `room` (API_SPEC §1.10).
 export { PanelSystem } from './PanelSystem.js';
 export type { PanelGarden, PanelRoom } from './PanelSystem.js';
+// For access/ (T-160): the gaze line's pick and the head-turn rule the panel's own dwell uses (UX §9.8).
+export { gazeTarget, isHeadTurning } from './Panel.js';
+export {
+  CAPTION_TEXT_COLOUR,
+  CUE_FILL_COLOUR,
+  PANEL_DISTANCE_M,
+  PANEL_INK,
+  PANEL_MAX_FRAME_MS,
+} from './config.js';

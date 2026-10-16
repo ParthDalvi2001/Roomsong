@@ -26,16 +26,19 @@ export interface PickCandidate {
  * `kept` is the hover memory (FR-HND-16): the candidate of that kind and id counts as HOVER_DEAD_BAND_M nearer
  * than it is, so another takes over only when it is that much closer, and the kept one lasts that far past its
  * radius. The highlight then cannot flicker between two neighbours or at the edge of a radius.
+ * `only`: candidates of that kind alone (the one-hand palm pick takes a seed, whatever else is near the palm).
  */
 export function pickTarget(
   pos: Vec3,
   candidates: readonly PickCandidate[],
   kept: TargetRef | null = null,
+  only?: TargetRef['kind'],
 ): TargetRef | null {
   let best: TargetRef | null = null;
   let bestM = Infinity;
   for (let i = 0; i < candidates.length; i++) {
     const candidate = candidates[i]!;
+    if (only !== undefined && candidate.target.kind !== only) continue;
     const dx = candidate.pos.x - pos.x;
     const dy = candidate.pos.y - pos.y;
     const dz = candidate.pos.z - pos.z;

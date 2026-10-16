@@ -50,6 +50,7 @@ describe('core/strings', () => {
       'Open your hand',
       'Pinch, and plant it',
       'Click or tap to plant',
+      'Look at a cell to plant', // gaze mode (T-160)
       'Rest your hands to listen',
       'Click the orb to listen',
     ]);

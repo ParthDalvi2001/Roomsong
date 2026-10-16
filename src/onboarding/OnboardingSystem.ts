@@ -15,6 +15,9 @@ const CAPTIONS: Partial<Record<OnboardingStep, readonly [xr: StringKey, window: 
   listen: ['onboardListen', 'onboardListenClick'],
 };
 
+/** The plant step's caption in gaze mode (T-160). */
+const GAZE_PLANT: StringKey = 'onboardPlantGaze';
+
 export class OnboardingSystem extends createSystem({}) {
   readonly machine = new Onboarding((from, to) =>
     log.info('onboarding', `no progress in "${from}" for 60 s: on to "${to}" (D-053)`),
@@ -80,7 +83,7 @@ export class OnboardingSystem extends createSystem({}) {
       bus.on('listen:exit', () => void (this.isListening = false)),
       bus.on('settings:changed', ({ settings: next }) => {
         if (next.hintsEnabled)
-          machine.setGazeOnly(next.gazeDwell); // gaze has no seed path yet (T-160)
+          machine.setGazeOnly(next.gazeDwell); // the gaze plants by a look (T-160); it cannot pull or drag
         else machine.stop();
         this.sync();
       }),
@@ -107,7 +110,8 @@ export class OnboardingSystem extends createSystem({}) {
     this.said = step;
     this.takeCaption();
     const keys = CAPTIONS[step];
-    const key = keys === undefined ? null : this.inWindow ? keys[1] : keys[0];
+    const isGaze = step === 'plant' && settings.get().gazeDwell; // T-160: the plant step by a look
+    const key = keys === undefined ? null : this.inWindow ? keys[1] : isGaze ? GAZE_PLANT : keys[0];
     if (key !== null && !this.isListening && !this.captioned.has(step)) {
       this.captioned.add(step);
       this.caption.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });

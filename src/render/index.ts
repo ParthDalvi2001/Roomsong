@@ -2,11 +2,17 @@
 // files inside the folder (CODING_GUIDELINES §3). The module's event is declared in ./events.ts (API_SPEC §2).
 // The renderers are plain classes: each takes the Object3D that carries the bed's pose and adds its meshes to
 // it, in the bed frame of D-029. Nothing here adds a light, casts a shadow or uses a render target (NFR-PERF-09).
-export { FLASH_CAP_PER_S, FLASH_MIN_DELTA, FOVEATION_MEDIUM } from './config.js';
+export {
+  FLASH_CAP_PER_S,
+  FLASH_MIN_DELTA,
+  FOVEATION_MEDIUM,
+  PLANT_FLASH_BRIGHTNESS,
+  PLANT_REST_BRIGHTNESS,
+} from './config.js';
 export { FlashGuard } from './FlashGuard.js';
 export { BedRenderer } from './BedRenderer.js';
 export { PlantRenderer } from './PlantRenderer.js';
-export { TideRenderer } from './TideRenderer.js';
+export { stepGlow, TideRenderer } from './TideRenderer.js';
 export { PetalRenderer } from './PetalRenderer.js';
 export { createPerfHud, PerfSampler } from './PerfHud.js';
 export type { PerfHud } from './PerfHud.js';

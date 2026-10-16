@@ -97,6 +97,13 @@ export const NEW_GARDEN_HOLD_MS = 1500;
 export const PANEL_LOOK_AWAY_MS = 5000;
 /** A frame counts as this long at most: a pause must not finish a hold, a dwell or the look-away time. */
 export const PANEL_MAX_FRAME_MS = 100;
+/**
+ * UX §8, §9.8: a gaze dwell holds (it neither grows nor resets) while the head turns faster than this, on the panel
+ * and in access/ alike. The speed is smoothed with this time constant. 8 deg/s for a seated head is unverified until
+ * the device run (TC-DEV-06, D-048).
+ */
+export const HEAD_TURN_PAUSE_DEG_PER_S = 8;
+export const HEAD_SPEED_SMOOTHING_MS = 100;
 /** Under the captions (CAPTION_RENDER_ORDER), above the garden; the hover ring and the fill are drawn over it. */
 export const PANEL_RENDER_ORDER = 990;
 /**

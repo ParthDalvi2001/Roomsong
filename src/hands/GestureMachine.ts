@@ -51,6 +51,8 @@ export interface GestureContext {
    * `ignorePlantId`: the plant that is being dragged, whose own cell counts as free.
    */
   nearestFreeCell: (cell: Cell, ignorePlantId?: string) => Cell | null;
+  /** `Settings.oneHand` (FR-UI-09): an idle hand with nothing at its fingertips may take the seed off its own palm. */
+  oneHand: boolean;
 }
 
 type State = 'IDLE' | 'PRESSED' | 'PINCHED' | 'PULLING' | 'DRAGGING' | 'CARRYING';
@@ -228,9 +230,12 @@ export class GestureMachine {
       this.snapped = null;
       // A pinched or pulled plant is its own hover wherever the hand goes: its release acts on it and on no cell.
       const isHeldPlant = state !== 'IDLE' && this.endsOnPinch;
-      const picked = isHeldPlant
-        ? this.held
-        : pickTarget(frame.pinchPos, context.candidates, this.hoverEvent.target);
+      const kept = this.hoverEvent.target;
+      let picked = isHeldPlant ? this.held : pickTarget(frame.pinchPos, context.candidates, kept);
+      // UX §9.1 (D-048): one-hand mode, nothing at the fingertips: the seed resting on this palm is the hover.
+      if (picked === null && state === 'IDLE' && context.oneHand) {
+        picked = pickTarget(frame.palmPos, context.candidates, kept, 'seed'); // a plant by the palm does not block it
+      }
       this.setHover(picked, null);
       return;
     }

@@ -609,7 +609,8 @@ describe('PanelSystem: the orb (UX §2, FR-UI-09, FR-HND-12)', () => {
     const [x = 0, y = 0, z = 0] = targets()[0]!.getVectorView(Interactable, 'worldPos');
     // The head turns to the orb where it waits, and then does not move again.
     head.lookAt(new Vector3(...EYE), new Vector3(x, y, z), new Vector3(0, 1, 0)).setPosition(...EYE);
-    for (let ms = 0; ms <= 700; ms += 50) frame(50);
+    // A head that jumps there reads as turning for its first 0.4 s, which holds the dwell (UX §9.8, T-160).
+    for (let ms = 0; ms <= 1100; ms += 50) frame(50);
     expect(system.panel.open).toBe(true);
     expect(ids()).not.toContain(ORB_ID);
     expect(system.panel.cue()).toBe('reducedMotion'); // that control is under the resting gaze

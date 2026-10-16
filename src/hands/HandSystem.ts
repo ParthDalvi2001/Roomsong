@@ -71,6 +71,7 @@ export class HandSystem extends createSystem({
   private readonly context: GestureContext & { candidates: PickCandidate[] } = {
     candidates: this.candidates,
     bedPose: null,
+    oneHand: false, // written every frame from the settings store
     // With no garden yet every cell is free. A dragged plant's own cell counts as free (FR-HND-10).
     nearestFreeCell: (cell, ignorePlantId) =>
       this.garden === null ? cell : nearestFreeCell(this.garden, cell, ignorePlantId),
@@ -208,6 +209,7 @@ export class HandSystem extends createSystem({
 
     // The pose is the entity's own transform (LLD §3); an entity without one is not a placed bed.
     this.context.bedPose = this.bed?.object3D?.matrixWorld.elements ?? null;
+    this.context.oneHand = settings.get().oneHand; // UX §9.1: the palm pick
   }
 
   private write({ entity, frame }: Slot): void {

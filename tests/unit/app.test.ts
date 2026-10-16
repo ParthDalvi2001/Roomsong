@@ -128,6 +128,8 @@ describe('the systems start() registers (API_SPEC §1.10, the priorities table)'
       ['PerfSystem', '-100', '{ guard, engine }'],
       ['RoomSystem', '10'],
       ['HandSystem', '20'],
+      ['GazeDwellSystem', '25', '{ room, guard }'], // T-160
+      ['BeatRingSystem', '26', '{ guard, engine, bed: room.bed.object3D }'], // T-160
       ['OnboardingSystem', '35'], // T-150
       ['GardenAudioSystem', '40', '{ engine }'], // T-128d
       ['SeedSystem', '49', '{ guard }'], // T-127

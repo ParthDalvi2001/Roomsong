@@ -116,12 +116,12 @@ describe('OnboardingSystem: who gets the tutorial', () => {
     expect(r.raised()).toEqual([]);
   });
 
-  it('gaze dwell on (no seed path until T-160): no gate, no palm or plant caption; Listen still comes', () => {
+  it('gaze dwell on (T-160): no palm step; the plant step says "Look at a cell to plant"; Listen still comes', () => {
     const r = rig();
     settings.set({ ...DEFAULT_SETTINGS, gazeDwell: true });
     started();
-    expect(r.steps).toEqual(['tune', 'free']);
-    expect(r.raised()).toEqual([]);
+    expect(r.steps).toEqual(['tune', 'plant']);
+    expect(r.raised()).toEqual(['onboardPlantGaze']);
   });
 
   it('the 60 s net logs the step it moved on from (D-053)', () => {

@@ -45,7 +45,9 @@ function setup(stage: 'none' | 'loaded' | 'visited' = 'visited') {
   bus.on('garden:seedOut', () => heard.push('seedOut'));
   if (stage !== 'none') {
     const plants = [plant('a', 2, 0)];
-    system.load(garden(plants, [seed('s1'), seed('s2')], { lastSeedDate: '2026-10-15', lastVisitAt: T0 - 1000 }));
+    system.load(
+      garden(plants, [seed('s1'), seed('s2')], { lastSeedDate: '2026-10-15', lastVisitAt: T0 - 1000 }),
+    );
   }
   bus.on('garden:changed', () => heard.push('changed'));
   bus.on('garden:removed', () => heard.push('removed'));

@@ -36,7 +36,7 @@ const ORDER: readonly OnboardingStep[] = [
   'done',
 ];
 const order = (step: OnboardingStep): number => ORDER.indexOf(step);
-/** The steps that wait for the player: each has the STEP_STALL_MS net, and gaze mode skips them all. */
+/** The steps that wait for the player: each has the STEP_STALL_MS net. Gaze mode keeps the plant gate only. */
 const isGate = (step: OnboardingStep): boolean =>
   order(step) >= order('palm') && order(step) <= order('move');
 
@@ -47,7 +47,7 @@ export class Onboarding {
   private planted = 0;
   /** A pointer cannot pull (LLD §11): the garden window skips the grow gate. */
   private canPull = true;
-  /** Gaze dwell has no seed path yet (T-160): the gates are skipped, Listen is still taught. */
+  /** Gaze dwell: a look at a free cell plants (T-160), so the plant gate is taught; the gaze cannot pull or drag. */
   private isGazeOnly = false;
   private hasPulled = false;
   private hasDragged = false;
@@ -84,7 +84,7 @@ export class Onboarding {
     this.advance();
   }
 
-  /** Settings.gazeDwell changed: on, the gates still to come are skipped. */
+  /** Settings.gazeDwell changed: on, the gates still to come but planting are skipped. */
   setGazeOnly(isGazeOnly: boolean): void {
     this.isGazeOnly = isGazeOnly;
     this.advance();
@@ -168,7 +168,9 @@ export class Onboarding {
 
   private next(): OnboardingStep {
     const step = this.step;
-    if (isGate(step) && this.isGazeOnly) return 'free';
+    // Gaze: no hand to open, so straight to the plant step; after a plant, or the net, past the pull and the drag.
+    if (isGate(step) && this.isGazeOnly)
+      return this.planted > 0 || order(step) > order('plant') ? 'free' : 'plant';
     if (step === 'palm' || step === 'plant') {
       if (this.planted > 0) return 'more';
       const wanted = this.seedIsOut ? 'plant' : 'palm';

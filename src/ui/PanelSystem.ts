@@ -51,6 +51,7 @@ import {
   ArrayVec3,
   gazeTarget,
   hasPose,
+  isHeadTurning,
   ORB_ELEMENT,
   ORB_ID,
   orbHome,
@@ -251,6 +252,8 @@ export class PanelSystem extends createSystem(
   private readonly scratch = new Vector3();
   /** The part of a millisecond of frame time not yet handed to the panel. */
   private readonly carryMs = new Float64Array(1);
+  /** The head's last forward and its turn speed (`isHeadTurning`, UX §9.8). */
+  private readonly headTurn = new Float64Array(4);
   /** How the orb's canvas was last drawn; null = not yet. */
   private orbHighContrast: boolean | null = null;
 
@@ -312,7 +315,7 @@ export class PanelSystem extends createSystem(
     carry[0] = (carry[0] as number) + (delta > 0 ? delta * 1000 : 0);
     const wholeMs = Math.floor(carry[0]);
     carry[0] -= wholeMs;
-    panel.frame(wholeMs, this.gazedId, away);
+    panel.frame(wholeMs, this.gazedId, away, isHeadTurning(head.elements, wholeMs, this.headTurn));
     if (panel.open !== board.visible) this.show(panel.open, head);
     if (panel.stale) this.redraw();
     this.placeCue();

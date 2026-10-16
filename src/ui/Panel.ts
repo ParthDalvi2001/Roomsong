@@ -7,6 +7,8 @@ import { HIT_RADIUS_M, HOVER_DEAD_BAND_M, ORB_HIDE_FACING, ORB_SHOW_FACING } fro
 
 import {
   BED_HEIGHT_STEP_M,
+  HEAD_SPEED_SMOOTHING_MS,
+  HEAD_TURN_PAUSE_DEG_PER_S,
   NEW_GARDEN_HOLD_MS,
   ORB_BELOW_GAZE_DEG,
   ORB_DISTANCE_M,
@@ -339,9 +341,10 @@ export class Panel {
 
   /**
    * One frame of `dtMs`. `gazeId`: the control or orb on the gaze line, '' for none. `away`: the panel's centre
-   * is outside the FoV box. Creates nothing unless something acts.
+   * is outside the FoV box. `isTurning`: the head turns faster than 8 deg/s (`isHeadTurning`), so the dwell holds.
+   * Creates nothing unless something acts.
    */
-  frame(dtMs: number, gazeId: string, away: boolean): void {
+  frame(dtMs: number, gazeId: string, away: boolean, isTurning = false): void {
     const ms = this.ms;
     const dt = dtMs > 0 ? Math.min(dtMs, PANEL_MAX_FRAME_MS) : 0; // a time that is not a number counts as 0
     if (this.heldId !== '') ms[HELD] = at(ms, HELD) + dt;
@@ -349,7 +352,7 @@ export class Panel {
     if (at(ms, AWAY) >= PANEL_LOOK_AWAY_MS) this.setOpen(false);
     const s = settings.get();
     const gazing = s.gazeDwell && !this.pinching.left && !this.pinching.right && gazeId !== GAZE_TOGGLE_ID;
-    this.dwell(dt, gazing ? gazeId : '', s);
+    this.dwell(dt, gazing ? gazeId : '', s, isTurning);
     this.refill();
   }
 
@@ -363,7 +366,7 @@ export class Panel {
   }
 
   /** FR-HND-12: the gaze rests on `id` ('' = on nothing) for one more frame. */
-  private dwell(dt: number, id: string, s: Readonly<Settings>): void {
+  private dwell(dt: number, id: string, s: Readonly<Settings>, isTurning: boolean): void {
     const ms = this.ms;
     // What comes under the gaze right after a selection counts as selected already. The panel opens under a gaze
     // that rests where the orb was, and a pinch on a control ends with the gaze still on it: neither look asked
@@ -376,7 +379,7 @@ export class Panel {
       this.gazeDone = afterSelection;
       return;
     }
-    if (id === '' || this.gazeDone) return;
+    if (id === '' || this.gazeDone || isTurning) return; // UX §9.8: a fast turn holds the dwell, leaving resets it
     ms[GAZE] = at(ms, GAZE) + dt;
     if (at(ms, GAZE) < this.dwellMs(s)) return;
     this.gazeDone = true;
@@ -525,6 +528,38 @@ export function gazeTarget(head: Mat4, centres: ArrayLike<number>, count: number
     }
   }
   return best;
+}
+
+const DEG_PER_RAD = 180 / Math.PI;
+/**
+ * UX §9.8: whether the head turns faster than HEAD_TURN_PAUSE_DEG_PER_S, for a gaze dwell to hold. `memory` is the
+ * caller's own Float64Array(4): the last forward (x, y, z, all 0 before the first call) and the speed in deg/s, the
+ * angle between this frame's forward and the last one over `dtMs` (at most PANEL_MAX_FRAME_MS), smoothed with a
+ * HEAD_SPEED_SMOOTHING_MS time constant. A frame of no time changes nothing. Creates nothing; it returns a boolean
+ * and keeps the speed in `memory[3]` because a fraction a function returns is boxed.
+ */
+export function isHeadTurning(head: Mat4, dtMs: number, memory: Float64Array): boolean {
+  const fx = -at(head, 8);
+  const fy = -at(head, 9);
+  const fz = -at(head, 10); // a head looks down its -z
+  // Math.sqrt, not Math.hypot: hypot allocates on every call in V8 (hands/TargetPicker.ts)
+  const length = Math.sqrt(fx * fx + fy * fy + fz * fz);
+  const lx = at(memory, 0);
+  const ly = at(memory, 1);
+  const lz = at(memory, 2);
+  const lastLength = Math.sqrt(lx * lx + ly * ly + lz * lz);
+  if (dtMs > 0 && length > 0 && lastLength > 0) {
+    const cos = (fx * lx + fy * ly + fz * lz) / (length * lastLength);
+    const dt = Math.min(dtMs, PANEL_MAX_FRAME_MS);
+    const degPerS = (Math.acos(Math.min(1, Math.max(-1, cos))) * DEG_PER_RAD * 1000) / dt;
+    memory[3] = at(memory, 3) + (degPerS - at(memory, 3)) * (1 - Math.exp(-dt / HEAD_SPEED_SMOOTHING_MS));
+  }
+  if (dtMs > 0 || lastLength === 0) {
+    memory[0] = fx;
+    memory[1] = fy;
+    memory[2] = fz;
+  }
+  return at(memory, 3) > HEAD_TURN_PAUSE_DEG_PER_S;
 }
 
 /** Whether `head` is a pose yet. Before a session's first pose the head's matrix is the identity. */

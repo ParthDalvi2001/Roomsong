@@ -930,6 +930,20 @@ describe('garden/GardenSystem: newGarden and setBedHeightOffset (FR-PER-03, FR-U
     expect(s.state().plants.map((p) => p.id)).toEqual([id]);
   });
 
+  it('a seed planted with no pinchStart (the gaze, T-160) is planted after a New garden: the hand-out forgets old pinches', () => {
+    const s = setup();
+    const id = `seed-${TODAY}-0`;
+    s.system.load(s.lib.newGarden(T0, s.core.settings.get()));
+    s.features();
+    s.palmUp('right');
+    s.pinch('right', seedRef(id)); // a real pinch in the old garden
+    s.release('right', 'carry', seedRef(id), 'bed', cell(0, 0));
+    s.system.newGarden();
+    s.palmUp('right'); // the gaze asks for the next seed and lets it go over a cell, with no pinchStart between
+    s.release('right', 'carry', seedRef(id), 'bed', cell(1, 1));
+    expect(s.state().plants.map((p) => [p.id, p.cell])).toEqual([[id, { ring: 1, step: 1 }]]);
+  });
+
   it('New garden before the session has its signature stops after garden:changed; the seeds come with that visit', () => {
     const s = setup();
     s.system.load(saved([plant('a', 0, 0), plant('b', 1, 1)], [seed('s1')]));

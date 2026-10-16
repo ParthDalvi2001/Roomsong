@@ -29,6 +29,7 @@ import { clampToFov, fovBoundsDeg } from '../../../src/ui/FovGuard.js';
 import {
   gazeTarget,
   hasPose,
+  isHeadTurning,
   ORB_ELEMENT,
   ORB_ID,
   orbHome,
@@ -889,6 +890,71 @@ describe('gazeTarget (FR-HND-12, FR-HND-04)', () => {
     expect(gazeTarget(HEAD, between, 2, 1)).toBe(1);
     expect(gazeTarget(HEAD, beside(-0.03, 0.026), 2, 0)).toBe(0); // 4 mm nearer: not enough
     expect(gazeTarget(HEAD, beside(-0.03, 0.024), 2, 0)).toBe(1); // 6 mm nearer
+  });
+});
+
+describe('isHeadTurning (UX §9.8)', () => {
+  /** The smoothed speed after `ms` of a head that turns at `degPerS`, in 14 ms frames; and the last answer. */
+  function turn(degPerS: number, ms: number) {
+    const memory = new Float64Array(4);
+    let isTurning = false;
+    for (let t = 0; t <= ms; t += 14)
+      isTurning = isHeadTurning(headAt([0, 1.15, 0], (degPerS * t) / 1000), 14, memory);
+    return { degPerS: memory[3] as number, isTurning };
+  }
+
+  it('a steady 10 deg/s turn reads within 0.5 deg/s of 10 after 500 ms, and is a turn', () => {
+    const { degPerS, isTurning } = turn(10, 500);
+    expect(degPerS).toBeGreaterThan(9.5);
+    expect(degPerS).toBeLessThan(10.5);
+    expect(isTurning).toBe(true);
+  });
+
+  it('a still head reads 0; 5 deg/s is no turn; a frame of no time changes nothing', () => {
+    expect(turn(0, 500)).toEqual({ degPerS: 0, isTurning: false });
+    expect(turn(5, 500).isTurning).toBe(false);
+    const memory = new Float64Array(4);
+    isHeadTurning(headAt([0, 1.15, 0], 0), 14, memory);
+    isHeadTurning(headAt([0, 1.15, 0], 30), 0, memory);
+    expect([memory[2], memory[3]]).toEqual([-1, 0]); // still the forward of yaw 0, still no speed
+  });
+});
+
+describe('settings panel: the dwell holds while the head turns (UX §9.8)', () => {
+  /**
+   * The head sweeps sideways at `degPerS` through the centre of tempo:+, 0.55 m ahead, from 15 degrees off;
+   * the gaze line picks it as PanelSystem does. Returns how many times it was selected.
+   */
+  function sweep(degPerS: number): number {
+    settings.set({ gazeDwell: true, dwellMs: 600 });
+    const panel = opened('sound');
+    const centre = new Float32Array([0, 1.15, -0.55]);
+    const memory = new Float64Array(4);
+    let kept = -1;
+    for (let t = 0; t <= (30 / degPerS) * 1000; t += 14) {
+      const head = headAt([0, 1.15, 0], -15 + (degPerS * t) / 1000);
+      kept = gazeTarget(head, centre, 1, kept);
+      panel.frame(14, kept === 0 ? 'tempo:+' : '', false, isHeadTurning(head, 14, memory));
+    }
+    return (settings.get().tempo - 84) / 4;
+  }
+
+  it('at a 600 ms dwell a 10 deg/s sweep selects nothing, and a 5 deg/s sweep selects once', () => {
+    expect(sweep(10)).toBe(0); // 0.9 s inside the control's gaze zone: without the hold it would select
+    expect(sweep(5)).toBe(1);
+  });
+
+  it('a burst of turning while the gaze rests on a control holds the fill; the select still comes, later', () => {
+    settings.set({ gazeDwell: true, dwellMs: 600 });
+    const panel = opened('sound');
+    lookAt(panel, 'tempo:+');
+    run(panel, 300, 'tempo:+');
+    const fill = panel.fill[0];
+    for (let ms = 0; ms < 500; ms += 50) panel.frame(50, 'tempo:+', false, true);
+    expect(panel.fill[0]).toBe(fill);
+    expect(settings.get().tempo).toBe(84);
+    run(panel, 300, 'tempo:+');
+    expect(settings.get().tempo).toBe(88);
   });
 });
 
