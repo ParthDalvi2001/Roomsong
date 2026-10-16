@@ -114,7 +114,25 @@ html {
 #landing ol li {
   margin-bottom: 0.5rem;
 }
-#landing :focus-visible {
+#landing :focus-visible,
+#window-close:focus-visible {
   outline: 3px solid #48cae4;
   outline-offset: 3px;
+}
+/* The garden window's close button (window/WindowStage.ts): over the canvas while the window is open, for touch,
+   which has no Escape. The Enter button's colours. */
+#window-close {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  min-height: 3rem;
+  padding: 0.5rem 1.25rem;
+  border: 0;
+  border-radius: 1.5rem;
+  background: #f4d35e;
+  color: #141a1f;
+  font:
+    600 1rem/1.5 system-ui,
+    sans-serif;
+  cursor: pointer;
 }

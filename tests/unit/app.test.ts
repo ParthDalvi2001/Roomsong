@@ -8,7 +8,7 @@ import { createSystem, Types } from '@iwsdk/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BREAKER_PAUSE_S, breakOtherSystems, followSession, register } from '../../src/app.js';
-import { bus, clock } from '../../src/core/index.js';
+import { bus, clock, log } from '../../src/core/index.js';
 
 import type { SystemHost } from '../../src/app.js';
 import type { MockInstance } from 'vitest';
@@ -325,11 +325,13 @@ function sessionRig(soundFailed: boolean) {
   const heard: string[] = [];
   for (const type of ['xr:sessionStart', 'xr:sessionEnd', 'xr:visibility'] as const)
     stops.push(bus.on(type, ({ visible }) => heard.push(`${type} ${visible}`)));
-  followSession(
-    { renderer: { xr }, createEntity: () => entity } as never,
-    { clock: { now: () => audio.nowS } } as never,
-    landing,
-    sound,
+  stops.push(
+    followSession(
+      { renderer: { xr }, createEntity: () => entity } as never,
+      { clock: { now: () => audio.nowS } } as never,
+      landing,
+      sound,
+    ),
   );
   return {
     ops,
@@ -461,6 +463,20 @@ describe('"Sound unavailable" (API_SPEC §1.10 rule 2; LLD §3.3 B)', () => {
     expect(rig.ops).toEqual(['add', 'remove']);
   });
 
+  it("the garden window's own xr:* events (no XR session) get the same check, raised and taken back (T-114b)", () => {
+    const rig = sessionRig(true);
+    bus.emit('xr:sessionStart', { visible: true }); // WindowStage.enter()
+    expect(rig.caption()?.key).toBe(NO_SOUND);
+    bus.emit('xr:sessionEnd', { visible: false }); // its exit()
+    expect(rig.ops).toEqual(['add', 'remove']);
+
+    rig.sound.failed = false; // Enter again: the context starts, but its clock never moves
+    bus.emit('xr:sessionStart', { visible: true });
+    vi.advanceTimersByTime(AUDIO_START_GRACE_MS);
+    expect(rig.caption()?.key).toBe(NO_SOUND);
+    expect(rig.landing.granted).not.toHaveBeenCalled();
+  });
+
   it('a raise on an entity that still carries one takes it back first, or the second would not be seen', () => {
     // Reachable only if a start is announced twice with no end between: the session's end takes the caption back.
     const rig = sessionRig(true);
@@ -469,5 +485,16 @@ describe('"Sound unavailable" (API_SPEC §1.10 rule 2; LLD §3.3 B)', () => {
     rig.begin();
     expect(rig.ops).toEqual(['add', 'remove', 'add']);
     expect(rig.caption()).toEqual({ key: NO_SOUND, expiresAt: wallMs + 5000 });
+  });
+
+  it('a second xr:sessionStart with no end between is logged as a warning (dev); one after an end is not', () => {
+    const warns = vi.spyOn(log, 'warn').mockImplementation(() => {});
+    sessionRig(false);
+    bus.emit('xr:sessionStart', { visible: true });
+    bus.emit('xr:sessionEnd', { visible: false });
+    bus.emit('xr:sessionStart', { visible: true });
+    expect(warns).not.toHaveBeenCalled();
+    bus.emit('xr:sessionStart', { visible: true }); // e.g. the window opened while a session ran
+    expect(warns).toHaveBeenCalledOnce();
   });
 });

@@ -18,7 +18,7 @@ import { isPalmOut, PoseHold } from './poses/palmsOut.js';
 import { isPalmToFace } from './poses/wake.js';
 
 import type { GestureContext } from './GestureMachine.js';
-import type { HandFrame } from './InputSource.js';
+import type { HandFrame, InputSource } from './InputSource.js';
 import type { PickCandidate, TargetRef } from './TargetPicker.js';
 import type { EventMap, Hand, Vec3 } from '../core/index.js';
 import type { GardenState } from '../garden/index.js';
@@ -48,14 +48,17 @@ export class HandSystem extends createSystem({
   beds: { required: [BedAnchor] },
 }) {
   readonly sampler = new HandSampler();
+  /** Where the samples come from: the sampler, or the garden window's pointer (`useSource`, LLD §11). */
+  private source: InputSource = this.sampler;
   private slots: Slot[] = [];
   /** The state of the latest `garden:changed`; null until there is one. */
   private garden: GardenState | null = null;
   /**
    * One per Interactable, made when its entity appears. Its `radius` is read then, once: read every frame it cost
-   * a boxed number per target (16 bytes, measured). `kind`, `id` and the position are read every frame.
+   * a boxed number per target (16 bytes, measured). `kind`, `id` and the position are read every frame. Public
+   * for the garden window's PointerSource, which reads it live (LLD §11).
    */
-  private readonly candidates: { target: TargetRef; radius: number; pos: Vec3 }[] = [];
+  readonly candidates: { target: TargetRef; radius: number; pos: Vec3 }[] = [];
   /** The entity of each candidate, at the same index. */
   private readonly targets: Entity[] = [];
   /** The BedAnchor entity: the one added last of those there are. */
@@ -121,22 +124,29 @@ export class HandSystem extends createSystem({
     // IWSDK types the frame as always there; outside a session the renderer has none.
     const frame = this.xrFrame as XRFrame | null;
     const space = this.xrManager.getReferenceSpace();
-    if (frame === null || space === null) return;
+    // The garden window's source runs with no XR frame (LLD §11); the sampler has nothing to read without one.
+    if (frame !== null && space !== null) this.sampler.setFrame(frame, space);
+    else if (this.source === this.sampler) return;
     // Everything here runs on the frame time. Core's clock is wall time and can step back; it is read once per
     // hint, for the caption's expiry, which is on it.
     // Whole milliseconds: a fraction handed to the sampler and the machines was boxed, 32 bytes a frame
     // (measured), and a whole number is not. The filter's time step is then a millisecond coarse.
     const timeMs = (this.timeMs = Math.round(time * 1000));
-    this.sampler.setFrame(frame, space);
     this.fillContext();
     for (let i = 0; i < this.slots.length; i++) {
       const slot = this.slots[i]!;
-      this.sampler.sample(slot.hand, timeMs, slot.frame);
+      this.source.sample(slot.hand, timeMs, slot.frame);
       slot.machine.update(slot.frame, timeMs, this.context);
       this.write(slot);
       if (slot.hintUntilMs !== 0 && timeMs >= slot.hintUntilMs) this.setHint(slot.hand, false);
     }
-    this.listenPoses(timeMs);
+    // A pointer has no palm: the window's Listen is the orb, and a click's pinchStart is its wake (LLD §11).
+    if (this.source === this.sampler) this.listenPoses(timeMs);
+  }
+
+  /** The garden window (API_SPEC §1.7): `source` gives the samples from the next frame on, with or without XR. */
+  useSource(source: InputSource): void {
+    this.source = source;
   }
 
   /**

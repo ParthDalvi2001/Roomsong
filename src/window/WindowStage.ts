@@ -4,6 +4,7 @@
 import { BoxGeometry, MathUtils, Mesh, MeshBasicMaterial, Plane, Raycaster, Vector2, Vector3 } from 'three';
 
 import { bus } from '../core/index.js';
+import { LANDING } from '../ui/index.js';
 
 import {
   REST_SPOT_X_M,
@@ -30,6 +31,8 @@ export class WindowStage {
   private isOpen = false;
   /** What the last xr:* event said of the page: seen or hidden. */
   private isSeen = true;
+  /** The way out on touch, which has no Escape: a page button over the canvas while the window is open. */
+  private closeButton: HTMLButtonElement | null = null;
 
   /**
    * Stands `camera` (IWSDK's, under the player at the origin) at the eye point, so that the floating bed is placed
@@ -91,16 +94,20 @@ export class WindowStage {
     document.addEventListener('keydown', this.onKey);
     // After IWSDK's own resize listener, added at World.create: the camera's aspect is the new one here.
     window.addEventListener('resize', this.onResize);
+    const close = (this.closeButton ??= this.makeCloseButton());
+    close.hidden = false;
+    close.focus(); // the landing page's Enter, which held the focus, is hidden now
     bus.emit('xr:sessionStart', { visible: true });
   }
 
-  /** The window closes, as a session would end (`xr:sessionEnd`): Escape, or the wiring. */
+  /** The window closes, as a session would end (`xr:sessionEnd`): Escape, the close button, or the wiring. */
   exit(): void {
     if (!this.isOpen) return;
     this.isOpen = false;
     document.removeEventListener('visibilitychange', this.onVisibility);
     document.removeEventListener('keydown', this.onKey);
     window.removeEventListener('resize', this.onResize);
+    this.closeButton!.hidden = true; // made by the enter() that opened the window
     bus.emit('xr:sessionEnd', { visible: false });
   }
 
@@ -114,6 +121,17 @@ export class WindowStage {
     const forWidthDeg = MathUtils.radToDeg(2 * Math.atan(Math.tan(halfHRad) / camera.aspect));
     camera.fov = Math.max(WINDOW_FOV_DEG, forWidthDeg);
     camera.updateProjectionMatrix();
+  }
+
+  /** At the first enter(), not in the constructor: the unit tests make stages in node, which has no DOM. */
+  private makeCloseButton(): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.id = 'window-close'; // styled in ui/landing.css
+    button.type = 'button';
+    button.textContent = LANDING.close;
+    button.addEventListener('click', () => this.exit());
+    document.body.append(button);
+    return button;
   }
 
   private readonly onResize = (): void => this.fit();

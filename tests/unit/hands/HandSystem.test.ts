@@ -769,3 +769,82 @@ describe('HandSystem: the Listen poses (T-148, FR-HND-06/07)', () => {
     expect(r.heard.map((each) => each.split(' ')[0])).toEqual(['gesture:palmsOut', 'gesture:wake']);
   }, 60_000);
 });
+
+describe('HandSystem.useSource: the garden window (T-114b, LLD §11)', () => {
+  /** The rig with another source: the right hand alone, at ON_BED, its palm out the way the rig's head looks. */
+  function windowRig() {
+    const r = rig();
+    const sampled: Hand[] = [];
+    const source = {
+      hands: ['right'] as const,
+      isDown: false,
+      sample(hand: Hand, _timeMs: number, out: HandFrame): void {
+        sampled.push(hand);
+        out.tracked = hand === 'right';
+        if (!out.tracked) return;
+        out.pinch = out.select = source.isDown;
+        Object.assign(out.pinchPos, ON_BED);
+        Object.assign(out.palmPos, ON_BED);
+        Object.assign(out.palmNormal, { x: 0, y: 0, z: -1 });
+      },
+    };
+    r.system.useSource(source);
+    const pinches: string[] = [];
+    const off = bus.on(
+      'gesture:pinchStart',
+      (event) => void pinches.push(`${event.hand} ${event.target?.id}`),
+    );
+    return {
+      ...r,
+      source,
+      sampled,
+      pinches,
+      stopAll: () => {
+        off();
+        r.stop();
+        settings.set(DEFAULT_SETTINGS);
+      },
+    };
+  }
+
+  it('the source gives the samples with or without an XR frame; the sampler gets a frame only when there is one', () => {
+    const r = windowRig();
+    r.xr.frame = null;
+    r.xr.space = null;
+    r.frame();
+    expect(r.sampled).toEqual(['left', 'right']);
+    expect(r.calls).toEqual(['machine left', 'machine right']);
+    expect(r.entityOf('right').getValue(HandState, 'tracked')).toBe(true);
+    // What PointerSource reads live: every Interactable, filled in for this frame.
+    expect(r.system.candidates.map(({ target }) => target.id)).toEqual(['seed-1', 'listen']);
+    r.xr.frame = {} as XRFrame;
+    r.xr.space = {} as XRReferenceSpace;
+    r.frame();
+    expect(r.calls.slice(2)).toEqual(['setFrame', 'machine left', 'machine right']);
+    r.stopAll();
+  });
+
+  it('its press and its release reach the bus as a pinch would, with no XR frame', () => {
+    const r = windowRig();
+    r.xr.frame = null;
+    r.frame();
+    r.source.isDown = true;
+    for (let i = 0; i < 5; i++) r.frame();
+    r.source.isDown = false;
+    for (let i = 0; i < 5; i++) r.frame();
+    expect(r.pinches).toEqual(['right undefined']); // on open ground: no target
+    expect(r.heard).toEqual(['gesture:release right']);
+    r.stopAll();
+  });
+
+  it('reads no Listen pose from it: a pointer has no palm, and its Listen is the orb', () => {
+    const r = windowRig();
+    settings.set({ oneHand: true }); // from the hands, one palm out would be enough
+    const heard: string[] = [];
+    const off = bus.on('gesture:palmsOut', (event) => void heard.push(event.type));
+    for (let i = 0; i < 400; i++) r.frame();
+    off();
+    expect(heard).toEqual([]);
+    r.stopAll();
+  });
+});

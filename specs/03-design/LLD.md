@@ -779,7 +779,7 @@ Unit check for the listener (qa adds it to the audio cases): after `setListenerP
 
 ## 11. Garden window and `InputSource` (FR-SYS-07, Should S6, T-114)
 The headset-free bench and demo: the same garden in a plain browser tab. Never the judged path.
-**Mode gate (`src/index.ts`).** `immersive-ar` supported and no `window` flag → the XR path. Otherwise → the garden window. The gate picks the `InputSource` (API_SPEC §1.4) and hands it to HandSystem; nothing else in the shared modules knows which mode it is in.
+**Mode gate (`src/app.ts`, T-114b).** `immersive-ar` supported and no `window` flag → the XR path. Otherwise → the garden window. The gate picks the `InputSource` (API_SPEC §1.4) and hands it to HandSystem; nothing else in the shared modules knows which mode it is in.
 
 | | XR path | Garden window |
 |---|---|---|
@@ -805,3 +805,4 @@ Reach in v1: receive and plant a seed, drag to move, drag off to remove, undo, t
 **Render path.** The same render systems and the same rendering rules (HLD §7, NFR-PERF-09). There is no XR layer, so the canvas's own antialiasing stands in for the XR layer's MSAA and there is no foveation. How the IWSDK world is created without a session is PoC U1, run first in T-114; nothing above depends on its answer.
 
 *As built (T-114 first half, 16 Oct; not wired until T-114b):* the gate is `shouldOpenWindow` in `window/gate.ts` (core only, so `src/index.ts` may import it); `WindowStage` and `PointerSource` are made in `src/app.ts`. The seed's rest spot steps aside for each candidate's own radius (as `pickTarget` does), not `HIT_RADIUS_M`. The camera keeps at least 76° across, so 3:4, 9:16 and 9:19.5 tabs still show the whole bed and the rest spot. Escape closes the window; touch has no close yet (T-114b decides). API_SPEC §1.7.
+*Wired (T-114b, 16 Oct):* touch closes with a "Close the garden" button over the canvas (Escape still works). The Listen poses come from the hand sampler only, so the window enters Listen by the orb and wakes by a click. On a browser with no immersive-ar the landing page says the garden opens in the tab and Enter opens it; the "Open this page in a headset" line is left for a browser where the window does not open. PoC U1: the world needs nothing new outside a session.

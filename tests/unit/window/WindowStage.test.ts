@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bus } from '../../../src/core/index.js';
 import { BED_OUTER } from '../../../src/garden/index.js';
 import { BED_CENTRE_DEFAULT_M } from '../../../src/room/index.js';
+import { LANDING } from '../../../src/ui/index.js';
 import { REST_SPOT_X_M, WINDOW_EYE_HEIGHT_M, WINDOW_FOV_DEG } from '../../../src/window/config.js';
 import { WindowStage } from '../../../src/window/index.js';
 
@@ -121,10 +122,23 @@ describe('WindowStage: the pointer ray and the rest spot (LLD §11)', () => {
 describe('WindowStage: the page lifecycle as xr:* events (LLD §11, API_SPEC §1.10 rule 3)', () => {
   let page: EventTarget & { visibilityState: DocumentVisibilityState };
   let tab: EventTarget;
+  /** The close button the stage makes, as much of one as it uses; `appended` once it is in the page. */
+  let closeButton: EventTarget & { hidden: boolean; textContent: string; appended: number; focused: number };
   let seen: string[];
   let offs: (() => void)[];
   beforeEach(() => {
-    page = Object.assign(new EventTarget(), { visibilityState: 'visible' as const });
+    closeButton = Object.assign(new EventTarget(), {
+      hidden: false,
+      textContent: '',
+      appended: 0,
+      focused: 0,
+      focus: () => void closeButton.focused++,
+    });
+    page = Object.assign(new EventTarget(), {
+      visibilityState: 'visible' as const,
+      createElement: () => closeButton,
+      body: { append: () => void closeButton.appended++ },
+    });
     tab = new EventTarget();
     vi.stubGlobal('document', page);
     vi.stubGlobal('window', tab);
@@ -170,6 +184,17 @@ describe('WindowStage: the page lifecycle as xr:* events (LLD §11, API_SPEC §1
     expect(seen).toEqual(['xr:sessionStart true', 'xr:sessionEnd false']);
     stage.enter();
     expect(seen[seen.length - 1]).toBe('xr:sessionStart true');
+  });
+
+  it('touch has no Escape: a close button shown and focused while the window is open, made once, whose click ends it', () => {
+    const { stage } = rig();
+    stage.enter();
+    expect(closeButton).toMatchObject({ hidden: false, textContent: LANDING.close, appended: 1, focused: 1 });
+    closeButton.dispatchEvent(new Event('click'));
+    expect(closeButton.hidden).toBe(true);
+    stage.enter();
+    expect(closeButton).toMatchObject({ hidden: false, appended: 1 });
+    expect(seen).toEqual(['xr:sessionStart true', 'xr:sessionEnd false', 'xr:sessionStart true']);
   });
 
   it('a tab turned to portrait while open widens the view, so the bed stays on screen; closed, it does not', () => {

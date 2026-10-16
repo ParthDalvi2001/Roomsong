@@ -50,9 +50,10 @@ export interface Landing {
   /**
    * The world is ready: Enter works from now on. `enter` is called inside the click (a session request needs the
    * user's gesture) and resolves false when no session started. It must not throw; a throw or a rejection is
-   * logged and counted as false.
+   * logged and counted as false. `opensWindow`: Enter opens the garden window (LLD §11), so it works on a browser
+   * with no mixed reality, and the page says so.
    */
-  ready(enter: () => Promise<boolean>): void;
+  ready(enter: () => Promise<boolean>, opensWindow?: boolean): void;
   /** A session started. `enabledFeatures` is its XRSession.enabledFeatures (undefined where the browser has none). */
   granted(enabledFeatures: readonly string[] | undefined): void;
   /** The world could not load: Enter stays disabled and the page says to reload. */
@@ -98,7 +99,7 @@ function build(root: HTMLElement) {
   const steps = add(help, 'ol');
   for (const step of LANDING.help) add(steps, 'li', step);
   add(root, 'p', LANDING.privacy);
-  return { button, status, rows, boxes };
+  return { button, status, device, rows, boxes };
 }
 
 /**
@@ -106,10 +107,11 @@ function build(root: HTMLElement) {
  * `xr:sessionEnd`).
  */
 export function mountLanding(root: HTMLElement): Landing {
-  const { button, status, rows, boxes } = build(root);
+  const { button, status, device, rows, boxes } = build(root);
   let arSupported: boolean | undefined;
   let enabled: readonly string[] | null | undefined = null;
   let enter: (() => Promise<boolean>) | null = null;
+  let opensWindow = false;
   let loadFailed = false;
   let entering = false;
   let enterFailed = false;
@@ -123,8 +125,11 @@ export function mountLanding(root: HTMLElement): Landing {
       row.textContent = line;
       row.dataset.support = states[i];
     });
-    button.disabled = enter === null || arSupported === false;
-    if (arSupported === false) status.textContent = LANDING.E_XR_UNSUPPORTED;
+    button.disabled = enter === null || (arSupported === false && !opensWindow);
+    device.hidden = opensWindow; // the headset's features: none of them is the window's
+    if (opensWindow) status.textContent = LANDING.window;
+    // Not before ready(): until then the garden window may still open, and this would say the opposite.
+    else if (arSupported === false && enter !== null) status.textContent = LANDING.E_XR_UNSUPPORTED;
     else if (loadFailed) status.textContent = LANDING.loadFailed;
     else if (enterFailed) status.textContent = LANDING.E_HANDS_UNAVAILABLE;
     else status.textContent = enter === null ? LANDING.loading : '';
@@ -182,8 +187,9 @@ export function mountLanding(root: HTMLElement): Landing {
   render();
 
   return {
-    ready(enterSession) {
+    ready(enterSession, isWindow = false) {
       enter = enterSession;
+      opensWindow = isWindow;
       render();
     },
     granted(enabledFeatures) {

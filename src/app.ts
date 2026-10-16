@@ -21,6 +21,7 @@ import {
 } from './render/index.js';
 import { RoomSystem } from './room/index.js';
 import { CaptionSystem, PanelSystem } from './ui/index.js';
+import { PointerSource, shouldOpenWindow, WindowStage } from './window/index.js';
 
 import type { Landing } from './ui/Landing.js';
 
@@ -140,6 +141,28 @@ interface SoundState {
   failed: boolean;
 }
 
+/** Inside the Enter click: makes the audio context and asks it to run. A rejection is a session with no sound. */
+function startSound(engine: AudioEngine, sound: SoundState): void {
+  sound.failed = false;
+  engine.init().then(
+    () => log.info('app', 'audio started'),
+    (error: unknown) => {
+      sound.failed = true;
+      log.error('app', 'E_AUDIO_CONTEXT', error);
+    },
+  );
+}
+
+/**
+ * The garden window's Enter click (FR-SYS-07, LLD §11): the sound as `enterSession` starts it, then the window
+ * opens, which emits `xr:sessionStart` at once. Nothing can refuse it.
+ */
+function enterWindow(stage: WindowStage, engine: AudioEngine, sound: SoundState): Promise<boolean> {
+  startSound(engine, sound);
+  stage.enter();
+  return Promise.resolve(true);
+}
+
 /**
  * The landing page's Enter click (FR-SYS-01; LLD §3.3 B). Two things in the click's own call stack, neither
  * awaited before the other: `engine.init()`, which makes the audio context and asks it to run, and `launchXR`,
@@ -151,14 +174,7 @@ interface SoundState {
  * pins the SDK exactly and the field is typed, so an upgrade that removes it fails the typecheck, not the user.
  */
 function enterSession(world: World, engine: AudioEngine, sound: SoundState): Promise<boolean> {
-  sound.failed = false;
-  engine.init().then(
-    () => log.info('app', 'audio started'),
-    (error: unknown) => {
-      sound.failed = true;
-      log.error('app', 'E_AUDIO_CONTEXT', error);
-    },
-  );
+  startSound(engine, sound);
   world.launchXR();
   return new Promise((resolve) => {
     const timer = setInterval(() => {
@@ -173,10 +189,16 @@ function enterSession(world: World, engine: AudioEngine, sound: SoundState): Pro
 
 /**
  * Turns the session's own events into the three `xr:*` bus events (API_SPEC §1.10 rule 3) and raises "Sound
- * unavailable" for a session that has no sound (rule 2; the three ways are in LLD §3.3 B). Exported for its
- * unit test, which gives it a fake session.
+ * unavailable" for a session that has no sound (rule 2; the three ways are in LLD §3.3 B). The sound is judged on
+ * the bus, so the garden window's own `xr:*` events get the same check. Exported for its unit test, which gives
+ * it a fake session; returns what stops its bus listeners.
  */
-export function followSession(world: World, engine: AudioEngine, landing: Landing, sound: SoundState): void {
+export function followSession(
+  world: World,
+  engine: AudioEngine,
+  landing: Landing,
+  sound: SoundState,
+): () => void {
   const xr = world.renderer.xr;
   // On an entity of its own: a Caption added to an entity that still has one does not qualify again.
   const caption = world.createEntity();
@@ -209,6 +231,16 @@ export function followSession(world: World, engine: AudioEngine, landing: Landin
       seen = false;
       bus.emit('xr:visibility', { visible: false });
     }
+  });
+  xr.addEventListener('sessionend', () => {
+    if (!started) return;
+    started = false;
+    bus.emit('xr:sessionEnd', { visible: false });
+  });
+  let isOpen = false; // between an xr:sessionStart and its xr:sessionEnd, from either path
+  const offStart = bus.on('xr:sessionStart', () => {
+    if (isOpen && flags.dev) log.warn('app', 'xr:sessionStart again, with no xr:sessionEnd between');
+    isOpen = true;
     if (sound.failed) {
       raiseNoSound(); // init() rejected, or no click came before this session (the dev plugin's native XR control)
       return;
@@ -221,14 +253,16 @@ export function followSession(world: World, engine: AudioEngine, landing: Landin
       if (engine.clock.now() === audioAt) raiseNoSound();
     }, AUDIO_START_GRACE_MS);
   });
-  xr.addEventListener('sessionend', () => {
-    if (!started) return;
-    started = false;
+  const offEnd = bus.on('xr:sessionEnd', () => {
+    isOpen = false;
     clearTimeout(grace);
     // Taken back with its session: one raised in a session without sound must not show in the next one.
     if (caption.hasComponent(Caption)) caption.removeComponent(Caption);
-    bus.emit('xr:sessionEnd', { visible: false });
   });
+  return () => {
+    offStart();
+    offEnd();
+  };
 }
 
 /**
@@ -257,7 +291,7 @@ export async function start(landing: Landing): Promise<void> {
   register(world, PerfSystem, -100, { guard, engine });
   // The room before the hands: it moves the bed before hands reads its pose, in the frame and on the bus.
   const room = register(world, RoomSystem, 10);
-  register(world, HandSystem, 20);
+  const hands = register(world, HandSystem, 20);
   register(world, GardenAudioSystem, 40, { engine });
   register(world, SeedSystem, 49, { guard });
   // Everything drawn on the bed is a child of the bed entity's Object3D (API_SPEC §1.10 rule 5).
@@ -273,5 +307,14 @@ export async function start(landing: Landing): Promise<void> {
 
   const sound: SoundState = { failed: true };
   followSession(world, engine, landing, sound);
-  landing.ready(() => enterSession(world, engine, sound));
+  // The garden window (FR-SYS-07, LLD §11): no immersive-ar, or the `window` flag. The same world and systems,
+  // outside XR (IWSDK's render loop runs without a session); a fixed camera, and the pointer as the pinch.
+  const stage = (await shouldOpenWindow(flags.window, navigator.xr))
+    ? new WindowStage(world.camera, room.bed.object3D!) // a transform entity always has one
+    : null;
+  if (stage !== null) hands.useSource(new PointerSource(world.renderer.domElement, stage, hands.candidates));
+  landing.ready(
+    stage !== null ? () => enterWindow(stage, engine, sound) : () => enterSession(world, engine, sound),
+    stage !== null,
+  );
 }

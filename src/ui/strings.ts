@@ -12,6 +12,9 @@ export const LANDING = {
   loadFailed: 'The garden could not load. Reload the page.',
   E_XR_UNSUPPORTED:
     'Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S.',
+  // The garden window (LLD §11): a browser with no mixed reality, or the `window` flag.
+  window: 'The garden opens in this tab: a click or a tap is a pinch.',
+  close: 'Close the garden',
   E_HANDS_UNAVAILABLE:
     'The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking.',
   deviceHeading: 'This device',

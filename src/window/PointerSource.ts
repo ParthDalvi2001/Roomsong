@@ -15,9 +15,9 @@ import type { HandFrame, InputSource, PickCandidate } from '../hands/index.js';
 const STEP_ASIDE_FOR: readonly PickCandidate['target']['kind'][] = ['plant', 'orb', 'undo'];
 
 export class PointerSource implements InputSource {
-  /** The dominant hand alone, as the settings had it when the source was made. */
-  readonly hands: readonly Hand[];
-  private readonly hand: Hand;
+  /** The dominant hand alone, as the settings have it now (a restored or changed setting follows). */
+  hands: readonly Hand[];
+  private hand: Hand;
   /** The events not sampled yet, a ring: each one's screen point (NDC) and button. */
   private readonly queueX = new Float64Array(POINTER_QUEUE_SIZE);
   private readonly queueY = new Float64Array(POINTER_QUEUE_SIZE);
@@ -64,6 +64,11 @@ export class PointerSource implements InputSource {
       }),
       bus.on('xr:visibility', ({ visible }) => void (this.isSeen = visible)),
       bus.on('xr:sessionEnd', () => this.forget()),
+      bus.on('settings:changed', ({ settings: now }) => {
+        if (now.dominantHand === this.hand) return;
+        this.hand = now.dominantHand;
+        this.hands = [this.hand];
+      }),
     ];
   }
 

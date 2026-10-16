@@ -11,8 +11,7 @@ import { openApp, readRoom, SESSION_ENTRY_LIMIT_MS, xrFrames } from './support/i
 const WORLD_READY_MS = 15_000; // the Enter button waits for the world; software rendering takes a few seconds
 const HANDS_OFF =
   'The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking.';
-const NO_AR =
-  'Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S.';
+const WINDOW = 'The garden opens in this tab: a click or a tap is a pinch.';
 const LOAD_FAILED = 'The garden could not load. Reload the page.';
 const TOGGLES = [
   ['One hand', 'oneHand'],
@@ -303,7 +302,7 @@ test('landing page: a refused session says how to turn hand tracking on, and Ent
   expect(errors).toHaveLength(2);
 });
 
-test('landing page, built: without immersive AR it says so and offers no Enter; no policy violation, no request off site', async ({
+test('landing page, built: without immersive AR it offers the garden window (T-114b); no policy violation, no request off site', async ({
   page,
 }) => {
   // The production build in plain headless Chromium, which has WebXR but no immersive-ar: a desktop visitor.
@@ -319,14 +318,18 @@ test('landing page, built: without immersive AR it says so and offers no Enter; 
   });
   await page.goto(BUILT_PAGE_URL);
 
-  await expect(status(page)).toHaveText(NO_AR);
-  await expect(enterButton(page)).toBeDisabled();
-  await expect(deviceRows(page).first()).toHaveText('Mixed reality: not supported. Roomsong needs it.');
+  await expect(status(page)).toHaveText(WINDOW, { timeout: WORLD_READY_MS });
+  await expect(enterButton(page)).toBeEnabled();
+  // The headset's features are not the window's: the section is left out, so nothing says "not supported".
+  await expect(deviceRows(page).first()).toBeHidden();
   await expect(landing(page).getByLabel('High contrast')).toBeEnabled(); // the toggles do not need a headset
   // The style sheet got through the policy: the page is laid out, not a bare list.
   await expect(enterButton(page)).toHaveCSS('border-radius', '24px');
 
   await page.screenshot({ path: '.tmp/landing-no-ar.png', fullPage: true });
+  // The window opens on the built page too, under its policy; its close button is laid out by the page's sheet.
+  await enterButton(page).click();
+  await expect(page.getByRole('button', { name: 'Close the garden' })).toHaveCSS('border-radius', '24px');
   const violations = await page.evaluate(
     () => (window as unknown as { policyViolations: string[] }).policyViolations,
   );

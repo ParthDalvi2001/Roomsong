@@ -65,6 +65,18 @@ describe('PointerSource: one hand, from Enter on (LLD §11)', () => {
     expect(other.tracked).toBe(false);
   });
 
+  it('follows the dominant hand when the setting changes after it was made (a restored setting)', () => {
+    const { source } = rig(); // right, the default
+    enter();
+    settings.set({ dominantHand: 'left' });
+    expect(source.hands).toEqual(['left']);
+    const left = createHandFrame('left');
+    const right = createHandFrame('right');
+    source.sample('left', 10, left);
+    source.sample('right', 10, right);
+    expect([left.tracked, right.tracked]).toEqual([true, false]);
+  });
+
   it('is untracked before Enter, and a press before it is not kept', () => {
     const { canvas, sample } = rig();
     canvas.fire('pointerdown', at(600, 300));
