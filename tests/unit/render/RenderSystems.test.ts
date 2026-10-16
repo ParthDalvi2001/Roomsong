@@ -148,9 +148,9 @@ function bedRig(beds = new FakeQuery()) {
 describe('BedRenderSystem: the bed and its ghost (LLD §3.2, priority 50; UX §9.2)', () => {
   it('draws the bed on the Object3D it is given, and starts as not placed: the glass alone once its frames ran', () => {
     const { bed, glass, markers, frames, strength } = bedRig();
-    // The glass with its ring lines and the 80 markers (2 draw calls), then the plants (6 meshes and the shaping
-    // guides), the tide and the petals
-    expect(bed.children).toHaveLength(2 + 7 + 1 + 1);
+    // The glass with its ring lines and the 80 markers (2 draw calls), then the plants (6 meshes, the 5 high-contrast
+    // outline shells of T-163 and the shaping guides), the tide and the petals
+    expect(bed.children).toHaveLength(2 + 12 + 1 + 1);
     frames();
     expect(glass.visible).toBe(true);
     expect(markers.visible).toBe(false); // faded out, and no longer drawn: 1 draw call
