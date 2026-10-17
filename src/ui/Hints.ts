@@ -3,7 +3,8 @@
 // one glowing cell, the hint ring with the pull or the drag icon round the newest plant, the Listen icon. From
 // hands: the remove arrow on the bed rim during a drag until the first removal (UX §3.4), and the hand hint, an open
 // palm in a dashed ring where a hand that held something was lost (FR-HND-15). Every element is a level that fades
-// in or out once, never a blink (FR-UI-11); every icon is outlined (UX §8). Hidden in Listen.
+// in or out once, never a blink (FR-UI-11); every icon is outlined (UX §8), and in high contrast the remove arrow
+// has a cream outline round that as well (FR-UI-05, BUG-008). Hidden in Listen.
 import {
   CanvasTexture,
   createSystem,
@@ -70,8 +71,9 @@ const Frame = {
   Remove: 8,
   HandLost: 9,
   Ring: 10,
+  RemoveOutlined: 11,
 } as const;
-const FRAMES = 11;
+const FRAMES = 12;
 
 const HAND_HINT: Readonly<FovElement> = {
   distanceM: HAND_HINT_DISTANCE_M,
@@ -284,7 +286,10 @@ export class HintSystem extends createSystem(
       scale.x = side * REMOVE_ARROW_SIZE_M;
       scale.y = scale.z = REMOVE_ARROW_SIZE_M;
     }
-    this.shows.arrow = isArrow ? Frame.Remove : -1;
+    // FR-UI-05: in high contrast the arrow drawn with a cream outline; one quad either way, no draw call more.
+    const arrowFrame = now.highContrast ? Frame.RemoveOutlined : Frame.Remove;
+    this.arrow.geometry = this.frames[arrowFrame]!;
+    this.shows.arrow = isArrow ? arrowFrame : -1;
     fade(this.arrow, isArrow, dtMs, HINT_FADE_MS);
 
     for (let i = 0; i < 2; i++) this.updateHand(i, head, dtMs);
@@ -400,6 +405,7 @@ function drawAtlas(ctx: CanvasRenderingContext2D): void {
       c.globalAlpha = 1;
       ink(c, 8, () => c.arc(64, 64, 50, 0, 2 * Math.PI));
     },
+    (c) => arrows(c, [[1, 0]], true, true),
   ];
   draw.forEach((icon, frame) => {
     ctx.save();
@@ -409,10 +415,24 @@ function drawAtlas(ctx: CanvasRenderingContext2D): void {
   });
 }
 
-/** One path, stroked in cream `width` wide over a charcoal outline 6 px wider (none when `outline` is false). */
-function ink(ctx: CanvasRenderingContext2D, width: number, path: () => void, outline = true): void {
+/**
+ * One path, stroked in cream `width` wide over a charcoal outline 6 px wider (none when `outline` is false), and
+ * with `rim` over a cream outline 6 px wider again (high contrast, FR-UI-05).
+ */
+function ink(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  path: () => void,
+  outline = true,
+  rim = false,
+): void {
   ctx.beginPath();
   path();
+  if (rim) {
+    ctx.lineWidth = width + 12;
+    ctx.strokeStyle = HINT_INK;
+    ctx.stroke();
+  }
   if (outline) {
     ctx.lineWidth = width + 6;
     ctx.strokeStyle = HINT_OUTLINE;
@@ -478,23 +498,33 @@ function palm(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number
   ctx.restore();
 }
 
-/** Arrows from the centre of the cell, one per direction (x right, y down); `long` for the one remove arrow. */
+/**
+ * Arrows from the centre of the cell, one per direction (x right, y down); `long` for the one remove arrow, `rim`
+ * for its high-contrast outline.
+ */
 function arrows(
   ctx: CanvasRenderingContext2D,
   directions: readonly (readonly [number, number])[],
   long = false,
+  rim = false,
 ): void {
   const reach = long ? 50 : 44;
-  ink(ctx, 10, () => {
-    for (const [dx, dy] of directions) {
-      const tipX = 64 + dx * reach;
-      const tipY = 64 + dy * reach;
-      ctx.moveTo(long ? 64 - dx * reach : 64, long ? 64 - dy * reach : 64);
-      ctx.lineTo(tipX, tipY);
-      // the head: two strokes back from the tip, at 45 degrees
-      ctx.moveTo(tipX - dx * 16 - dy * 16, tipY - dy * 16 + dx * 16);
-      ctx.lineTo(tipX, tipY);
-      ctx.lineTo(tipX - dx * 16 + dy * 16, tipY - dy * 16 - dx * 16);
-    }
-  });
+  ink(
+    ctx,
+    10,
+    () => {
+      for (const [dx, dy] of directions) {
+        const tipX = 64 + dx * reach;
+        const tipY = 64 + dy * reach;
+        ctx.moveTo(long ? 64 - dx * reach : 64, long ? 64 - dy * reach : 64);
+        ctx.lineTo(tipX, tipY);
+        // the head: two strokes back from the tip, at 45 degrees
+        ctx.moveTo(tipX - dx * 16 - dy * 16, tipY - dy * 16 + dx * 16);
+        ctx.lineTo(tipX, tipY);
+        ctx.lineTo(tipX - dx * 16 + dy * 16, tipY - dy * 16 - dx * 16);
+      }
+    },
+    true,
+    rim,
+  );
 }

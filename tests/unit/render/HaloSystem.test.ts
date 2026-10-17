@@ -12,7 +12,7 @@ import { FlashGuard } from '../../../src/render/FlashGuard.js';
 import { HaloRenderer } from '../../../src/render/HaloRenderer.js';
 import { HaloSystem } from '../../../src/render/HaloSystem.js';
 
-import type { Mesh } from 'three';
+import type { InstancedMesh, Mesh } from 'three';
 
 /** As much of an ECS entity as HaloSystem uses. */
 class FakeEntity {
@@ -94,7 +94,7 @@ function rig() {
   system.init();
   stop = () => system.destroy();
   const [target, caption] = created as [FakeEntity, FakeEntity];
-  const [dome, halo, orb] = bed.children as [Mesh, Mesh, Mesh];
+  const [dome, halo, orb] = bed.children as [InstancedMesh, Mesh, Mesh];
   let timeS = 1000;
   const frames = (count = 10): void => {
     for (let i = 0; i < count; i++) system.update(1 / 72, (timeS += 1 / 72));
@@ -142,10 +142,10 @@ describe('HaloSystem (T-148, priority 52)', () => {
     beds.place();
     bus.emit('listen:enter', {});
     frames(100);
-    expect([halo.visible, dome.visible]).toEqual([true, true]);
+    expect([halo.visible, dome.count]).toEqual([true, 1]);
     bus.emit('listen:exit', { timedOut: false });
     frames(100);
-    expect([halo.visible, dome.visible]).toEqual([false, false]);
+    expect([halo.visible, dome.count]).toEqual([false, 0]);
   });
 
   it('rule 11: the breath is timed on the tide only with a bed, a signature and a running audio clock', () => {

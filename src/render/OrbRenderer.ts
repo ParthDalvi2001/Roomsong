@@ -1,9 +1,11 @@
 // The Listen orb (UX §2, FR-UI-09): a small cream pearl in the bed's centre hole. Pinched, or dwelt on, it
 // toggles Listen; its target is HaloSystem's. It is at a plant's rest brightness, lifted as a plant is while a
 // hand hovers it (FR-HND-16), and full in Listen, each a level that moves over HOVER_CUE_MS through the flash
-// cap (one FlashGuard element). Nothing here listens to the bus or reads a clock; update allocates nothing.
+// cap (one FlashGuard element). High contrast: a cream outline (FR-UI-05). Nothing here listens to the bus or reads
+// a clock; update allocates nothing.
 import { Color, IcosahedronGeometry, Mesh, ShaderMaterial } from 'three';
 
+import { settings } from '../core/index.js';
 import { TARGET_VISIBLE_DIAMETER_M } from '../hands/index.js';
 
 import {
@@ -14,9 +16,10 @@ import {
   PLANT_HOVER_LIFT,
   PLANT_REST_BRIGHTNESS,
 } from './config.js';
+import { outlineShell } from './outline.js';
 
 import type { FlashGuard } from './FlashGuard.js';
-import type { Object3D } from 'three';
+import type { BufferGeometry, InstancedMesh, Object3D } from 'three';
 
 const VERTEX = /* glsl */ `
 void main() {
@@ -32,6 +35,8 @@ void main() {
 
 export class OrbRenderer {
   readonly mesh: Mesh<IcosahedronGeometry, ShaderMaterial>;
+  /** FR-UI-05: the orb's cream shell, a child of `mesh`; drawn in high contrast only. */
+  readonly outline: InstancedMesh<BufferGeometry, ShaderMaterial>;
   private readonly element: number;
   private readonly state = new Float32Array(4);
   private isHovered = false;
@@ -62,6 +67,7 @@ export class OrbRenderer {
     this.mesh.updateMatrix();
     this.mesh.visible = false; // until a bed is placed
     parent.add(this.mesh);
+    this.outline = outlineShell(this.mesh);
   }
 
   /** On `target:hover`: a hand would press it now. */
@@ -88,11 +94,14 @@ export class OrbRenderer {
       this.level = was < wanted ? Math.min(wanted, was + step) : Math.max(wanted, was - step);
     }
     this.state[0] = this.guard.request(this.element, this.level, nowMs);
+    this.outline.count = settings.get().highContrast ? 1 : 0; // FR-UI-05; hidden with the orb
   }
 
   dispose(): void {
     this.mesh.removeFromParent();
     this.mesh.geometry.dispose();
     this.mesh.material.dispose();
+    this.outline.material.dispose();
+    this.outline.dispose(); // its own instance buffer: it shares only the geometry
   }
 }

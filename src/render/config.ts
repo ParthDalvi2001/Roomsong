@@ -114,7 +114,8 @@ export const PLANT_WHORL_LOBE_DEPTH = 0.6;
 export const PLANT_BLOOM_MS = 600;
 export const PLANT_BLOOM_WAIT_MS = 10_000;
 /** FR-UI-05 (outlines on all targets), T-163 (ART_PASS §2.8): in high contrast a cream shell this thick round each
- *  plant's silhouette (about 3.6 px at 0.6 m), at one strength whatever the plant does: it cannot flash. */
+ *  plant's silhouette (about 3.6 px at 0.6 m), at one strength whatever the plant does: it cannot flash. BUG-008:
+ *  the same round the seeds, the Listen orb and the undo petal. */
 export const PLANT_OUTLINE_M = 0.0015;
 /** UX §5 (idle sway 0.2 Hz), T-163 (ART_PASS §2.7): every plant leans about its foot along the bed's x by this
  *  share of each point's height above the foot (3.4 degrees: 0.4 cm at the head of a 3 cm stem, 1.1 cm on the
@@ -201,6 +202,9 @@ export const LISTEN_EXIT_MS = 800;
  *  T-148: the dome is a sphere this wide around the bed's centre, so a seated or standing head at the table is in
  *  it, of this many faces (it is one flat colour), drawn before everything else that is see-through. */
 export const DOME_DIM = 0.6;
+/** FR-UI-05 (BUG-008): high contrast dims the background to 60 % with the same dome, at all times. In Listen the
+ *  deeper of the two dims holds; they never multiply (40 %, not 24 %). */
+export const CONTRAST_DIM = 0.4;
 export const DOME_RADIUS_M = 2;
 export const DOME_DETAIL = 1;
 export const DOME_RENDER_ORDER = -1;
@@ -237,8 +241,9 @@ export const SEED_DETAIL = 1;
  *  whenever the bed is (NFR-FOV-01); not a target, so it takes no reach and no pinch from the Listen orb below. */
 export const SUPPLY_ORB_LIFT_M = 0.1;
 export const SUPPLY_ORB_RADIUS_M = 0.03;
-/** Chosen in T-127: a seed waits at a plant's rest brightness and is lit full while it is out on a hand. */
-export const SEED_OUT_BRIGHTNESS = 1;
+/** Chosen in T-127: a seed waits at a plant's rest brightness and is lit while it is out on a hand. BUG-007: lit
+ *  so that a hover's PLANT_HOVER_LIFT takes it to full (UX §9.1), not full already, where the glow could not show. */
+export const SEED_OUT_BRIGHTNESS = 1 / (1 + PLANT_HOVER_LIFT);
 /** UX §3.3 ("seed glides to palm"), chosen in T-127: a seed's way between the orb and a hand, ease-out. UX §9.1:
  *  its hop from the palm to the pinch point that took it. */
 export const SEED_GLIDE_MS = 300;

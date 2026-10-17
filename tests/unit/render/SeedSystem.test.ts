@@ -2,6 +2,7 @@
 // target and the "Garden is full" caption. Fake entities and queries (seedRig.ts), the real bus, renderer and
 // guard: no ECS world, no XR. What a seed's glide looks like is SeedRenderer.test.ts; the per-frame cost is
 // SeedSystem.heap.test.ts; the whole flow on the emulator's hands is tests/e2e/16-seeds.spec.ts.
+import { Color, SRGBColorSpace } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Caption, Interactable } from '../../../src/core/components.js';
@@ -10,14 +11,20 @@ import { HIT_RADIUS_M } from '../../../src/hands/config.js';
 import { HandState } from '../../../src/hands/HandState.js';
 import {
   GARDEN_FULL_CAPTION_MS,
+  HOVER_CUE_MS,
+  PLANT_HOVER_LIFT,
+  PLANT_LIGHTNESS,
+  PLANT_SATURATION,
   SEED_GLIDE_MS,
   SEED_HOP_MS,
+  SEED_OUT_BRIGHTNESS,
   SUPPLY_ORB_LIFT_M,
   SUPPLY_ORB_RADIUS_M,
 } from '../../../src/render/config.js';
 import { SeedRenderer } from '../../../src/render/SeedRenderer.js';
 import { garden, seed } from '../garden/fixtures.js';
 
+import { mostInAnyClip, type Drawn } from './changes.js';
 import { BED_AT, FRAME_S, LEFT_PALM, RIGHT_PINCH, rig } from './seedRig.js';
 
 import type { EventMap, Hand, Vec3 } from '../../../src/core/index.js';
@@ -220,5 +227,53 @@ describe('SeedSystem: the supply and the seed that is out (API_SPEC §1.10 rule 
     changed(SUPPLY);
     seedOut('s1', 'left');
     expect(s.target.added).toEqual([]);
+  });
+});
+
+describe('SeedSystem: the hover cue on the seed that is out (FR-HND-16, UX §9.1, BUG-007)', () => {
+  const FULL = new Color().setHSL(0.4, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace); // the fixtures' hue
+  /** The brightness slot 0 (the first seed) is drawn at, from its colour. */
+  const brightness = (s: ReturnType<typeof rig>): number => s.mesh.instanceColor!.getX(0) / FULL.r;
+  const hover = (hand: Hand, kind: 'seed' | 'plant' | null, id = 's1'): void =>
+    bus.emit('target:hover', { hand, target: kind === null ? null : { kind, id }, cell: null });
+  const out = (): ReturnType<typeof rig> => {
+    const s = start();
+    changed(SUPPLY);
+    s.frame();
+    seedOut('s1', 'left');
+    s.frame(GLIDE_S);
+    return s;
+  };
+
+  it("a hand's hover on it lights it 20 % more over HOVER_CUE_MS, as a plant's; off it, back over the same", () => {
+    const s = out();
+    expect(brightness(s)).toBeCloseTo(SEED_OUT_BRIGHTNESS, 5);
+    hover('left', 'seed'); // one-hand mode: the hand it rests on (D-048)
+    s.frame(HOVER_CUE_MS / 2000);
+    expect(brightness(s)).toBeGreaterThan(SEED_OUT_BRIGHTNESS + 0.05);
+    expect(brightness(s)).toBeLessThan(SEED_OUT_BRIGHTNESS * (1 + PLANT_HOVER_LIFT) - 0.05);
+    s.frame(HOVER_CUE_MS / 1000);
+    expect(brightness(s)).toBeCloseTo(SEED_OUT_BRIGHTNESS * (1 + PLANT_HOVER_LIFT), 5); // full, not past it
+    hover('right', 'plant', 'p1'); // the other hand on a plant: the left one still hovers the seed
+    s.frame();
+    expect(brightness(s)).toBeCloseTo(1, 5);
+    hover('left', null);
+    s.frame(HOVER_CUE_MS / 1000);
+    expect(brightness(s)).toBeCloseTo(SEED_OUT_BRIGHTNESS, 5);
+    hover('right', 'seed'); // either hand
+    s.frame(HOVER_CUE_MS / 1000);
+    expect(brightness(s)).toBeCloseTo(1, 5);
+  });
+
+  it('goes through the flash guard: a hover that flickers 10 times a second changes it at most 3 times (FR-UI-11)', () => {
+    const s = out();
+    const series: Drawn[] = [];
+    for (let i = 0; i < 200; i++) {
+      if (i % 7 === 0) hover('left', i % 14 === 0 ? 'seed' : null); // a new hover every 98 ms
+      s.frame();
+      series.push({ t: i * FRAME_S * 1000, value: brightness(s) });
+    }
+    expect(Math.max(...series.map((d) => d.value))).toBeGreaterThan(SEED_OUT_BRIGHTNESS + 0.1); // it did glow
+    expect(mostInAnyClip(series)).toBeLessThanOrEqual(3);
   });
 });

@@ -19,6 +19,7 @@ import {
   PETAL_FADE_MS,
   PETAL_LIFT_M,
   PETAL_START_DIAMETER_M,
+  PLANT_CAPACITY,
   PLANT_LIGHTNESS,
   PLANT_REST_BRIGHTNESS,
   PLANT_SATURATION,
@@ -412,5 +413,35 @@ describe("PetalRenderer, the petal's arrival (UX §9.3, T-147)", () => {
     petals.show('c', removed(4, 0), T0 + 2 * UNDO_LIFE_MS, FROM);
     petals.update(T0 + BURST_MS + 30);
     expect(drawn(petals)).toHaveLength(BURST_PETALS);
+  });
+});
+
+describe('PetalRenderer: high contrast (FR-UI-05, BUG-008)', () => {
+  afterEach(() => settings.set({ highContrast: false }));
+
+  it('a cream band round each undo petal, none under it and none for the burst, at its opacity, only in high contrast', () => {
+    const { petals, parent } = make();
+    expect(parent.children).toEqual([petals.mesh]);
+    expect(petals.mesh.children).toEqual([petals.outline]); // a child: hidden with the petals
+    expect(petals.outline.instanceMatrix).toBe(petals.mesh.instanceMatrix);
+    expect(petals.outline.geometry).toBe(petals.mesh.geometry); // its aColour too: it fades with its petal
+    expect(petals.outline.material.vertexShader).toContain('aColour.a');
+    // Only the band outside the petal: under a fading petal a cream disc would brighten it past the guard.
+    expect(petals.outline.material.fragmentShader).toMatch(/if \(vRim\.x \* vRim\.x < vRim\.y\) discard;/);
+    expect(petals.outline.renderOrder).toBeLessThan(petals.mesh.renderOrder);
+    petals.show('a', removed(2, 4), T0 + UNDO_LIFE_MS);
+    petals.update(T0);
+    expect(petals.outline.count).toBe(0); // no draw call
+    settings.set({ highContrast: true });
+    petals.update(T0 + FRAME_MS);
+    expect(petals.outline.count).toBe(PLANT_CAPACITY);
+    expect(petals.outline.visible).toBe(true); // kept visible, switched by its count: compiled at start (T-163)
+    petals.show('b', removed(3, 9), T0 + UNDO_LIFE_MS, { x: 0.3, y: 0.05, z: 0.1 }); // a burst in the air
+    petals.update(T0 + 2 * FRAME_MS);
+    expect(petals.mesh.count).toBe(PLANT_CAPACITY + BURST_POOL);
+    expect(petals.outline.count).toBe(PLANT_CAPACITY); // the burst's petals are not targets
+    settings.set({ highContrast: false });
+    petals.update(T0 + 3 * FRAME_MS);
+    expect(petals.outline.count).toBe(0);
   });
 });

@@ -21,6 +21,9 @@ const TRIANGLE_BUDGET = 150_000; // NFR-PERF-04
 // 15 and inside NFR-PERF-03's 60. UX §9.5 and §9.6 count the same meshes.
 const EVERYTHING_PER_EYE = 2 + 5 + 1 + 1 + 1;
 const OUTLINE_SHELLS = 5; // T-163: in high contrast, one cream shell per silhouette (FR-UI-05)
+const DIM_DOME = 1; // BUG-008: high contrast dims the room with Listen's dome (FR-UI-05)
+// BUG-008, per eye: the seed and its shell, the Listen orb and its shell, the undo petal and its shell.
+const TARGETS_OUTLINED = 6;
 const NFR_DRAW_CALLS = 60; // NFR-PERF-03
 const TIDE_PASS_MARK = 3; // UX §9.4: crest to the shade's darkest point, as a luminance ratio
 
@@ -289,17 +292,55 @@ test('T-119 everything at once on a full bed: draw calls, triangles and the flas
   expect(errors).toEqual([]);
 });
 
-test('T-163 high contrast on a full bed: the outline shells draw, within the budgets', async ({ page }) => {
+test('T-163, BUG-008 high contrast on a full bed with a seed, the orb and a petal: every outline and the dim, within the budgets', async ({
+  page,
+}) => {
+  mkdirSync(SHOTS, { recursive: true });
   const errors = recordErrors(page); // a shell shader that does not compile is a console error
   const offHost = await openApp(page, readRoom('table'), PAGE);
+  const dragOff = async (): Promise<void> => {
+    await page.evaluate(() => (window as unknown as PageWindow).__bed.play('dragOff'));
+    // Let go at 3.3 s on the script's clock; the burst (0.4 s) has landed, the petal waits its 5 s.
+    await page.waitForFunction(() => ((window as unknown as PageWindow).__bed.scriptMs() ?? -1) >= 3900);
+  };
+  /** The seed-and-orb box, clicked from inside the page (as shapingPage's slow box: no wait for the page). */
+  const targets = (isOn: boolean): Promise<void> =>
+    page.evaluate((isOn) => {
+      const box = document.querySelector('#targets') as HTMLInputElement;
+      if (box.checked !== isOn) box.click();
+    }, isOn);
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.mouse.move(5, 5); // off the bed: the pointer hovers nothing
   await page.locator('#garden').selectOption('everything');
   await page.locator('#contrast').check();
   await page.locator('#week').click();
+
+  // The picture: the plain view with everything outlined, the room behind dimmed.
+  await targets(true);
+  await dragOff();
+  const style = await page.addStyleTag({ content: 'main { visibility: hidden; }' });
+  await page.screenshot({ path: `${SHOTS}bug008-high-contrast.png` });
+  await style.evaluate((node) => (node as Element).remove());
+  await targets(false);
+  await page.waitForFunction(() => (window as unknown as PageWindow).__bed.scriptMs() === null); // the petal gone
+
   await enterSession(page);
-  const inXr = await nextSample(page, true, await page.evaluate(() => performance.now()));
-  console.log(`T-163 high contrast, everything, emulated session ${JSON.stringify(inXr)} (IWER, both eyes)`);
-  expectInBudget(inXr, NFR_DRAW_CALLS);
-  expect(inXr.draws).toBe(2 * (EVERYTHING_PER_EYE + OUTLINE_SHELLS));
+  // T-163's sample: the plants' shells, and now the dim.
+  const plants = await nextSample(page, true, await page.evaluate(() => performance.now()));
+  console.log(
+    `T-163 high contrast, everything, emulated session ${JSON.stringify(plants)} (IWER, both eyes)`,
+  );
+  expectInBudget(plants, NFR_DRAW_CALLS);
+  expect(plants.draws).toBe(2 * (EVERYTHING_PER_EYE + OUTLINE_SHELLS + DIM_DOME));
+  // BUG-008: and a seed out, the Listen orb and an undo petal, each outlined.
+  await targets(true);
+  await dragOff();
+  const all = await nextSample(page, true, await page.evaluate(() => performance.now()));
+  console.log(
+    `BUG-008 high contrast, everything and every target, emulated session ${JSON.stringify(all)} (IWER, both eyes)`,
+  );
+  expectInBudget(all, NFR_DRAW_CALLS);
+  expect(all.draws).toBe(2 * (EVERYTHING_PER_EYE + OUTLINE_SHELLS + DIM_DOME + TARGETS_OUTLINED));
   expect(offHost).toEqual([]);
   expect(errors).toEqual([]);
 });

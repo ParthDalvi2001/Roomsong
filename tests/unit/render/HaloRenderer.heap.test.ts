@@ -6,6 +6,7 @@
 import { Group } from 'three';
 import { describe, expect, it } from 'vitest';
 
+import { settings } from '../../../src/core/index.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
 import { HaloRenderer } from '../../../src/render/HaloRenderer.js';
 import { OrbRenderer } from '../../../src/render/OrbRenderer.js';
@@ -15,12 +16,15 @@ const MOST_ROUNDS = 40;
 const FRAMES = 20_000; // 278 s at 72 Hz, a frame a ms below: what matters is the count
 const BAR_FRAMES = 206; // 84 BPM at 72 Hz
 const TOGGLE_FRAMES = 2000;
+const CONTRAST_FRAMES = 3000; // high contrast flips out of step with Listen: every mix of the two dims runs
+const BED_FRAMES = 7000; // and the bed is hidden and shown (Re-place) out of step with both
 
 describe('Listen light per frame (NFR-PERF-08)', () => {
   it(
     'the halo, the dome and the orb allocate nothing, in Listen and through its fades',
     { timeout: 60_000 },
     () => {
+      settings.set({ highContrast: true }); // the orb's outline (BUG-008); the dome's dim is toggled below
       const guard = new FlashGuard();
       const parent = new Group();
       const halo = new HaloRenderer(parent, guard);
@@ -37,6 +41,8 @@ describe('Listen light per frame (NFR-PERF-08)', () => {
             halo.setListening(isListening);
             orb.setListening(isListening);
           }
+          if (i % CONTRAST_FRAMES === 1) halo.setHighContrast(Math.floor(i / CONTRAST_FRAMES) % 2 === 0);
+          if (i % BED_FRAMES === 0) parent.visible = !parent.visible;
           t += 14;
           halo.update(PHASES[i] as number, t);
           orb.update(t);
@@ -51,11 +57,13 @@ describe('Listen light per frame (NFR-PERF-08)', () => {
         costs.push(cost);
         if (isClean(cost)) break;
       }
+      settings.set({ highContrast: false });
       // One boxed number a frame would be 320 000 bytes a round.
       expect(isClean(costs[costs.length - 1]!), JSON.stringify(costs)).toBe(true);
       // It did the work: the round ended faded out, after a Listen with the halo lit.
       expect(halo.halo.visible).toBe(false);
       expect(guard.takePeak()).toBeGreaterThan(0);
+      expect(orb.outline.count).toBe(1);
     },
   );
 });

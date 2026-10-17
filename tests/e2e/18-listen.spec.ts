@@ -25,6 +25,10 @@ type Ui = typeof import('../../src/ui/index');
 type Hand = 'left' | 'right';
 type Vec3 = { x: number; y: number; z: number };
 type Mesh = import('three').Mesh<import('three').BufferGeometry, import('three').ShaderMaterial>;
+type InstancedMesh = import('three').InstancedMesh<
+  import('three').BufferGeometry,
+  import('three').ShaderMaterial
+>;
 
 interface Heard {
   name: string;
@@ -87,7 +91,7 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
     const ui = await load<Ui>('/src/ui/index.ts');
     const { world } = (window as unknown as DevPage).FRAMEWORK_MCP_RUNTIME;
     const system = world.getSystem(render.HaloSystem) as unknown as {
-      halo: { halo: Mesh; dome: Mesh };
+      halo: { halo: Mesh; dome: InstancedMesh };
       orb: { mesh: Mesh };
     };
     if (system === undefined) throw new Error('src/app.ts did not register HaloSystem');
@@ -145,7 +149,7 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
       seen: () => 1 - (system.halo.dome.material.uniforms.uDome!.value as Float32Array)[0]!,
       meshes: () => ({
         halo: system.halo.halo.visible,
-        dome: system.halo.dome.visible,
+        dome: system.halo.dome.count > 0, // switched by its count, never hidden (BUG-008 review)
         orb: system.orb.mesh.visible,
       }),
       orbAt: () => {

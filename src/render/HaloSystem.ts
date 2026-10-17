@@ -1,6 +1,6 @@
-// Listen mode's system (LLD §3.2, priority 52; API_SPEC §1.10 "Listen mode"): the dim dome and the aurora halo
-// (HaloRenderer), the Listen orb (OrbRenderer) and the orb's pinch target, and the "Goodnight" caption of the
-// 10-minute end. The Listen state itself is the garden's: this system follows `listen:enter` and `listen:exit`.
+// Listen mode's system (LLD §3.2, priority 52; API_SPEC §1.10 "Listen mode"): the dim dome (also high contrast's
+// dim) and the aurora halo (HaloRenderer), the Listen orb (OrbRenderer) and the orb's pinch target, and the
+// "Goodnight" caption of the 10-minute end. The Listen state itself is the garden's: this system follows `listen:enter` and `listen:exit`.
 import { createSystem, Types, type Entity, type Object3D } from '@iwsdk/core';
 
 import { BedAnchor, Caption, Interactable } from '../core/components.js';
@@ -51,7 +51,10 @@ export class HaloSystem extends createSystem(
     this.orb = new OrbRenderer(this.bed, guard);
     this.target = this.createEntity();
     this.caption = this.createEntity();
-    const apply = (s: Readonly<Settings>): void => this.halo.setReducedMotion(s.reducedMotion);
+    const apply = (s: Readonly<Settings>): void => {
+      this.halo.setReducedMotion(s.reducedMotion);
+      this.halo.setHighContrast(s.highContrast); // FR-UI-05: the background dim
+    };
     apply(settings.get());
     const { beds } = this.queries;
     this.cleanupFuncs.push(

@@ -1,12 +1,13 @@
 // Listen mode's light (T-148; FR-ROOM-04, UX §3.5, TC-E2E-05's halo at unit level): the dim dome and the aurora
 // halo. The fades of UX §3.5, the dome as a material drawn before the garden (no pass over the frame), and the
 // flash cap (FR-UI-11) counted on what was drawn, by the rule of LLD §5.9 written again in changes.ts.
-import { BackSide, CustomBlending, Group, OneFactor, OneMinusSrcAlphaFactor } from 'three';
+import { BackSide, CustomBlending, Group, InstancedMesh, OneFactor, OneMinusSrcAlphaFactor } from 'three';
 import { describe, expect, it } from 'vitest';
 
 import { BED_OUTER } from '../../../src/garden/index.js';
 import {
   BED_RIM_M,
+  CONTRAST_DIM,
   DOME_DIM,
   DOME_RENDER_ORDER,
   FLASH_CAP_PER_S,
@@ -79,12 +80,16 @@ describe('HaloRenderer: the dome and the halo (T-148, UX §3.5)', () => {
     expect(halo.halo.geometry.boundingBox!.max.x).toBeCloseTo(BED_OUTER + BED_RIM_M, 6);
     expect(halo.halo.geometry.index!.count / 3).toBeLessThanOrEqual(100);
     expect(halo.dome.geometry.getAttribute('position').count / 3).toBeLessThanOrEqual(100);
+    // BUG-008 review: drawn from the start, switched by its count (0: no draw call), so its program compiles when
+    // the bed is first drawn and not on the first dim, which a high-contrast switch can bring mid-session.
+    expect(halo.dome).toBeInstanceOf(InstancedMesh);
+    expect([halo.dome.visible, halo.dome.frustumCulled, halo.dome.count]).toEqual([true, false, 0]);
   });
 
   it('out of Listen nothing is drawn, whatever the frames', () => {
     const { halo, run } = make();
     run(2000, 84);
-    expect([halo.halo.visible, halo.dome.visible]).toEqual([false, false]);
+    expect([halo.halo.visible, halo.dome.count]).toEqual([false, 0]);
   });
 
   it('in: passthrough dims to 40 % and the halo rises over 1.2 s; out: both are gone 0.8 s later', () => {
@@ -99,13 +104,13 @@ describe('HaloRenderer: the dome and the halo (T-148, UX §3.5)', () => {
     expect(read()).toMatchObject({ rise: 1, lit: 1 }); // no tide: the halo holds full
     expect(read().seen).toBeCloseTo(0.4, 6); // the cover is a 32-bit float
     expect(DOME_DIM).toBe(0.6);
-    expect([halo.halo.visible, halo.dome.visible]).toEqual([true, true]);
+    expect([halo.halo.visible, halo.dome.count]).toEqual([true, 1]);
     halo.setListening(false);
     run(LISTEN_EXIT_MS - 4 * FRAME_MS);
     expect(read().seen).toBeLessThan(1);
     run(6 * FRAME_MS);
     expect(read()).toMatchObject({ lit: 0, seen: 1 });
-    expect([halo.halo.visible, halo.dome.visible]).toEqual([false, false]);
+    expect([halo.halo.visible, halo.dome.count]).toEqual([false, 0]);
   });
 
   it('breathes with the beat on every second beat: two breaths a bar, between full and HALO_LOW', () => {
@@ -177,5 +182,58 @@ describe('HaloRenderer: the dome and the halo (T-148, UX §3.5)', () => {
     const { parent, halo } = make();
     halo.dispose();
     expect(parent.children).toEqual([]);
+  });
+});
+
+describe('HaloRenderer: the high-contrast dim (FR-UI-05, BUG-008)', () => {
+  it('dims passthrough to 60 % only in high contrast, with the same dome; in Listen the deeper dim, never both', () => {
+    const { halo, read, run } = make();
+    run(500);
+    expect(halo.dome.count).toBe(0);
+    halo.setHighContrast(true);
+    run(100);
+    expect([halo.dome.count, halo.halo.visible]).toEqual([1, false]); // the dim alone
+    expect(read().seen).toBeCloseTo(1 - CONTRAST_DIM, 5);
+    halo.setListening(true);
+    run(LISTEN_ENTER_MS + 100);
+    expect(read().seen).toBeCloseTo(1 - DOME_DIM, 5); // 40 %, as in Listen alone: not 0.6 * 0.4
+    halo.setListening(false);
+    run(LISTEN_EXIT_MS + 100);
+    expect(read().seen).toBeCloseTo(1 - CONTRAST_DIM, 5);
+    halo.setHighContrast(false);
+    run(1100); // the guard may hold that step a moment
+    expect(halo.dome.count).toBe(0);
+  });
+
+  it('the bed hidden while it is placed again takes the dim with it through the guard: at most 3 changes a second', () => {
+    const { parent, halo, run } = make();
+    // What the eye gets: nothing of the dome while the bed (its parent) is hidden.
+    const drawn: Drawn[] = [];
+    const watch = (ms: number): void => {
+      for (const frame of run(ms)) drawn.push({ t: frame.t, value: parent.visible ? frame.seen : 1 });
+    };
+    watch(500);
+    halo.setHighContrast(true);
+    watch(100); // the dim comes: 1
+    parent.visible = false; // Re-place: RoomSystem hides the bed
+    watch(200); // the dim goes with it: 2
+    parent.visible = true; // placed again at once
+    watch(100); // the dim comes back: 3
+    expect(drawn[drawn.length - 1]!.value).toBeCloseTo(1 - CONTRAST_DIM, 5);
+    halo.setHighContrast(false); // and is switched off: held until a second after the first
+    watch(2000);
+    expect(drawn[drawn.length - 1]!.value).toBe(1);
+    expect(mostInAnyClip(drawn)).toBeLessThanOrEqual(FLASH_CAP_PER_S);
+  });
+
+  it('through the guard: high contrast switched 4 times a second changes passthrough at most 3 times (FR-UI-11)', () => {
+    const { halo, run } = make();
+    const drawn: { t: number; lit: number; seen: number }[] = [];
+    for (let i = 0; i < 12; i++) {
+      halo.setHighContrast(i % 2 === 0);
+      drawn.push(...run(250));
+    }
+    expect(Math.min(...drawn.map((frame) => frame.seen))).toBeCloseTo(1 - CONTRAST_DIM, 5); // it did dim
+    expect(mostInAnyClip(series(drawn, 'seen'))).toBeLessThanOrEqual(FLASH_CAP_PER_S);
   });
 });

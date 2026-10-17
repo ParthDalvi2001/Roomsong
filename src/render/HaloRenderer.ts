@@ -1,7 +1,8 @@
 // Listen mode's light (FR-ROOM-04, UX §3.5): the dim dome and the aurora halo. The dome is a dark see-through
 // sphere round the bed, drawn before the garden, so passthrough is seen at 40 % behind it: the dimming is a
 // material, not a pass over the frame (NFR-PERF-09). The halo is a curtain of light round the bed's rim that
-// rises as Listen fades in and breathes with the beat. Each is one FlashGuard element (LLD §5.9); the curtain's
+// rises as Listen fades in and breathes with the beat. High contrast dims the background with the same dome, at
+// all times (FR-UI-05); in Listen the deeper dim holds. Each is one FlashGuard element (LLD §5.9); the curtain's
 // folds drift too slowly to count. Nothing here listens to the bus or reads a clock: HaloSystem calls it.
 // update allocates nothing: what changes every frame goes into typed arrays the shaders read as vec4s.
 import {
@@ -11,6 +12,7 @@ import {
   CylinderGeometry,
   DoubleSide,
   IcosahedronGeometry,
+  InstancedMesh,
   Mesh,
   OneFactor,
   OneMinusSrcAlphaFactor,
@@ -21,6 +23,7 @@ import { BED_OUTER } from '../garden/index.js';
 
 import {
   BED_RIM_M,
+  CONTRAST_DIM,
   DOME_DETAIL,
   DOME_DIM,
   DOME_RADIUS_M,
@@ -86,7 +89,9 @@ const encoded = (hex: number): Color => new Color(hex).convertLinearToSRGB();
 
 export class HaloRenderer {
   readonly halo: Mesh<CylinderGeometry, ShaderMaterial>;
-  readonly dome: Mesh<IcosahedronGeometry, ShaderMaterial>;
+  /** An InstancedMesh of one, left visible and switched by its count (0: no draw call), so its program compiles
+   *  when the bed is first drawn, not on its first dim, which a high-contrast switch can bring mid-session. */
+  readonly dome: InstancedMesh<IcosahedronGeometry, ShaderMaterial>;
   private readonly haloElement: number;
   private readonly domeElement: number;
   /** The halo's vec4 (HALO_FRAGMENT) and the dome's (x: its cover). */
@@ -97,6 +102,8 @@ export class HaloRenderer {
   private progress = 0;
   private lastMs = Number.NaN;
   private isReducedMotion = false;
+  /** What of the background the dome covers outside Listen: CONTRAST_DIM in high contrast, else 0. */
+  private contrastCover = 0;
 
   constructor(
     parent: Object3D,
@@ -132,7 +139,7 @@ export class HaloRenderer {
     this.halo.updateMatrix();
     this.halo.visible = false;
 
-    this.dome = new Mesh(
+    this.dome = new InstancedMesh(
       new IcosahedronGeometry(DOME_RADIUS_M, DOME_DETAIL),
       new ShaderMaterial({
         vertexShader: DOME_VERTEX,
@@ -142,10 +149,12 @@ export class HaloRenderer {
         transparent: true,
         depthWrite: false,
       }),
+      1,
     );
+    this.dome.count = 0;
+    this.dome.frustumCulled = false;
     this.dome.renderOrder = DOME_RENDER_ORDER;
     this.dome.matrixAutoUpdate = false;
-    this.dome.visible = false;
 
     // The halo starts dark; the dome's element is what passthrough is seen at, which starts whole.
     this.haloElement = guard.claim(1, 0);
@@ -163,9 +172,15 @@ export class HaloRenderer {
     this.isReducedMotion = isReduced;
   }
 
+  /** FR-UI-05: high contrast dims the background to 60 %, through the guard like Listen's dim. */
+  setHighContrast(isOn: boolean): void {
+    this.contrastCover = isOn ? CONTRAST_DIM : 0;
+  }
+
   /**
    * Per frame. `barPhase` (0..1, audio's clock.barPhase, or NaN with no tide: API_SPEC §1.10 rule 11) times the
-   * breath; with none the halo holds full. `nowMs` is the frame's time. Out of Listen and faded out, it returns.
+   * breath; with none the halo holds full. `nowMs` is the frame's time. Out of Listen and faded out, and out of
+   * high contrast with the dome gone, it returns.
    */
   update(barPhase: number, nowMs: number): void {
     const elapsed = nowMs - this.lastMs;
@@ -175,12 +190,17 @@ export class HaloRenderer {
     const step = elapsed > 0 ? elapsed / (this.isListening ? LISTEN_ENTER_MS : LISTEN_EXIT_MS) : 0;
     const progress = this.isListening ? Math.min(1, was + step) : Math.max(0, was - step);
     if (progress !== was) this.progress = progress;
-    if (progress === 0 && this.haloState[0] === 0 && this.domeState[0] === 0) return;
+    // High contrast's dim lives on the bed, which RoomSystem hides while it places it. Asked for as gone while the
+    // bed is hidden, so the guard counts its going and holds its coming back like any change (BUG-008 review).
+    const contrastCover = this.dome.parent?.visible === false ? 0 : this.contrastCover;
+    const isAtRest = this.haloState[0] === 0 && this.domeState[0] === 0 && contrastCover === 0;
+    if (progress === 0 && isAtRest) return;
     const eased = progress * progress * (3 - 2 * progress);
 
-    const seen = this.guard.request(this.domeElement, 1 - DOME_DIM * eased, nowMs);
+    // The deeper of the two dims, never their product: high contrast in Listen is Listen's 40 %, not 24 %.
+    const seen = this.guard.request(this.domeElement, 1 - Math.max(contrastCover, DOME_DIM * eased), nowMs);
     this.domeState[0] = 1 - seen;
-    this.dome.visible = seen < 1;
+    this.dome.count = seen < 1 ? 1 : 0;
 
     const breath = Number.isFinite(barPhase)
       ? 0.5 + 0.5 * Math.cos(2 * Math.PI * barPhase * BREATHS_PER_BAR)
@@ -200,5 +220,6 @@ export class HaloRenderer {
       mesh.geometry.dispose();
       mesh.material.dispose();
     }
+    this.dome.dispose(); // its instance buffer
   }
 }

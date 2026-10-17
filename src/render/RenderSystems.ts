@@ -90,8 +90,9 @@ export class PerfSystem extends createSystem(
  * draws the supply in its orb over the bed and the seed that is out: on the palm of the hand it went to
  * (`garden:seedOut`), at the pinch point of the hand of the latest `gesture:pinchStart` that names it, and back in
  * the orb on `garden:seedBack`; a planted seed leaves the supply with its `garden:changed`. While a seed is out it
- * carries that seed's `Interactable`, at the point it is drawn. A hand that is lost or turned leaves its HandState
- * as it was, so a seed on its palm stays there, out (the garden's rule).
+ * carries that seed's `Interactable`, at the point it is drawn, and glows while a hand's `target:hover` names it
+ * (FR-HND-16, UX §9.1). A hand that is lost or turned leaves its HandState as it was, so a seed on its palm stays
+ * there, out (the garden's rule).
  */
 export class SeedSystem extends createSystem(
   { hands: { required: [HandState] }, beds: { required: [BedAnchor] } },
@@ -108,6 +109,8 @@ export class SeedSystem extends createSystem(
   private target!: Entity;
   private caption!: Entity;
   private outId: string | null = null;
+  /** Per hand (left, right): the seed its `target:hover` names, or null (FR-HND-16, UX §9.1). */
+  private readonly hovers: (string | null)[] = [null, null];
   /** The latest frame's time, ms: a seed sent from a bus handler starts its glide there. */
   private frameMs = 0;
   private readonly drawnAt = new Vector3();
@@ -138,6 +141,10 @@ export class SeedSystem extends createSystem(
         if (this.outId !== null && !this.seeds.has(this.outId)) this.end();
       }),
       bus.on('garden:seedOut', ({ seed, hand }) => this.send(seed.id, hand)),
+      bus.on('target:hover', ({ hand, target }) => {
+        this.hovers[handIndex(hand)] = target?.kind === 'seed' ? target.id : null;
+        this.seeds.setHover(this.hovers[0] ?? this.hovers[1] ?? null);
+      }),
       bus.on('gesture:pinchStart', ({ hand, target }) => {
         if (target?.kind !== 'seed' || target.id !== this.outId) return;
         this.seeds.follow(target.id, this.pinches[handIndex(hand)]!, this.frameMs, 'hop');

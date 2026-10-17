@@ -1,7 +1,8 @@
 // The seeds (T-127, UX §3.3, §7): the waiting ones in the supply orb, a small ring over the bed's centre hole with
 // one place per seed of the supply, and the one that is out, on a hand. One InstancedMesh: one draw call while any
 // seed is drawn, none otherwise. A seed glides (ease-out) to the point it is sent to and then follows it; it is
-// lit full while it is out, through the guard (FR-UI-11). A seed keeps its place in the orb while it is out.
+// lit while it is out, and 20 % more while a hand hovers it (FR-HND-16, UX §9.1: the one-hand take), through the
+// guard (FR-UI-11). A seed keeps its place in the orb while it is out. High contrast: a cream outline (FR-UI-05).
 // Nothing here listens to the bus or reads a clock: SeedSystem calls it (API_SPEC §1.8). update allocates nothing.
 import {
   Color,
@@ -17,6 +18,8 @@ import { settings } from '../core/index.js';
 import { SEED_SUPPLY_MAX } from '../garden/index.js';
 
 import {
+  HOVER_CUE_MS,
+  PLANT_HOVER_LIFT,
   PLANT_LIGHTNESS,
   PLANT_REST_BRIGHTNESS,
   PLANT_SATURATION,
@@ -30,10 +33,11 @@ import {
   SUPPLY_ORB_LIFT_M,
   SUPPLY_ORB_RADIUS_M,
 } from './config.js';
+import { outlineShell } from './outline.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { Seed } from '../garden/index.js';
-import type { Matrix4, Object3D } from 'three';
+import type { BufferGeometry, Matrix4, Object3D, ShaderMaterial } from 'three';
 
 /** How a seed goes to its point: the orb glide, the hop from palm to pinch, the glide with a hop up, or at once. */
 export type SeedMove = 'glide' | 'hop' | 'bump' | 'jump';
@@ -44,6 +48,8 @@ const colour = new Color();
 
 export class SeedRenderer {
   readonly mesh: InstancedMesh<IcosahedronGeometry, MeshBasicMaterial>;
+  /** FR-UI-05: the seeds' cream shell, a child of `mesh`; it draws them all in high contrast, none otherwise. */
+  readonly outline: InstancedMesh<BufferGeometry, ShaderMaterial>;
   private readonly firstElement: number;
   private readonly slotOf = new Map<string, number>();
   private readonly ids: (string | null)[] = new Array<string | null>(CAPACITY).fill(null);
@@ -68,6 +74,14 @@ export class SeedRenderer {
   private readonly lift = new Float64Array(CAPACITY);
   /** Per slot: the brightness the guard last handed out, and its colour at full brightness (linear). */
   private readonly brightness = new Float64Array(CAPACITY);
+  /** Per slot: its brightness without the hover (set where it is sent), how far the hover's glow is in (0..1),
+   *  and what it asks the guard for this frame: typed arrays, so no fraction is boxed (PlantRenderer.ease). */
+  private readonly base = new Float64Array(CAPACITY);
+  private readonly glow = new Float64Array(CAPACITY);
+  private readonly wanted = new Float64Array(CAPACITY);
+  /** The slot a hand hovers (FR-HND-16), or -1; and the time of the last update, for the glow's ease. */
+  private hoverSlot = -1;
+  private readonly lastMs = new Float64Array(1).fill(Number.NaN);
   private readonly rgb = new Float32Array(CAPACITY * 3);
 
   constructor(
@@ -83,6 +97,7 @@ export class SeedRenderer {
     this.mesh.frustumCulled = false; // its bounds are one seed's at the origin; the seeds are anywhere
     this.mesh.matrixAutoUpdate = false; // drawn in world space: the parent is the scene
     parent.add(this.mesh);
+    this.outline = outlineShell(this.mesh);
   }
 
   /**
@@ -107,6 +122,14 @@ export class SeedRenderer {
     }
   }
 
+  /**
+   * FR-HND-16, UX §9.1: the seed a hand would take now (`target:hover` of kind `seed`), or null. It glows
+   * PLANT_HOVER_LIFT brighter, in and out over HOVER_CUE_MS, as a hovered plant does. Set-up, not per frame.
+   */
+  setHover(seedId: string | null): void {
+    this.hoverSlot = seedId === null ? -1 : (this.slotOf.get(seedId) ?? -1);
+  }
+
   /** Whether that seed is in the supply as this renderer last heard it. */
   has(seedId: string): boolean {
     return this.slotOf.has(seedId);
@@ -121,6 +144,7 @@ export class SeedRenderer {
     const slot = this.slotOf.get(seedId);
     if (slot === undefined) return false;
     this.follows[slot] = point;
+    this.base[slot] = point === null ? PLANT_REST_BRIGHTNESS : SEED_OUT_BRIGHTNESS;
     this.startMs[slot] = nowMs;
     const isThere = this.isDrawn[slot] === 0 || move === 'jump';
     this.glideMs[slot] = isThere ? 0 : move === 'hop' ? SEED_HOP_MS : SEED_GLIDE_MS;
@@ -144,6 +168,13 @@ export class SeedRenderer {
    */
   update(bed: Matrix4 | null, nowMs: number): void {
     if (!Number.isFinite(nowMs)) return;
+    this.move(bed, nowMs);
+    this.light(nowMs);
+    this.outline.count = settings.get().highContrast ? CAPACITY : 0; // FR-UI-05; hidden with the mesh
+  }
+
+  /** Per frame: each seed glides toward its point and then follows it. */
+  private move(bed: Matrix4 | null, nowMs: number): void {
     let drawn = 0;
     for (let slot = 0; slot < CAPACITY; slot++) {
       const point = this.ids[slot] === null ? null : (this.follows[slot] ?? this.orbPlace(slot, bed));
@@ -157,15 +188,6 @@ export class SeedRenderer {
       this.eased[slot] = 1 - left * left * left; // ease-out (UX §5)
       this.lift[slot] = this.bumpM[slot]! * Math.sin(Math.PI * t);
       this.place(slot, point);
-      // Brightness: at rest in the orb, full from the moment it is sent out, one step each way through the guard
-      // (FR-UI-11), asked only until the guard grants it. Not a ramp along the glide: the guard's call boxed the
-      // fraction it took and the one it returned, 32 bytes every frame of a glide (measured); a step costs that
-      // once per seed sent.
-      const wanted = this.follows[slot] === null ? PLANT_REST_BRIGHTNESS : SEED_OUT_BRIGHTNESS;
-      if (this.brightness[slot] !== wanted) {
-        this.brightness[slot] = this.guard.request(this.firstElement + slot, wanted, nowMs);
-        this.paint(slot);
-      }
       drawn++;
     }
     this.mesh.visible = drawn > 0;
@@ -175,7 +197,36 @@ export class SeedRenderer {
     this.mesh.removeFromParent();
     this.mesh.geometry.dispose();
     this.mesh.material.dispose();
+    this.outline.material.dispose();
     this.mesh.dispose();
+  }
+
+  /**
+   * Per frame, the brightness of each seed drawn: at rest in the orb, lit from the moment it is sent out, one step
+   * each way through the guard (FR-UI-11), asked only until the guard grants it; and the hover's glow, an ease
+   * over HOVER_CUE_MS (UX §5) as a plant's is. Not a ramp along the glide, and a method of its own, small enough
+   * for V8 to inline the guard's call: inside the whole of update it did not, and each request boxed the fraction
+   * it took and the one it returned, 32 bytes (T-127); with the glow, 42 kB per 2 000 frames (BUG-007, measured).
+   */
+  private light(nowMs: number): void {
+    const passedMs = nowMs - this.lastMs[0]!; // NaN on the first frame: no ease then
+    this.lastMs[0] = nowMs;
+    const moved = passedMs > 0 ? passedMs / HOVER_CUE_MS : 0;
+    for (let slot = 0; slot < CAPACITY; slot++) {
+      if (this.isDrawn[slot] === 0) {
+        this.glow[slot] = 0; // drawn again, it starts unlit, not with a glow it had when it went
+        continue;
+      }
+      const glow = this.glow[slot]!;
+      if (slot === this.hoverSlot) {
+        if (glow < 1) this.glow[slot] = Math.min(1, glow + moved);
+      } else if (glow > 0) this.glow[slot] = Math.max(0, glow - moved);
+      this.wanted[slot] = Math.min(1, this.base[slot]! * (1 + PLANT_HOVER_LIFT * this.glow[slot]!));
+      if (this.brightness[slot] !== this.wanted[slot]) {
+        this.brightness[slot] = this.guard.request(this.firstElement + slot, this.wanted[slot]!, nowMs);
+        this.paint(slot);
+      }
+    }
   }
 
   /** The slot's place in the orb in world space, worked out from the bed's pose; null with no bed. */
@@ -237,13 +288,15 @@ export class SeedRenderer {
     this.glideMs[slot] = 0;
     this.bumpM[slot] = 0;
     this.isDrawn[slot] = 0;
-    this.brightness[slot] = PLANT_REST_BRIGHTNESS;
+    this.base[slot] = this.brightness[slot] = PLANT_REST_BRIGHTNESS;
+    this.glow[slot] = 0;
     this.guard.reset(this.firstElement + slot, PLANT_REST_BRIGHTNESS);
   }
 
   private free(slot: number): void {
     this.slotOf.delete(this.ids[slot]!);
     this.ids[slot] = null;
+    if (this.hoverSlot === slot) this.hoverSlot = -1;
     this.follows[slot] = null;
     this.hide(slot);
   }

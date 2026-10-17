@@ -1,12 +1,14 @@
 // The seeds (T-127, UX §3.3, §7): the supply orb over the bed, the glide to a hand and back, the brightness
 // through the guard. A plain Group for the scene and the page's kind of FlashGuard; no WebGL: what would be drawn
 // is read from the instances. The per-frame heap cost is in SeedSystem.heap.test.ts.
-import { Color, Group, Matrix4, SRGBColorSpace, Vector3 } from 'three';
+import { Color, DoubleSide, Group, Matrix4, SRGBColorSpace, Vector3 } from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
 import { SEED_SUPPLY_MAX } from '../../../src/garden/index.js';
 import {
+  HOVER_CUE_MS,
+  PLANT_HOVER_LIFT,
   PLANT_LIGHTNESS,
   PLANT_REST_BRIGHTNESS,
   PLANT_SATURATION,
@@ -141,7 +143,7 @@ describe('SeedRenderer: to a hand and back (UX §3.3, §7, §9.1)', () => {
     return made;
   }
 
-  it('glides to the palm over SEED_GLIDE_MS, ease-out, then rides it with no smoothing; lit full as it leaves', () => {
+  it('glides to the palm over SEED_GLIDE_MS, ease-out, then rides it with no smoothing; lit as it leaves', () => {
     const palm = new Vector3(-0.2, 0.95, -0.3);
     const { seeds } = out(palm);
     const start = orbPlace(0);
@@ -223,10 +225,10 @@ describe('SeedRenderer: to a hand and back (UX §3.3, §7, §9.1)', () => {
 
   it('a new seed in the place a planted (lit) seed left starts at rest: its step up is counted (FR-UI-11)', () => {
     const palm = new Vector3(-0.2, 0.95, -0.3);
-    const { seeds, guard } = out(palm); // 'a' is out and lit full
+    const { seeds, guard } = out(palm); // 'a' is out and lit (SEED_OUT_BRIGHTNESS)
     seeds.update(BED, T0);
     expect(brightnessOf(seeds, 0)).toBeCloseTo(SEED_OUT_BRIGHTNESS, 5);
-    seeds.setSupply([]); // planted: its place is free, its element still at full
+    seeds.setSupply([]); // planted: its place is free, its element still lit
     seeds.setSupply([seed('b')]); // a new seed takes that place
     seeds.update(BED, T0 + 2000);
     expect(brightnessOf(seeds, 0)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
@@ -250,5 +252,44 @@ describe('SeedRenderer: to a hand and back (UX §3.3, §7, §9.1)', () => {
     expect(mostInAnyClip(series)).toBeLessThanOrEqual(3);
     expect(guard.takePeak()).toBeLessThanOrEqual(3);
     expect(Math.max(...series.map((d) => d.value))).toBeCloseTo(SEED_OUT_BRIGHTNESS, 5); // it did light up
+  });
+});
+
+describe('SeedRenderer: high contrast (FR-UI-05, BUG-008)', () => {
+  it('a cream shell over the same instances, drawn only in high contrast and hidden with the seeds', () => {
+    const { seeds, parent } = make();
+    expect(parent.children).toEqual([seeds.mesh]);
+    expect(seeds.mesh.children).toEqual([seeds.outline]); // a child: hidden with the seeds
+    expect(seeds.outline.instanceMatrix).toBe(seeds.mesh.instanceMatrix);
+    expect(seeds.outline.geometry).toBe(seeds.mesh.geometry);
+    expect(seeds.outline.material.side).toBe(DoubleSide); // its visible part is the far half, pushed out
+    seeds.setSupply([seed('a')]);
+    seeds.update(BED, T0);
+    expect(seeds.outline.count).toBe(0); // no draw call outside high contrast
+    settings.set({ ...DEFAULT_SETTINGS, highContrast: true });
+    seeds.update(BED, T0 + FRAME_MS);
+    expect(seeds.outline.count).toBe(SEED_SUPPLY_MAX);
+    expect(seeds.outline.visible).toBe(true); // kept visible, switched by its count: compiled at start (T-163)
+    settings.set(DEFAULT_SETTINGS);
+    seeds.update(BED, T0 + 2 * FRAME_MS);
+    expect(seeds.outline.count).toBe(0);
+  });
+});
+
+describe('SeedRenderer: the hover glow (FR-HND-16, BUG-007)', () => {
+  it('a seed hidden while it glows is drawn again unlit, not with the glow it had when it went', () => {
+    const { seeds } = make();
+    seeds.setSupply([seed('a')]);
+    seeds.update(BED, T0);
+    seeds.setHover('a');
+    seeds.update(BED, T0 + 1000);
+    seeds.update(BED, T0 + 1000 + HOVER_CUE_MS);
+    expect(brightnessOf(seeds, 0)).toBeCloseTo(PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT), 5);
+    // The bed goes (Re-place) and the orb's seeds with it, frame after frame; the hover goes too.
+    let t = T0 + 2000;
+    for (; t < T0 + 4000; t += FRAME_MS) seeds.update(null, t);
+    seeds.setHover(null);
+    seeds.update(BED, t); // placed again, one frame later
+    expect(brightnessOf(seeds, 0)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
   });
 });

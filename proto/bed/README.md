@@ -31,7 +31,10 @@ picture that moves, with a few switches for the things the app's hands and visit
 5. **Dim the nearest plant**: what a plant looks like while the hand that held it is out of view.
 6. **Reduced motion**: a plant that grew shows its new stage at once instead of unfurling. Nothing else on
    this page changes with it.
-7. **High contrast**: every plant gets a cream outline.
+7. **High contrast**: every plant gets a cream outline, and so do the seed, the Listen orb and an undo petal;
+   the room behind is dimmed to 60 %.
+8. **A seed on a hand, and the Listen orb**: a seed waiting where a resting hand would hold it, over the bed's
+   near right, and the small cream orb in the bed's centre hole.
 
 ## Shaping a plant (T-147)
 

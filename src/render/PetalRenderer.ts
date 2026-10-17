@@ -4,7 +4,8 @@
 // Its arrival (T-147): the removed plant dissolves into a burst of petals at the release point, which drift to
 // the cell, where the undo petal is the one that stays; the others are a small pool of instances after the 80.
 // Nothing here listens to the bus or reads a clock: the wiring calls show, hide and clear from the garden's
-// events and update once per frame (API_SPEC §1.8). update allocates nothing.
+// events and update once per frame (API_SPEC §1.8). High contrast: a cream outline (FR-UI-05). update allocates
+// nothing.
 import {
   CircleGeometry,
   Color,
@@ -33,9 +34,11 @@ import {
   PETAL_START_DIAMETER_M,
   PLANT_CAPACITY,
   PLANT_LIGHTNESS,
+  PLANT_OUTLINE_M,
   PLANT_REST_BRIGHTNESS,
   PLANT_SATURATION,
 } from './config.js';
+import { CREAM_RGB, glsl } from './outline.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { Vec3 } from '../core/index.js';
@@ -58,6 +61,35 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
+// FR-UI-05 (BUG-008): in high contrast a cream band PLANT_OUTLINE_M wide round each undo petal, in its own plane:
+// the petal again, every point of its rim pushed that far outward (a flat petal has no silhouette for the push
+// away from the eye of outline.ts), with all of it that lies under the petal discarded. Under a petal that fades
+// a whole cream disc would show through and brighten it past the guard. vRim.x is the share of the way from the
+// centre to the band's outer edge and vRim.y that share times where the petal's edge lies on it, so x < (edge
+// share) is x * x < y, with no division of interpolated values. At the petal's own opacity: it fades with it and
+// makes no change of its own for the flash cap.
+const OUTLINE_VERTEX = /* glsl */ `
+attribute vec4 aColour;
+varying float vAlpha;
+varying vec2 vRim;
+void main() {
+  vAlpha = aColour.a;
+  vec4 local = instanceMatrix * vec4(position, 1.0);
+  vec3 away = local.xyz - instanceMatrix[3].xyz;
+  float size = length(away); // 0 at a petal's centre, and for an instance with no size
+  vRim = size > 0.0 ? vec2(1.0, size / (size + ${glsl(PLANT_OUTLINE_M)})) : vec2(0.0);
+  if (size > 0.0) local.xyz += away * (${glsl(PLANT_OUTLINE_M)} / size);
+  gl_Position = projectionMatrix * modelViewMatrix * local;
+}`;
+const OUTLINE_FRAGMENT = /* glsl */ `
+varying float vAlpha;
+varying vec2 vRim;
+void main() {
+  if (vRim.x * vRim.x < vRim.y) discard; // under the petal
+  gl_FragColor = vec4(${CREAM_RGB.map(glsl).join(', ')}, vAlpha);
+  #include <colorspace_fragment>
+}`;
+
 const colour = new Color();
 const centre = { x: 0, y: 0 };
 /** An arrival or a particle that starts with the next frame, and one that is over (or never was). */
@@ -70,6 +102,10 @@ const FADE_IN = 2;
 
 export class PetalRenderer {
   readonly mesh: InstancedMesh<CircleGeometry, ShaderMaterial>;
+  /** FR-UI-05: the petals' cream band, a child of `mesh` sharing its instances; drawn in high contrast only, for
+   *  the undo petals (not the burst's), and kept visible, switched by its count, so its program compiles with the
+   *  petal's (T-163). */
+  readonly outline: InstancedMesh<CircleGeometry, ShaderMaterial>;
   private readonly firstElement: number;
   /** Per instance: the colour, and the opacity that is the petal's brightness over its rest brightness. */
   private readonly colours: InstancedBufferAttribute;
@@ -126,6 +162,19 @@ export class PetalRenderer {
     this.mesh.renderOrder = 3; // after the bed's glass, its markers and the tide
     this.mesh.matrixAutoUpdate = false;
     parent.add(this.mesh);
+    const outline = new ShaderMaterial({
+      vertexShader: OUTLINE_VERTEX,
+      fragmentShader: OUTLINE_FRAGMENT,
+      transparent: true,
+      depthWrite: false,
+    });
+    this.outline = new InstancedMesh(geometry, outline, count);
+    this.outline.instanceMatrix = this.mesh.instanceMatrix;
+    this.outline.count = 0;
+    this.outline.frustumCulled = false;
+    this.outline.renderOrder = 2.5; // just before the petals, though it draws nothing under them
+    this.outline.matrixAutoUpdate = false;
+    this.mesh.add(this.outline);
   }
 
   /**
@@ -222,6 +271,8 @@ export class PetalRenderer {
    * not finite changes nothing.
    */
   update(nowMs: number): void {
+    // FR-UI-05, the undo petals only: a burst's petals are not targets. Hidden with the mesh.
+    this.outline.count = settings.get().highContrast ? PLANT_CAPACITY : 0;
     if ((this.liveCount === 0 && this.flying === 0) || !Number.isFinite(nowMs)) return;
     this.now[0] = nowMs;
     if (this.flying > 0) this.fly();
@@ -269,6 +320,7 @@ export class PetalRenderer {
     this.mesh.removeFromParent();
     this.mesh.geometry.dispose();
     this.mesh.material.dispose();
+    this.outline.material.dispose();
     this.mesh.dispose();
   }
 

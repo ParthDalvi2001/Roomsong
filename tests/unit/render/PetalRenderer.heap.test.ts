@@ -61,13 +61,14 @@ describe('PetalRenderer.update per frame (NFR-PERF-08)', () => {
   });
 
   // T-147: the same lives, each petal arriving. With a release point all 80 drift in from it and the pool's
-  // petals fly and shrink (the last three bursts are in the air); under reduced motion all 80 fade in.
+  // petals fly and shrink (the last three bursts are in the air); under reduced motion all 80 fade in. Both in
+  // high contrast, the outline shell switched on every frame (BUG-008).
   for (const arrival of ['burst', 'fade-in'] as const) {
     it(
       `80 petals arriving by ${arrival} through their whole life allocate nothing`,
       { timeout: 30_000 },
       () => {
-        settings.set({ reducedMotion: arrival === 'fade-in' });
+        settings.set({ reducedMotion: arrival === 'fade-in', highContrast: true });
         const petals = new PetalRenderer(new Group(), new FlashGuard());
         const from = { x: 0.36, y: 0.08, z: 0.12 };
         let startMs = 0;
@@ -97,10 +98,11 @@ describe('PetalRenderer.update per frame (NFR-PERF-08)', () => {
           costs.push(cost);
           if (isClean(cost)) break;
         }
-        settings.set({ reducedMotion: false });
+        settings.set({ reducedMotion: false, highContrast: false });
         const message = `heap cost of ${costs.length} rounds of ${FRAMES} frames: ${JSON.stringify(costs)}`;
         expect(isClean(costs[costs.length - 1]!), message).toBe(true);
         expect(versions).toBeGreaterThan(FRAMES / 2); // and it did move them, frame by frame
+        expect(petals.outline.count).toBe(RINGS * STEPS); // and outlined them, not the burst
       },
     );
   }

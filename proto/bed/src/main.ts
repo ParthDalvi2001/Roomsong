@@ -34,6 +34,8 @@ import {
   UNDO_LIFE_MS,
 } from '../../../src/garden/index.js';
 import { HAND_HINT_MAX_MS, TRACKING_GRACE_MS } from '../../../src/hands/index.js';
+// The halo, orb and seed renderers are not in render's index: the app draws them through its systems (BUG-008).
+import { HaloRenderer } from '../../../src/render/HaloRenderer.js';
 import {
   BedRenderer,
   createPerfHud,
@@ -44,6 +46,8 @@ import {
   PlantRenderer,
   TideRenderer,
 } from '../../../src/render/index.js';
+import { OrbRenderer } from '../../../src/render/OrbRenderer.js';
+import { SeedRenderer } from '../../../src/render/SeedRenderer.js';
 
 import type { EventMap, Hand } from '../../../src/core/index.js';
 import type { Cell, Plant, VoiceType } from '../../../src/garden/index.js';
@@ -203,6 +207,12 @@ const cells = new BedRenderer(bed, guard);
 const plants = new PlantRenderer(bed, guard);
 const petals = new PetalRenderer(bed, guard);
 const tide = new TideRenderer(bed, guard);
+// The "seed and orb" box: one seed out on a resting hand over the bed's near right, and the Listen orb; and
+// in high contrast the dim dome (FR-UI-05). As SeedSystem and HaloSystem draw them, with no hands.
+const seeds = new SeedRenderer(scene, guard);
+const orb = new OrbRenderer(bed, guard);
+const halo = new HaloRenderer(bed, guard);
+const SEED_ON_HAND = new Vector3(0.12, TABLE_HEIGHT_M + 0.12, -BED_AHEAD_M + 0.16);
 const sampler = new PerfSampler(renderer.info, guard);
 const hud = createPerfHud(bed); // only with ?flags=perfHud
 if (hud) {
@@ -272,7 +282,16 @@ box('bright').addEventListener('change', () =>
 );
 // The app's settings store: the renderers read it themselves (API_SPEC §1.8).
 box('reduced').addEventListener('change', () => settings.set({ reducedMotion: box('reduced').checked }));
-box('contrast').addEventListener('change', () => settings.set({ highContrast: box('contrast').checked }));
+box('contrast').addEventListener('change', () => {
+  settings.set({ highContrast: box('contrast').checked });
+  halo.setHighContrast(box('contrast').checked); // HaloSystem does this on settings:changed
+});
+box('targets').addEventListener('change', () => {
+  const isOn = box('targets').checked;
+  seeds.setSupply(isOn ? [{ id: 'seed', hue: 0.6 }] : []);
+  if (isOn) seeds.follow('seed', SEED_ON_HAND, pageMs, 'jump');
+  orb.mesh.visible = isOn;
+});
 
 // FR-HND-16: the pointer stands in for a hand. The marker of the cell under it is the cue for where a release
 // would land; with the glow box ticked, a plant on that cell glows as under an empty hand.
@@ -440,6 +459,9 @@ renderer.setAnimationLoop((timeMs) => {
   tide.update(phase, pageMs);
   plants.update(phase, pageMs);
   petals.update(pageMs);
+  seeds.update(bed.matrixWorld, pageMs);
+  orb.update(pageMs);
+  halo.update(Number.NaN, pageMs);
   renderer.render(scene, camera);
   sampler.frame(timeMs, performance.now() - startedMs);
 });

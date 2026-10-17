@@ -1,8 +1,9 @@
 // The Listen orb (T-148; UX §2, FR-HND-16): where it sits, its three levels (rest, hovered, Listen) moved over
 // HOVER_CUE_MS, and the flash cap on a hover that flickers (FR-UI-11).
-import { Group } from 'three';
-import { describe, expect, it } from 'vitest';
+import { DoubleSide, Group } from 'three';
+import { afterEach, describe, expect, it } from 'vitest';
 
+import { DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
 import { TARGET_VISIBLE_DIAMETER_M } from '../../../src/hands/index.js';
 import {
   FLASH_CAP_PER_S,
@@ -73,9 +74,33 @@ describe('OrbRenderer: the Listen orb (T-148)', () => {
     expect(mostInAnyClip(drawn)).toBeLessThanOrEqual(FLASH_CAP_PER_S);
   });
 
-  it('dispose() takes it away', () => {
+  it('dispose() takes it away, with its outline shell and the instance buffer of that shell', () => {
     const { parent, orb } = make();
+    const freed: string[] = [];
+    orb.outline.addEventListener('dispose', () => freed.push('outline'));
     orb.dispose();
     expect(parent.children).toEqual([]);
+    expect(freed).toEqual(['outline']);
+  });
+});
+
+describe('OrbRenderer: high contrast (FR-UI-05, BUG-008)', () => {
+  afterEach(() => settings.set(DEFAULT_SETTINGS));
+
+  it('a cream shell round the orb, a child hidden with it, drawn only in high contrast', () => {
+    const { parent, orb, run } = make();
+    expect(parent.children).toEqual([orb.mesh]);
+    expect(orb.mesh.children).toEqual([orb.outline]);
+    expect(orb.outline.geometry).toBe(orb.mesh.geometry);
+    expect(orb.outline.material.side).toBe(DoubleSide); // its visible part is the far half, pushed out
+    run(50);
+    expect(orb.outline.count).toBe(0); // no draw call
+    settings.set({ ...DEFAULT_SETTINGS, highContrast: true });
+    run(50);
+    expect(orb.outline.count).toBe(1);
+    expect(orb.outline.visible).toBe(true); // kept visible, switched by its count: compiled at start (T-163)
+    settings.set(DEFAULT_SETTINGS);
+    run(50);
+    expect(orb.outline.count).toBe(0);
   });
 });

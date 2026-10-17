@@ -1,7 +1,15 @@
 // T-150, UX §3.3 and §3.4: what HintSystem shows for each onboarding step, the remove arrow until the first removal,
 // the hand hint (FR-HND-15, D-030) and when all of it hides. On the real bus with a fake world; the atlas is drawn
 // on a canvas that records nothing. Zero allocation per frame is tests/unit/onboarding/onboarding.heap.test.ts.
-import { Group, Matrix4, Quaternion, Vector3, type Mesh, type MeshBasicMaterial } from 'three';
+import {
+  Group,
+  Matrix4,
+  Quaternion,
+  Vector3,
+  type BufferGeometry,
+  type Mesh,
+  type MeshBasicMaterial,
+} from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { bus, DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
@@ -35,6 +43,7 @@ const DRAG = 7;
 const REMOVE = 8;
 const HAND_LOST = 9;
 const RING = 10;
+const REMOVE_OUTLINED = 11;
 
 const live: HintSystem[] = [];
 afterEach(() => {
@@ -275,6 +284,18 @@ describe('HintSystem: the remove arrow (UX §3.4)', () => {
     bus.emit('gesture:trackingLost', { hand: 'left' } as EventMap['gesture:trackingLost']);
     r.frame();
     expect(r.system.shows.arrow).toBe(-1);
+  });
+
+  it('in high contrast has a cream outline round its charcoal one: its own cell of the atlas (FR-UI-05, BUG-008)', () => {
+    const r = rig();
+    const firstU = (): number => (r.arrow.geometry as BufferGeometry).getAttribute('uv').getX(0);
+    drag('right');
+    r.settle();
+    expect([r.system.shows.arrow, firstU()]).toEqual([REMOVE, 0]); // cell 8: the first of the third row
+    settings.set({ ...DEFAULT_SETTINGS, highContrast: true });
+    r.frame();
+    expect([r.system.shows.arrow, firstU()]).toEqual([REMOVE_OUTLINED, 0.75]); // cell 11: the last of that row
+    expect(r.arrow.visible).toBe(true); // the same quad: no draw call more
   });
 
   it('is not shown again after the first removal', () => {
