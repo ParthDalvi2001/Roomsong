@@ -17,7 +17,7 @@ Rule: every bug found anywhere (agent, e2e, device, UAT) gets a row within the s
 | BUG-008 | 2026-10-16 | S2 | render | High contrast outlines only the plants: the seed, the Listen orb, the undo petal and the remove hint have no cream outline, and the 60 % background dim of UX §9 is missing. | Turn high contrast on with a seed out and a petal showing (emulator) | T-160 hands-first audit, item 11 | frontend-dev | Open | |
 | BUG-009 | 2026-10-16 | S2 | tests / render or access | After the T-160 merge, `06-room` "c2 level 3: the ghost and its caption…" sees `maxFlashPerS` 2 where it allows 1, 3 of 3 runs. Gaze dwell is off by default and the beat ring shows only once the bed is placed, so the second brightness change during the level-3 ghost is not yet explained. Blocks the push of T-142b and T-160. | `npx playwright test tests/e2e/06-room.spec.ts -g "c2 level 3: the ghost and its caption" --repeat-each=3` on develop | driver (full run at 19:11) | frontend-dev or fullstack-dev | **Fixed (emulator), 2026-10-17** | The second change was the beat ring (T-160, on by default): each tick rises and falls as the tide's crest passes, 2 changes a second, under the cap of 3 and covered by `tests/unit/access/BeatRing.test.ts`. The level-3 ghost test now turns the beat ring off before entering and keeps its limit of 1 (the markers' one fade-in, UX §9.2); the misleading comment in `src/access/config.ts` corrected. 06-room: the ghost test 3 of 3, the other 10 pass. |
 
-## Open S1/S2 count: 0
+## Open S1/S2 count: 2 (BUG-007, BUG-008: S2, fixed in a branch under review, 17 Oct)
 
 ## Triage notes
 - Daily: scrum-master checks that no S1 is older than 24 h and no S2 older than 72 h.

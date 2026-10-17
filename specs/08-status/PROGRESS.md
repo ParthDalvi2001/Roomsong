@@ -110,6 +110,8 @@
 
 35. **Sound style (T-164): open https://localhost:8093/proto/styles/ (Chrome; Advanced → Proceed), press Play, then A, B or C; reply with the letter you would leave on for 10 minutes and "boring" or "not boring".** A soft and warm, B bright and glassy, C deep and ambient. All three have the groove, echo, moving chords, breathing filter and soft percussion. The app keeps today's sound until you pick.
 
+36. **Offer laptop mode to judges? (yes / no).** The Devpost draft (17 Oct) can tell a judge with no headset to open the link in a desktop browser, where a click is the pinch (T-114b). The PRD calls the garden window "never the judged path", so saying yes means a line in "How to test" and a check that the window works on the hosted build. Claude's view: yes, as a clearly labelled preview, while the headset stays the real experience.
+
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
