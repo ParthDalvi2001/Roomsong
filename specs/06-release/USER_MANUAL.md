@@ -1,14 +1,15 @@
 # Roomsong: Player Guide
 
-**Status:** Living · **Owner:** product-owner · Checked against `develop` at 9730ef6 on 2026-10-16 (T-167; states refreshed after T-127, T-128c, T-142, T-146, T-147).
+**Status:** Living · **Owner:** product-owner · Checked against `develop` at dca03de on 2026-10-17 (states refreshed after T-128d, T-128e, T-114b, T-142b, T-148, T-150, T-160, T-163 and T-164; the pass before was at 9730ef6 on 16 Oct).
 The long form of the landing page's Help lines and the source for the "How to test" text of the submission. No task builds a page of its own for it.
 
 *Team note, removed at the feature freeze (12 Nov). Every section and table row carries its state:*
 - *`[app]`: in the app today.*
-- *`[parts]`: built and tested as a part, in the emulator only; not yet joined into the app (T-128d and T-128e do that).*
+- *`[parts]`: built and tested as a part, in the emulator or on a desktop only; not switched on in the app yet.*
 - *`[planned T-nnn]`: not on `develop` yet; the task that builds it. Some are being built now.*
+- *`[planned BUG-nnn]`: a known fault, open in BUG_LOG; the fix is not on `develop` yet.*
 
-*Nothing here has been tried on a headset. Sizes and times come from the code and may change after the headset test (T-129).*
+*Nothing here has been tried on a headset: `[app]` means it works in the emulator, and in laptop mode where the text says so. Sizes and times come from the code and may change after the headset test (T-129).*
 
 ---
 
@@ -20,98 +21,145 @@ Roomsong is a small glowing garden on your real table. Every plant sings. Where 
 - A table and a seat, with the table top within easy reach.
 - A lit room, so the headset can see your hands and the table.
 - No controllers, no account, nothing to install.
+- No headset? A browser on a computer gives you a preview: see **Laptop mode**.
 
 ## How to open it `[app]`
 1. Open the Roomsong link in the headset's browser.
 2. Wait until "Getting the garden ready." goes away.
-3. If you need one, tick a box under **Accessibility**: One hand; No hands: look and hold; High contrast; Reduce motion.
+3. If you need one, tick a box under **Accessibility**: One hand; No hands: look and hold; High contrast; Reduce motion. Each is explained under **Accessibility modes**.
 4. Press **Enter the garden** and say yes when the headset asks to share your hands and your room. Sound starts with this press.
 
 You see your real room and hands. Roomsong draws no hands of its own.
 
-## Your first minute `[parts]`, except where marked
-1. Look at your table. The **bed** appears on it: a flat glowing ring, 60 cm across, within reach `[app]`.
-2. Light ripples over the table, a wall and the ceiling, with a short label for each: your room is tuning the garden `[parts]`, joined by T-128d. Each ripple will ring one note `[planned T-142b]`.
-3. Hold one hand open, palm up, for half a second. A seed comes to it.
-4. Pinch the seed with the other hand and carry it over the bed. The place it will land on lights up.
+## Your first minute `[app]`
+A guide walks you through it whenever a visit starts on an empty bed: one short caption or one small picture at a time. If you have not done a step after a minute, it moves on without you. A visit that starts with plants on the bed has no guide.
+1. Look at your table. The **bed** appears on it: a flat glowing ring, 60 cm across, within reach.
+2. Light ripples over the table, a wall and the ceiling, with a short label for each: your room is tuning the garden. Each ripple rings one note of your room's chord, from its own surface.
+3. "Open your hand": hold one hand open, palm up, for half a second. A seed comes to it.
+4. "Pinch, and plant it": one place on the bed glows, and a small picture of a pinch opens and closes over it. Pinch the seed with your other hand and carry it over the bed. The place it will land on lights up.
 5. Let go. The seed becomes a plant.
-6. A sweep of light goes round the bed. When it passes your plant, the plant sings `[planned T-128d]`.
+6. A sweep of light goes round the bed. When it passes your plant, the plant sings.
 7. Plant your other two seeds. That is your first song.
+8. A ring round your newest plant shows how to pull it taller, then how to drag it. After 4 minutes, or once you have planted 6 seeds: "Rest your hands to listen".
 
 Round the bed is time: 16 places. Outwards is pitch: 5 circles, low in the middle, high at the edge. All the notes fit together, so nothing you plant sounds wrong.
 
 ## Gestures
 | Do this | What happens | State |
 |---|---|---|
-| Open a hand, palm up, for half a second | The next waiting seed comes to that hand. One seed at a time | `[parts]` |
-| Pinch the seed, carry it over the bed, let go | It is planted on the lit place. If that place is taken, it takes the nearest free one | `[parts]` |
-| Let a seed go away from the bed | It goes back to wait for you | `[parts]` |
-| Pinch a plant and pull it up or down | Taller is louder and rings longer. Shorter is softer and briefer. 25 cm of hand travel is the whole range | `[parts]` |
-| Pinch a plant and drag it sideways | It moves. Round the bed changes when it plays; in or out changes how high | `[parts]` |
-| Drag a plant past the outer edge, to the side or towards you, and let go | The plant is removed | `[parts]` |
-| Pinch the small petal left over that place, within 5 seconds | The plant comes back | `[parts]` |
-| Let a dragged plant go over the hole in the middle | It goes back to where it was | `[parts]` |
-| Turn the back of your left hand towards your face and pinch the small orb over it | The settings panel opens or closes | `[parts]`, joined by T-128d |
-| Hold both palms out, facing away from you, for 1.5 seconds | Listen: the room dims and the garden plays by itself. Any pinch brings you back. It ends by itself after 10 minutes | `[planned T-148]` |
+| Open a hand, palm up, for half a second | The next waiting seed comes to that hand. One seed at a time | `[app]` |
+| Pinch the seed, carry it over the bed, let go | It is planted on the lit place. If that place is taken, it takes the nearest free one | `[app]` |
+| Let a seed go away from the bed | It goes back to wait for you | `[app]` |
+| Pinch a plant and pull it up or down | Taller is louder and rings longer. Shorter is softer and briefer. 25 cm of hand travel is the whole range | `[app]` |
+| Pinch a plant and drag it sideways | It moves. Round the bed changes when it plays; in or out changes how high | `[app]` |
+| Drag a plant past the outer edge, to the side or towards you, and let go | The plant is removed. While you drag, an arrow on the bed's edge shows the way, until you have removed one | `[app]` |
+| Pinch the small petal left over that place, within 5 seconds | The plant comes back | `[app]` |
+| Let a dragged plant go over the hole in the middle | It goes back to where it was | `[app]` |
+| Turn the back of your left hand towards your face and pinch the small orb over it | The settings panel opens or closes | `[app]` |
+| Hold both palms out, facing away from you, for 1.5 seconds; or pinch the small orb in the middle of the bed | Listen: the room dims, a halo of light breathes round the bed, and the garden plays by itself, the plants nearest you a little louder. It ends by itself after 10 minutes | `[app]` |
+| In Listen: turn a palm towards your face, close to it, for about half a second; or pinch | You are back. That pinch does nothing else | `[app]` |
 
-What your pinch will act on lights up first, and nothing changes until you let go. After you pinch a plant, your first 2 cm of movement choose between pulling and dragging.
+What your pinch will act on lights up first, and nothing changes until you let go. The seed on your palm does not light up yet `[planned BUG-007]`. After you pinch a plant, your first 2 cm of movement choose between pulling and dragging.
 
-## Your room tunes the song `[parts]`
+## Your room tunes the song `[app]`
 *Kept only if the headset test shows the tuning is steady (review of 3 November).*
-When the garden finds your table by itself, it measures the room:
+When the garden finds your table by itself, it reads the room from what the headset knows about it (your Space Setup):
 - **Floor size sets the key.** A bigger room sings lower.
 - **Ceiling height sets the mood:** which five notes the circles play (minor, major, or "sus", an open sound).
-- **The room's volume sets the echo.** A large room rings longer.
+- **The room's volume, the space it holds, sets the echo.** A large room rings longer. The echo is worked out from the room's size: nothing listens to your room or measures how it really sounds.
 - **Table and walls choose** your three starting seeds.
 
-The speed is yours; the room never changes it. Another room makes the same plants play a different song.
+The speed is yours; the room never changes it. Another room makes the same plants play a different song. The labels "Table: colour." and "Walls: colour." name a tint the plants do not show yet `[planned T-163]`.
 
-**No table?** The garden asks where to put it: look at a surface and pinch `[app]`. With no pinch in about 10 seconds it places itself, on that surface or floating in front of you. Everything still works. A bed you placed, or a floating one, plays in the "Wanderer" tuning: C major, medium echo.
+**No table?** The garden asks where to put it: look at a surface and pinch (with look and hold: look, and wait) `[app]`. With no pinch in about 10 seconds it places itself, on that surface or floating in front of you. Everything still works. A bed you placed, or a floating one, plays in the "Wanderer" tuning: C major, medium echo.
 
-## Coming back `[parts]`, joined by T-128d and T-128e
-- Your garden is saved in this browser, half a second after each change.
-- It returns to the same spot on your table. If the headset cannot find the spot, the garden is placed again and your plants are safe.
-- Each new day you visit brings one seed. Up to five wait.
+## Coming back `[app]`
+- Your garden is saved in this browser half a second after each change, and at once when you take the headset off or close the page.
+- It returns to the same spot on your table. If the headset cannot find the spot, or the spot is now out of reach, the garden is placed again and your plants are safe.
+- Each new day you visit brings one seed. Up to five wait, in a small ring above the middle of the bed.
 - Plants grow leaves after one day, more after three, cream blossoms after seven. Nothing wilts while you are away.
+- Take the headset off and the garden pauses: the sound fades out and the garden is saved. Put it back on and it carries on; that counts as a visit, so a new day brings its seed. A smoother return of the sound is `[planned T-152]`.
+- If the saved garden is damaged, a new garden starts; the old one is kept aside in the browser, not deleted.
 
-## Settings `[parts]`, joined by T-128d
-The settings orb is a small dark disc with three slider lines. It floats over the back of your left hand while that hand's back faces you (your right hand, once **Main hand** is L). Pinch it with the other hand to open the panel. Pinch a control to press it. Close with **x**, or look away for 5 seconds.
+## Settings `[app]`
+The settings orb is a small dark disc with three slider lines. It floats over the back of your left hand while that hand's back faces you (your right hand, once **Main hand** is L). With **One hand** or **look and hold** on, it waits in front of you instead, a little below eye level and to the left (to the right once Main hand is L). Pinch it to open the panel (with look and hold: look at it and wait). Pinch a control to press it. Close with **x**, or look away for 5 seconds.
 - **Sound:** Tempo, Volume, Reverb (auto follows the room; small; off) and "Tuned by", which shows what your room set.
-- **Access:** the modes below, and Main hand.
-- **Garden:** Bed height (10 cm up or down); Re-place bed, if it landed badly; New garden, which erases this one, so you hold the pinch for 1.5 seconds.
+- **Access:** One hand; Look and hold, with its Hold time; High contrast; Reduce motion; Beat ring; Main hand.
+- **Garden:** a line such as "Day 4, Seeds 2, Key D major (room)"; Bed height (10 cm up or down); Re-place bed, if it landed badly; New garden, which erases this one, so you hold the pinch for 1.5 seconds.
+
+Laptop mode has no settings panel: the switches on the first page are its settings.
 
 ## Accessibility modes
-The switches on the first page are `[app]`; the panel's are `[parts]`.
-- **One hand.** The settings orb waits in front of you `[parts]`. The hand a seed rests on can pinch it off its own palm, and one palm is enough to listen `[planned T-160]`.
-- **No hands: look and hold.** You aim with your head, not your eyes, and hold the aim on a thing for 0.6, 0.9 or 1.2 seconds to choose it. Works on the settings panel `[parts]`; in the garden `[planned T-160]`.
-- **High contrast.** Messages `[app]` and the panel `[parts]` turn cream on black with outlines; plants get outlines `[parts]`.
-- **Reduce motion.** Ripples become short glows and growth appears at once `[parts]`.
-- **Beat ring.** Marks on the bed show the beat and each note, for players who cannot hear the song `[planned T-160]`.
+The switches on the first page and in the panel work in the garden `[app]`.
 
-Nothing flashes more than three times a second, in any mode `[parts]`.
+### One hand `[app]`
+For playing with one hand.
+- **Taking a seed:** hold your hand palm up and a seed lands on it. Pinch with the same hand and the seed comes off your palm. Carry it to the bed and let go. This works when nothing else is within about 4 cm of your fingertips. Nothing on the seed shows yet that it is ready to take `[planned BUG-007]`.
+- **Shaping:** pull, drag, remove and undo work as they do with two hands.
+- **Listen:** one palm out, facing away from you, for 1.5 seconds, is enough. Or pinch the orb in the middle of the bed.
+- **Settings:** the orb waits in front of you, so no second hand has to hold it up (see **Settings**).
+
+### No hands: look and hold `[app]`
+For playing with no hands at all. You aim with your head, not your eyes.
+- A small cream dot shows where your head points. Rest it on something and a ring fills round the dot; when the ring is full, that thing is chosen. You set how long it takes in the panel: **Hold time**, 0.6, 0.9 or 1.2 seconds.
+- Turning your head pauses the ring; it does not start again from empty.
+- One look chooses once. To choose the same thing again, look away and back.
+- **What you can do:** place the garden (look at the pale bed and wait: "Look at your table, and wait"); plant (look at a free place on the bed and wait, and a waiting seed is planted there: "Look at a cell to plant"); bring a removed plant back (look at its petal); listen (look at the orb in the middle of the bed); come back from Listen (look at the orb for twice the hold time); use the settings panel (look at a control; New garden still asks for its long hold).
+- **What you cannot do yet:** make a plant taller or shorter, move it or remove it. A look at a plant chooses the free place nearest to it.
+- The panel blocks the look: while you look at the panel, nothing behind it on the bed is chosen.
+- Look and hold works only in the headset, not in laptop mode.
+
+### High contrast `[app]`
+Messages and the settings panel turn cream on black with outlines, and every plant gets a thin cream outline. The seed, the Listen orb, the undo petal and the remove arrow have no outline yet, and the room behind does not dim yet `[planned BUG-008]`.
+
+### Reduce motion `[app]`
+Ripples become short glows, growth appears at once, and the plants sway half as much.
+
+### Beat ring `[app]`
+For players who cannot hear the song. Sixteen small marks lie just outside the bed's edge, one for each place round the ring. The sweep of light lifts each mark as it passes, and a mark lights up more when a plant on its step sings. It is on from the start; switch it off in the panel (Access, **Beat ring**). In Listen it always shows.
+
+Nothing flashes more than three times a second, in any mode `[app]`.
+
+## Laptop mode (no headset) `[app]`
+A preview for anyone without a headset: the same garden, sound, guide and save, in a browser tab on a computer. It is not the mixed-reality experience, and it has been tested in one desktop browser only.
+1. Open the Roomsong link in a browser on a computer. The first page says "The garden opens in this tab: a click or a tap is a pinch."
+2. If you need them, tick **High contrast** or **Reduce motion**. One hand and look and hold are for the headset.
+3. Press **Enter the garden**. Sound starts with this press.
+4. You look down at the bed on a drawn table, as if seated at it. A seed follows your pointer.
+5. Click a free place on the ring to plant the seed ("Click or tap to plant"). The next seed comes 0.4 seconds later.
+6. Press a plant and drag to move it; drag it off the ring to remove it; click the petal to bring it back.
+7. Click the orb in the middle of the bed to listen ("Click the orb to listen"); click to come back.
+8. Leave with **Close the garden** or the Escape key.
+
+What laptop mode does not have: your real room and table (no passthrough); your room's tuning (it always plays "Wanderer": C major, medium echo); hand poses and pulls (no palm up, no palms out, and a plant keeps its height); the settings panel; look and hold. Your garden is saved in that browser, apart from the one in your headset.
 
 ## Messages
 | You see | It means | What to do | State |
 |---|---|---|---|
 | "Getting the garden ready." | The page is loading | Wait a few seconds | `[app]` |
 | "The garden could not load. Reload the page." | The page did not finish loading | Check the connection and reload | `[app]` |
-| "Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S." | This browser cannot show virtual things in your real room | Open the link in the headset | `[app]` |
+| "The garden opens in this tab: a click or a tap is a pinch." | This browser has no mixed reality, so Enter opens laptop mode | Press Enter, or open the link in the headset | `[app]` |
+| "Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S." | This browser cannot show virtual things in your real room, and laptop mode did not open here | Open the link in the headset | `[app]` |
 | "The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking." | The headset refused to start. Hand tracking is off, or you answered no | Switch hand tracking on, press Enter again and say yes | `[app]` |
 | "Roomsong needs JavaScript. Turn it on and reload the page." | The browser blocks scripts | Allow scripts and reload | `[app]` |
 | "Table detection: not available." and "Saved position: not available." (under This device) | The headset did not share the room's layout, or cannot remember spots | Nothing. The garden asks you where to put it or floats, and it is placed again on each visit | `[app]` |
-| A palm in a dashed ring (an icon, since T-150) | The headset lost the hand that held something | Bring the hand back in front of you. What you held goes back to where it was. Nothing is lost | `[app]` |
+| A palm in a dashed ring (an icon) | The headset lost the hand that held something | Bring the hand back in front of you. What you held goes back to where it was. Nothing is lost | `[app]` |
 | "Sound unavailable" (5 seconds) | The browser did not start the sound. The garden still works, silent | Check the volume. Leave the garden and press Enter again: sound starts only in that press | `[app]` |
-| "Look at your table, and pinch" (Look and hold: "and wait") | No table was found | Look where the garden should go and pinch | `[app]` |
-| "Table: seeds." "Table: colour." "Walls: colour." "Ceiling: scale." | Labels of the opening ripple, one for each surface found: what it gives the garden. The room does not change the colours yet | Nothing | ripple and labels `[parts]`, joined by T-128d; colour tint `[planned T-163]` |
-| "Saving unavailable" | The browser cannot store the garden: private browsing, or storage full or blocked | Keep playing; this visit will not be kept. Leave private browsing or free some space, then reload | `[parts]`, shown from T-128e |
-| "Open your hand" · "Pinch, and plant it" · "Rest your hands to listen" · "Garden is full" · "Goodnight" | First-visit hints, a full bed (80 plants), and the end of Listen | Follow the hint. For a full bed, remove a plant first | hints `[planned T-150]`; "Garden is full" `[parts]`; "Goodnight" `[planned T-148]` |
+| "Look at your table, and pinch" (Look and hold: "and wait") | No table was found | Look where the garden should go and pinch, or wait | `[app]` |
+| "Table: seeds." "Table: colour." "Walls: colour." "Ceiling: scale." | Labels of the opening ripple, one for each surface found: what it gives the garden. The room does not change the colours yet | Nothing | ripple and labels `[app]`; colour tint `[planned T-163]` |
+| "Saving unavailable" | The browser cannot store the garden: private browsing, or storage full or blocked. It shows once, during a visit | Keep playing; this visit will not be kept. Leave private browsing or free some space, then reload | `[app]` |
+| "Open your hand" · "Pinch, and plant it" (look and hold: "Look at a cell to plant"; laptop mode: "Click or tap to plant") · "Rest your hands to listen" (laptop mode: "Click the orb to listen") | The first-minute guide | Do what it says, or wait: each step moves on after a minute | `[app]` |
+| "Garden is full" | You let a seed go over a full bed (80 plants) | Remove a plant first | `[app]` |
+| "Goodnight" | Listen ran its 10 minutes and ended | Nothing: you are back in the garden | `[app]` |
 
 ## Privacy `[app]`
-Nothing leaves your headset. No account, no adverts, no tracking. What the headset shares about your room and hands stays on the device. Only the garden and the name of its spot are saved, in this browser: clearing the browser's data deletes them.
+Nothing leaves your headset or computer. No account, no adverts, no tracking. What the headset shares about your room and hands stays on the device. Only the garden, your settings and the name of its spot are saved, in this browser: clearing the browser's data deletes them.
 
 ## Known limits
 - No one has run Roomsong on a headset yet.
-- Quest 3 or 3S only, in the headset's browser. No phone or computer version (`[planned T-114]`; may not ship).
+- Made for Quest 3 or 3S, in the headset's browser. On a computer, laptop mode is a preview without your room or your hands `[app]`. Phones and tablets are untested.
 - A room near a measuring step can get a different mood or echo on another day: about one room in five, by calculation.
 - One garden per browser. It cannot be shared or moved.
 - You need a connection to open the page.
+- The sound is not final: three new sound styles are built and one will be chosen `[parts]`.
+- With look and hold, plants cannot be shaped (see its section).
