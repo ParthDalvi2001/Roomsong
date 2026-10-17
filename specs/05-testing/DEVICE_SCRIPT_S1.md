@@ -1,6 +1,6 @@
 # Device script S1 — the sittings with a headset (T-129)
 
-**Status:** the blocks marked "can be run today" are ready to run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8; the tuning ripple's look (T-142) added to block 17 on 2026-10-16 against `develop` af94284.
+**Status:** the blocks marked "can be run today" are ready to run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8; the tuning ripple's look (T-142) added to block 17 on 2026-10-16 against `develop` af94284; the first-minute guide (T-150) added to block 11 and the ripple's notes (T-142b) to block 17 on 2026-10-17 against `develop` dca03de.
 
 This script produces results. It contains none.
 
@@ -29,24 +29,24 @@ You need only this file during the sitting.
 | 8 | The app: landing page and Enter | start times (T1, T2) · no drawn hands · does one click start sound and session | 15 min | today |
 | 9 | The app: headset off and on, the menu, leaving | what a pause looks like to the app · does the sound come back by itself | 15 min | today (the steps you listen to: T-128d) |
 | 10 | The app: the bed on your table | the bed on the real table · the hint when no table is found · the table limits of D-034 | 15 min | needs T-128c |
-| 11 | The app: plant, first sound, first loop | first sound within 20 s, first loop within 90 s · does a plant land where your fingers are | 10 min | needs T-128d (with T-127) |
+| 11 | The app: plant, first sound, first loop | first sound within 20 s, first loop within 90 s · does a plant land where your fingers are · the first-minute guide: the ghost pinch, the hints from your seat, a stranger's first minute (T-150) | 10 min, and 8 min for the guide (12 more with a stranger) | needs T-128d (with T-127); the guide needs T-150 |
 | 12 | The app: the settings panel and its orb | the orb · reading the panel · hitting its buttons · the long hold · by looking | 15 min | needs T-128d |
 | 13 | The app: hands lost | the the hand-out-of-view icon (a palm in a dashed ring) words · the 0.2 s grace | 10 min | needs T-128d (with T-127) |
 | 14 | The app: ten minutes with a full garden | frame rate with sound and hands · steady time · Bass on the speakers · drift of the bed · what a hand lights up (T-119) | 30 min | needs T-128d |
 | 15 | The app: a key change listened to | the re-tune, rated | 10 min | needs T-128d |
 | 16 | The app: the garden comes back | the saved place: does the bed return, in how many seconds, how many cm off · the reach slack · the anchor count · a week later, in bloom (T-119) | 35 min | needs T-128e |
-| 17 | Rooms against the tape measure | what the app reads of a room, against your tape · two rooms sound different · the tuning ripple's look, once (T-142) | 10 min a room, and 12 min once for the ripple | needs T-128c; the ripple needs T-128d |
+| 17 | Rooms against the tape measure | what the app reads of a room, against your tape · two rooms sound different · the tuning ripple's look and its three notes, once (T-142, T-142b) | 10 min a room, and 20 min once for the ripple | needs T-128c; the ripple needs T-128d, its notes T-142b |
 | 18 | Say no: the room permission, and hand tracking off | P2 permission decline · what the app says | 15 min | today |
 | 19 | Clear the site's data | do the saved places go with it | 10 min | part A today (USB cable) · part B needs T-128e |
 | 20 | Hand the results to Claude | the filled results sheet | 10 min | today |
 
-All of it is about 5 h 15 of blocks, over 6 hours with setup and breaks. That is too long for one sitting, so there are two, and a walk through other rooms.
+All of it is about 5 h 30 of blocks (5 h 45 with the stranger of block 11), over 6 hours with setup and breaks. That is too long for one sitting, so there are two, and a walk through other rooms.
 
 | Sitting | Blocks, in this order | Time |
 |---|---|---|
 | **Sitting 1, the test pages and the app's entry.** Can be run today | 0 to 9 · 18 · 20 (and 19 part A only if time is left and you have a USB cable) | 2 h 50 of blocks; about 3 h 35 with 30 minutes of setup and two short breaks |
-| **Sitting 2, the garden in the app.** Needs T-128c, T-128d and T-128e | 0 again for the new build (10 min) · the listening steps of 9 (5 min) · 10 to 16 · 19 (part A, if not done in sitting 1, and part B) · 20 | 2 h 40 of blocks; about 3 h 20 with setup and breaks |
-| **Room walk.** Needs T-128c | 17, in each other room you can reach; its ripple steps once, in room 1 (needs T-128d) | 10 minutes a room, and 12 minutes once; any day you have the headset |
+| **Sitting 2, the garden in the app.** Needs T-128c, T-128d and T-128e | 0 again for the new build (10 min) · the listening steps of 9 (5 min) · 10 to 16 · 19 (part A, if not done in sitting 1, and part B) · 20 | 2 h 50 of blocks (3 h with the stranger of block 11); about 3 h 30 with setup and breaks |
+| **Room walk.** Needs T-128c | 17, in each other room you can reach; its ripple steps once, in room 1 (needs T-128d; the notes T-142b) | 10 minutes a room, and 20 minutes once; any day you have the headset |
 | **One hour, a friend's headset.** Can be run today | see "One-hour version" near the end | 1 hour |
 
 If only part of the integration is merged on the day of sitting 2, run the blocks whose "Needs" line is met and skip the rest. Blocks 10 and 17 need the least (T-128c), then 11 to 15 (T-128d), then 16 and 19 part B (T-128e).
@@ -966,6 +966,82 @@ Whether the time to load the page (T1) is added to these counts waits for the sa
 - The plant stands in another cell than the one you aimed at, now and then: that is aim, and block 2 measured it. Every time, the same way: that is the offset of step 7.
 - No sound at all, and "Sound unavailable" showed: see block 8.
 
+### Also, the first-minute guide (T-150; 8 min, and 12 min with a stranger)
+
+**Needs: T-150** (the guide; on `develop` since 16 Oct), on top of T-128d. Checked against `develop` dca03de; the cast is **(unchecked)**.
+
+**Answers:** is the ghost pinch read as "pinch here" · are the hints legible from your seat, 0.45 to 0.6 m away · a stranger's first minute, timed: first sound within 20 s, first loop within 90 s (TC-DEV-01, FR-UI-02; a first look at UAT-16) · D-053 (the guide on any session's empty bed; no step waits more than 60 s).
+
+**You need:** the app's plain bookmark; the white sheet; a stopwatch (a phone). For part B, one person who has never seen Roomsong, its video or its page and is not on the team. If you can, cast the headset's view to the phone or the Mac (the Meta Horizon app's Cast), so you see what they see.
+
+**Checked against:** `src/onboarding/Onboarding.ts` and `src/onboarding/config.ts` (the steps in order; `HINT_RING_AFTER_PLANTS` 3, `LISTEN_AFTER_MS` 240 000, `LISTEN_AFTER_PLANTS` 6, `STEP_STALL_MS` 60 000, `ONBOARD_CAPTION_MS` 5000), `src/onboarding/OnboardingSystem.ts` (it starts when a session's first room signature finds an empty bed), `src/ui/config.ts` (`GUIDE_CELL` ring 2, step 4; `GHOST_SIZE_M` 0.06, `GHOST_LOOP_MS` 2000, `RING_SIZE_M` 0.07, `ICON_SIZE_M` 0.05, `PALM_ICON_LIFT_M` 0.17; `CAPTION_DISTANCE_M` 0.6, `CAPTION_BELOW_GAZE_DEG` 8, `CAPTION_HEIGHT_M` 0.05, letters about 1.6 cm tall), `src/core/strings.ts` (the captions); UX §3.3 and its "As built (T-150)"; API_SPEC v1.2.34; UAT_PLAN §3.1.
+
+**Know this first:**
+
+- The guide runs whenever a session begins on an empty bed (D-053). After the ripple: "Open your hand", with a palm icon above the seeds. Once a seed is on a hand: "Pinch, and plant it", with a small drawn hand (6 cm) that pinches over one glowing cell (the middle ring, the step nearest you) once every 2 s. After the first plant no words: the 2nd and 3rd seeds come without any. After 3 plants a ring round the newest plant with the pull icon (↕), and after your first pull the drag icon (✥). After 4 minutes, or at 6 plants: "Rest your hands to listen", with a palms-out icon. A caption stays about 5 s; its icon stays until you do the step.
+- No step waits more than 60 s: then the next one comes (D-053).
+- The captions are 0.6 m ahead, 8° below your gaze, with letters about 1.6 cm tall (FR-UI-04: at least 1.4 cm). The icons float over the bed, about 0.45 to 0.6 m from your eyes (computed from the seated sketch of UX §2, not measured).
+- In the emulator, at test speed: first sound 15.1 s and first loop 34.4 s after Enter (API_SPEC v1.2.34). A person needs longer.
+- The three notes right after the bed lands are the ripple's (T-142b), not the first sound: the first sound is the first plant singing (step 5 above).
+
+#### Steps, part A — you, looking on purpose (8 min)
+
+1. In the session of this block, open the panel, **Garden** tab, pinch **hold** beside "New garden" and keep the pinch 2 s. Leave the session. The next session begins on an empty bed with three seeds, so the guide runs again.
+2. Lay the white sheet under the near half of the bed's place. Sit back as you would to play; from here on, do not lean in.
+3. Enter. Read each caption aloud as it comes. Could you read it to its end without leaning in?
+4. "Open your hand": find the palm icon above the middle of the bed. What does it show, from your seat? Open your hand, palm up.
+5. "Pinch, and plant it": before you pinch, watch the little hand over the glowing cell for three of its loops (about 6 s). In your own words: what is it telling you? Is the glowing cell easy to pick out on the sheet? Then plant the seed in that cell.
+6. Plant the other two seeds anywhere. After the third, a ring with an icon comes round the newest plant: what does it ask, from your seat? Do it (pull the plant up). The next icon comes: what does it ask? Do it (drag the plant to another cell).
+7. Optional, if you can stay 4 minutes: keep playing without Listen until "Rest your hands to listen" and its icon come. Readable from your seat?
+
+#### Steps, part B — a stranger's first minute (12 min)
+
+The rules of UAT_PLAN §3.1, as for UAT-16: from their pinch on Enter you say nothing and point at nothing; the one answer to any question is "do what feels right". Keep no name, photo, voice or video: call the person P0. A person is a first-time user once: P0 cannot be one of UAT-16's five later.
+
+8. Before they arrive: in your own session, New garden (keep the pinch 2 s) and leave, so their session begins on an empty bed with three seeds. Take the white sheet away. Controllers out of reach. Start the cast if you have one.
+9. Seat them at your table, belly at its edge. Fit the headset and bring up the app page with **Enter the garden** (the plain bookmark).
+10. Say only: "Tap Enter and do what it shows you. I can't help you."
+11. Start the stopwatch at their pinch on Enter. Note the time of the first plant's note and the time when three plants are playing; stop at three plants playing, or at 90 s. Without a cast, go by ear: the ripple's three notes right after the bed lands do not count; three plants are playing when three different notes come round each turn.
+12. While it runs, note where they stopped or hesitated (the words, the seed, the pinch, the bed's placement), without a word or a gesture.
+13. Once the stopwatch has stopped you may talk. Ask, and write down their words: "What did the small hand over the ring mean?" "Could you read the words? Which were hard?" "Have you used a headset before? Hand tracking?"
+
+#### Write down
+
+| Field | Value |
+|---|---|
+| You: each caption read to its end without leaning | yes / no, which not |
+| You: the palm icon, from your seat | what it showed, in your words |
+| You: the little hand over the glowing cell, in your words; the cell easy to pick out on the sheet | words; yes / no |
+| You: the pull icon and the drag icon, from your seat | what each asked, in your words |
+| You: "Rest your hands to listen" and its icon (optional) | readable / not; not reached |
+| A step that waited more than 60 s with nothing happening | none / which |
+| P0: first sound (s); three plants playing (s), or "not in 90 s" | s; s |
+| P0: aided or unaided; where they hesitated or stopped | which; words |
+| P0: the bed on the table or floating; the room bright or dim | which; which |
+| P0: what the small hand meant, in their words; words they could not read | words |
+| P0: used a headset before; hand tracking before | yes / no each |
+| P0: anything done with a controller | words |
+| Cast used | yes / no (then by ear) |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| First sound | P0's first plant sings within 20 s of the Enter pinch | TC-DEV-01, FR-UI-02, UAT-16 |
+| First loop | three plants playing within 90 s of the Enter pinch, unaided | TC-DEV-01, FR-UI-02, UAT-16 |
+| One person | the result is "1 of 1, below sample", never a pass or a fail of UAT-16 (five people, at least 4 of 5) | UAT_PLAN §3.1 |
+| The ghost pinch | the documents give no rate: P0's words and yours are the result, and Parth judges whether it reads as "pinch here" | UX §3.3 step 2, T-150 |
+| Legible | every caption read to its end from the seat; the documents fix the size (letters at least 1.4 cm at 0.6 m), not a rate | FR-UI-04, UX §3.3 |
+| Captions | one at a time, at most 6 words, with an icon; no paragraph | FR-UI-01 |
+| No step held | after 60 s with nothing done, the next step comes | D-053 |
+| Hands only | no controller | FR-HND-01 |
+
+#### If it fails
+
+- No "Open your hand" at all: the bed was not empty when the session began (the guide runs only then, D-053): do step 1 again. Still none: the build lacks T-150 (block 0).
+- A step does not give way after 60 s: write down which, and the count. Claude files it against T-150 (D-053).
+- P0 is stuck: do not help. Stop at 90 s and write down where. If you helped, the run is "aided".
+
 ---
 
 ## Block 12 — The app: the settings panel and its orb (15 min)
@@ -1420,7 +1496,7 @@ Do this part last in this block. The flag `fakeDay=+7` makes the garden a week o
 
 ### Also, the tuning ripple's look (T-142; 12 min, room 1 only)
 
-**Needs: T-128d.** The ripple is on `develop` (T-142, checked against `develop` af94284), but it starts only on the room's signature, which comes from the app's garden, and the app makes its garden with T-128d: that part is **(from the plan)**. **The ripple's three notes are not built (T-142b):** it is silent. The song you hear at that moment is the garden's own. Do not rate a chord.
+**Needs: T-128d.** The ripple is on `develop` (T-142, checked against `develop` af94284), but it starts only on the room's signature, which comes from the app's garden, and the app makes its garden with T-128d: that part is **(from the plan)**. **The ripple's three notes (T-142b)** have their own steps, in the part after this one: here, watch, and do not rate the chord.
 
 **Answers:** the first half of TC-DEV-13 for the eye (each caption names its surface; the ripple in each room) · FR-ROOM-12 (the order, the captions, at least 1.2 s each) · from T-142: does the crest read on a light and on a dark real table; is the wall sweep seen through passthrough; is the ceiling sweep seen from a seat at all; the stall in the frame where the bed appears.
 
@@ -1481,6 +1557,59 @@ Do this part last in this block. The flag `fakeDay=+7` makes the garden a week o
 - No ripple, but the garden plays: the signature came (plants sound only from it on), so the ripple failed. Write down the `level`; Claude files it against T-142. Even at level 3 or 4 there is one ripple on the bed.
 - No ripple and no sound: the build lacks T-128d (block 0).
 - A caption you could not read in time: write down which, and where you were looking when it came.
+
+### Also, the tuning ripple's notes (T-142b; 8 min, room 1 only)
+
+**Needs: T-142b** (on `develop` since 16 Oct), on top of T-128d. Checked against `develop` dca03de. Run it right after the ripple's look, in the same room.
+
+**Answers:** TC-DEV-13, the ear's half (the ripple heard within 5 s of placement) · FR-ROOM-12 (each surface rings one note of the room chord; a missing surface's note rings at the bed) · from T-142b: one chord, in tune with the garden, landing with each sweep · UX §5 against LLD §5.8: the note at the sweep's start (as built) or at the crest's arrival (UX §5).
+
+**You need:** the "app, dev" bookmark; a garden that plays (the one of block 14 or 16).
+
+**Checked against:** `src/audio/AudioEngine.ts` (`chordTone`: `CHORD_VOICES` pad, bell, pluck; the room chord's root, third or fourth, and fifth, from `chordDegrees(mode)`; each a full-height note; from its surface, else from the bed; nothing when the sound is not running), `src/render/TuningRippleSystem.ts` (all three notes scheduled when the ripple starts, at `RIPPLE_SWEEP_AT_MS` 300 / 1500 / 2700), LLD §5.8 (the timeline; the chord table: major, minor or sus4), SRS FR-ROOM-12, API_SPEC v1.2.35.
+
+**Know this first:**
+
+- Three notes, 1.2 s apart, counted from the moment the bed lands: at 0.3 s a soft, long pad from the table (the chord's root); at 1.5 s a bell from the nearest wall (the third, or the fourth in a "sus" room); at 2.7 s a pluck from above, the ceiling (the fifth). Together they are one chord: major, minor or sus, by the room. A surface the headset did not find rings its note at the bed. In a room the app could not read, all three ring at the bed.
+- Each note starts with its sweep, not when the crest has crossed its surface: that is how it is built (LLD §5.8); UX §5 asked for the arrival. You choose which feels right.
+- The garden's song plays under the notes, in the same key.
+
+#### Steps
+
+1. Sit at your table. Open "app, dev" and enter. Eyes on the bed, no other task. Count the notes you hear in the first 4 s after the bed lands, and name the instruments in the order you hear them.
+2. Leave and enter again. This time listen to where each note comes from: the table, the wall, above you. You may turn to the wall at the second note (by the count of one and a half).
+3. Leave and enter again. Do the three notes sound like one chord? Does it sit in tune with the song that follows? Rate 1 to 5 (5: it belongs to the garden).
+4. Leave and enter again, watching the light. Does each note come as its sweep starts? Would you rather hear it when the light has crossed its surface? Words.
+5. Leave. Add `,forceSignature=wanderer` to the end of the address and enter: one ripple on the bed, and three notes, all from the bed.
+6. In every run: any click, crackle or note cut short?
+
+#### Write down
+
+| Field | Value |
+|---|---|
+| Notes heard in the first 4 s; their order | n of 3, each run; words |
+| Where each came from | table / wall / above / the bed, each |
+| One chord; in tune with the garden | yes / no; rating 1 to 5 |
+| With the sweeps: on the start / early / late; your choice, start or arrival | words |
+| No room: three notes from the bed | yes / no |
+| Clicks, crackles, a note cut short | none / which run |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Heard | in every run three notes, the last within 5 s of the bed landing (as built: at 2.7 s) | FR-ROOM-12, TC-DEV-13, LLD §5.8 |
+| Spacing and voices | pad, bell, pluck, about 1.2 s apart | LLD §5.8 (the table), `RIPPLE_SWEEP_AT_MS` |
+| One chord, in tune | the documents give no number: your rating is the result (listening ratings are Parth's) | LLD §5.8 (the chord table), UX §3.3 step 0 |
+| From its surface | write down what you hear; a surface not found rings at the bed | FR-ROOM-12, LLD §5.8 |
+| No room | three notes from the bed, one bed ripple, no caption | LLD §5.8 |
+| Clean | no click or crackle | TC-PERF-06 |
+
+#### If it fails
+
+- No notes, but the light and the captions come: if "Sound unavailable" is up, there is no sound and so no notes. If the garden sings and the ripple is silent, the build may lack T-142b (block 0); else Claude files it against T-142b.
+- Fewer than three: write down which instrument was missing, and which surface had no sweep.
+- A note out of tune: write down which (pad, bell or pluck), and the Key on the panel's Garden tab.
 
 ---
 
@@ -1745,6 +1874,24 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 88 | The hitch: as the bed appeared or during the first sweep; lowest `fps`, highest `draws`, `flash` | | 17 | T-142; T-165 perf pass |
 | 89 | Reduced motion: glows in turn, same captions; no room: one bed ripple, no caption | | 17 | FR-ROOM-12; FR-UI-06 |
 
+### The tuning ripple's notes (T-142b) — block 17, once
+
+| # | What | Your answer | From block | Who waits for it |
+|---|---|---|---|---|
+| 90 | Notes heard, their order, where each came from | | 17 | FR-ROOM-12; TC-DEV-13 |
+| 91 | One chord, in tune with the garden: rating 1 to 5 | | 17 | T-142b; T-164 |
+| 92 | On the sweep's start, or rather at the crest's arrival | | 17 | Parth: UX §5 against LLD §5.8 |
+| 93 | No room: three notes from the bed; clicks or crackles | | 17 | LLD §5.8; TC-PERF-06 |
+
+### The first-minute guide (T-150) — block 11
+
+| # | What | Your answer | From block | Who waits for it |
+|---|---|---|---|---|
+| 94 | The captions read to their end from your seat, without leaning | | 11 | FR-UI-04; T-150 |
+| 95 | The little hand over the glowing cell, in your words; the cell on the white sheet | | 11 | T-150; UX §3.3 |
+| 96 | The palm, pull and drag icons named from your seat; a step that waited more than 60 s | | 11 | T-150; D-053; T-163 |
+| 97 | P0: first sound (s), three plants (s), aided or not, where they stopped, what the hand meant | | 11 | TC-DEV-01; UAT-16 (a first look, below sample); T-166 |
+
 ---
 
 ## One-hour version, for a borrowed headset
@@ -1828,8 +1975,7 @@ Not in this script, because no review note asks for it here and its own task or 
 | What | Where it is checked |
 |---|---|
 | Pull, drag and drag-off, with the 2 cm of movement that decides between them (TC-DEV-03) | device script S2 (T-154), once T-146 is in. Block 13, step 11, only covers a hand lost while shaping |
-| Listen mode; one-hand and look-and-hold modes over a full loop; the policy sweep on the headset (TC-DEV-04, 06, 11); the Listen half of TC-DEV-07 | device script S2 (T-154) |
-| The tuning ripple's three notes, heard (the chord of FR-ROOM-12; its light and captions are in block 17) | T-142b, not built; a listening step joins block 17 when it is |
+| Listen mode; one-hand and look-and-hold modes over a full loop, and the beat ring; the policy sweep on the headset (TC-DEV-04, 06, 11); the Listen half of TC-DEV-07 | device script S2 (T-154): Listen in blocks 6A to 6D, one hand and look and hold in block 9; the policy sweep is not written yet |
 | The 3D-sound comparison (HRTF A/B) | T-145 |
 | The same blocks on a Quest 3S (TC-DEV-12) | a second run of this script, if a 3S is at hand |
 
@@ -1956,7 +2102,11 @@ Not in this script, because no review note asks for it here and its own task or 
 | The wall sweep through passthrough; the ceiling sweep from a seat | block 17, the ripple, steps 1 and 3 |
 | The captions readable and up at least 1.2 s | block 17, the ripple, step 2 |
 | The stall in the placement frame | block 17, the ripple, step 1 |
-| The notes (T-142b) | not built: "Left for device script S2 and for later tasks" |
+| The notes (T-142b): one chord, in tune with the garden, landing with each sweep | block 17, the notes, steps 1 to 6 |
+| **From T-150 (the first-minute guide)** | |
+| The ghost pinch read as "pinch here" | block 11, the guide, steps 5 and 13 |
+| The hints legible at 0.45 to 0.6 m | block 11, the guide, steps 3 to 7 |
+| A stranger's first minute, timed | block 11, the guide, part B |
 | **From the earlier reviews** | |
 | The real pinch thresholds | block 2 counts pinches that got no tone and tones you did not mean; the gap in cm: last section |
 | Caption legibility over a bright wall | block 10, step 15; block 13, step 9 |

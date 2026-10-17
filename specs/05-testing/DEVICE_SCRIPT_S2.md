@@ -1,10 +1,10 @@
 # Device script S2 — shaping, Listen, restore, pause (T-154)
 
-**Status:** the shaping blocks (TC-DEV-03) are written. Only block 1 can be run today. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-15 against `develop` ce33e46 (T-146 the shaping gestures, T-147 their drawing, T-127 seed delivery, T-128c the bed on the table). Blocks 6A to 6D (Listen, TC-DEV-04) were written on 2026-10-16 against the T-148 branch at 088ea07, before its merge. Blocks 7 and 8 are stubs: each is written when the task it waits for is merged.
+**Status:** the shaping blocks (TC-DEV-03) are written; on 15 Oct only block 1 could be run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-15 against `develop` ce33e46 (T-146 the shaping gestures, T-147 their drawing, T-127 seed delivery, T-128c the bed on the table). Blocks 6A to 6D (Listen, TC-DEV-04) were written on 2026-10-16 against the T-148 branch at 088ea07, before its merge. Blocks 7, 8 and 9 (TC-DEV-05, 08 and 06) were written on 2026-10-17 against `develop` dca03de (T-128e save, restore and pause; T-160 the accessibility set; T-152 is not built). The hand-over moved from block 9 to block 10.
 
 This script produces results. It contains none.
 
-**What S2 covers.** TC-DEV-03, shaping a plant with bare hands: pinch and hold (the lift), pull to grow or shrink, drag to another cell, drag off the bed to remove it, the 5-second undo, and the glide home when the headset loses the hand mid-gesture. Then TC-DEV-04, Listen: going in and out with bare hands, the dim and the halo over a real room, the near plants louder, the poses that must not fire by accident, and the 10-minute end. Later: TC-DEV-05 the garden coming back, TC-DEV-08 pause. Listening review #1 (the other half of T-154) is not in this file.
+**What S2 covers.** TC-DEV-03, shaping a plant with bare hands: pinch and hold (the lift), pull to grow or shrink, drag to another cell, drag off the bed to remove it, the 5-second undo, and the glide home when the headset loses the hand mid-gesture. Then TC-DEV-04, Listen: going in and out with bare hands, the dim and the halo over a real room, the near plants louder, the poses that must not fire by accident, and the 10-minute end. Then TC-DEV-05, the garden coming back (block 7); TC-DEV-08, pause and resume (block 8); and TC-DEV-06, the whole loop with one hand and with the eyes alone, and the beat ring (block 9). Listening review #1 (the other half of T-154) is not in this file.
 
 How sure each step is (the marks of DEVICE_SCRIPT_S1):
 
@@ -12,10 +12,11 @@ How sure each step is (the marks of DEVICE_SCRIPT_S1):
 - **(unchecked):** a step about the headset's own menus, the browser or the Mac's console, which nobody on the team has seen yet. If it looks different, do the nearest thing and write down what it was called.
 - **(from the plan):** a step about a part of the app that is not on `develop` yet (the wiring of T-128d). It is written from API_SPEC "Who calls it (T-128d)", not from code. When T-128d lands, Claude checks the step against the code and takes the mark off.
 - **Blocks 6A to 6D** are checked against the T-148 branch at 088ea07 (Listen, in review when written), not against `develop`. When T-148 is merged, Claude checks them against `develop` and takes this line off.
+- **Blocks 7 to 9** are checked against `develop` at dca03de, where the app plants, plays, saves and restores (T-128d, T-128e) and one-hand mode, look and hold and the beat ring are in (T-160).
 
 Every block starts with **Can be run today** or **Needs: a task**. "Today" means `develop` at ce33e46. In the app today you can enter a session and see the bed on your table, but you cannot plant, shape or hear a plant: `GardenSystem` and the plants' drawing are joined to the app by T-128d (the first loop, in progress). The only stand-in today is the bed preview, `proto/bed/`: its four buttons **play** each shaping with a scripted hand (`proto/bed/README.md`, "Shaping a plant (T-147)"). It shows the drawing, never your hand: it cannot answer a TC-DEV-03 pass rule.
 
-**What a sitting needs.** Everything in DEVICE_SCRIPT_S1 "Before you start": Headset, once; Leaving a session with hands only; The Mac's console over USB (a bonus here, needed for block 1 route A); The room; Five things beside you (the white sheet for block 1); the tape-measure table. One address for the whole sitting (S1, "One address for the whole sitting"). Controllers out of reach: if you ever need one, write down where. Sit at the table, belly at its edge, as in S1.
+**What a sitting needs.** Everything in DEVICE_SCRIPT_S1 "Before you start": Headset, once; Leaving a session with hands only; The Mac's console over USB (a bonus here, needed for block 1 route A); The room; Five things beside you (the white sheet for blocks 1 and 9, the coin for blocks 7 and 8); the tape-measure table. One address for the whole sitting (S1, "One address for the whole sitting"). Controllers out of reach: if you ever need one, write down where. Sit at the table, belly at its edge, as in S1.
 
 ## The sitting at a glance
 
@@ -31,13 +32,14 @@ Every block starts with **Can be run today** or **Needs: a task**. "Today" means
 | 6B | Listen: the look and the sound | TC-DEV-04 (the halo; the sound from each plant as you turn) · the dim over real passthrough · the near plants louder · frame rate | 10 min | needs T-148 and T-128d |
 | 6C | Listen by accident | D-050: palms down over the bed, a palm up on the lap or the table edge, palm up for a seed against the wake, the Quest's own palm gesture | 15 min | needs T-148 and T-128d |
 | 6D | Ten minutes of Listen, and "Goodnight" | the 10-minute end · the Listen half of TC-DEV-07 · wakes at rest | 12 min | needs T-148 and T-128d |
-| 7 | The garden comes back (stub) | TC-DEV-05 | — | needs T-128e |
-| 8 | Pause and resume (stub) | TC-DEV-08 | — | needs T-128e and T-152 |
-| 9 | Hand the results to Claude | the filled results sheet | 5 min | today |
+| 7 | The garden comes back | TC-DEV-05 · after a reload and after closing the Browser: the same cells, the bed at the coin within 4 s or placed again, the same key · a plant made just before closing is kept · the next day one new seed · storage blocked: "Saving unavailable" once | 20 min | needs T-128e |
+| 8 | Pause and resume | TC-DEV-08 · headset off 10 s (3 tries) and the menu 30 s: the garden, the bed and the sound come back, in time, without a pinch · a change made just before is kept | 15 min | needs T-128e; the fade and the phase checks need T-152 |
+| 9 | One hand, and look and hold | TC-DEV-06 · one hand takes the seed off its own palm · the bed, plants and Listen by looking, the wake by a doubled look · the panel blocks the gaze · the 8°/s hold · the dot over a bright room · the beat ring, read and in time | 50 min | needs T-160 |
+| 10 | Hand the results to Claude | the filled results sheet | 5 min | today |
 
-**Time.** Blocks 0 to 5 and 9: 90 minutes; about 1 h 55 with 15 minutes of setup and one 10-minute break. Block 1 can also be run alone today, right after S1 block 4 (same page, same bookmark): then the S2 sitting is 75 minutes of blocks. Listen (6A to 6D) adds 57 minutes: with it the sitting is about 3 h with setup and two breaks. Listen can also be its own sitting: blocks 0, 6A to 6D and 9, 72 minutes of blocks, about 1 h 35 with setup and one break. Blocks 7 and 8 get their minutes when they are written.
+**Time.** Blocks 0 to 5 and 10: 90 minutes; about 1 h 55 with 15 minutes of setup and one 10-minute break. Block 1 can also be run alone today, right after S1 block 4 (same page, same bookmark): then the S2 sitting is 75 minutes of blocks. Listen (6A to 6D) adds 57 minutes: with it the sitting is about 3 h with setup and two breaks. Listen can also be its own sitting: blocks 0, 6A to 6D and 10, 72 minutes of blocks, about 1 h 35 with setup and one break. Blocks 7 to 9 are 85 minutes; as their own sitting (blocks 0, 7, 8, 9 and 10) 100 minutes of blocks, about 2 h 5 with setup and one break. All of S2 is 3 h 52 of blocks: split it over two sittings.
 
-**Order.** 0, then 1, then 2 to 5 in order: block 2 makes the plants of different heights that block 3 moves; block 4 removes and brings back; block 5 needs plants in their cells. Then 6A to 6D in order (6D last: it is ten minutes of sitting still), then 9. If S1 sitting 2 is on the same day, run S2 blocks 2 to 5 after S1 block 11 and before S1 block 12 (which ends with New garden), and skip S1 block 13 step 11: block 5 here asks the same, with the numbers.
+**Order.** 0, then 1, then 2 to 5 in order: block 2 makes the plants of different heights that block 3 moves; block 4 removes and brings back; block 5 needs plants in their cells. Then 6A to 6D in order (6D last: it is ten minutes of sitting still), then 7, 8 and 9 in order, then 10. Block 7 plants a small garden of its own and block 8 pauses it; block 9 makes new gardens, so it comes after both. If S1 sitting 2 is on the same day, run S2 blocks 2 to 5 after S1 block 11 and before S1 block 12 (which ends with New garden), and skip S1 block 13 step 11: block 5 here asks the same, with the numbers.
 
 **A try, and first try.** A try is one pinch and one release, aimed at a plan you made before the pinch ("this plant, up to the top ring"). Moving your hand while you hold is part of the try: the ghost is there to guide it. A **first-try success** is a try that gives the planned result without a second pinch. A miss is not corrected and not repeated: count it and go on (the rule of TC-DEV-00).
 
@@ -56,7 +58,7 @@ Pass and fail: each block has its rule. Where the documents give a number, the r
 ### Steps
 
 1. Do S1 block 0 (route A or B) for the build of the day. Write down the build.
-2. Ask Claude whether that build holds T-128d. If not, run block 1 only and stop.
+2. Ask Claude whether that build holds T-128d (and, for blocks 7 to 9, T-128e and T-160). If it lacks T-128d, run block 1 only and stop.
 3. Make two bookmarks on that address:
    - **"S2, shaping":** the app with `?dev=1&flags=perfHud,autoplant=20` at the end of its address.
    - **"S2, console":** the app with `?dev=1&flags=eventLog,autoplant=20`. The event log costs frame time: read `fps` only from the first bookmark.
@@ -67,7 +69,7 @@ Pass and fail: each block has its rule. Where the documents give a number, the r
 | Field | Value |
 |---|---|
 | Address and build | route A or B; the commit or short hash |
-| T-128d in the build | yes / no |
+| T-128d in the build; T-128e and T-160 | yes / no each |
 
 ---
 
@@ -663,17 +665,256 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 - No "Goodnight" after more than 10 minutes: check that Listen was not woken and restarted (step 5). If it was on the whole time, Claude files it against T-148.
 - The chord is heard, but no word: write it down. The caption waits its turn behind any other caption (API_SPEC §1.9).
 
-## Block 7 — The garden comes back (stub)
+---
 
-**Needs: T-128e.** Will test TC-DEV-05: leave and come back (reload, browser closed): the bed returns within 4 s at the same spot with the same key and scale, the drift in cm, or "re-placed" with every plant kept; S1 block 16 holds the longer runs.
+## Block 7 — The garden comes back (20 min)
 
-## Block 8 — Pause and resume (stub)
+**Needs: T-128e** (save, restore and pause; on `develop` since 16 Oct). The Browser's own buttons and settings are **(unchecked)**.
 
-**Needs: T-128e and T-152.** Will test TC-DEV-08: the Quest button for 30 s and the headset off for 5 s: the sound comes back on return, in time, and whether it needs a pinch (S1 block 9 has the first look).
+**Purpose:** leave the garden the ways a player does and come back to it. Are the plants the same, in the same cells, and is the bed on the same spot? Is a plant made just before closing the Browser kept? Does the next day bring exactly one seed? And when the Browser blocks storage, does the app say so once and play on?
+
+**Answers:** TC-DEV-05 (Must; FR-ROOM-07, US-12): after a reload and after closing the Browser, the bed back at the same spot within 4 s (the drift in cm) or placed again with every plant kept, with the same key and scale · FR-PER-01 (a save within 500 ms of a change, and at once when the page is hidden) · from T-128e: a change made just before closing is kept; with storage blocked, "Saving unavailable" once, in the session, and the garden saved before is not written over · FR-MUS-08 and D-037 (a later date brings one seed). The longer runs (the chair moved, the table moved, the light, Space Setup again, a headset restart, a recentre, the count of saved places) are S1 block 16: not repeated here.
+
+**You need:** the "app, dev" bookmark (S1 block 0); the coin; the tape. The console is a bonus (the `room:bedPlaced` line).
+
+**Checked against:** `src/app.ts` (`keepSaved`: a save on every garden and settings change, a flush when the session is hidden or ends, and `flushNow`, a write at once, when the page is hidden or goes; `inSession`: "Saving unavailable" raised in a session, for 5 s), `src/persistence/PersistenceSystem.ts` (`SAVE_DEBOUNCE_MS` 500; the first failed write of a run is reported, the ones after it are not), `src/persistence/Store.ts` (IndexedDB, then localStorage; with neither, nothing loads and every save fails), `src/garden/growth.ts` (one seed on a later local date while fewer than `SEED_SUPPLY_MAX` 5 wait; a date the garden has seen brings none), `src/core/clock.ts` (`fakeDay` moves the date), `src/room/config.ts` (`ANCHOR_RESTORE_TIMEOUT_MS` 4000), `src/room/AnchorStore.ts` (a new saved place has every other one of the site deleted, D-040), `src/ui/Panel.ts` (the Garden tab's first line: Day, Seeds, Key), `src/core/strings.ts` (`E_SAVE_FAILED`); API_SPEC §4 and its v1.2.33 entry; TEST_PLAN TC-DEV-05.
+
+**Know this first:**
+
+- "Back" means the bed came back from its saved place. "Placed again" means the app waited 4 s, then put the bed down afresh with every plant kept: the accepted way out, not a failure (TC-DEV-05). A plant missing, moved or doubled is a failure.
+- The garden is saved within half a second of each change, and at once when the page is hidden or closes. Plants that `autoplant` put in are saved only with your next change (T-128e): this block plants its own.
+- Storage blocked (steps 9 to 11) comes last, because it costs the bed's saved place: that session knows no saved place, and the one it makes deletes yours (D-040). In step 11 the bed is therefore expected to be placed again.
+
+### Steps
+
+1. Open the "app, dev" bookmark and enter. Open the panel (pinch the orb on the back of your other hand), **Garden** tab, pinch **hold** beside "New garden" and keep the pinch 2 s: three seeds wait. Write down the tab's first line (Day, Seeds, Key). Close the panel.
+2. Plant two of the seeds and keep the third: one on the inner ring, the cell nearest you; one on the outer ring, on the far side. Pull the near one up to its full height.
+3. Put the coin on the table exactly under the middle of the ring. Wait 5 seconds.
+4. **Reload.** Leave the session (S1, "Leaving a session with hands only"). Reload the page with the Browser's reload button (unchecked). Enter, and count the seconds from the first sight of the room until the ring shows.
+5. Is the ring's middle at the coin, or how many cm off? Are both plants in their cells, the near one still tall? Is the Garden tab's first line as in step 1, with Seeds now 1? (console) Does the `[events] room:bedPlaced` line say `restored: true`?
+6. **Close right after planting.** Open your palm: the third seed comes. Plant it on the middle ring, on your right. At once, as fast as you can, open the headset's menu and close Meta Quest Browser from there (unchecked: write down what you pressed). Write down about how many seconds passed from letting go of the seed until the Browser was gone.
+7. Open the Browser and the "app, dev" bookmark, and enter. Count to the ring as in step 4. Is the third plant there, on the middle ring on your right? The ring at the coin (cm)?
+8. **The next day.** If you keep the headset until tomorrow, do this step then, at the same table, together with S1 block 16 step 19. Otherwise do it now: open the app with `?dev=1&flags=perfHud,eventLog,fakeDay=+1`. If S1 block 13 or 16 already used `fakeDay` on this address, put one more than the highest number used there: a date the garden has seen brings no seed (D-037). Enter. The Garden tab's first line: one Day more, and Seeds 1. Open your palm: one seed comes. Plant it. Open your palm again: none may come.
+9. **Storage blocked.** Leave. In Meta Quest Browser's settings, block cookies and site data for this address (unchecked: look under Settings, then Privacy or Site settings, then Cookies; write down the real path). If there is no such setting, write "no setting" and go to block 8.
+10. Open the "app, dev" bookmark and enter. The garden is new and empty (the app cannot read yours), so the guide starts. "Saving unavailable" should show once, early in the session (a caption waits its turn behind the ripple's and the guide's). Plant two seeds: it must not show again. Does the garden play?
+11. Leave. Allow cookies and site data for this address again, the same way. Reload and enter. Your garden of step 8 must be back with every plant. Back at the coin, or placed again (expected, see above)?
+
+### Write down
+
+| Field | Value |
+|---|---|
+| The Garden tab's first line at step 1 | Day, Seeds, Key |
+| Reload: seconds to the ring; back or placed again; cm from the coin | s; which; cm |
+| Reload: both plants in their cells, the near one tall; the first line the same, with Seeds 1 | yes / no each |
+| Browser closed: seconds from the release to the Browser gone; what you pressed | s; words |
+| Reopened: the third plant there; seconds to the ring; back or placed again; cm | yes / no; s; which; cm |
+| The next day (real, or `fakeDay` and its number): Day and Seeds before and after; seeds that came | numbers |
+| Storage blocked: the Browser's path; "Saving unavailable" shown how many times; the garden played | words; n; yes / no |
+| Storage allowed again: your garden back, every plant; back or placed again | yes / no; which |
+| Anything you could only do with a controller | words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The same garden | after the reload and after the Browser was closed: every plant in its cell, at its height; none missing, moved or doubled | TC-DEV-05, US-12, D-033 |
+| The bed's spot | back at the coin within 4 s of the first sight of the room (the cm are the result), or placed again with every plant kept: both pass, and placed again is reported as such | TC-DEV-05, FR-ROOM-07 (4 s) |
+| Key and scale | the Key in the Garden tab's first line is the same after each return | TC-DEV-05 |
+| Closed right after planting | the last plant is there | FR-PER-01 (a save at once when the page is hidden), T-128e (`flushNow`) |
+| The next day | exactly one new seed | FR-MUS-08 (one seed a calendar day, up to 5 waiting), D-037 |
+| Storage blocked | "Saving unavailable" shows once in the session and not again; the garden plays on; nothing crashes | T-128e ("Saving unavailable" once, raised in a session), API_SPEC §5 (`E_SAVE_FAILED`) |
+| Storage allowed again | the garden saved before is back with every plant: the blocked session wrote nothing over it | T-128e (a garden is never overwritten by a failed read), API_SPEC §4 |
+| Hands only | no controller | FR-HND-01 |
+
+### If it fails
+
+- A plant missing, moved or doubled: write down which (its ring, and where on the ring) and what you did just before. Claude files it against T-128e: the garden coming back is a Must (M5).
+- The bed is placed again every time, never back: that is the saved place, S1 block 16's subject. Write down the seconds and go on.
+- The third plant is gone after the Browser was closed: write down the seconds of step 6. Claude files it against T-128e.
+- No new seed the next day: was Seeds already 5 (then none comes, FR-MUS-08)? Was the `fakeDay` number new for this address?
+- No "Saving unavailable" with storage blocked: the setting may not block what the app uses. (console) Look for `[persistence] IndexedDB is not available` and `[persistence] localStorage is not available`. Shown more than once: count the times; Claude files it against T-128e.
+- Your garden is gone once storage is allowed again: write down the Browser's path. The setting may have cleared the site's data, as S1 block 19 does on purpose; Claude decides whether it was the Browser or the app.
 
 ---
 
-## Block 9 — Hand the results to Claude (5 min)
+## Block 8 — Pause and resume (15 min)
+
+**Needs: T-128e** (on `develop` since 16 Oct) for the garden through a pause. **T-152 is not built:** it adds the fade back in, the checks that the beat carries on in time, and a pinch that brings back a sound the Browser kept off. Until then the sound is judged by the TC-DEV-08 rule below, and the fade is written down, not judged. The headset's menus are **(unchecked)**.
+
+**Purpose:** pause the garden the two ways a player does, taking the headset off and opening the headset's menu, and see the garden, the bed and the sound come back as they were, with a change made just before the pause kept.
+
+**Answers:** TC-DEV-08 (FR-SYS-05): the headset off for 10 s, three times, and the menu open for 30 s: the sound back on return, in time, without a pinch · FR-SYS-05 (the state saved when the session is hidden; the tide carries on from where it stopped) · from T-128e: a hide writes at once, and the return is one more visit · S1 block 9 asked this with no garden; this block asks it with one.
+
+**You need:** the garden of block 7; the coin; the "app, dev" bookmark. The console is a bonus (the `xr:visibility` lines).
+
+**Checked against:** `src/app.ts` (`followSession`: `xr:visibility` comes from the session's own `visibilitychange`, on a change only, and a dimmed ("blurred") session, as under the menu, counts as seen; `keepSaved`: the saver is flushed on `visible: false`, and written at once when the page is hidden), `src/audio/AudioSystem.ts` (faded out and suspended when unseen, resumed when seen), `src/audio/config.ts` (`SUSPEND_FADE_S` 0.2), `src/audio/AudioEngine.ts` (`resume`: the volume comes back and the song's clock goes on from where it stopped), `src/garden/GardenSystem.ts` (a pause ends Listen; the return is a visit), `src/room/RoomSystem.ts` (on the return the bed is moved to its saved place again); SRS FR-SYS-05; TEST_PLAN TC-DEV-08.
+
+**Know this first:** the app hears "unseen" only when the headset tells the session it is hidden; S1 block 9 finds out whether taking the headset off does that. Then the sound fades out over 0.2 s and the song's clock stops; on the return it goes on from where it stopped, so the light starts again close to where it was when you lifted the headset. The menu only dims the session: the garden plays on under it.
+
+### Steps
+
+1. Sit at your table. Open the "app, dev" bookmark and enter. The garden of block 7 plays. If the ring's middle is not at the coin, move the coin under it.
+2. **A change, then the headset off.** Pinch the near plant at its foot and pull it to its full height or, if it is tall already, down to half. Let go. Note which plant the light is over, and at once take the headset off. Hold it for 10 seconds (count), lenses away from any window. Put it back on.
+3. Is the session still there? The ring at the coin (cm)? Every plant in its cell, the one you pulled at its new height? Did the sound come back without a pinch, and how soon? Did the light start again close to where it was? Any burst of notes, click or jump? (console) `[events] xr:visibility` with `visible: false`, then `true`? A red `E_AUDIO_CONTEXT` line?
+4. Steps 2 and 3 twice more, pulling a different plant each time.
+5. **The menu, 30 s.** Open the headset's menu (look at your palm, pinch and hold). Keep it open 30 seconds. Does the sound keep playing under it? Close it. Is the garden as before, the ring at the coin, the loop in time?
+6. **Kept.** Leave the session. Reload the page and enter. Is the plant you pulled in the last try of step 2 at its new height?
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Headset off 10 s: the session still there | n/3 |
+| The ring after each return | cm from the coin, each |
+| Every plant in its cell, the pulled one at its new height | n/3 |
+| The sound back without a pinch; about how soon | n/3; s |
+| The light on the return: close to where it was / elsewhere | each try |
+| A burst of notes, a click or a jump on the return | none / which try |
+| (console) `xr:visibility` false then true; a red `E_AUDIO_CONTEXT` | yes / no each |
+| The menu: the sound under it; after 30 s the garden, the ring and the loop as before | plays / stops; yes / no |
+| After the reload: the last pulled plant at its new height | yes / no |
+| Anything you could only do with a controller | words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The garden through a pause | 3 of 3: the session there, every plant in its cell at its height, the ring at the coin (the cm are the result; S1 block 16 judges drift) | TC-DEV-08, FR-SYS-05, T-128e |
+| The sound comes back | by itself, without a pinch: 3 of 3 headset-off tries, and after the menu | TC-DEV-08 |
+| In time | the light starts again close to where it was and the plants sing with it; no burst, click or jump. The documents give no number for "close"; T-152 adds the checks of the fade and the phase | FR-SYS-05 (the tide continues from its saved phase), TC-DEV-08 ("phase continuous"), TC-PERF-06 |
+| Under the menu | the sound plays on | from T-128a (S1 block 9) |
+| Kept | the change made just before the headset came off is there after the reload | FR-PER-01 (a save at once on `visibilitychange`), FR-SYS-05 (state saved when hidden) |
+| Hands only | no controller | FR-HND-01 |
+
+### If it fails
+
+- The landing page is back after 10 s off the head (the headset ended the session): write it down and enter again: the garden must be there, saved when the page was hidden. S1 block 9 step 10 asks the same with no garden.
+- No sound on the return and a red `E_AUDIO_CONTEXT` line: the Browser wants a pinch first. Pinch anywhere and write down whether that brought it back: T-152 builds that pinch.
+- The light jumps or a burst of notes plays on the return: write down which try. Claude files it against T-152 (the phase).
+- The pulled plant is back at its old height after the reload: Claude files it against T-128e (the save at the hide).
+
+---
+
+## Block 9 — One hand, and look and hold (50 min)
+
+**Needs: T-160** (on `develop` since 16 Oct; emulator only so far). Two open bugs touch it: BUG-007 (the waiting seed does not light up when a pinch would take it) and BUG-008 (high contrast outlines only the plants and has no 60 % dim). The copy of the Listen orb beside the wrist is not built (D-055). The headset's menus and the Browser's pointer are **(unchecked)**.
+
+**Purpose:** play the whole loop with one hand, then with the eyes alone (the aim of the head), and read the beat by eye.
+
+**Answers:** TC-DEV-06 (US-15, US-16; FR-UI-09, FR-HND-12): one-hand mode and look and hold over a full loop, select and Listen · D-048 (one hand takes the seed off its own palm; is 8°/s right for a seated head) · D-054 (the look that ends Listen takes twice the hold time; the panel blocks the gaze) · D-055 (a look at a plant plants in the free cell nearest it; one select per look) · UX §9.1 (does the headset see a pinch made half-turned; does the seed hide the cell under a turned palm; a remove from the far ring with one hand) · UX §9.8 (is the 1.2 cm dot easy to see over a bright room; does a head that means to hold still stay under 8°/s) · FR-UI-07 and US-17 (the beat ring) · FR-HND-01. One palm for Listen in one-hand mode is block 6A step 8; the panel by looking (New garden, "Look and hold" cannot be looked off) is S1 block 12.
+
+**You need:** the app's plain bookmark and the "app, dev" bookmark; the white sheet; for part B, a window, a lamp or a bright wall in view from your seat.
+
+**Checked against:** `src/hands/GestureMachine.ts` (in one-hand mode an idle hand with nothing at its fingertips picks the seed at its own palm; every target within reach of the fingertips comes first), `src/hands/config.ts` (`HIT_RADIUS_M` 0.04, `HOVER_DEAD_BAND_M` 0.005, `PALM_UP_MAX_ANGLE_DEG` 35, `PALM_UP_HOLD_MS` 400, `PALM_REST_OFFSET_M` 0.03), `src/render/config.ts` (`SEED_GLIDE_MS` 300, `SEED_HOP_MS` 100), `src/access/GazeDwell.ts` and `src/access/config.ts` (the targets in their order, the panel blocking the gaze, `LISTEN_WAKE_DWELL_FACTOR` 2, the dot `RETICLE_DOT_M` 0.012 with its rim in high contrast, the beat ring's 16 ticks 1.5 cm past the bed's edge at `BEAT_TICK_REST` 0.3, lifted by `BEAT_TICK_TIDE_LIFT` 0.2 and `BEAT_TICK_FLASH_LIFT` 0.7), `src/ui/config.ts` (`HEAD_TURN_PAUSE_DEG_PER_S` 8, `PANEL_DISTANCE_M` 0.55, `NEW_GARDEN_HOLD_MS` 1500, `ORB_DISTANCE_M` 0.45, `ORB_SIDE_DEG` 20, `ORB_BELOW_GAZE_DEG` 12), `src/core/config.ts` (`DEFAULT_DWELL_MS` 900; tempo 84, at most 120), `src/ui/Panel.ts` (the Access tab), `src/ui/strings.ts` and `src/core/strings.ts` (the words); API_SPEC §1.4 "One-hand pick as built" and §1.6 "Gaze dwell as built"; UX §8, §9.1, §9.2, §9.8; D-048, D-054, D-055.
+
+**Know this first:**
+
+- **One hand** (D-048, UX §9.1). With **One hand** ticked, the hand you hold palm up (within 35°, for 0.4 s) gets the seed: it glides over in 0.3 s and rests 3 cm above that palm, and stays there when the hand turns. The same hand takes it with a pinch when nothing else is within 4 cm of its fingertips: the seed hops to the fingertips, and you carry and plant it as with two hands. A plant, the Listen orb, a petal or the settings orb within 4 cm of the fingertips comes first. The seed should light up when a pinch would take it; today it does not (BUG-007).
+- **The settings orb**, in one-hand mode and in look and hold, rides no hand: it waits in view, about 45 cm ahead, 20° to the side of the hand that is not your main hand and a little below your aim. The panel opens where it is.
+- **Look and hold** ("No hands: look and hold" on the landing page, "Look and hold" in the panel). A cream dot, 1.2 cm across, sits where your head points: on the target it is on, or 55 cm ahead when there is none. It follows your head, not your eyes. Rest it on a target and a ring round it fills; when the hold time is over (0.9 s unless you change it: 0.6, 0.9 or 1.2 s) it selects. Moving off resets it. While your head turns faster than 8° a second the fill holds: it neither grows nor resets. One look selects once: look away and back for the next. A hand that pinches stops it.
+- **What a look selects.** Before the bed: the pale copy of the ring, on a table-like spot only ("Look at your table, and wait"); a look never puts down a floating bed, which only the 10 s time-out does. With the bed: the Listen orb (the cream pearl 2 cm over the middle of the bed's hole) and an undo petal; then, while a seed waits, a free cell: the next seed is planted there. A look at a plant plants in the free cell nearest it. A look never picks up, pulls or drags a plant. In Listen only the orb counts, and the look that ends Listen takes twice the hold time (1.8 s), so a glance back at it does not end Listen (D-054).
+- **The panel blocks the gaze.** While the dot is on a panel control, or your head's line passes within 4 cm of one, nothing behind the panel is selected (D-054). The panel runs its own hold for its controls.
+- **The beat ring** (FR-UI-07): 16 short ticks lying on the table just outside the bed's edge, one per step. At rest they are faint; the light lifts each a little as it passes; the tick of a step that holds a plant flashes bright with the plant's note. Shown while **Beat ring** is on (it is by default), and always in Listen.
+
+### Steps, part A — one hand (15 min)
+
+1. On the landing page tick **One hand**. Open the app's plain bookmark and pinch **Enter the garden** with your main hand. Put the other hand in your lap, out of view, for the whole of part A unless a step says otherwise.
+2. Find the settings orb (to the side of your other hand, a little below) and pinch it. **Garden** tab: pinch **hold** beside "New garden" and keep the pinch 2 s. Three seeds wait above the bed. Close the panel (**x**).
+3. **Seed 1.** Turn your hand palm up and hold: the seed comes and rests above your palm. Keep your fingertips away from the bed and the orbs. Before you pinch: does anything on the seed light up? Pinch with the same hand. Did the seed jump to your fingertips, first try? Carry it to the outer ring on the far side (the ghost shows the cell) and let go.
+4. **Seed 2: a plant comes first.** Palm up: the seed rests on your palm. Keep it there, put your fingertips at the foot of the plant from seed 1, pinch, raise your hand 5 cm and let go. The plant must grow, and the seed stay on your palm. Then move your hand clear of the plant and pinch: the seed. Plant it anywhere.
+5. **Seed 3: the other hand, half-turned.** Swap hands: the main hand in your lap. Palm up: the seed comes. Turn the palm halfway towards you, thumb up, and pinch. Did the pinch take the seed, first try? Before you plant it, turn the hand palm down over the bed for a moment: can you see the cell under your fingers past the seed? Plant it.
+6. **A remove from the far ring.** Main hand again. Pinch the plant on the far side at its foot, drag it sideways past the bed's edge by a hand's width and let go: it is removed and a petal shows. Pinch the petal within 5 s: the plant is back. Comfortable with one hand? Write down your words.
+7. **The first loop, one hand, timed.** Open the settings orb, New garden (keep the pinch 2 s), close the panel, and leave the session. The next session begins on an empty bed, so the guide runs (D-053). Pinch **Enter the garden** with your main hand and count aloud from that pinch. Follow the guide with that hand only and plant the three seeds. Write down the count when your first plant sings, and when all three sing in one turn of the light.
+
+### Steps, part B — look and hold (25 min)
+
+8. Leave. On the landing page untick **One hand** and tick **No hands: look and hold**. Open the app's address with `?dev=1&flags=forceLevel=3` at its end. Pinch **Enter the garden**: it is a button of the Browser's page, outside the garden, and look and hold does not reach it. Write down how a player with no hands could press it (the Browser's own pointer; unchecked). From here on keep both hands in your lap, out of view, except where a step says "pinch" or "leave".
+9. The ring comes back from its saved place. Find the dot straight ahead. Look at the settings orb and hold until the panel opens; look at the **Garden** tab, then at **start** beside "Re-place bed". The ring goes, and a pale copy of it follows your aim, with "Look at your table, and wait". (If the pale copy showed at once after Enter, go on from step 10.)
+10. **The bed by looking, two tries.** Look out into the room, away from the table, and hold still for 3 seconds: the copy floats in front of you, and nothing may land. Then look at a clear spot of your table and hold still. Count from the moment the dot is on the table until the bed lands. For the second try, Re-place again by looking (step 9) and choose another spot.
+11. **Seeds.** Open the panel by looking at its orb. Garden tab: look at **hold** beside "New garden" until a new garden starts (the hold time and 1.5 s more: S1 block 12, step 14). Three seeds wait.
+12. **The panel blocks the gaze (2 min).** Keep the panel open and use it by looking: switch the tabs; on the Access tab set **Hold time** to 0.6 s and back to 0.9 s; on the Sound tab set Reverb to **small** and back to **auto**. Where the bed's ring goes out of sight behind the panel, rest the dot on the control in front of that spot for 3 seconds. Count every plant that appears on the bed meanwhile: none may.
+13. **Faster than 8° a second.** Access tab, with 0.9 s lit beside "Hold time". Move your head steadily along that row, from the panel's left edge to its right edge in about 4 seconds without stopping, and back. Three times. The lit choice must stay 0.9 s.
+14. **Holding still.** Look at the **Sound** tab and hold until it opens, then at **Garden**, then Sound again: six looks. For each: did it open after about a second (count "one thousand and one"), clearly later, or not at all?
+15. Look at **x** to close the panel.
+16. **A sweep across the bed.** With the three seeds waiting, move your head steadily across the bed from its left edge to its right edge in about 5 seconds, and back. Nothing may be planted.
+17. **Plant by looking.** Choose a free cell, look at it and hold: the next seed is planted there. Twice, on cells you choose before you look. Did each land on the cell you looked at, or the one next to it?
+18. **A look at a plant.** Look at the top of one of the two plants and hold: the third seed is planted in the free cell nearest that plant. Where did it land? Then look at a free cell for 3 seconds: with no seed left, nothing may happen.
+19. **Listen by looking, three tries.** Look at the cream pearl over the middle of the bed's hole (the Listen orb, not the settings orb) and hold: the room dims. In Listen, look at the pearl for about one second ("one thousand and one") and look away: Listen must go on. Then look at it and hold: after about two seconds the room comes back. Keep looking at it 2 seconds more: Listen must not start again until you look away and back.
+20. **The first loop by looking.** Open the panel by looking, New garden by looking (step 11), close the panel by looking, and leave the session. Pinch **Enter the garden** and count aloud from that pinch. After the ripple, "Look at a cell to plant" shows: in this mode the guide has no palm, pull or drag hints. Plant the three seeds by looking. Write down the count when the first plant sings, and when all three sing in one turn of the light.
+21. **The dot over a bright room.** With nothing under the dot, look for 5 seconds each at the brightest thing in view (a window or a lamp), at a white wall, and at the white sheet laid on the table beside the bed. Is the dot easy to find, found with effort, or lost? Open the panel by looking, Access tab, **High contrast** on, close the panel, and look at the same three again: the dot now has a dark rim. Switch High contrast off. Today high contrast has no 60 % dim and no outline on the seed, the orbs or the petal (BUG-008): do not write that down as new.
+
+### Steps, part C — the beat ring (10 min)
+
+22. Leave. On the landing page untick **No hands: look and hold**. Open the "app, dev" bookmark and enter: the three plants of step 20 play. Hands as usual.
+23. Look at the ring of short ticks just outside the bed's edge and count them. From your seat, can you see those on the far side? Lay the white sheet under the near half of the bed: can you see the ticks on it?
+24. Watch two turns of the light. The tick under the light lifts a little; at a plant's step it flashes bright. Does the flash come with the plant's note, before it, or after it?
+25. **Sound off.** Open the panel (the orb on the back of your other hand), Sound tab, pinch Volume **−** until it reads 0 %. Watch two turns: can you tell from the ticks alone which plant plays when? Set the volume back.
+26. **Off, and in Listen.** Access tab: **Beat ring** off: the ticks go. Close the panel and hold your palms out: in Listen the ticks are back. Wake (a palm to your face). Beat ring on again.
+27. **The read-out.** For 30 seconds, read the highest `flash` and the usual and lowest `fps`. Then Sound tab, Tempo **+** until 120 (nine pinches from 84), and read them again for 30 seconds. Does any tick look as if it blinks? Tempo back to 84.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| One hand: the seed taken off its own palm, first try (seeds 1, 2, 3) | n/3 |
+| Anything lit on the seed before the pinch; could you tell the pinch would take it | yes / no; words |
+| A plant within reach came first: the plant grew and the seed stayed on the palm | yes / no |
+| The other hand, half-turned: took the seed; palm down: the cell seen past the seed | yes / no each |
+| The far-ring remove with one hand; undone by the petal | comfortable / awkward / could not; yes / no |
+| One hand: first sound and first loop, counted from the Enter pinch | s; s |
+| Look and hold: how a player with no hands could press Enter | words |
+| The bed by looking: floated while you looked away; landed on the table; seconds from the dot on the table | yes / no; n/2; s each |
+| The panel used by looking for 2 min: plants that appeared on the bed | n |
+| The 4 s sweeps along Hold time: the lit choice changed | n/3 |
+| Holding still on a tab: opened after about a second / clearly later / not at all | counts of 6 |
+| The 5 s sweep across the bed: plants planted | n |
+| Plant by looking: on the cell looked at, or the one next to it | n/2 |
+| A look at a plant: where the seed landed; with no seed left, anything happened | next to that plant / elsewhere; yes / no |
+| Listen by looking: started; a one-second look ended it; the long look ended it; it started again while you kept looking | n/3 each |
+| Look and hold: first sound and first loop, counted from the Enter pinch | s; s |
+| The dot over a window or lamp, a white wall, the white sheet; the same with high contrast | easy / with effort / lost, each |
+| Beat ring: ticks seen from your seat; seen on the white sheet | n of 16; yes / no |
+| Beat ring: the flash and the note | with / before / after |
+| Sound off: could you tell which plant plays when | yes / partly / no |
+| Beat ring off: gone; in Listen: back | yes / no each |
+| `flash` highest, `fps` usual and lowest, at 84 and at 120 BPM; a tick that seemed to blink | numbers; yes / no |
+| Anything you could only do with two hands (part A), with a hand (part B, after Enter), or with a controller | words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| One hand takes its own seed | each of the 3 seeds taken off the palm it rests on, by that hand, and planted, with no second hand and no controller. The documents give no rate (TC-DEV-03's 9 of 10 is for the shaping gestures): write down n/3 | D-048, UX §9.1, US-15 |
+| A target in reach comes first | the plant grew and the seed stayed on the palm | API_SPEC §1.4 "One-hand pick as built" |
+| The seed's light | nothing lights today (BUG-007, open): write down whether you could tell; it is not a new bug | UX §9.1, BUG-007 |
+| The first loop, one hand | first sound within 20 s and first loop within 90 s of the Enter pinch | FR-UI-02, TC-DEV-01; US-15 (every story passes with one hand) |
+| The bed by looking | lands on the table after the hold, 2 of 2; a look never floats it | UX §9.2, US-16 |
+| The panel blocks the gaze | no plant appears behind the panel | D-054, API_SPEC §1.6 |
+| Faster than 8°/s | the 4 s sweeps change nothing (0 of 3), and the bed sweep plants nothing | UX §8, §9.8 |
+| Holding still | the documents give no rate: write down the six. Parth decides with them whether 8°/s stays (unverified until this run) | D-048, UX §9.8 |
+| Plant by looking | each look plants one seed, on the cell looked at or the nearest free one; a look at a plant plants next to it; with no seed, nothing | FR-HND-12, US-16, D-055 |
+| Listen by looking | 3 of 3 each: starts after the hold time (0.9 s); a one-second look does not end it; a look of twice the hold time (1.8 s) ends it; no new start while the look stays | FR-HND-12, D-054, D-055 (one select per look) |
+| The first loop by looking | first sound within 20 s and first loop within 90 s of the Enter pinch, with no hand used after it | FR-UI-02, US-16, TC-DEV-06 |
+| The dot | write down what you see. UX fixes its size and colour (1.2 cm, cream, a dark rim in high contrast), not a rate; lost over a bright background is a finding for Parth | UX §8, §9.8 |
+| The beat ring | 16 ticks, one per step; a tick flashes with its plant's note; shown in Listen with Beat ring off | FR-UI-07, API_SPEC §1.6 |
+| Sound off | you can tell which plant plays when | US-17 |
+| Flashing | `flash` at most 3, at 84 and at 120 BPM | FR-UI-11, US-17 |
+| In time | the documents give no number: with, before or after is the result | FR-UI-07 |
+| Frame rate | usual `fps` at least 72, never below 60 | Golden Rule 5, TC-PERF-01 |
+| Hands only, and no hands | part A with one hand; part B with no hand after the Enter pinch except to leave; no controller anywhere | FR-HND-01, US-15, US-16 |
+
+### If it fails
+
+- No seed comes to the palm: hold it flat, facing up, for a full second (S1 block 11). Seeds 0 on the Garden tab: New garden again.
+- A pinch of the hand the seed rests on takes nothing: is **One hand** lit on the Access tab? Was a plant or an orb within 4 cm of your fingertips? Write down how the hand was turned.
+- No dot in look and hold: is "Look and hold" lit on the Access tab?
+- The bed never lands by looking: the spot must be at least 25 cm below your eyes and 50 cm above the floor (D-034). On a wall or the floor only the floating copy shows, and after 10 s it lands floating by itself (UX §9.2): Re-place and try again.
+- A plant appeared behind the panel, or Listen ended at a short look: write down the control, or how long you looked. Claude files it against T-160.
+- The ticks are never seen: is **Beat ring** lit? In Listen they show anyway.
+
+---
+
+## Block 10 — Hand the results to Claude (5 min)
 
 **Can be run today.**
 
@@ -686,7 +927,7 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 
 | # | What | Your result | Who waits for it |
 |---|---|---|---|
-| 0 | Build, and T-128d in it | | Claude: which blocks counted |
+| 0 | Build, and T-128d in it; T-128e and T-160 | | Claude: which blocks counted |
 | 1 | The look of each shaping in passthrough (block 1 table) | | T-163 art pass |
 | 1 | The dark edge band over passthrough: seen? | | T-163, with S1 block 4's tide band |
 | 1 | Lowest `fps`, highest `draws`, `tris`, `flash` during the plays | | T-165 perf pass |
@@ -718,8 +959,21 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 | 6C | The Quest's palm gesture: which came first; Listen after its menu | | D-050; T-148 |
 | 6D | The end at 10 min: chord, "Goodnight", still in the session; early wakes at rest | | PRD §3.4; UX §3.5; D-050 |
 | 6D | `fps` lowest and usual, 24 plants in Listen; `flash`; clicks | | TC-DEV-07; TC-PERF-06 |
+| 7 | Reload and the Browser closed: back or placed again, seconds, cm from the coin; every plant in its cell; the Key the same | | TC-DEV-05 (Must); FR-ROOM-07 |
+| 7 | Closed right after planting: seconds; the last plant kept | | FR-PER-01; T-128e |
+| 7 | The next day (real, or which `fakeDay`): seeds that came | | FR-MUS-08; D-037 |
+| 7 | Storage blocked: the Browser's path; "Saving unavailable" how many times; your garden back once allowed | | T-128e; API_SPEC §4 and §5 |
+| 8 | Headset off 10 s: session there, garden and ring as before, sound back without a pinch, n/3; the light close to where it was; bursts or clicks | | TC-DEV-08; FR-SYS-05; T-152 |
+| 8 | The menu 30 s: sound under it, the loop after; the change made before the pause, after a reload | | TC-DEV-08; FR-PER-01; T-128e |
+| 9 | One hand: seed off its own palm n/3; a plant came first; half-turned; palm down; the far-ring remove; the seed's light | | D-048; UX §9.1; BUG-007 |
+| 9 | First sound and first loop (s): with one hand; by looking | | TC-DEV-06; FR-UI-02 |
+| 9 | Look and hold: the bed n/2; plants behind the panel; plant by looking n/2; a look at a plant; how to press Enter with no hands | | US-16; D-054; D-055 |
+| 9 | 8°/s: sweeps that changed Hold time n/3; the bed sweep; holding still, the six looks | | D-048 (Parth: does 8°/s stay) |
+| 9 | Listen by looking: started; a short look ended it; the long look ended it; n/3 each | | D-054; FR-HND-12 |
+| 9 | The dot over a window, a white wall, the white sheet; with high contrast | | UX §9.8; T-163 art pass |
+| 9 | Beat ring: ticks seen; on the sheet; the flash with, before or after the note; sound off; in Listen; `flash` and `fps` at 84 and 120 BPM | | FR-UI-07; FR-UI-11; US-17 |
 | 2–6 | `fps` usual and lowest with plants and hands | | Golden Rule 5, TC-PERF-01 |
-| 2–5 | Anything you could only do with a controller | | FR-HND-01 (Stage-1 pass/fail) |
+| 2–9 | Anything you could only do with a controller (in block 9 part B: with a hand) | | FR-HND-01 (Stage-1 pass/fail) |
 
 ---
 
@@ -728,4 +982,6 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 - When T-128d lands: check blocks 2 to 5 against `BedRenderSystem`'s handlers and `app.ts` (the enter button's words, the bookmarks, `__roomsong.garden`), and take the "(from the plan)" marks off.
 - If the pinch test (S1 blocks 2 and 3) changes the hit radius or the outer radius (D-020), update the 4 cm, 35 cm, 57 cm and 10 cm figures here.
 - When T-164 or T-128d builds the shaping sounds, give the sound rows of blocks 2 to 4 their rule.
-- When T-148 is merged: check blocks 6A to 6D against `develop` (the constants, the waking pinch's seed exception, the pause, `18-listen.spec.ts`'s draw count) and take the branch mark off. If D-050's numbers (40°, 1.5 s, 0.6 s, 0.45 m, 30°) change after a sitting, change them here. When the gaze dwell on the orb (T-160) or the wrist orb of one-hand mode (UX §9.1) is built, add a step to 6A.
+- When T-148 is merged: check blocks 6A to 6D against `develop` (the constants, the waking pinch's seed exception, the pause, `18-listen.spec.ts`'s draw count) and take the branch mark off. If D-050's numbers (40°, 1.5 s, 0.6 s, 0.45 m, 30°) change after a sitting, change them here. The gaze dwell on the orb (T-160) is block 9, step 19; the copy of the orb at the wrist is not built (D-055): if it is, add a step to 6A.
+- When T-152 lands: give block 8's fade and phase their rules (FR-SYS-05: out within 300 ms, back in, the tide from its saved phase; a pinch that brings back a sound the Browser kept off) and take the T-152 line off.
+- When BUG-007 or BUG-008 is fixed: block 9 steps 3 and 21 expect the seed lit and the outlines and the dim of high contrast. If the device run changes 8°/s (D-048), the hold times or D-054's factor of 2, change block 9.
