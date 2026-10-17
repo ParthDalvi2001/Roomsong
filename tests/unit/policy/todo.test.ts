@@ -39,7 +39,10 @@ describe('no bare TODO or FIXME', () => {
     const files = [
       ...readdirSync(ROOT).filter((f) => ROOT_FILE.test(f)),
       ...SCANNED.filter((dir) => existsSync(ROOT + dir)).flatMap((dir) =>
-        readdirSync(ROOT + dir, { recursive: true, encoding: 'utf8' }).map((f) => `${dir}/${f}`),
+        // Windows lists a\b.ts: written with '/', as SELF and BUILD_OUTPUT are (P-007).
+        readdirSync(ROOT + dir, { recursive: true, encoding: 'utf8' }).map(
+          (f) => `${dir}/${f.replace(/\\/g, '/')}`,
+        ),
       ),
     ];
     const scanned = files.filter((f) => TEXT_FILE.test(f) && !BUILD_OUTPUT.test(f) && f !== SELF);

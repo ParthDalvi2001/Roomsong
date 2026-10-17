@@ -92,6 +92,8 @@ export const REVERB_IR_MAX_S = 2.0;
 export const REVERB_SMALL_RT60_S = 0.6;
 /** Wet send level, the same for every channel and every room (UX §6: 20–35 %; D-021). */
 export const REVERB_SEND = 0.28;
+/** P-011: the send is high-passed here (Butterworth, FLAT_Q_DB): a 2.0 s room had 69 % of its wet power in 100–250 Hz. */
+export const REVERB_HPF_HZ = 200;
 /** Gain of the reverb return while it is open. */
 export const WET_RETURN = 1;
 /** Audio seconds to wait after muting the reverb return before swapping the impulse response. */
@@ -100,9 +102,31 @@ export const REVERB_SWAP_DELAY_S = 0.12;
 export const MUTE_TAU_S = 0.015;
 /** −60 dB as a linear amplitude: the level a decay has reached after its T60 / RT60 (FR-ROOM-06). */
 export const T60_AMPLITUDE = 0.001;
-/** Impulse response (ADR-002): the noise is low-passed by a one-pole whose coefficient closes from start to end. */
+/**
+ * P-022: the energy (sum of squares) of each channel of every impulse response, played with the convolver's
+ * normalize off, so the wet level is the same in every room. Normalize on scales a response to an energy that grows
+ * with its length (Web Audio spec, ConvolverNode normalization: 0.00125 · 44100 / sampleRate over its RMS), and a
+ * response is one RT60 long: +8.2 dB from 0.3 to 2.0 s. 0.057 is what it gave the default 0.9 s response at 48 kHz,
+ * so the default room's response keeps its level; a 0.3 s room's is now 4.8 dB over what it was, a 2.0 s one's 3.4 dB
+ * under. The high-pass ahead of the send (REVERB_HPF_HZ) lowers every room's reverb too, the default's included,
+ * and more for the low voices: a bass note's reverb loses most of its fundamental.
+ */
+export const IR_ENERGY = 0.057;
+/**
+ * P-010: silence before the tail, in seconds, at the smallest room and at the largest; between them in proportion to
+ * the decay, which grows with the room's volume (garden: Sabine with one absorption area, FR-ROOM-06). It is inside
+ * the response's one RT60, so the tail loses as much at its end, where it is near −60 dB.
+ */
+export const IR_PREDELAY_S: readonly [number, number] = [0.005, 0.025];
+/**
+ * Impulse response (ADR-002): the noise is low-passed by a one-pole whose coefficient closes from start to end,
+ * evenly over the whole decay. The end is set by room (P-010), at the smallest room and at the largest, as the
+ * pre-delay, but it only shapes the last of the tail: a bigger room's tail ends darker (about 800 Hz down to 310 Hz
+ * at 48 kHz) where it is below about −48 dB, and above it the rooms are about as bright. Rooms differ in their decay
+ * and their pre-delay. The default 0.9 s room gets 0.921, the 0.92 all rooms had.
+ */
 export const IR_LPF_COEF_START = 0.15;
-export const IR_LPF_COEF_END = 0.92;
+export const IR_LPF_COEF_END: readonly [number, number] = [0.9, 0.96];
 export const IR_FADE_IN_S = 0.001;
 /** Noise seed of the left reverb channel; the right channel uses the next one (CODING_GUIDELINES §9). */
 export const IR_SEED = 1000;
@@ -116,6 +140,15 @@ export const IR_SEED = 1000;
  */
 export const PLUCK_STRINGS_PER_TICK = 2;
 export const IR_SAMPLES_PER_TICK = 8000;
+
+/**
+ * P-025, the rules every UI sound (`ui()`) passes; tests/unit/audio/uiRules.ts checks them. It starts at the audio
+ * clock's now, never at the scheduler's next step (whose look-ahead alone is 95–120 ms). Its notes are tones of the
+ * room's chord (chordDegrees). Each note's gain is within these dB of a full-height plant of its voice, the loudest
+ * note of that voice the garden plays: P-025's −10…+3 LU "to the music" read as a note against a note, not as a
+ * loudness measured against the whole garden.
+ */
+export const UI_LEVEL_DB_RE_PLANT: readonly [number, number] = [-10, 3];
 
 /** Weight of the newest tick in the moving average behind `stats.cpuEstimate`. */
 export const TICK_EMA = 0.05;

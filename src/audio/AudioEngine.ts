@@ -3,9 +3,9 @@
 // bus wiring), so it also loads in a bare page and renders in an OfflineAudioContext (tests/e2e/09-audio.spec.ts).
 //
 //   note (built per note by a Voice: single-use sources + envelope)
-//      └─► channel[i] ─┬─► PannerNode[i] (equal-power) ────────────────────────────► master gain ─┐
-//           i = 0..23  └─► bus ─┬─► send (one gain, one level) ─► ConvolverNode (×1) ─► wet return ──┤
-//                               └─► tempo echo (T-164, Layers.ts) ────────────────────────────────┤
+//      └─► channel[i] ─┬─► PannerNode[i] (equal-power) ─────────────────────────────────────► master gain ─┐
+//           i = 0..23  └─► bus ─┬─► high-pass ─► send (one gain) ─► ConvolverNode (×1) ─► wet return ──────┤
+//                               └─► tempo echo (T-164, Layers.ts) ─────────────────────────────────────────┤
 //              master gain ─► breathing low-pass (Layers.ts) ─► compressor ─► ceiling (−1 dBFS) ─► destination
 //
 // Everything in the diagram but the note is built once, in init(). Hot path = tick(): Scheduler → triggerStep →
@@ -25,6 +25,7 @@ import {
 } from '../garden/index.js';
 
 import {
+  FLAT_Q_DB,
   HEIGHT_RELEASE_S_MAX,
   IR_SAMPLES_PER_TICK,
   IR_SEED,
@@ -32,6 +33,7 @@ import {
   MUTE_TAU_S,
   PARAM_SMOOTH_S,
   PLUCK_STRINGS_PER_TICK,
+  REVERB_HPF_HZ,
   REVERB_SMALL_RT60_S,
   REVERB_SWAP_DELAY_S,
   START_DELAY_S,
@@ -410,13 +412,18 @@ export class Engine implements AudioEngine {
     // One send gain on the bus, not one per channel: every channel has the same level (LLD §7.1), so the sum is
     // the same signal with 24 nodes fewer. The bus is that sum; the tempo echo's send takes from it too (T-164).
     const bus = ctx.createGain();
+    const lowCut = ctx.createBiquadFilter(); // P-011: what is under it was mud in the large rooms
+    lowCut.type = 'highpass';
+    lowCut.frequency.value = REVERB_HPF_HZ;
+    lowCut.Q.value = FLAT_Q_DB;
     const send = ctx.createGain();
     send.gain.value = this.recipe.reverbSend;
     const convolver = ctx.createConvolver();
-    convolver.normalize = true;
+    // P-022: every response has one energy (IR_ENERGY), so every room is as wet; normalize would scale it by length.
+    convolver.normalize = false;
     const wet = ctx.createGain();
     wet.gain.value = WET_RETURN;
-    bus.connect(send).connect(convolver).connect(wet).connect(master);
+    bus.connect(lowCut).connect(send).connect(convolver).connect(wet).connect(master);
 
     const space = new Spatializer(ctx, master, bus);
     const pool = new VoicePool(ctx, space);

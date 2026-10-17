@@ -2,7 +2,7 @@
 // when the app chunk or the wiring fails. Fakes only: no DOM, no SDK. The browser's side of the same rule is
 // tests/e2e/14-boot-session.spec.ts.
 import { readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -29,7 +29,8 @@ function reach(entry: string, read: (file: string) => string) {
         packages.add(spec);
         continue;
       }
-      const next = join(dirname(file), spec).replace(/\.js$/, '.ts');
+      // posix: a module path has '/' on every system; path.join gives a backslash on Windows (P-007).
+      const next = posix.join(posix.dirname(file), spec).replace(/\.js$/, '.ts');
       if (!files.includes(next)) files.push(next);
     }
   }

@@ -177,16 +177,32 @@ describe('groove (§1.1)', () => {
     expect(peaks.length).toBeGreaterThanOrEqual(2);
     expect(new Set(peaks)).toEqual(new Set([want]));
   });
+
+  it("P-013: every style varies each plant note's level, ±1.5 dB or more, a new draw each bar", async () => {
+    // Today's sound (null) moves none: the test above. The draws are seeded by GROOVE_SEED, the same each session.
+    for (const style of ['A', 'B', 'C'] as const) {
+      const s = STYLES[style];
+      expect(s.humanizeDb).toBeGreaterThanOrEqual(1.5);
+      const { ctx, run } = await start(style, [plant('down', 'bell', 0, 0, 0)]);
+      run(32 * BAR_S);
+      const level = heightToGainDb(0, s.heightFloorDb) + s.mixDb.bell; // on the downbeat: no accent
+      const moved = carriers(ctx)
+        .filter((c) => stepOf(c.startedAt as number) % STEPS === 0) // not the clave of B's percussion
+        .map((c) => db(peakOf(envOf(c))) - level);
+      expect(moved.length).toBeGreaterThanOrEqual(32);
+      expect(Math.max(...moved)).toBeGreaterThan(s.humanizeDb * 0.75);
+      expect(Math.min(...moved)).toBeLessThan(-s.humanizeDb * 0.75);
+    }
+  });
 });
 
 describe('the bus effects (§1.2, §1.4, §3)', () => {
-  /** compressor ← breath ← master; bus → [send, echo send → delay → low-pass → master, low-pass → feedback]. */
+  /** compressor ← breath ← master; bus → [reverb send, echo send → delay → low-pass → master, low-pass → feedback]. */
   const nodes = (ctx: FakeAudioContext) => {
     const compressor = ctx.of('compressor')[0] as FakeNode;
     const breath = compressor.inputs[0] as FakeNode;
-    const echoSend = ((ctx.of('convolver')[0] as FakeNode).inputs[0] as FakeNode).inputs[0]
-      ?.outputs[1] as FakeNode;
-    const delay = echoSend.outputs[0] as FakeNode;
+    const delay = ctx.of('delay')[0] as FakeNode;
+    const echoSend = delay.inputs[0] as FakeNode; // the feedback is its second input
     const lpf = delay.outputs[0] as FakeNode;
     return { compressor, breath, echoSend, delay, lpf, feedback: lpf.outputs[1] as FakeNode };
   };

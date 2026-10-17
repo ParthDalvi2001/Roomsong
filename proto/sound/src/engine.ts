@@ -279,7 +279,7 @@ export class AudioEngine {
 
     const reverbIn = ctx.createGain();
     const convolver = ctx.createConvolver();
-    convolver.normalize = true;
+    convolver.normalize = false; // the shared responses hold one energy each (IR_ENERGY, P-022), as in the app
     const wetReturn = ctx.createGain();
     wetReturn.gain.value = 0;
     reverbIn.connect(convolver).connect(wetReturn).connect(sumBus);

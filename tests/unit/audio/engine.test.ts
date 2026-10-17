@@ -10,6 +10,7 @@ import { Engine, type AudioEngine } from '../../../src/audio/AudioEngine.js';
 import {
   CEILING_DBFS,
   CENTS_PER_OCTAVE,
+  FLAT_Q_DB,
   IR_SAMPLES_PER_TICK,
   LATE_DROP_S,
   LOOK_AHEAD_S,
@@ -18,6 +19,7 @@ import {
   PARAM_SMOOTH_S,
   PLUCK_DAMPING_BUCKETS,
   PLUCK_STRINGS_PER_TICK,
+  REVERB_HPF_HZ,
   REVERB_IR_MAX_S,
   REVERB_SEND,
   REVERB_SMALL_RT60_S,
@@ -142,13 +144,13 @@ const filled = (buffer: FakeBuffer): number => {
 /** Notes built so far: a pluck is one buffer source, a pad one filter and three saws, a bell two sines. */
 const notes = (ctx: FakeAudioContext): number =>
   ctx.count('bufferSource') + ctx.count('biquad') + (ctx.count('oscillator') - 3 * ctx.count('biquad')) / 2;
-/** The fixed graph's own filters: the breathing low-pass and the tempo echo's low-pass (T-164). */
-const FIXED_BIQUADS = 2;
+/** The fixed graph's own filters: the breathing low-pass, the tempo echo's low-pass (T-164), the reverb's high-pass (P-011). */
+const FIXED_BIQUADS = 3;
 /** The fixed graph, found by its connections. */
 function graph(
   ctx: FakeAudioContext,
 ): Record<
-  'shaper' | 'compressor' | 'breath' | 'master' | 'convolver' | 'send' | 'bus' | 'wet' | 'echo',
+  'shaper' | 'compressor' | 'breath' | 'master' | 'convolver' | 'send' | 'lowCut' | 'bus' | 'wet' | 'echo',
   FakeNode
 > {
   const shaper = ctx.destination.inputs[0] as FakeNode;
@@ -156,7 +158,8 @@ function graph(
   const breath = compressor.inputs[0] as FakeNode;
   const convolver = ctx.of('convolver')[0] as FakeNode;
   const send = convolver.inputs[0] as FakeNode;
-  const bus = send.inputs[0] as FakeNode;
+  const lowCut = send.inputs[0] as FakeNode;
+  const bus = lowCut.inputs[0] as FakeNode;
   return {
     shaper,
     compressor,
@@ -164,6 +167,7 @@ function graph(
     master: breath.inputs[0] as FakeNode,
     convolver,
     send,
+    lowCut,
     bus,
     wet: convolver.outputs[0] as FakeNode,
     echo: bus.outputs[1] as FakeNode,
@@ -245,9 +249,19 @@ describe('graph shape (NFR-PERF-10, TC-PERF-09)', () => {
     expect(g.master.inputs).toContain(g.wet);
     // The bus sums the 24 channels before their pan and feeds the reverb send and the echo send, which is shut today.
     expect(g.bus.inputs).toHaveLength(VOICE_CAP);
-    expect(g.send.inputs).toEqual([g.bus]);
-    expect(g.bus.outputs).toEqual([g.send, g.echo]);
+    expect(g.bus.outputs).toEqual([g.lowCut, g.echo]);
     expect(g.echo.gain.value).toBe(0);
+  });
+
+  it('the reverb send is high-passed at 200 Hz, with no peak, by one filter for all 24 channels (P-011)', async () => {
+    const { ctx } = await start();
+    const g = graph(ctx);
+    expect(REVERB_HPF_HZ).toBe(200);
+    expect(g.lowCut).toMatchObject({ kind: 'biquad', type: 'highpass' });
+    expect([g.lowCut.frequency.value, g.lowCut.Q.value]).toEqual([REVERB_HPF_HZ, FLAT_Q_DB]);
+    expect(g.lowCut.inputs).toEqual([g.bus]);
+    expect(g.lowCut.outputs).toEqual([g.send]);
+    expect(g.send.inputs).toEqual([g.lowCut]);
   });
 
   it('a full bed for 13 bars (1040 triggers): the fixed graph is never added to, and voices never pass 24', async () => {

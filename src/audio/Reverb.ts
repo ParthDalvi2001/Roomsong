@@ -1,10 +1,15 @@
 // Procedural reverb impulse response (ADR-002, FR-ROOM-06): seeded noise burst with exponential decay and a one-pole
 // low-pass that closes over time so the tail darkens like a real room. One ConvolverNode is shared by all voices.
 // The decay comes in as an argument: which decay a room gets, and its 0.3..2.0 s clamp, belong to garden/ (T-141).
+// T-172: a pre-delay and a damping by room size (P-010), and one energy for every response (P-022).
+import { REVERB_RT60_MAX_S, REVERB_RT60_MIN_S } from '../garden/index.js';
+
 import {
+  IR_ENERGY,
   IR_FADE_IN_S,
   IR_LPF_COEF_END,
   IR_LPF_COEF_START,
+  IR_PREDELAY_S,
   REVERB_IR_MAX_S,
   T60_AMPLITUDE,
 } from './config.js';
@@ -22,37 +27,61 @@ interface ChannelRender {
   out: Float32Array;
   sampleRate: number;
   decayS: number;
+  /** The room's (P-010): the samples of silence before the tail, and the coefficient its low-pass closes to. */
+  delay: number;
+  coefEnd: number;
   /** The next sample to render. */
   next: number;
   lowPass: number;
-  peak: number;
+  /** Σ v² of the samples rendered so far. */
+  energy: number;
   /** The state of the noise generator, an int32. */
   noise: number;
 }
 
 function channelRender(out: Float32Array, sampleRate: number, decayS: number, seed: number): ChannelRender {
-  return { out, sampleRate, decayS, next: 0, lowPass: 0, peak: 0, noise: seed | 0 };
+  // The room's size, 0..1 over the decays a room gets: the decay grows with the volume (Sabine, garden FR-ROOM-06).
+  const size = Math.min(
+    1,
+    Math.max(0, (decayS - REVERB_RT60_MIN_S) / (REVERB_RT60_MAX_S - REVERB_RT60_MIN_S)),
+  );
+  const [delay0, delay1] = IR_PREDELAY_S;
+  const [coef0, coef1] = IR_LPF_COEF_END;
+  return {
+    out,
+    sampleRate,
+    decayS,
+    delay: Math.floor(sampleRate * (delay0 + (delay1 - delay0) * size)),
+    coefEnd: coef0 + (coef1 - coef0) * size,
+    next: 0,
+    lowPass: 0,
+    energy: 0,
+    noise: seed | 0,
+  };
 }
 
 /**
- * Render up to `samples` more samples of a channel; true once it is whole. The slice that ends a channel also
- * scales all of it to a peak of 1, one more pass over its samples: it is not to be called again after that. A
- * slice makes no object and puts no number on the heap (NFR-PERF-08): the noise is mulberry32 written out in the
- * loop, because a generator called once per sample handed back a float that V8 kept on the heap, 40 bytes a
- * sample (measured in the T-143 review).
+ * Render up to `samples` more samples of a channel; true once it is whole. The tail starts after the room's
+ * pre-delay and is cut where the response ends. The slice that ends a channel also scales all of it to IR_ENERGY
+ * (P-022), one more pass over its samples: it is not to be called again after that. A slice makes no object and
+ * puts no number on the heap (NFR-PERF-08): the noise is mulberry32 written out in the loop, because a generator
+ * called once per sample handed back a float that V8 kept on the heap, 40 bytes a sample (measured in the T-143
+ * review).
  */
 function renderChannel(render: ChannelRender, samples: number): boolean {
-  const { out, sampleRate, decayS } = render;
+  const { out, sampleRate, decayS, delay, coefEnd } = render;
   const k = -Math.log(T60_AMPLITUDE) / decayS; // exp(−k·t) reaches −60 dB at t = decayS
   const fadeIn = Math.max(1, Math.floor(sampleRate * IR_FADE_IN_S));
   const end = Math.min(out.length, render.next + samples);
+  const from = Math.min(end, Math.max(render.next, delay));
+  out.fill(0, render.next, from); // the pre-delay
   let y = render.lowPass;
-  let peak = render.peak;
+  let energy = render.energy;
   let a = render.noise;
-  for (let i = render.next; i < end; i++) {
-    const t = i / sampleRate;
+  for (let i = from; i < end; i++) {
+    const t = (i - delay) / sampleRate;
     const progress = Math.min(1, t / decayS);
-    const coef = IR_LPF_COEF_START + (IR_LPF_COEF_END - IR_LPF_COEF_START) * progress;
+    const coef = IR_LPF_COEF_START + (coefEnd - IR_LPF_COEF_START) * progress;
     a = (a + 0x6d2b79f5) | 0;
     let r = Math.imul(a ^ (a >>> 15), a | 1);
     r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
@@ -61,17 +90,17 @@ function renderChannel(render: ChannelRender, samples: number): boolean {
     // The low-pass removes noise power as it closes, by (1 − coef) / (1 + coef). Undo that, so the broadband
     // level follows exp(−k·t) and the measured RT60 equals `decayS` while the tail still darkens.
     let v = y * Math.sqrt((1 + coef) / (1 - coef)) * Math.exp(-k * t);
-    if (i < fadeIn) v *= i / fadeIn;
+    if (i - delay < fadeIn) v *= (i - delay) / fadeIn;
     out[i] = v;
-    peak = Math.max(peak, Math.abs(v));
+    energy += v * v;
   }
   render.next = end;
   render.lowPass = y;
-  render.peak = peak;
+  render.energy = energy;
   render.noise = a;
   if (end < out.length) return false;
-  if (peak > 0) {
-    const s = 1 / peak;
+  if (energy > 0) {
+    const s = Math.sqrt(IR_ENERGY / energy);
     for (let i = 0; i < out.length; i++) out[i] = (out[i] as number) * s;
   }
   return true;
@@ -107,7 +136,7 @@ export function impulseRenderer(ir: AudioBuffer, decayS: number, seed: number): 
     render.out = ir.getChannelData(channel);
     render.next = 0;
     render.lowPass = 0;
-    render.peak = 0;
+    render.energy = 0;
     render.noise = (seed + channel) | 0;
     return false;
   };

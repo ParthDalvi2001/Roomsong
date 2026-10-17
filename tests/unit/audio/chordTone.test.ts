@@ -11,9 +11,7 @@ import { hzForRing } from '../../../src/audio/theory.js';
 import { WANDERER, type RoomSignature, type VoiceType } from '../../../src/garden/index.js';
 
 import { FakeAudioContext } from './fakeAudio.js';
-
-import type { VoicePool } from '../../../src/audio/VoicePool.js';
-import type { VoiceParams } from '../../../src/audio/voices/note.js';
+import { watchPool } from './uiRules.js';
 
 /** Column-major: a bed 0.45 m ahead on a 0.74 m desk. */
 const BED = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1];
@@ -23,19 +21,6 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
-
-/** Each note the engine's pool is asked for: its voice's class, its time, its params as they were then, its place. */
-function watchPool(engine: Engine) {
-  const played: { voice: string; time: number; p: VoiceParams; at: number[] }[] = [];
-  const pool = (engine as unknown as { g: { pool: VoicePool } }).g.pool;
-  const play = pool.play.bind(pool);
-  vi.spyOn(pool, 'play').mockImplementation((...args) => {
-    const [voice, time, p, x, y, z] = args;
-    played.push({ voice: voice.constructor.name, time, p: { ...p }, at: [x, y, z] });
-    return play(...args);
-  });
-  return played;
-}
 
 async function start() {
   const ctx = new FakeAudioContext();

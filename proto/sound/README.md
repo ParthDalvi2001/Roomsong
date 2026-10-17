@@ -137,6 +137,8 @@ removed plants fade and are disconnected later.
   ceiling; it cannot show whether the compressor works, because the ceiling alone holds the same peak.
 - A room change is a short cut, not a crossfade: sounding notes fade in 20 ms and the reverb return is muted for
   about 0.2 s while the one convolver gets its new impulse response.
+- The reverb plays the app's impulse responses as the app does (one energy each, `normalize` off, P-022), but this
+  page has no 200 Hz high-pass ahead of it (P-011): its reverb is fuller in the low end than the app's.
 - In a background tab Chrome throttles `setInterval` to 1 s, longer than the 120 ms look-ahead, so the loop will
   stutter when the tab is hidden; the app proper pauses audio on `visibilitychange` (FR-SYS-05).
 - Only Chrome/Chromium was checked. Firefox has no `AudioParam.cancelAndHoldAtTime`, so there a note stolen during

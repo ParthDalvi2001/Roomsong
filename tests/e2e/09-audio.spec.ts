@@ -6,10 +6,12 @@
 // engine ticks, and the render goes on. Emulator-page result (E): levels and channel balance in desktop
 // Chromium. It says nothing about a headset, its speakers, latency or how any of it sounds.
 // T-144 adds Bass and Choir: each rendered alone, the five voices' levels side by side, a mixed full bed, 24 notes
-// of each new voice in one instant, and the share of a bass note above 120 Hz.
+// of each new voice in one instant, and the share of a bass note above 120 Hz. T-172 adds the reverb's return
+// alone at the six decays a room gets (P-022).
 import { expect, test, type Page } from '@playwright/test';
 
 import { CEILING_DBFS, TICK_MS, VOICE_CAP } from '../../src/audio/config';
+import { REVERB_RT60_STEPS_S } from '../../src/garden/config';
 
 import { openApp, readRoom } from './support/iwer';
 
@@ -32,6 +34,10 @@ interface Scene {
    * synced in C major; the ticks render the strings of the new key and the response of the new decay in slices.
    */
   retune?: { keyRoot: 0 | -3; reverbRt60: number };
+  /** The signature's decay, set before init(), which renders its response whole. Default: 0.9 s. */
+  rt60?: number;
+  /** The panners lead nowhere: what is rendered is the reverb's return alone (with today's sound, no echo). */
+  wetOnly?: boolean;
   /** Also measure the share of the energy above this frequency. */
   splitHz?: number;
   /**
@@ -106,6 +112,10 @@ function render(page: Page, scene: Scene): Promise<Rendered> {
           }) as unknown as DynamicsCompressorNode;
         ctx.createWaveShaper = () => ctx.createGain() as unknown as WaveShaperNode;
       }
+      if (scene.wetOnly) {
+        const createPanner = ctx.createPanner.bind(ctx);
+        ctx.createPanner = () => Object.assign(createPanner(), { connect: (to: AudioNode) => to });
+      }
 
       const engine = new Engine();
       engine.setTempo(scene.bpm);
@@ -121,7 +131,8 @@ function render(page: Page, scene: Scene): Promise<Rendered> {
           starterVoices: ['bell', 'pad', 'pluck'],
           paletteSeed: 0,
         });
-      if (scene.keyRoot !== undefined) tune(scene.keyRoot, 0.9);
+      if (scene.keyRoot !== undefined || scene.rt60 !== undefined)
+        tune(scene.keyRoot ?? 0, scene.rt60 ?? 0.9);
       engine.syncPlants(
         scene.plants.map((p, i) => ({
           id: `p${i}`,
@@ -556,6 +567,53 @@ test('T-145 TC-AUD-04 no clicks at 24 voices: a bed that steals all the way, and
   expect(still.worstJump).toBeLessThan(PADS_CLICK_MAX);
   expectBounded(turning);
   expect(turning.worstJump).toBeLessThan(PADS_CLICK_MAX);
+
+  expect(pageErrors).toEqual([]);
+  expect(offHost).toEqual([]);
+});
+
+test('T-172 P-022 the reverb is as wet in every room: its return alone, a full bed, at the six decays', async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(String(error)));
+  const offHost = await openApp(page, readRoom('none'));
+
+  // Every cell, three voices, 120 BPM: many pitches at once, so the level is not that of the few frequencies one
+  // note would meet in a response. Each room hears the same notes. Only the return is rendered, and before the
+  // compressor and the ceiling, which would act on each room's peaks differently.
+  const voices: Voice[] = ['bell', 'pad', 'pluck'];
+  const fullBed: Scene['plants'] = [];
+  for (let ring = 0; ring < 5; ring++) {
+    for (let step = 0; step < 16; step++)
+      fullBed.push({ voice: voices[(ring + step) % 3] ?? 'bell', ring, step });
+  }
+  const wet: Rendered[] = [];
+  for (const rt60 of REVERB_RT60_STEPS_S) {
+    wet.push(
+      await render(page, {
+        plants: fullBed,
+        seconds: 4.5,
+        bpm: 120,
+        reverb: 'auto',
+        rt60,
+        wetOnly: true,
+        bypassLimiter: true,
+      }),
+    );
+  }
+  const levels = wet.map((r) => r.rmsDbfs);
+  const list = (values: number[]) => values.map((v) => v.toFixed(2)).join(' / ');
+  console.log(
+    `T-172 the reverb's return alone, before the limiter, at ${REVERB_RT60_STEPS_S.join(' / ')} s: ` +
+      `rms ${list(levels)} dBFS, peak ${list(wet.map((r) => r.peakDbfs))} dBFS (desktop Chromium)`,
+  );
+  for (const level of levels) expect(level).toBeGreaterThan(SILENCE_DBFS);
+  // With the convolver's normalize on it rose with the decay: +8.2 dB predicted from 0.3 to 2.0 s, about +6.5 dB
+  // measured by the PM. One level now: what is left is how each response meets these pitches (the damping by room
+  // only shapes the tail below about −48 dB). Measured rms −28.80 / −27.86 / −27.68 / −27.71 / −27.87 / −28.06 dBFS,
+  // a spread of 1.12 dB, peaks −16.6 to −15.1 dBFS (2026-10-17): with the limiter in, the spread was the same.
+  expect(Math.max(...levels) - Math.min(...levels)).toBeLessThan(1.5);
 
   expect(pageErrors).toEqual([]);
   expect(offHost).toEqual([]);

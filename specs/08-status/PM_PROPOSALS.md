@@ -40,13 +40,13 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** add the `garden:*` events to `EventMap` in `proto/sound` so `npm run build` there passes (25 `tsc` errors).
 **Why:** only `npx vite build` works; the G0 prototype should build cleanly.
 **Impact:** XS, G0.
-**Status:** approved (D-056, group A: may be built)
+**Status:** approved (D-056); done (T-172, 17 Oct): proto/sound builds
 
 ### P-007 — Windows-safe paths in tests (2026-10-14, Chinmay's Claude)
 **Change:** normalise `\` to `/` in `tests/unit/index.test.ts` and `tests/unit/policy/todo.test.ts` (3 tests).
 **Why:** the PM runs on Windows and cannot get a green `verify`.
 **Impact:** XS.
-**Status:** approved (D-056, group A: may be built)
+**Status:** approved (D-056); done (T-172, 17 Oct)
 
 ### P-008 — Enable GitHub Pages now (2026-10-14, Chinmay's Claude)
 **Change:** turn on Pages for the repo and keep a mirror.
@@ -64,13 +64,13 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** 5–25 ms of pre-delay inside the generated impulse response, scaled by room size; `IR_LPF_COEF_END` per room.
 **Why:** clearer attacks, less mud; rooms differ in tone, not only RT60.
 **Impact:** S.
-**Status:** approved (D-056, group A: may be built)
+**Status:** approved (D-056); done (T-172, 17 Oct): the pre-delay; the damping by size only shapes the last of the tail (rooms differ in decay and pre-delay, not audibly in tone)
 
 ### P-011 — High-pass the reverb send (2026-10-14, Chinmay's Claude)
 **Change:** one `BiquadFilterNode` (high-pass, ~200 Hz) on the shared send.
 **Why:** Hall has 69 % of its power in 100–250 Hz.
 **Impact:** XS–S; NFR-PERF-10 gains one node.
-**Status:** approved (D-056, group A: may be built)
+**Status:** approved (D-056); done (T-172, 17 Oct)
 
 ### P-012 — Instant, in-key interaction sounds (2026-10-14, Chinmay's Claude)
 **Change:** `placed` plays the new plant's own voice and note quietly at once; all UI sounds tuned to the room's key.
@@ -82,7 +82,7 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** ±1.5 dB per note from a per-session seed; timing stays on the grid.
 **Why:** the loop sounds mechanical.
 **Impact:** XS.
-**Status:** approved (D-056, group A: may be built)
+**Status:** approved (D-056); covered by T-164's styles (±1.5–2.5 dB per note; style null has none and stays today's sound)
 
 ### P-014 — Start and accessibility polish (2026-10-14, Chinmay's Claude)
 **Change:** a quiet root drone while there are fewer than 3 plants; a 2–3 s fade-in at session start; a mono audio switch in Settings; an aliasing check of Bell FM at its top notes.
@@ -134,7 +134,7 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** render the reverb's wet output alone at all six RT60 steps; if wet level rises with RT60, lower the send by `−10·log10(RT60/0.3)` dB, or use a fixed-energy IR with `normalize = false`, or document "bigger rooms are wetter" as intended.
 **Why:** `normalize = true` with an IR one RT60 long predicts +8.2 dB from 0.3 s to 2.0 s; the WAVs show about +6.5 dB. *(Driver, 17 Oct: confirmed in code: `AudioEngine.ts` sets `convolver.normalize = true`, and `impulseLength` is one RT60 long, capped at 2.0 s.)*
 **Impact:** S; Reverb.ts, AudioEngine.ts, reverb.test.ts, LLD §7; before T-164 sets mix levels.
-**Status:** approved (D-056, group A: may be built)
+**Status:** approved (D-056); done (T-172, 17 Oct): fixed-energy responses, normalize off; six rooms within 0.05 dB
 
 ### P-023 — Five-voice reference renders (2026-10-16, Chinmay's Claude)
 **Change:** 60 s, 48 kHz WAV renders of the five-voice mix (Wanderer plus three signatures) with loudness, peak and L/R numbers; references within ±0.5 dB, before and after T-164.
@@ -152,7 +152,7 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** UI sounds start at the current audio time; −10 to +3 LU relative to the music; partials inside the room's chord; ≤ 70 ms from pinch to sound.
 **Why:** feedback lagging 70–100 ms is rated worse; the scheduler's look-ahead alone is 95–120 ms.
 **Impact:** XS (rules); with T-164.
-**Status:** approved (D-056, group A: may be built)
+**Status:** approved (D-056); done as rules (T-172, 17 Oct): level read as dB against a full-height plant of the same voice; the 70 ms rule is a device measurement; the sounds themselves are T-164
 
 ### P-026 — Same-key room renders for an ABX test (2026-10-16, Chinmay's Claude)
 **Change:** same-key, same-seed renders that change only the reverb, plus pairs 1.2 vs 1.6 s and 1.6 vs 2.0 s.

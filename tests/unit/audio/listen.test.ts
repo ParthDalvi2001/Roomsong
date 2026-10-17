@@ -8,11 +8,13 @@ import { LISTEN_FOCUS_REF_M, MIX_DB, TICK_MS } from '../../../src/audio/config.j
 import * as audio from '../../../src/audio/index.js';
 import { dbToGain } from '../../../src/audio/mapping.js';
 import { Spatializer } from '../../../src/audio/Spatializer.js';
+import { STYLES } from '../../../src/audio/styles.js';
 import { hzForRing } from '../../../src/audio/theory.js';
 import { bus } from '../../../src/core/index.js';
 import { WANDERER } from '../../../src/garden/index.js';
 
 import { asNode, FakeAudioContext, type FakeNode } from './fakeAudio.js';
+import { expectUiRules, watchPool } from './uiRules.js';
 
 import type { Plant, RoomSignature } from '../../../src/garden/index.js';
 
@@ -163,6 +165,20 @@ describe('the engine in Listen mode (T-148)', () => {
     ]);
     const env = filters[0]!.outputs[0] as FakeNode;
     expect(Math.max(...env.gain.events.map((e) => e.value))).toBeLessThanOrEqual(dbToGain(MIX_DB.pad));
+  });
+
+  it("ui('goodnight') passes the UI-sound rules (P-025): from now, in the room's chord, at a plant's level; in a style too", async () => {
+    const { ctx, engine, run } = await start();
+    const minor: RoomSignature = { ...WANDERER, keyRoot: 4, mode: 'minorPent' };
+    engine.setSignature(minor);
+    run(1); // the scheduler is running: its next step is up to 120 ms ahead of now
+    const played = watchPool(engine);
+    engine.ui('goodnight');
+    expectUiRules(played, ctx.currentTime, minor);
+    engine.setStyle('C');
+    played.length = 0;
+    engine.ui('goodnight');
+    expectUiRules(played, ctx.currentTime, minor, STYLES.C);
   });
 
   it('a minor room ends on its minor chord: rings 0, 1 and 3', async () => {
