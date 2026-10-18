@@ -169,7 +169,7 @@ State: **done** · **not done** (on track) · **at risk** (a date, a human or a 
 | Should-haves not green by 10 Nov moved to "What's next"; unbuilt Could-haves never named | not done; the draft names no Could. S3 (daily seed, growth) and S6 (laptop mode) are built now | T-169 |
 | "Spatial audio" and "music visualization" in the Listen sentence | done; Listen is built (T-148) | T-180 |
 | Laptop mode in "How to test" | drafted with what it lacks; offering it to judges at all needs a human yes (§1.2 claims table) | T-180 |
-| Hands field | drafted (§1.3); two claims wait for BUG-007 and BUG-008 | T-180 |
+| Hands field | drafted (§1.3); BUG-007 and BUG-008 fixed 17 Oct, so its two claims now hold (emulator) | T-180 |
 | "What excites us about VR" | not done: must be the team's own words | **no task, add it to T-180 as a human step** |
 | A no-room-signature version of pitch, tagline and video, ready for G2 | half done: tagline B exists and the video has its version (VIDEO_SCRIPT_V0 §2); the description has none, but every sentence that rests on S1 carries `[not yet: T-155]`, so the cut is mechanical | **no task, add it to T-155** |
 

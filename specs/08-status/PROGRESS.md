@@ -1,8 +1,8 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-10-15 01:25 IST (plan v2.1; one driving session with role agents in worktrees, D-038)
-**Phase:** 0 Prove (Oct 10–17) · **Next gate:** G0 Oct 17 (D-023) · **Headset gate H1:** Oct 20 · **Plan:** v2.1
-**Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 34 on 2026-10-15
+**Last updated:** 2026-10-19 02:00 IST (plan v2.1; one driving session with role agents in worktrees, D-038)
+**Phase:** 1 Build (Oct 18–24) · **Next gate:** G1 Oct 24 (D-023; G0 was not held, item 37) · **Headset gate H1:** Oct 20 · **Plan:** v2.1
+**Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 30 on 2026-10-19
 
 > **Read first this session:** `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions), `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) and `specs/07-workflow/SPRINT_PLAN.md` v2.1.
 > **ONE DRIVER, AT MOST 3 HEAVY JOBS AT ONCE (the driver's own checks count as one; document agents extra), ONE BROWSER RUN AT A TIME (D-052, on Parth's word; his ceiling is 10, D-036):** one Claude session drives the repository. On Parth's word up to 8 agents run at once (unit tests with `--maxWorkers=2`, no package installs in worktrees), one per module, each in its own worktree; shared files and the contract are edited only by the driving session. Agent ids for resuming after a restart are in `.tmp/agents.json`. After any restart: list Claude processes, stop leftover copies (parent pid 1), then resume the agents by id. The tracking page (port 4180), the sound preview (port 4173) and the dev server with the emulator (port 8081) run detached.
@@ -112,6 +112,8 @@
 
 36. **Offer laptop mode to judges? (yes / no).** The Devpost draft (17 Oct) can tell a judge with no headset to open the link in a desktop browser, where a click is the pinch (T-114b). The PRD calls the garden window "never the judged path", so saying yes means a line in "How to test" and a check that the window works on the hosted build. Claude's view: yes, as a clearly labelled preview, while the headset stays the real experience.
 
+37. **This week's decisions (19 Oct), one line each; reply with the numbers you accept, or "ok all".** (1) The headset (T-000): H1 is tomorrow, 20 Oct: buy a Quest 3S today, or declare Emergency mode now (D-013). (2) Go live (item 3, T-108): turn on GitHub Pages this week; Netlify for the mirror. (3) Plant colours (item 34): A. Sound style (item 35): listen 5 minutes and pick by ear. (4) Laptop mode for judges (item 36): yes, as one labelled preview line after the headset steps (the rule check found nothing against it; judges play on a Quest). (5) One "ok" for: item 28 all wording proposals with the test pages kept; item 31 keep the reach slack; items 23 and 26c the 6 s wait; items 26a and 26b Claude's suggestions. (6) G0: record a conditional pass (item 32); open a capture-rig row now, due 31 Oct (the video needs it); T-152 stays its own row. Optional: the First Build Review sessions on 20 and 22 Oct (Start membership, Chinmay).
+
 ## Phase 0 task board
 | ID | Status | ID | Status | ID | Status |
 |---|---|---|---|---|---|
@@ -125,9 +127,9 @@
 ## Gates
 | Gate | Date | Result | Notes |
 |---|---|---|---|
-| G0 | Oct 17 (was Oct 15, D-023) | prepared; Parth decides (item 32) | Met: verify, coverage and 80/80 browser tests at ce33e46; emulated XR (T-107); core (T-106); spike and pinch pages built (T-104/T-105, device runs pending); T-113. Not met, carried to G1 Oct 24: T-103 ratings; T-108 Pages and mirror; T-000 headset date (H1 Oct 20, then Emergency mode Oct 27, D-013). Suggested verdict: conditional pass. Phase 1 order: T-128d, T-128e, T-142b, T-150, T-114, T-152 (after T-128e), T-160. |
+| G0 | Oct 17 (was Oct 15, D-023) | **not held** (Parth did not answer item 32); suggested verdict: conditional pass | 5 of 8 met: verify, emulated XR (T-107), core (T-106), spike and pinch pages (T-104/T-105, device runs pending), T-113. The sound criterion failed once: Parth rated it "bad" (D-051); the T-164 styles are the change of direction. Carried to G1: the T-103/T-164 style pick plus ratings from Chinmay and 2 outsiders, T-108 Pages and mirror, the T-000 headset date. |
 | H1 headset | Oct 20 | — | |
-| G1 | Oct 24 (was Oct 22, D-023) | — | |
+| G1 | Oct 24 (was Oct 22, D-023) | prepared 19 Oct: emulator criteria met at 3726e50; device criteria not run | Met: placement levels 1/2/4 (06-room), palm-up seed → pinch-plant → snap (16-seeds, TC-E2E-03), the tide plays 3 voices (19-first-loop d2), save → reload (22-save-restore e1), no console errors, the garden window with pointer input (20-window). Caveats: the whole app's worst frame waits for T-165 (the audit: 34–35 draws per eye on a Quest, 68–70 in the emulator); the suite was 102/106 under load, re-runs green, one clean run due at the G1 commit; the tide is unheard in the app. Not met (headset): TC-DEV-0A, TC-DEV-00, ≥72 fps, D-020. Carried from G0 (Parth): T-108, the T-103/T-164 picks and ratings, the T-000 date. Room signature: default "build with Wanderer fallback, planes optional" (T-130). |
 | G2 | Nov 3 (was Nov 1, D-023) | — | |
 | G3 freeze | Nov 12 | — | |
 
@@ -147,7 +149,10 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 | Today, 15 Oct (product-owner guess, no headset; Nov 12 guess 6 / 6 / 5 / 5; see DEVPOST_DRAFT §2) | 4 | 3 | 5 | 2 | product-owner |
 
 ## Stand-ups
-### 2026-10-12 to 2026-10-15
+### 2026-10-19
+- Done: nothing merged on 18–19 Oct (the Mac was off); 46 of 74. Today: T-173 part 1 review then merge; T-165 A and B finish; G1 prepared; the weekly rule check (no changes). Pace 14–17 Oct: 13 tasks in 4 days; about 10 rows left for agents (about 5 days), so the freeze is safe for the code, not for Stage 1 (no public link, no capture rig, the sound unrated since "bad", no headset; Emergency mode Oct 27). Decisions for Parth: item 37.
+
+### 2026-10-12 to 2026-10-18
 - **01:55 IST (19 Oct) — weekly rule check (T-186): no rule changes.** Read on 19 Oct (Overview, Rules, Dates, FAQs, Updates, Discussions, Resources, Judging, Special Awards). Participants now 3,390. New Update "Week 4": events only; "First Build Review" sessions on 20 Oct (EMEA) and 22 Oct, Start membership needed (optional, for outside feedback). Rule risk added: an entry changed after the deadline "may be disqualified" (Judging page), so both GitHub Pages and the mirror freeze at submission (T-185). Nothing in the rules or FAQ says how judges without a headset test ("Judges will review apps on a Meta Quest 3 or Quest 3S"); no rule forbids laptop mode (item 36).
 - **12:55 IST — T-172, the PM's sound fixes (group A, D-056); pushed.** One reverb level in every room (fixed-energy responses with normalize off: the six rooms within 0.05 dB, were 8.2 dB apart), a 200 Hz high-pass on the reverb send, 5–25 ms of pre-delay, the UI-sound rules, the sound prototype plays the same reverb and builds again, Windows-safe test paths. Reviewed by a workflow (the damping by size turned out inaudible: it is described honestly, not changed unheard). On develop: verify green (1806 unit tests); the first full browser run on a loaded Mac missed 4 known load-sensitive tests and coverage tripped a heap probe; re-run on a quieter Mac: coverage 96.1 % and those four files 12 of 12. Not heard by Parth yet (the sound page on 8093 still serves an older copy: refreshing the previews waits for his yes).
 - **12:10 IST (17 Oct) — the ripple's notes, accessibility, BUG-007/008/009 (45 of 74 done); pushed.** T-142b: the tuning ripple rings the room chord (a pad, a bell, a pluck, one per surface). T-160: one-hand mode (the same hand takes the seed off its palm), gaze dwell with a reticle (the panel blocks the gaze; a gaze wake from Listen needs twice the dwell, D-054), the beat ring. BUG-007: the seed lights when a hand hovers it. BUG-008: high contrast outlines the seed, orb, petal and arrow and dims the room to 60 %. BUG-009: the level-3 ghost test keeps its strict limit with the beat ring off. Reviews ran as workflows (three lenses, each serious finding checked by a skeptic); fix rounds followed. Also in: the Devpost draft and user manual as of 17 Oct, device blocks for the new features, Chinmay's proposals recorded (D-056: groups A and B may be built). On develop: verify green (1800 unit tests), coverage 96.1 %, the browser suite 104 of 105, the one miss a load-timing test (entry 10.58 s against 10 s with an audit running) that then passed 6 of 6 alone. A 7-hour sleep and a network outage overnight stopped agents; all resumed. Next: T-172 (the PM's sound fixes) merge, the T-165 perf audit.
