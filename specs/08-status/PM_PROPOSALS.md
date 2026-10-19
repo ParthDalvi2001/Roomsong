@@ -94,13 +94,13 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** 5 growth levels (seed, sprout, growing, flowering, fruiting) reached by listening hours (2, 12, 72, 432 h, small steps at each doubling); each level adds one sound layer; a seeded 4-note tune per seed; a persisted listening counter (schema bump); a labelled "Time-lapse (demo)" switch in the submitted build.
 **Why:** growth is days-only and silent today, so judges never meet it; pitch: "your room tunes it, your listening grows it".
 **Impact:** M; FR-MUS-09, FR-PER-01/02, API_SPEC `GrowthDelta`, the renderer; G2.
-**Status:** rejected for this submission (D-056: Parth skips the rest of the PM plan)
+**Status:** partly approved (D-057): only the "Time-lapse (demo)" switch over today's day-based growth, never saved (T-174); the listening-hours growth is skipped
 
 ### P-016 — Stillness opens the garden (2026-10-14, Chinmay's Claude)
 **Change:** a still head facing the bed for ~8 s → halo brighter, reverb slightly wider, growth counted ×2; the gazed plant +2 dB.
 **Why:** gives "listening" a real input with no gesture; strengthens Listen mode and accessibility.
 **Impact:** S; G2.
-**Status:** approved (D-056, group B: may be built)
+**Status:** approved (D-056, D-057): to build without the growth ×2 part (T-173 part 2)
 
 ### P-017 — Clap-to-tune spike (2026-10-14, Chinmay's Claude)
 **Change:** a 1-day timeboxed headset test: mic in an immersive session, clap detection, RT60 from T20, fallback to the Sabine estimate.
@@ -140,13 +140,13 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** 60 s, 48 kHz WAV renders of the five-voice mix (Wanderer plus three signatures) with loudness, peak and L/R numbers; references within ±0.5 dB, before and after T-164.
 **Why:** the real mix has never been heard or measured; the Bass is about 5 dB above the Bell.
 **Impact:** S; tooling; headset week.
-**Status:** approved (D-056, group B: may be built)
+**Status:** approved (D-057): one render-and-measure tool with P-026 and P-027 (T-173 part 2)
 
 ### P-024 — Developer audio capture switch and health log (2026-10-16, Chinmay's Claude)
 **Change:** a developer-only switch that taps the master output with an AudioWorklet into a 48 kHz WAV, plus a once-a-second log (context state, sample rate, latencies, dropouts if available, tick timing, voice count).
 **Why:** DEVICE_SCRIPT_S1 cannot measure any audio on the Quest; the Quest recorder is lossy.
 **Impact:** S–M; debug-only; headset week.
-**Status:** approved (D-056, group B: may be built)
+**Status:** deferred (D-057): until a headset arrives
 
 ### P-025 — Pass rules for T-164 UI sounds (2026-10-16, Chinmay's Claude)
 **Change:** UI sounds start at the current audio time; −10 to +3 LU relative to the music; partials inside the room's chord; ≤ 70 ms from pinch to sound.
@@ -158,16 +158,16 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** same-key, same-seed renders that change only the reverb, plus pairs 1.2 vs 1.6 s and 1.6 vs 2.0 s.
 **Why:** proves "the room changes the sound" before the Devpost copy claims it.
 **Impact:** S; tooling; before G2.
-**Status:** approved (D-056, group B: may be built)
+**Status:** approved (D-057): in the render-and-measure tool (T-173 part 2)
 
 ### P-027 — Scheduler and voice-steal stress renders (2026-10-16, Chinmay's Claude)
 **Change:** offline renders with injected main-thread stalls of 50/95/120/200 ms; a steal in a near-silent bed; a solo Bell at its top notes.
 **Why:** the −34.7 dB residual after a steal, Bell aliasing and the C♯6/D6 partial clash are untested.
 **Impact:** S; tests only; headset week.
-**Status:** approved (D-056, group B: may be built)
+**Status:** approved (D-057): in the render-and-measure tool (T-173 part 2); the Bell part done in T-173 part 1
 
 ### P-028 — A testable, durable listening clock (if P-015 is adopted) (2026-10-16, Chinmay's Claude)
 **Change:** count monotonic visible session time with a cap per tick; the time-lapse switch never writes the real counter; Playwright-clock e2e tests; call `navigator.storage.persist()`.
 **Why:** `AudioContext.currentTime` cannot be faked in e2e tests; a multi-year garden lives in best-effort storage.
 **Impact:** S; with P-015.
-**Status:** rejected for this submission (D-056: Parth skips the rest of the PM plan)
+**Status:** partly approved (D-057): only `navigator.storage.persist()` (T-174); the listening clock is skipped with P-015
