@@ -171,6 +171,7 @@ export class SeedRenderer {
     this.move(bed, nowMs);
     this.light(nowMs);
     this.outline.count = settings.get().highContrast ? CAPACITY : 0; // FR-UI-05; hidden with the mesh
+    this.outline.visible = this.outline.count > 0;
   }
 
   /** Per frame: each seed glides toward its point and then follows it. */

@@ -121,25 +121,6 @@ describe('TuningRipple: the timeline (FR-ROOM-12)', () => {
     }
   });
 
-  it.each([
-    [{ table: TABLE, ceiling: CEILING }, [true, false, false]],
-    [{ nearestWall: WALL, ceiling: CEILING }, [false, true, false]],
-  ])(
-    'in the frame it starts, the first aimed quad is drawn once, dark: the shader compiles then',
-    (surfaces, drawn) => {
-      const r = rig(plan({ surfaces }));
-      r.frame(); // the frame of start
-      expect(r.meshes.map((mesh) => mesh.visible)).toEqual(drawn);
-      expect(r.meshes.map((mesh) => now(mesh)[1])).toEqual([0, 0, 0]); // drawn at brightness 0: no light, no cover
-      r.frame();
-      expect(r.meshes.some((mesh) => mesh.visible)).toBe(false);
-      // The three quads share one shader program: one compile is all three's.
-      const [a, b, c] = r.meshes.map((mesh) => mesh.material as ShaderMaterial);
-      expect([b!.vertexShader, c!.vertexShader]).toEqual([a!.vertexShader, a!.vertexShader]);
-      expect([b!.fragmentShader, c!.fragmentShader]).toEqual([a!.fragmentShader, a!.fragmentShader]);
-    },
-  );
-
   it('a missing surface skips its sweep; the others keep their times', () => {
     const r = rig(plan({ surfaces: { nearestWall: WALL, ceiling: CEILING } }));
     r.runTo(5000);
@@ -173,7 +154,7 @@ describe('TuningRipple: the timeline (FR-ROOM-12)', () => {
     expectAt(world(r.meshes[0]!, 0, 0), [0, 0.74, -0.45]);
   });
 
-  it('every quad is drawn wherever it lies: the warm-up draw cannot be culled behind the user', () => {
+  it('every quad is drawn wherever it lies: none is frustum-culled', () => {
     expect(rig().meshes.every((mesh) => !mesh.frustumCulled)).toBe(true);
   });
 

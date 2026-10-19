@@ -57,6 +57,9 @@ interface Probe {
   /** The tuning ripple (T-142) has ended: room:tuned was heard. */
   isTuned: boolean;
   caption(): string | null;
+  /** T-165: `renderer.info.programs.length` once the session's first frame with a pose is drawn (-1 before). */
+  firstPrograms: number;
+  programs(): number;
 }
 /** IWSDK 1.0.1 puts its dev runtime on the page in a dev build; the app's world is a field of it. */
 interface DevPage {
@@ -149,7 +152,7 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
       seen: () => 1 - (system.halo.dome.material.uniforms.uDome!.value as Float32Array)[0]!,
       meshes: () => ({
         halo: system.halo.halo.visible,
-        dome: system.halo.dome.count > 0, // switched by its count, never hidden (BUG-008 review)
+        dome: system.halo.dome.count > 0, // switched by its count, and hidden at 0 (T-165)
         orb: system.orb.mesh.visible,
       }),
       orbAt: () => {
@@ -167,6 +170,15 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
       isOrbHovered: false,
       isTuned: false,
       caption: () => captions.shown,
+      firstPrograms: -1,
+      programs: () => world.renderer.info.programs?.length ?? -1,
+    };
+    // The app compiles every program in that frame (T-165): three binds the layer only in a frame with a pose.
+    const afterRender = world.scene.onAfterRender.bind(world.scene);
+    world.scene.onAfterRender = (...args) => {
+      afterRender(...args);
+      const isPosed = world.renderer.xr.isPresenting && world.renderer.getRenderTarget() !== null;
+      if (probe.firstPrograms < 0 && isPosed) probe.firstPrograms = probe.programs();
     };
     core.bus.on('room:tuned', () => {
       probe.isTuned = true;
@@ -321,6 +333,14 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
   expect(a).toEqual(b);
   expect(during.maxFlashPerS).toBeLessThanOrEqual(3);
   expect(during.hints.draws).toBe(0); // the tutorial's hints and caption go in Listen
+  // T-165: no program linked after the session's first frame with a pose: not for the bed's placement, the
+  // ripple's captions, the tutorial's hints, nor Listen's dome and halo.
+  const [firstPrograms, programs] = await probe.evaluate((p) => [p.firstPrograms, p.programs()]);
+  console.log(
+    `T-165 shader programs: ${firstPrograms} after the first posed frame, ${programs} now (emulator)`,
+  );
+  expect(firstPrograms).toBeGreaterThan(0);
+  expect(programs).toBe(firstPrograms);
   expect((await probe.evaluate((p) => p.heard)).map((each) => each.name)).toEqual([
     'gesture:palmsOut',
     'listen:enter',

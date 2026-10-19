@@ -89,8 +89,8 @@ const encoded = (hex: number): Color => new Color(hex).convertLinearToSRGB();
 
 export class HaloRenderer {
   readonly halo: Mesh<CylinderGeometry, ShaderMaterial>;
-  /** An InstancedMesh of one, left visible and switched by its count (0: no draw call), so its program compiles
-   *  when the bed is first drawn, not on its first dim, which a high-contrast switch can bring mid-session. */
+  /** An InstancedMesh of one, switched by its count and hidden at 0. Its program is compiled in the session's first
+   *  frame (src/app.ts, T-165), not on its first dim, which a high-contrast switch can bring mid-session. */
   readonly dome: InstancedMesh<IcosahedronGeometry, ShaderMaterial>;
   private readonly haloElement: number;
   private readonly domeElement: number;
@@ -152,6 +152,7 @@ export class HaloRenderer {
       1,
     );
     this.dome.count = 0;
+    this.dome.visible = false;
     this.dome.frustumCulled = false;
     this.dome.renderOrder = DOME_RENDER_ORDER;
     this.dome.matrixAutoUpdate = false;
@@ -201,6 +202,7 @@ export class HaloRenderer {
     const seen = this.guard.request(this.domeElement, 1 - Math.max(contrastCover, DOME_DIM * eased), nowMs);
     this.domeState[0] = 1 - seen;
     this.dome.count = seen < 1 ? 1 : 0;
+    this.dome.visible = this.dome.count > 0;
 
     const breath = Number.isFinite(barPhase)
       ? 0.5 + 0.5 * Math.cos(2 * Math.PI * barPhase * BREATHS_PER_BAR)

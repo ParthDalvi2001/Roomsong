@@ -120,6 +120,14 @@ async function probeSession(page: Page): Promise<JSHandle<SessionProbe>> {
   });
 }
 const audio = (probe: JSHandle<SessionProbe>) => probe.evaluate((p) => p.audio());
+/** IWSDK's own AudioListener, kept by its AudioSystem as `listener`: whether it hangs in the scene, its context's state. */
+const iwsdkListener = (page: Page) =>
+  page.evaluate(() => {
+    type Kept = { listener?: { type: string; parent: object | null; context: AudioContext } };
+    const systems = window.__roomsong!.world.getSystems() as unknown as Kept[];
+    const listener = systems.find((system) => system.listener?.type === 'AudioListener')?.listener;
+    return listener && { isInScene: listener.parent !== null, state: listener.context.state };
+  });
 const heardTypes = (probe: JSHandle<SessionProbe>) => probe.evaluate((p) => p.heard.map((e) => e.type));
 /** `xr:visibility` only: the `visible` of each, in order. */
 const visibility = (probe: JSHandle<SessionProbe>) =>
@@ -287,6 +295,9 @@ test('a3 in a session: perf:sample once a second, medium foveation, a circuit br
         .filter((system) => !Object.prototype.hasOwnProperty.call(system, 'update'))
         .map((system) => system.constructor.name),
       priorities: systems.map((system) => system.priority),
+      // T-165: no IBL environment (a PMREM pass at boot that no unlit material reads), no environment raycast.
+      hasEnvironment: world.scene.environment !== null,
+      hasRaycast: systems.some((system) => system.constructor.name.startsWith('EnvironmentRaycast')),
     };
   });
   // Three's stored number, not the XR layer's `fixedFoveation`: this proves `setFoveation` was called with it and
@@ -297,6 +308,24 @@ test('a3 in a session: perf:sample once a second, medium foveation, a circuit br
   expect(world.priorities[0]).toBe(-100); // PerfSystem runs first: its update is the start of the frame
   expect([...world.priorities].sort((a, b) => a - b)).toEqual(world.priorities);
   expect(world.priorities).toEqual(expect.arrayContaining([20, 60])); // HandSystem, CaptionSystem
+  expect([world.hasEnvironment, world.hasRaycast]).toEqual([false, false]);
+
+  // T-165: IWSDK's hand rays draw nothing (they drew every tracked frame at opacity 0): the app turned them off.
+  const rays = await page.evaluateHandle(() => {
+    const { world } = window.__roomsong!;
+    const counted = { draws: 0 };
+    for (const space of [world.player.raySpaces.left, world.player.raySpaces.right])
+      space.traverse((object) => void (object.onBeforeRender = () => void counted.draws++));
+    return counted;
+  });
+  await xrFrames(page, 10);
+  expect(await rays.evaluate((counted) => counted.draws)).toBe(0);
+  // And switched off, not just untracked: 0 draws alone would also pass with no hand in view.
+  const registered = await page.evaluate(() => {
+    const pointers = window.__roomsong!.world.input.xr.multiPointers;
+    return [pointers.left, pointers.right].map((pointer) => pointer.getSubPointerState('ray').registered);
+  });
+  expect(registered).toEqual([false, false]);
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
 });
@@ -476,11 +505,15 @@ test('a4 the session ends cleanly and a second Enter starts another, with no sec
 
   await enterXR(page);
   await expect.poll(() => audio(probe)).toBe('running');
+  // T-165: IWSDK's listener is off the head (nothing plays through it), and IWSDK still resumes its context at the
+  // session's start and suspends it at the end.
+  await expect.poll(() => iwsdkListener(page)).toEqual({ isInScene: false, state: 'running' });
   const madeAfterFirstEnter = await made();
   await d.evaluate((d) => d.activeSession?.end());
   await expect(landing(page)).toBeVisible();
   await expect(enterButton(page)).toBeFocused();
   await expect.poll(() => audio(probe)).toBe('suspended'); // a clean end: no context runs on the page
+  await expect.poll(() => iwsdkListener(page)).toEqual({ isInScene: false, state: 'suspended' });
 
   await enterXR(page);
   await expect.poll(() => audio(probe)).toBe('running');

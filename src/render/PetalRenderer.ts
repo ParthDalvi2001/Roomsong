@@ -103,8 +103,8 @@ const FADE_IN = 2;
 export class PetalRenderer {
   readonly mesh: InstancedMesh<CircleGeometry, ShaderMaterial>;
   /** FR-UI-05: the petals' cream band, a child of `mesh` sharing its instances; drawn in high contrast only, for
-   *  the undo petals (not the burst's), and kept visible, switched by its count, so its program compiles with the
-   *  petal's (T-163). */
+   *  the undo petals (not the burst's), switched by its count and hidden at 0 (T-163). Its program is compiled in
+   *  the session's first frame (src/app.ts, T-165). */
   readonly outline: InstancedMesh<CircleGeometry, ShaderMaterial>;
   private readonly firstElement: number;
   /** Per instance: the colour, and the opacity that is the petal's brightness over its rest brightness. */
@@ -171,6 +171,7 @@ export class PetalRenderer {
     this.outline = new InstancedMesh(geometry, outline, count);
     this.outline.instanceMatrix = this.mesh.instanceMatrix;
     this.outline.count = 0;
+    this.outline.visible = false;
     this.outline.frustumCulled = false;
     this.outline.renderOrder = 2.5; // just before the petals, though it draws nothing under them
     this.outline.matrixAutoUpdate = false;
@@ -273,6 +274,7 @@ export class PetalRenderer {
   update(nowMs: number): void {
     // FR-UI-05, the undo petals only: a burst's petals are not targets. Hidden with the mesh.
     this.outline.count = settings.get().highContrast ? PLANT_CAPACITY : 0;
+    this.outline.visible = this.outline.count > 0;
     if ((this.liveCount === 0 && this.flying === 0) || !Number.isFinite(nowMs)) return;
     this.now[0] = nowMs;
     if (this.flying > 0) this.fly();

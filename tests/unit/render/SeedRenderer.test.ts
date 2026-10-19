@@ -265,14 +265,14 @@ describe('SeedRenderer: high contrast (FR-UI-05, BUG-008)', () => {
     expect(seeds.outline.material.side).toBe(DoubleSide); // its visible part is the far half, pushed out
     seeds.setSupply([seed('a')]);
     seeds.update(BED, T0);
-    expect(seeds.outline.count).toBe(0); // no draw call outside high contrast
+    // No draw call outside high contrast, and hidden: compiled in the session's first frame anyway (T-165).
+    expect([seeds.outline.count, seeds.outline.visible]).toEqual([0, false]);
     settings.set({ ...DEFAULT_SETTINGS, highContrast: true });
     seeds.update(BED, T0 + FRAME_MS);
-    expect(seeds.outline.count).toBe(SEED_SUPPLY_MAX);
-    expect(seeds.outline.visible).toBe(true); // kept visible, switched by its count: compiled at start (T-163)
+    expect([seeds.outline.count, seeds.outline.visible]).toEqual([SEED_SUPPLY_MAX, true]);
     settings.set(DEFAULT_SETTINGS);
     seeds.update(BED, T0 + 2 * FRAME_MS);
-    expect(seeds.outline.count).toBe(0);
+    expect([seeds.outline.count, seeds.outline.visible]).toEqual([0, false]);
   });
 });
 

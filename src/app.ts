@@ -404,6 +404,15 @@ export async function start(landing: Landing): Promise<void> {
     opening.then((opened) => opened.load()),
   ]);
   if (saved !== null) restoreSettings(saved.settings);
+  // T-165: IWSDK's AudioSystem hangs an AudioListener on the head that nothing plays through (the engine has its
+  // own context and listener), and it schedules 9 ramps at each matrix update. The system keeps it, and with it
+  // the context it resumes and suspends at each session start and end.
+  for (const child of [...world.player.head.children])
+    if (child.type === 'AudioListener') child.removeFromParent();
+  // T-165: and its two hand rays, drawn every tracked frame at opacity 0. The app aims with its own targets and
+  // takes the pinch from the session's select (hands/), so no ray of IWSDK's has anything to point at.
+  for (const hand of ['left', 'right'] as const)
+    world.input.xr.multiPointers[hand].toggleSubPointer('ray', false);
   const engine = createAudioEngine();
   const guard = new FlashGuard();
   // Before any system: it subscribes to the bus in its constructor, so its handlers run first (LLD §3.2).
@@ -412,6 +421,20 @@ export async function start(landing: Landing): Promise<void> {
   // NFR-PERF-09. Set once: Three.js keeps the value and applies it at each session start. Its own default is 1,
   // the strongest.
   xr.setFoveation(FOVEATION_MEDIUM);
+  // T-165: every shader program links in the session's first frame with a pose, when only passthrough shows, so
+  // none stalls a frame later (the placement, the first caption, pull, removal or Listen). compile() walks hidden
+  // meshes too and builds for the bound target, and three binds the XR layer (multiview on a Quest) only in a
+  // frame with a pose. The garden window has no layer: it compiles at once.
+  let stopWarmUp = (): void => {};
+  bus.on('xr:sessionStart', () => {
+    if (!xr.isPresenting) return void world.renderer.compile(world.scene, world.camera);
+    stopWarmUp = world.onXRFrame(() => {
+      if (world.renderer.getRenderTarget() === null) return;
+      stopWarmUp();
+      world.renderer.compile(world.scene, world.camera);
+    });
+  });
+  bus.on('xr:sessionEnd', () => stopWarmUp()); // a session that ended before a frame with a pose
 
   // In ascending priority, with the numbers of API_SPEC §1.10, one line each. A system subscribes to the bus in
   // `init()`, so every system is registered before the first `xr:sessionStart` can be emitted.

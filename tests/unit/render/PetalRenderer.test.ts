@@ -431,17 +431,17 @@ describe('PetalRenderer: high contrast (FR-UI-05, BUG-008)', () => {
     expect(petals.outline.renderOrder).toBeLessThan(petals.mesh.renderOrder);
     petals.show('a', removed(2, 4), T0 + UNDO_LIFE_MS);
     petals.update(T0);
-    expect(petals.outline.count).toBe(0); // no draw call
+    // No draw call, and hidden: compiled in the session's first frame anyway (T-165).
+    expect([petals.outline.count, petals.outline.visible]).toEqual([0, false]);
     settings.set({ highContrast: true });
     petals.update(T0 + FRAME_MS);
-    expect(petals.outline.count).toBe(PLANT_CAPACITY);
-    expect(petals.outline.visible).toBe(true); // kept visible, switched by its count: compiled at start (T-163)
+    expect([petals.outline.count, petals.outline.visible]).toEqual([PLANT_CAPACITY, true]);
     petals.show('b', removed(3, 9), T0 + UNDO_LIFE_MS, { x: 0.3, y: 0.05, z: 0.1 }); // a burst in the air
     petals.update(T0 + 2 * FRAME_MS);
     expect(petals.mesh.count).toBe(PLANT_CAPACITY + BURST_POOL);
     expect(petals.outline.count).toBe(PLANT_CAPACITY); // the burst's petals are not targets
     settings.set({ highContrast: false });
     petals.update(T0 + 3 * FRAME_MS);
-    expect(petals.outline.count).toBe(0);
+    expect([petals.outline.count, petals.outline.visible]).toEqual([0, false]);
   });
 });

@@ -119,11 +119,6 @@ export class TuningRipple {
   private isGlow = false;
   /** Something is drawn or still to come: update has work. */
   private isBusy = false;
-  /** The frame of the latest start, and the first quad it aimed. In that frame the quad is drawn once, dark, so the
-   *  shader the three share compiles in the placement frame, in the session's own variant, and not 0.3 s later in
-   *  the middle of the first sweep (a stall of about 140 ms in the emulator's software rendering, T-142). */
-  private warmMs = Number.NaN;
-  private warmSlot = -1;
   private readonly at = { x: 0, z: 0 };
 
   constructor(
@@ -157,7 +152,7 @@ export class TuningRipple {
       mesh.visible = false;
       mesh.renderOrder = 2; // after the bed's glass and its markers, as the tide
       mesh.matrixAutoUpdate = false;
-      mesh.frustumCulled = false; // the warm-up draw must happen even with the quad behind the user
+      mesh.frustumCulled = false; // never culled, as API_SPEC §1.8 has it (its program links at session start)
       parent.add(mesh);
       meshes.push(mesh);
     }
@@ -174,7 +169,6 @@ export class TuningRipple {
       .convertLinearToSRGB();
     this.startMs.fill(Number.NaN);
     this.isBusy = true;
-    this.warmMs = nowMs;
     if (!plan.isWanderer) {
       if (table !== undefined) this.aimTable(table, bed, nowMs);
       if (nearestWall !== undefined) this.aimWall(nearestWall, nowMs);
@@ -185,7 +179,6 @@ export class TuningRipple {
       this.lay(0, bed, 2 * BED_RADIUS_M, 2 * BED_RADIUS_M);
       this.aim(0, 0, 0, BED_RADIUS_M, nowMs);
     }
-    this.warmSlot = this.startMs.findIndex((ms) => !Number.isNaN(ms)); // the first that has a sweep
   }
 
   /** Ends the ripple: no sweep starts after this, and what is lit is taken away through the guard. */
@@ -214,7 +207,7 @@ export class TuningRipple {
         const granted = this.guard.request(this.firstElement + i, target, nowMs);
         state[1] = granted;
         mesh.visible = granted > 0;
-      } else mesh.visible = i === this.warmSlot && nowMs === this.warmMs; // dark: its output is 0, no change
+      } else mesh.visible = false;
       if (isOn || state[1] !== 0 || elapsed < 0) isBusy = true;
     }
     this.isBusy = isBusy;

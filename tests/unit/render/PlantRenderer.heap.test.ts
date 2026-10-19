@@ -151,7 +151,9 @@ describe('render/ per frame (NFR-PERF-08)', () => {
         settings.set({ highContrast: false, reducedMotion: false });
       }
       // Every measured round flipped the switches, and its frames took them up.
-      expect(plants.outlines[0]!.count).toBe(isOn ? 80 : 0);
+      const { index, drawRange } = plants.meshes[0]!.geometry;
+      expect(drawRange.count).toBe(isOn ? index!.count : index!.count / 2); // the shells drawn or not
+      expect(plants.meshes[0]!.count).toBe(80);
       const lean = (plants.meshes[0]!.material.uniforms.uSway!.value as Float32Array)[1];
       expect(lean).toBeCloseTo(isOn ? PLANT_SWAY_LEAN_REDUCED : PLANT_SWAY_LEAN, 6);
     },

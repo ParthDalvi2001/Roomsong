@@ -20,7 +20,9 @@ const TRIANGLE_BUDGET = 150_000; // NFR-PERF-04
 // 1, the tide 1, and the HUD panel 1. A session draws both eyes: 20 (18 without the panel), which is over T-125's
 // 15 and inside NFR-PERF-03's 60. UX §9.5 and §9.6 count the same meshes.
 const EVERYTHING_PER_EYE = 2 + 5 + 1 + 1 + 1;
-const OUTLINE_SHELLS = 5; // T-163: in high contrast, one cream shell per silhouette (FR-UI-05)
+// T-163: in high contrast, one cream shell per silhouette (FR-UI-05); since T-165 drawn in its plants' own draw
+// calls, so it adds none.
+const OUTLINE_SHELLS = 0;
 const DIM_DOME = 1; // BUG-008: high contrast dims the room with Listen's dome (FR-UI-05)
 // BUG-008, per eye: the seed and its shell, the Listen orb and its shell, the undo petal and its shell.
 const TARGETS_OUTLINED = 6;

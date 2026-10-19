@@ -1,8 +1,8 @@
 // FR-UI-05 (high contrast: outlines on all targets), BUG-008: the cream shell T-163 drew round the plants, for the
 // seed and the Listen orb. A second draw of the target's own geometry and instances, every point pushed
 // PLANT_OUTLINE_M away from the eye along its normal, so the shell lies behind the target and shows only past its
-// silhouette. Cream at one strength: an outline that never changes cannot flash. Kept visible and switched by its
-// count (0 = no draw call), so its program compiles with its target's, not on the first switch.
+// silhouette. Cream at one strength: an outline that never changes cannot flash. Switched by its count and hidden
+// at 0; its program is compiled in the session's first frame (src/app.ts, T-165), not on the first switch.
 import { Color, DoubleSide, InstancedMesh, ShaderMaterial } from 'three';
 
 import { CREAM, PLANT_OUTLINE_M } from './config.js';
@@ -29,8 +29,8 @@ void main() {
 
 /**
  * A shell for `target`, added as its child, so it is hidden with it: it shares the geometry and, for an
- * InstancedMesh, the instance matrices (else it is one instance where the target is). Its count starts at 0; the
- * target's renderer sets it each frame. Dispose its material only.
+ * InstancedMesh, the instance matrices (else it is one instance where the target is). Its count starts at 0 and it is
+ * hidden; the target's renderer sets both each frame. Dispose its material only.
  */
 export function outlineShell(target: Mesh): InstancedMesh<BufferGeometry, ShaderMaterial> {
   const shell = new InstancedMesh(
@@ -42,6 +42,7 @@ export function outlineShell(target: Mesh): InstancedMesh<BufferGeometry, Shader
   // The target's own places: written once, drawn twice.
   if (target instanceof InstancedMesh) shell.instanceMatrix = target.instanceMatrix;
   shell.count = 0;
+  shell.visible = false;
   shell.frustumCulled = false; // its bounds would be computed once, from the instances of that moment
   shell.matrixAutoUpdate = false;
   target.add(shell);

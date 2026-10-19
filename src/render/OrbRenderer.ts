@@ -95,6 +95,7 @@ export class OrbRenderer {
     }
     this.state[0] = this.guard.request(this.element, this.level, nowMs);
     this.outline.count = settings.get().highContrast ? 1 : 0; // FR-UI-05; hidden with the orb
+    this.outline.visible = this.outline.count > 0;
   }
 
   dispose(): void {

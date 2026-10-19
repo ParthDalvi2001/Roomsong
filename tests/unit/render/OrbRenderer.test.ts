@@ -94,13 +94,13 @@ describe('OrbRenderer: high contrast (FR-UI-05, BUG-008)', () => {
     expect(orb.outline.geometry).toBe(orb.mesh.geometry);
     expect(orb.outline.material.side).toBe(DoubleSide); // its visible part is the far half, pushed out
     run(50);
-    expect(orb.outline.count).toBe(0); // no draw call
+    // No draw call, and hidden: compiled in the session's first frame anyway (T-165).
+    expect([orb.outline.count, orb.outline.visible]).toEqual([0, false]);
     settings.set({ ...DEFAULT_SETTINGS, highContrast: true });
     run(50);
-    expect(orb.outline.count).toBe(1);
-    expect(orb.outline.visible).toBe(true); // kept visible, switched by its count: compiled at start (T-163)
+    expect([orb.outline.count, orb.outline.visible]).toEqual([1, true]);
     settings.set(DEFAULT_SETTINGS);
     run(50);
-    expect(orb.outline.count).toBe(0);
+    expect([orb.outline.count, orb.outline.visible]).toEqual([0, false]);
   });
 });

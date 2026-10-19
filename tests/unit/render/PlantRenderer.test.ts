@@ -49,10 +49,11 @@ function outline(renderer: PlantRenderer, shape: ShapeName, stemM: number): { r:
   const { geometry } = renderer.meshes[SHAPES.indexOf(shape)]!;
   const position = geometry.getAttribute('position');
   const head = geometry.getAttribute('aHead');
-  const rows = position.count / (geometry.parameters.segments + 1); // the lathe lays the outline down once per segment
+  const vertices = position.count / 2; // the plant's own; its outline shell's copy follows (FR-UI-05)
+  const rows = vertices / (geometry.parameters.segments + 1); // the lathe lays the outline down once per segment
   return Array.from({ length: rows }, (_, row) => {
     let r = 0; // the widest the row gets, so the tip of a petal
-    for (let v = row; v < position.count; v += rows) {
+    for (let v = row; v < vertices; v += rows) {
       r = Math.max(r, Math.hypot(position.getX(v), position.getZ(v)));
     }
     return { r, y: head.getX(row) ? stemM + position.getY(row) : position.getY(row) * stemM };
@@ -234,12 +235,7 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
       plant('f', 0, 5, { voice: 'shimmer' }),
     ]);
     // And the shaping guides (T-147), drawn only while a plant is pulled or dragged off the bed.
-    expect(parent.children).toEqual([
-      ...renderer.meshes,
-      renderer.whorls,
-      ...renderer.outlines,
-      renderer.guides.mesh,
-    ]);
+    expect(parent.children).toEqual([...renderer.meshes, renderer.whorls, renderer.guides.mesh]);
     expect(renderer.meshes).toHaveLength(5);
     expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, 1, 2, 1, 1]);
     expect([0, 1, 2, 3, 4, 5].map((step) => at(renderer, 0, step)!.shape)).toEqual([
@@ -270,8 +266,9 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
 
   it('Bass is a jug on the ground and Choir an umbrella, as UX §9.5 draws them', () => {
     const { renderer } = make();
+    // As drawn outside high contrast: the plant half of the index.
     const triangles = (shape: ShapeName): number =>
-      renderer.meshes[SHAPES.indexOf(shape)]!.geometry.index!.count / 3;
+      renderer.meshes[SHAPES.indexOf(shape)]!.geometry.drawRange.count / 3;
     expect(SHAPES.map(triangles)).toEqual([240, 200, 112, 216, 252]);
     const across = (shape: ShapeName): number =>
       2 * Math.max(...outline(renderer, shape, 0.09).map((row) => row.r));
@@ -344,8 +341,13 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
     expect(at(renderer, 4, 13)).toBeUndefined();
     expectRgb(at(renderer, 2, 9)?.rgb, tint(0.9));
 
+    // A mesh with no plant is hidden (T-165: its program is compiled in the session's first frame anyway).
+    const visible = (): boolean[] => [...renderer.meshes, renderer.whorls].map((mesh) => mesh.visible);
+    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, 0, 0, 0, 0]);
+    expect(visible()).toEqual([true, false, false, false, false, renderer.whorls.count > 0]);
     show(renderer, []);
     expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([0, 0, 0, 0, 0]);
+    expect(visible()).toEqual([false, false, false, false, false, false]);
   });
 
   it('a full bed is 80 instances, and a bed filled again after it was emptied still is', () => {
@@ -695,41 +697,52 @@ describe('PlantRenderer.setHover (FR-HND-16)', () => {
     expect(guard.takePeak()).toBeLessThanOrEqual(FLASH_CAP_PER_S);
   });
 
-  it('high contrast draws a cream shell round every plant from the next frame on, and no draw call otherwise (FR-UI-05)', () => {
-    const { renderer } = make(pair());
+  it("high contrast draws a cream shell round every plant from the next frame on, in the plants' own draw calls (FR-UI-05)", () => {
+    const { renderer, parent } = make(pair());
     renderer.update(Number.NaN, 0);
-    // One shell per silhouette, on its plant mesh's geometry, instance matrices and count; none for the whorls.
-    expect(renderer.outlines).toHaveLength(renderer.meshes.length);
-    // Switched by count, never hidden: the shell's program compiles at the start, with no draw call.
-    const counts = (): number[] => renderer.outlines.map((shell) => shell.count);
-    renderer.outlines.forEach((shell, shape) => {
-      expect(shell.geometry).toBe(renderer.meshes[shape]!.geometry);
-      expect(shell.instanceMatrix).toBe(renderer.meshes[shape]!.instanceMatrix);
-      expect(shell.visible).toBe(true);
-    });
-    expect(counts()).toEqual([0, 0, 0, 0, 0]);
+    // Each silhouette's geometry is its plant, then the same triangles again on a copy flagged aShell 1: the shell,
+    // with the plant's instances, so it follows the plants by itself. The whorls have none.
+    for (const { geometry } of renderer.meshes) {
+      const shell = Array.from(geometry.getAttribute('aShell').array);
+      const vertices = shell.length / 2;
+      expect(shell).toEqual([...Array<number>(vertices).fill(0), ...Array<number>(vertices).fill(1)]);
+      const position = Array.from(geometry.getAttribute('position').array);
+      expect(position.slice(position.length / 2)).toEqual(position.slice(0, position.length / 2));
+      const index = Array.from(geometry.index!.array);
+      const half = index.length / 2;
+      expect(index.slice(half)).toEqual(index.slice(0, half).map((vertex) => vertex + vertices));
+    }
+    expect(renderer.whorls.geometry.getAttribute('aShell').array.every((flag) => flag === 0)).toBe(true);
+    expect(parent.children).toHaveLength(renderer.meshes.length + 2); // no mesh of their own: no draw call
+    // Switched by the draw range: the first half of the index outside high contrast, all of it in it.
+    const halves = renderer.meshes.map((mesh) => mesh.geometry.index!.count / 2);
+    const drawn = (): number[] => renderer.meshes.map((mesh) => mesh.geometry.drawRange.count);
+    expect(drawn()).toEqual(halves);
     settings.set({ highContrast: true });
+    expect(drawn()).toEqual(halves); // from the next frame on
     renderer.update(Number.NaN, FRAME_MS);
-    expect(counts()).toEqual(renderer.meshes.map((mesh) => mesh.count));
-    expect(counts()).toEqual([2, 0, 0, 0, 0]);
+    expect(drawn()).toEqual(halves.map((half) => 2 * half));
     expect(level(renderer, ...NEAR)).toBeCloseTo(PLANT_REST_BRIGHTNESS); // the plants' own brightness is not touched
     // Cream at one strength, PLANT_OUTLINE_M away from the eye: behind the plant but past its silhouette.
-    const { vertexShader, fragmentShader } = renderer.outlines[0]!.material;
+    const { vertexShader, fragmentShader } = renderer.meshes[0]!.material;
+    expect(vertexShader).toContain('if (aShell > 0.5) {');
     expect(vertexShader).toContain(`(dot(n, view.xyz) < 0.0 ? -n : n) * ${PLANT_OUTLINE_M.toFixed(5)};`);
     expect(fragmentShader).toContain(
-      new Color(CREAM)
+      `vec3 cream = vec3(${new Color(CREAM)
         .toArray()
         .map((channel) => channel.toFixed(5))
-        .join(', '),
+        .join(', ')});`,
     );
-    expect(renderer.meshes[0]!.material.fragmentShader).not.toMatch(/edge|uOutline/); // no blotches on the surface
+    expect(fragmentShader).toContain('vShell > 0.5 ? cream : vColour * shade');
+    expect(fragmentShader).not.toMatch(/edge|uOutline/); // no blotches on the surface
     show(renderer, [...pair(), plant('pad', 2, 3, { voice: 'pad' })]);
-    expect(counts()).toEqual([2, 1, 0, 0, 0]); // the garden changed: the shells follow
+    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([2, 1, 0, 0, 0]); // the shells follow
+    expect(drawn()).toEqual(halves.map((half) => 2 * half));
     settings.set({ highContrast: false });
     renderer.update(Number.NaN, 2 * FRAME_MS);
-    expect(counts()).toEqual([0, 0, 0, 0, 0]);
+    expect(drawn()).toEqual(halves);
     show(renderer, pair());
-    expect(counts()).toEqual([0, 0, 0, 0, 0]); // and a change of the garden outside high contrast draws none
+    expect(drawn()).toEqual(halves); // and a change of the garden outside high contrast draws none
   });
 });
 
@@ -789,9 +802,8 @@ describe('PlantRenderer look (UX §5, T-163)', () => {
     settings.set({ reducedMotion: true });
     renderer.update(Number.NaN, 3_600_000 + 2600);
     expect(sway[1]).toBeCloseTo(PLANT_SWAY_LEAN / 2, 6);
-    // The whorls and the shells sway with their plants: the same uniform.
+    // The whorls sway with their plants: the same uniform (the shells are the plants' own vertices).
     expect(renderer.whorls.material.uniforms.uSway).toBe(uniforms.uSway);
-    expect(renderer.outlines[0]!.material.uniforms.uSway).toBe(uniforms.uSway);
     // On the GPU only, by the height above the foot: the foot stays, and with it every cell a hand aims at.
     expect(vertexShader).toMatch(/local\.x \+= uSway\.y \* \(local\.y - foot\.y\) \* sin\(uSway\.x - /);
     expect(matrices()).toEqual(placed);
@@ -883,12 +895,7 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
     expectRgb(whorlsAt(renderer, 2, 3)[0]!.rgb, cream(PLANT_REST_BRIGHTNESS));
     expectRgb(at(renderer, 2, 3)!.rgb, colourAt(PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     // One more mesh for all whorls of all voices: a ring of four leaves, 2.4 cm across, 64 triangles.
-    expect(parent.children).toEqual([
-      ...renderer.meshes,
-      renderer.whorls,
-      ...renderer.outlines,
-      renderer.guides.mesh,
-    ]);
+    expect(parent.children).toEqual([...renderer.meshes, renderer.whorls, renderer.guides.mesh]);
     const { geometry } = renderer.whorls;
     expect(geometry.index!.count / 3).toBe(64);
     const position = geometry.getAttribute('position');

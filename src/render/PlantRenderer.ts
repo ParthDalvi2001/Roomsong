@@ -1,8 +1,8 @@
 // The plants (LLD §1, UX §5): one InstancedMesh per silhouette, 80 instances each at most, and one more for the
 // leaf whorls that count a plant's age (UX §9.6), all with one shared unlit material: six draw calls at most,
-// whatever grows; in high contrast five more, the cream outline shells (FR-UI-05). A plant's cell gives the instance
-// its place, its height the stem, its hue the colour; the brightness of the colour is whatever the FlashGuard
-// hands out.
+// whatever grows, in high contrast too, where the same draws add the cream outline shells (FR-UI-05). A plant's cell
+// gives the instance its place, its height the stem, its hue the colour; the brightness of the colour is whatever
+// the FlashGuard hands out.
 // setState runs when the garden changes and rewrites the instances; update runs per frame and allocates nothing.
 import {
   BufferAttribute,
@@ -222,19 +222,31 @@ void place() {
   turned = instanceMatrix[0].xyz * normal.x + vec3(0.0, ny, 0.0) + instanceMatrix[2].xyz * normal.z;
 }`;
 
+// High contrast (FR-UI-05): a vertex with aShell 1 is the plant's again (withShell), every point pushed
+// PLANT_OUTLINE_M away from the eye along its normal, whichever way that points, so the shell lies behind the plant
+// and shows only past its silhouette. Away from the eye, not out along the normal: the choir's canopy is an open
+// sheet whose normals face under it. Cream at one strength whatever the plant's brightness does: an outline that
+// never changes cannot flash.
 const VERTEX = /* glsl */ `${PLACE}
+attribute float aShell;
 varying vec3 vColour;
 varying vec3 vNormal;
 varying vec3 vView;
 varying float vUp;
+varying float vShell;
 void main() {
   place();
   vec4 view = modelViewMatrix * local;
   vNormal = normalMatrix * turned;
+  if (aShell > 0.5) {
+    vec3 n = normalize(vNormal);
+    view.xyz += (dot(n, view.xyz) < 0.0 ? -n : n) * ${glsl(PLANT_OUTLINE_M)};
+  }
   vView = -view.xyz;
   // The head is the light (T-163): a stem row by its share of the stem, every head and whorl row at full.
   vUp = mix(position.y * ${glsl(PLANT_STEM_GLOW)}, 1.0, aHead);
   vColour = instanceColor;
+  vShell = aShell;
   gl_Position = projectionMatrix * view;
 }`;
 
@@ -244,29 +256,12 @@ varying vec3 vColour;
 varying vec3 vNormal;
 varying vec3 vView;
 varying float vUp;
+varying float vShell;
 void main() {
   float rim = 1.0 - abs(dot(normalize(vNormal), normalize(vView)));
   float shade = mix(${glsl(PLANT_FOOT_SHADE)}, 1.0, vUp) + ${glsl(PLANT_RIM_GLOW)} * rim * rim;
-  gl_FragColor = vec4(vColour * shade, 1.0);
-  #include <colorspace_fragment>
-}`;
-
-// High contrast (FR-UI-05): the plant again, every point pushed PLANT_OUTLINE_M away from the eye along its
-// normal, whichever way that points, so the shell lies behind the plant and shows only past its silhouette. Away
-// from the eye, not out along the normal: the choir's canopy is an open sheet whose normals face under it.
-// Cream at one strength whatever the plant's brightness does: an outline that never changes cannot flash.
-const OUTLINE_VERTEX = /* glsl */ `${PLACE}
-void main() {
-  place();
-  vec4 view = modelViewMatrix * local;
-  vec3 n = normalize(normalMatrix * turned);
-  view.xyz += (dot(n, view.xyz) < 0.0 ? -n : n) * ${glsl(PLANT_OUTLINE_M)};
-  gl_Position = projectionMatrix * view;
-}`;
-
-const OUTLINE_FRAGMENT = /* glsl */ `
-void main() {
-  gl_FragColor = vec4(${CREAM_RGB.map(glsl).join(', ')}, 1.0);
+  vec3 cream = vec3(${CREAM_RGB.map(glsl).join(', ')});
+  gl_FragColor = vec4(vShell > 0.5 ? cream : vColour * shade, 1.0);
   #include <colorspace_fragment>
 }`;
 
@@ -286,6 +281,27 @@ function silhouette({ profile, segments, lobes, lobeDepth = PLANT_LOBE_DEPTH }: 
     position.setXYZ(v, position.getX(v) * press, y, position.getZ(v) * press);
   }
   geometry.setAttribute('aHead', new BufferAttribute(head, 1));
+  // 0: the plant. The whorls share the material, so they carry it too; withShell adds the copy that is 1.
+  geometry.setAttribute('aShell', new BufferAttribute(new Float32Array(position.count), 1));
+  return geometry;
+}
+
+/**
+ * FR-UI-05: the geometry followed by a copy of itself flagged aShell 1, the plant's outline shell, so a plant and
+ * its shell are one draw call. The first half of the index is the plant; countOutlines adds the second half in high
+ * contrast by the draw range, so nothing compiles and no draw call is added when the setting changes.
+ */
+function withShell(geometry: LatheGeometry): LatheGeometry {
+  const vertices = geometry.getAttribute('position').count;
+  for (const [name, attribute] of Object.entries(geometry.attributes)) {
+    const twice = new Float32Array(2 * attribute.array.length);
+    twice.set(attribute.array);
+    twice.set(attribute.array, attribute.array.length);
+    geometry.setAttribute(name, new BufferAttribute(twice, attribute.itemSize));
+  }
+  geometry.getAttribute('aShell').array.fill(1, vertices);
+  const index = Array.from(geometry.index!.array);
+  geometry.setIndex([...index, ...index.map((vertex) => vertex + vertices)]);
   return geometry;
 }
 
@@ -313,15 +329,12 @@ type Drag = Pick<EventMap['gesture:drag'], 'hand' | 'pos' | 'zone'>;
 const handIndex = (hand: Hand): number => (hand === 'left' ? 0 : 1);
 
 export class PlantRenderer {
-  /** One per silhouette: bell, pad, pluck, bass, choir. */
+  /** One per silhouette: bell, pad, pluck, bass, choir. Each geometry holds its cream outline shell too, drawn by
+   *  the second half of its index in high contrast only (FR-UI-05); whorls have none. */
   readonly meshes: readonly InstancedMesh<LatheGeometry, ShaderMaterial>[];
   /** The leaf whorls and blossoms of every plant: two per plant at most (UX §9.6). */
   readonly whorls: InstancedMesh<LatheGeometry, ShaderMaterial>;
-  /** FR-UI-05: one cream outline shell per silhouette. Each shares its plant mesh's geometry and instance
-   *  matrices, and in high contrast its count (0 otherwise: no draw call); whorls have none. */
-  readonly outlines: readonly InstancedMesh<LatheGeometry, ShaderMaterial>[];
   private readonly material: ShaderMaterial;
-  private readonly outlineMaterial: ShaderMaterial;
   /** Whether the shells draw (high contrast), as update last saw the setting. */
   private isOutlined = false;
   private readonly firstElement: number;
@@ -413,35 +426,26 @@ export class PlantRenderer {
       vertexShader: VERTEX,
       fragmentShader: FRAGMENT,
       uniforms,
-      side: DoubleSide, // the pad's fan is open: its inside shows
-    });
-    // Both sides: every point of a shell lies behind the plant (see OUTLINE_VERTEX), whichever way it faces.
-    this.outlineMaterial = new ShaderMaterial({
-      vertexShader: OUTLINE_VERTEX,
-      fragmentShader: OUTLINE_FRAGMENT,
-      uniforms,
+      // The pad's fan is open: its inside shows. And every point of a shell lies behind its plant (see VERTEX),
+      // whichever way it faces.
       side: DoubleSide,
     });
-    const instanced = (shape: Shape, capacity: number): InstancedMesh<LatheGeometry, ShaderMaterial> => {
-      const mesh = new InstancedMesh(silhouette(shape), this.material, capacity);
+    const instanced = (
+      geometry: LatheGeometry,
+      capacity: number,
+    ): InstancedMesh<LatheGeometry, ShaderMaterial> => {
+      const mesh = new InstancedMesh(geometry, this.material, capacity);
       mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
       mesh.count = 0;
+      mesh.visible = false;
       mesh.frustumCulled = false; // its bounds are one plant's; the instances lie all over the bed
       mesh.matrixAutoUpdate = false;
       parent.add(mesh);
       return mesh;
     };
-    this.meshes = SHAPES.map((shape) => instanced(shape, PLANT_CAPACITY));
-    this.whorls = instanced(WHORL, PLANT_WHORL_AT.length * PLANT_CAPACITY);
-    this.outlines = this.meshes.map((mesh) => {
-      const shell = new InstancedMesh(mesh.geometry, this.outlineMaterial, 0);
-      shell.instanceMatrix = mesh.instanceMatrix; // the plant's own places: written once, drawn twice
-      shell.frustumCulled = false;
-      shell.matrixAutoUpdate = false;
-      // Always visible, switched by its count: so its program compiles with the plants', not on the first switch.
-      parent.add(shell);
-      return shell;
-    });
+    this.meshes = SHAPES.map((shape) => instanced(withShell(silhouette(shape)), PLANT_CAPACITY));
+    this.whorls = instanced(silhouette(WHORL), PLANT_WHORL_AT.length * PLANT_CAPACITY);
+    this.countOutlines();
     this.guides = new ShapingGuides(parent, guard);
   }
 
@@ -490,8 +494,10 @@ export class PlantRenderer {
     for (const mesh of [...this.meshes, this.whorls]) {
       mesh.instanceMatrix.needsUpdate = true;
       mesh.instanceColor!.needsUpdate = true;
+      // Hidden with none to draw: an empty mesh still sets up its program each frame. Its program is compiled in
+      // the session's first frame anyway (src/app.ts, T-165).
+      mesh.visible = mesh.count > 0;
     }
-    this.countOutlines();
     this.isWhorlPaintDue = false;
     this.aim();
     this.plants = plants; // last: a throw above leaves it unset, and the next call starts over
@@ -669,16 +675,17 @@ export class PlantRenderer {
       mesh.geometry.dispose();
       mesh.dispose();
     }
-    for (const shell of this.outlines) shell.removeFromParent(); // its geometry is its plant mesh's
     this.material.dispose();
-    this.outlineMaterial.dispose();
     this.guides.dispose();
   }
 
-  /** FR-UI-05: each shell draws its plant mesh's instances in high contrast, and none otherwise. */
+  /** FR-UI-05: each plant mesh draws its shells (the second half of its index) in high contrast only. They share
+   *  its instances, so they follow its plants by themselves. */
   private countOutlines(): void {
-    for (let shape = 0; shape < this.outlines.length; shape++) {
-      this.outlines[shape]!.count = this.isOutlined ? this.meshes[shape]!.count : 0;
+    for (let shape = 0; shape < this.meshes.length; shape++) {
+      const { geometry } = this.meshes[shape]!;
+      const all = geometry.index!.count;
+      geometry.setDrawRange(0, this.isOutlined ? all : all / 2);
     }
   }
 

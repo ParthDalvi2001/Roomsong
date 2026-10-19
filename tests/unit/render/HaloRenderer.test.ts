@@ -80,16 +80,16 @@ describe('HaloRenderer: the dome and the halo (T-148, UX §3.5)', () => {
     expect(halo.halo.geometry.boundingBox!.max.x).toBeCloseTo(BED_OUTER + BED_RIM_M, 6);
     expect(halo.halo.geometry.index!.count / 3).toBeLessThanOrEqual(100);
     expect(halo.dome.geometry.getAttribute('position').count / 3).toBeLessThanOrEqual(100);
-    // BUG-008 review: drawn from the start, switched by its count (0: no draw call), so its program compiles when
-    // the bed is first drawn and not on the first dim, which a high-contrast switch can bring mid-session.
+    // Switched by its count and hidden at 0 (T-165): its program is compiled in the session's first frame by the
+    // wiring, not on the first dim, which a high-contrast switch can bring mid-session (BUG-008 review).
     expect(halo.dome).toBeInstanceOf(InstancedMesh);
-    expect([halo.dome.visible, halo.dome.frustumCulled, halo.dome.count]).toEqual([true, false, 0]);
+    expect([halo.dome.visible, halo.dome.frustumCulled, halo.dome.count]).toEqual([false, false, 0]);
   });
 
   it('out of Listen nothing is drawn, whatever the frames', () => {
     const { halo, run } = make();
     run(2000, 84);
-    expect([halo.halo.visible, halo.dome.count]).toEqual([false, 0]);
+    expect([halo.halo.visible, halo.dome.count, halo.dome.visible]).toEqual([false, 0, false]);
   });
 
   it('in: passthrough dims to 40 % and the halo rises over 1.2 s; out: both are gone 0.8 s later', () => {
@@ -104,13 +104,13 @@ describe('HaloRenderer: the dome and the halo (T-148, UX §3.5)', () => {
     expect(read()).toMatchObject({ rise: 1, lit: 1 }); // no tide: the halo holds full
     expect(read().seen).toBeCloseTo(0.4, 6); // the cover is a 32-bit float
     expect(DOME_DIM).toBe(0.6);
-    expect([halo.halo.visible, halo.dome.count]).toEqual([true, 1]);
+    expect([halo.halo.visible, halo.dome.count, halo.dome.visible]).toEqual([true, 1, true]);
     halo.setListening(false);
     run(LISTEN_EXIT_MS - 4 * FRAME_MS);
     expect(read().seen).toBeLessThan(1);
     run(6 * FRAME_MS);
     expect(read()).toMatchObject({ lit: 0, seen: 1 });
-    expect([halo.halo.visible, halo.dome.count]).toEqual([false, 0]);
+    expect([halo.halo.visible, halo.dome.count, halo.dome.visible]).toEqual([false, 0, false]);
   });
 
   it('breathes with the beat on every second beat: two breaths a bar, between full and HALO_LOW', () => {
