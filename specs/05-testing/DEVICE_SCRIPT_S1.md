@@ -1,6 +1,6 @@
 # Device script S1 — the sittings with a headset (T-129)
 
-**Status:** the blocks marked "can be run today" are ready to run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8; the tuning ripple's look (T-142) added to block 17 on 2026-10-16 against `develop` af94284; the first-minute guide (T-150) added to block 11 and the ripple's notes (T-142b) to block 17 on 2026-10-17 against `develop` dca03de.
+**Status:** the blocks marked "can be run today" are ready to run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8; the tuning ripple's look (T-142) added to block 17 on 2026-10-16 against `develop` af94284; the first-minute guide (T-150) added to block 11 and the ripple's notes (T-142b) to block 17 on 2026-10-17 against `develop` dca03de; the PM's headset-week sound checks (Chinmay's 16 Oct update §7, which supersedes PM_PROPOSALS P-020; D-057) added to blocks 5, 11, 12, 14 and 15 on 2026-10-19 against `develop` 079944d.
 
 This script produces results. It contains none.
 
@@ -23,30 +23,32 @@ You need only this file during the sitting.
 | 2 | Pinch page, first run | H1 pinch on the ring · G1 field of view | 10 min | today |
 | 3 | Pinch page, smoothing runs | hand smoothing ("beta") | 20 min | today |
 | 4 | Garden preview in passthrough | the garden's look · frame rate with the garden drawn · the light's dark edge, Bass and Choir shapes, growth, high contrast (T-119) | 25 min | today |
-| 5 | Sound page on the headset speakers | bass · steady time · headset taken off | 15 min | today |
+| 5 | Sound page on the headset speakers | bass · steady time · headset taken off · the speakers at 100 % | 15 min | today |
 | 6 | Same room, second session | does the key, the scale or the echo change between sessions · an anchor about an hour old | 5 min | today |
 | 7 | A room without Space Setup | what the headset gives with no room scan · a saved anchor asked for in another room | 10 min | today |
 | 8 | The app: landing page and Enter | start times (T1, T2) · no drawn hands · does one click start sound and session | 15 min | today |
 | 9 | The app: headset off and on, the menu, leaving | what a pause looks like to the app · does the sound come back by itself | 15 min | today (the steps you listen to: T-128d) |
 | 10 | The app: the bed on your table | the bed on the real table · the hint when no table is found · the table limits of D-034 | 15 min | needs T-128c |
-| 11 | The app: plant, first sound, first loop | first sound within 20 s, first loop within 90 s · does a plant land where your fingers are · the first-minute guide: the ghost pinch, the hints from your seat, a stranger's first minute (T-150) | 10 min, and 8 min for the guide (12 more with a stranger) | needs T-128d (with T-127); the guide needs T-150 |
-| 12 | The app: the settings panel and its orb | the orb · reading the panel · hitting its buttons · the long hold · by looking | 15 min | needs T-128d |
+| 11 | The app: plant, first sound, first loop | first sound within 20 s, first loop within 90 s · does a plant land where your fingers are · the first-minute guide: the ghost pinch, the hints from your seat, a stranger's first minute (T-150) · five first plays, thinking aloud (L5) | 10 min, and 8 min for the guide (12 more with a stranger); the five first plays 60 min, a sitting of their own | needs T-128d (with T-127); the guide needs T-150 |
+| 12 | The app: the settings panel and its orb | the orb · reading the panel · hitting its buttons · the long hold · by looking · pinch to sound, filmed (F11) | 15 min, and 10 min for the film (10 more on the Mac afterwards) | needs T-128d; the film's panel press needs T-164 |
 | 13 | The app: hands lost | the the hand-out-of-view icon (a palm in a dashed ring) words · the 0.2 s grace | 10 min | needs T-128d (with T-127) |
-| 14 | The app: ten minutes with a full garden | frame rate with sound and hands · steady time · Bass on the speakers · drift of the bed · what a hand lights up (T-119) | 30 min | needs T-128d |
-| 15 | The app: a key change listened to | the re-tune, rated | 10 min | needs T-128d |
+| 14 | The app: ten minutes with a full garden | frame rate with sound and hands · steady time · Bass on the speakers · drift of the bed · what a hand lights up (T-119) · speakers against headphones, and the app at 100 % (L7) · ten minutes kept on, startles, turning it down (L4, L8) | 30 min, and 31 min for the sound checks | needs T-128d |
+| 15 | The app: a key change listened to | the re-tune, rated · does the sound come from the plant (L6) · the 3D-sound comparison (HRTF A/B, T-145) | 10 min, and 10 min for the sound as you move (15 more for the comparison) | needs T-128d; the comparison needs an HRTF switch, not built |
 | 16 | The app: the garden comes back | the saved place: does the bed return, in how many seconds, how many cm off · the reach slack · the anchor count · a week later, in bloom (T-119) | 35 min | needs T-128e |
 | 17 | Rooms against the tape measure | what the app reads of a room, against your tape · two rooms sound different · the tuning ripple's look and its three notes, once (T-142, T-142b) | 10 min a room, and 20 min once for the ripple | needs T-128c; the ripple needs T-128d, its notes T-142b |
 | 18 | Say no: the room permission, and hand tracking off | P2 permission decline · what the app says | 15 min | today |
 | 19 | Clear the site's data | do the saved places go with it | 10 min | part A today (USB cable) · part B needs T-128e |
 | 20 | Hand the results to Claude | the filled results sheet | 10 min | today |
 
-All of it is about 5 h 30 of blocks (5 h 45 with the stranger of block 11), over 6 hours with setup and breaks. That is too long for one sitting, so there are two, and a walk through other rooms.
+All of it is about 5 h 30 of blocks (5 h 45 with the stranger of block 11), over 6 hours with setup and breaks. That is too long for one sitting, so there are two, and a walk through other rooms. The PM's headset-week sound checks (D-057) add 51 minutes, and an hour with five new people: they have sittings of their own, in the table below.
 
 | Sitting | Blocks, in this order | Time |
 |---|---|---|
 | **Sitting 1, the test pages and the app's entry.** Can be run today | 0 to 9 · 18 · 20 (and 19 part A only if time is left and you have a USB cable) | 2 h 50 of blocks; about 3 h 35 with 30 minutes of setup and two short breaks |
 | **Sitting 2, the garden in the app.** Needs T-128c, T-128d and T-128e | 0 again for the new build (10 min) · the listening steps of 9 (5 min) · 10 to 16 · 19 (part A, if not done in sitting 1, and part B) · 20 | 2 h 50 of blocks (3 h with the stranger of block 11); about 3 h 30 with setup and breaks |
 | **Room walk.** Needs T-128c | 17, in each other room you can reach; its ripple steps once, in room 1 (needs T-128d; the notes T-142b) | 10 minutes a room, and 20 minutes once; any day you have the headset |
+| **The sound checks (D-057).** Needs T-128d | 0 again for the new build (10 min) · the film of block 12 (F11) · the two sound checks of block 14 (L7; L4 and L8) · the sound as you move of block 15 (L6) · 20. Each check starts from its own "You need", so they also fit into sitting 2, each right after its block | 51 min of checks, 71 with blocks 0 and 20; about 1 h 30 with setup and a break. The 3D-sound comparison adds 15 min once its switch is built |
+| **Five first plays (L5).** Needs T-128d | the five first plays of block 11 | 60 minutes and five people new to Roomsong; any day you have the headset |
 | **One hour, a friend's headset.** Can be run today | see "One-hour version" near the end | 1 hour |
 
 If only part of the integration is merged on the day of sitting 2, run the blocks whose "Needs" line is met and skip the rest. Blocks 10 and 17 need the least (T-128c), then 11 to 15 (T-128d), then 16 and 19 part B (T-128e).
@@ -532,7 +534,7 @@ A pass on frame rate here is needed but not enough: the real test runs 10 minute
 
 **Purpose:** hear the garden loop on the headset's own speakers: is the low drone there, does the loop keep steady time, and what happens to the sound when the headset comes off.
 
-**Answers:** T-129 (bass on the headset speakers) · T-103 (listening review, one more rating) · from T-121: steady time and the stop when the headset is taken off, as far as this page can show it.
+**Answers:** T-129 (bass on the headset speakers) · T-103 (listening review, one more rating) · from T-121: steady time and the stop when the headset is taken off, as far as this page can show it · from the PM's 16 Oct update §7: the speakers at 100 % (harshness, buzz). The app's own mix at 100 % is block 14, "Also, speakers against headphones".
 
 **You need:** the Mac with a second Terminal window, the headset on the same Wi-Fi, no headphones.
 
@@ -560,11 +562,12 @@ A pass on frame rate here is needed but not enough: the real test runs 10 minute
 5. Pinch **Next room** twice. The room line reads "Hall": the lowest key on this page, with a drone at about 110 Hz and the longest echo. Listen for 30 seconds. Can you hear the drone? Is the echo clearly longer?
 6. Only if you can hit the small circles: pinch each Bell and each Pluck plant on the ring to remove it (the legend shows the colours). Only the two Pads are left. Listen for 30 seconds. Then pinch **Reset garden**.
 7. Listen for one more minute and count stutters, gaps and clicks.
-8. Read the line under the meter and write down the number after `tick` (the work of one audio tick, in ms).
-9. While it plays, take the headset off and hold it. Does the sound stop? After how many seconds?
-10. Put the headset back on. Is the sound there by itself? Clean, or with a jump?
-11. Pinch **Stop**.
-12. Rate it from 1 to 5: "If a garden you planted yourself sounded like this, would you keep listening and add more plants?" Add one sentence on what to change first.
+8. Turn the headset's volume up to its highest (100 %). Listen for 30 seconds: is it harsh? Do you hear a buzz or a rattle from the speakers, or crackling? Turn it back to the level of step 1.
+9. Read the line under the meter and write down the number after `tick` (the work of one audio tick, in ms).
+10. While it plays, take the headset off and hold it. Does the sound stop? After how many seconds?
+11. Put the headset back on. Is the sound there by itself? Clean, or with a jump?
+12. Pinch **Stop**.
+13. Rate it from 1 to 5: "If a garden you planted yourself sounded like this, would you keep listening and add more plants?" Add one sentence on what to change first.
 
 ### Write down
 
@@ -576,6 +579,7 @@ A pass on frame rate here is needed but not enough: the real test runs 10 minute
 | Pads alone | clearly / faintly / no / not done |
 | Anything harsh, muddy or crackling | words |
 | Stutters, gaps or clicks in one minute | count |
+| At 100 %: harsh; buzz, rattle or crackling | no / a little / very; none / which |
 | `tick` | ms |
 | Headset off | stops after … s / keeps playing / stutters |
 | Headset back on | plays cleanly / jumps / silent until Play |
@@ -585,6 +589,7 @@ A pass on frame rate here is needed but not enough: the real test runs 10 minute
 
 - Steady time: 0 stutters or gaps with the headset on (the page plans every note 120 ms ahead from a 25 ms tick).
 - Bass and the headset coming off: the documents give no number. Write down what you hear.
+- At 100 %: no buzz, rattle or crackling (the PM's 16 Oct update §7). The page ends in a limiter and a −1 dBFS ceiling (`proto/sound/src/engine.ts`), so what you hear is the speakers or a voice's own tone, not clipping. It is the first sketch, not the app's mix: a fail here is a note for the 100 % step of block 14, not a bug. Harshness is Parth's rating.
 
 ### If it fails
 
@@ -1042,6 +1047,52 @@ The rules of UAT_PLAN §3.1, as for UAT-16: from their pinch on Enter you say no
 - A step does not give way after 60 s: write down which, and the count. Claude files it against T-150 (D-053).
 - P0 is stuck: do not help. Stop at 90 s and write down where. If you helped, the run is "aided".
 
+### Also, five first plays, thinking aloud (L5; 60 min, a sitting of its own)
+
+**Needs: T-128d**, as this block. Checked against `develop` 079944d for what a new player hears first: the 2.5 s fade-in at the start, and a plant that sings its own note at once when it is let go (the placed note, T-173; API_SPEC §1.2). The cast is **(unchecked)**.
+
+**Answers:** the PM's 16 Oct update §7, L5: do new players notice, without being asked, that the sound reacts to them; does anybody find it uncomfortable (with L8). It is not UAT-16: nothing here is timed. A person who plays here is no longer a first-time user, so cannot be one of UAT-16's five later (UAT_PLAN §3.1).
+
+**You need:** five people who have never seen Roomsong, its video or its page and are not on the team, one at a time, none of them P0 of the guide; the app's plain bookmark; a note and a clock; a cast to the phone or the Mac if you can. Keep no name, photo, voice or video: call them A to E (UAT_PLAN §3.1).
+
+**Know this first:** what counts as "the sound reacts to me": a sentence, said before your questions in step 6, that ties a sound to something they did or to where they are. For example: "it played the one I just put down", "further out is higher", "it comes from over there", "it got louder when I leaned in", "it changed when I moved it". Not counted: words about the sound alone ("pretty", "calm"), or anything said after a question about the sound.
+
+#### Steps, for each person (12 min)
+
+1. Before they arrive: in your own session, open the panel, **Garden** tab, pinch **hold** beside "New garden" and keep the pinch 2 s, and leave. Their session begins on an empty bed with three seeds. Controllers out of reach.
+2. Seat them at your table, belly at its edge. Fit the headset and bring up the page with **Enter the garden**.
+3. Say only: "Please say out loud what you see, hear and think, the whole time. Tap Enter and do what it shows you. I can't help you."
+4. For 5 minutes from their pinch on Enter, write down what they say, word for word as far as you can, with the minute. If they are quiet for 10 seconds, say only "Keep talking". Any question gets "do what feels right".
+5. At 5 minutes, or when they stop by themselves, write down the time.
+6. Take the headset back. Ask, and write down the words: "Was anything uncomfortable or unpleasant: the sound, the light, anything?"
+7. Only then ask: "What did the sound do while you played?" This answer never changes the count of step 4.
+
+#### Write down, one column per person
+
+| Field | A | B | C | D | E |
+|---|---|---|---|---|---|
+| Words that tie a sound to what they did, unprompted (minute: words), or "none" | | | | | |
+| Counted as "the sound reacts to me": yes / no | | | | | |
+| Stopped before 5 minutes by themselves: at what time | | | | | |
+| Discomfort, while playing or in step 6: none / their words | | | | | |
+| What the sound did, in their words (step 7) | | | | | |
+| Room bright or dim; bed on the table or floating; used a headset, hand tracking before | | | | | |
+| Anything done with a controller | | | | | |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The sound reacts to them | at least 4 of 5 say so unprompted, in step 4 | the PM's 16 Oct update §7, L5 |
+| Comfort | nobody reports discomfort: 0 of 5, while playing or in step 6 | the same, L5 and L8 |
+| Fewer than five people | the result is "n of N, below sample", never a pass or a fail | UAT_PLAN §3.1, the same rule |
+| Hands only | no controller | Golden Rule 1 |
+
+#### If it fails
+
+- Fewer than 4 of 5: write down what the others talked about instead. It is a finding for Parth and the sound pass (T-164), not a bug.
+- Any discomfort: write down the minute and what was playing. Claude files it in BUG_LOG the same day.
+
 ---
 
 ## Block 12 — The app: the settings panel and its orb (15 min)
@@ -1112,6 +1163,57 @@ The rules of UAT_PLAN §3.1, as for UAT-16: from their pinch on Enter you say no
 - No orb: it shows on the hand that is not your main hand. Still none: tell Claude. Without the orb nothing else in this block can be done, and blocks 13 and 14 then need another empty garden: reload the page while T-128e is not in, or wait for block 19.
 - The panel is gone by itself: it closes when you look away from it for 5 seconds. Open it again.
 - The orb is in the way while you play: write down where your hands were. The review expected this risk.
+
+### Also, pinch to sound, filmed (F11; 10 min, and 10 min on the Mac afterwards)
+
+**Needs: T-128d.** The placed note is on `develop` (T-173 part 1, 079944d). A panel press makes no sound on `develop` 079944d (`ui('tick')` is silent until the sound pass): that half needs T-164. The phone's slow motion and the Mac's video editor are **(unchecked)**.
+
+**Answers:** the PM's 16 Oct update §7, F11: on the device, the time from the pinch to the sound for a seed let go on the bed (the placed note) and for a panel press · the UI-sound rule of at most 70 ms from the pinch to the sound, "measured on the device" (API_SPEC §1.2; T-172, P-025) · the finger-to-sound time of the last section of this file.
+
+**You need:** a phone that films slow motion at 240 frames a second with sound (one frame is 4.17 ms); something to stand it on; the headset's own speakers, no headphones (Bluetooth adds a delay of its own); this block's garden after step 17: empty, with three seeds.
+
+**Checked against:** `src/audio/AudioSystem.ts` (a seed let go on a cell plays `ui('placed')` at once), `src/audio/AudioEngine.ts` (of the UI sounds only `placed` and `goodnight` are built), `src/audio/config.ts` (`PLACED_DB_RE_PLANT` −9: the placed note is 9 dB under a full-height plant of its voice); API_SPEC §1.2 (no placed note when the light reaches the cell within one step).
+
+**Know this first:**
+
+- The plant is made when you let go, so the time runs from the first frame in which thumb and finger are apart to the first sign of the note in the sound track. A panel control acts on the release too.
+- No placed note sounds when the light reaches the cell within one step: let go in a cell the light has just passed.
+- The phone's picture and sound are not exactly in step. The claps of step 2 measure that offset; it is subtracted.
+- Sound needs 1.5 ms to cross 50 cm: keep the phone within that.
+
+#### Steps
+
+1. Stand the phone 30 to 50 cm from the near edge of the bed, filming the near side from the side, so your fingertips are sharp. Start slow motion.
+2. The offset: clap three times, hands 20 cm from the phone, in view.
+3. In this block's session, open a palm, take a seed, carry it over a free cell of the near ring just after the light has passed it, and let go. Hold still for 2 seconds. Do the same with the other two seeds.
+4. Only with T-164 in the build: open the panel and pinch **+** beside Tempo three times, slowly, in view of the phone. Close the panel.
+5. Stop filming. Open the panel, **Garden** tab, pinch **hold** beside "New garden" and keep the pinch 2 s: blocks 13 and 14 need the empty garden with three seeds.
+6. On the Mac, after the sitting: open the video in an editor that shows the sound wave under the frames. For each clap, count the frames from the palms touching to the start of its sound: the middle of the three is the offset. For each plant, count the frames from the first frame with thumb and finger apart to the start of its note; for a panel press, from its release. Frames × 4.17 ms, minus the offset, is the time. Show only your hand in the video, keep it out of the repository, and delete it once the numbers are written down.
+
+#### Write down
+
+| Field | Value |
+|---|---|
+| The phone's slow-motion rate | frames a second |
+| The three claps: frames each; the offset (the middle one) | frames; ms |
+| The three placed notes: frames each; time after the offset | frames; ms each |
+| A seed let go on a free cell with no note heard | count; where the light was |
+| The three panel presses: frames each; time | frames; ms each, or "no sound (T-164 not in)" |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| A seed let go | each placed note at most 70 ms after the fingers part | API_SPEC §1.2 (the UI-sound rule, T-172, P-025); the PM's 16 Oct update §7, F11 |
+| A panel press | each tick at most 70 ms after the release | the same; needs T-164 |
+| A seed let go away from the light | it sings at once, every time | API_SPEC §1.2 (T-173, P-012) |
+| Within one frame of 70 ms | "at the limit", neither a pass nor a fail: one frame is 4.17 ms | 240 frames a second |
+
+#### If it fails
+
+- Over 70 ms: write down every time, and `audio.outputLatency` from block 1 (the capability page). Claude splits the time into the hand, the frame and the sound and files it.
+- No note for a seed let go away from the light: write down the ring and where the light was. Claude files it against T-173.
+- The phone has no 240: film at its highest rate and write it down; one frame is then 1000 ÷ that rate, in ms.
 
 ---
 
@@ -1265,6 +1367,102 @@ Listen mode is part of TC-DEV-07 and is not on `develop` yet (T-148): that half 
 - Clicks or gaps: write down what was playing. Compare with the crackle step of block 1.
 - The Bass cannot be heard: nothing to do in the sitting. The sound pass (T-164) adds overtones to it.
 
+### Also, speakers against headphones, and the app at 100 % (L7; 15 min)
+
+**Needs: T-128d**, as this block. The headset's sound socket is **(unchecked)**: if it has no 3.5 mm socket, use headphones with a USB-C plug, or a USB-C to 3.5 mm adapter, in its USB-C port.
+
+**Answers:** the PM's 16 Oct update §7, L7: is the Bass there on the Quest's built-in speakers, against wired headphones, for you and two other listeners (its fundamentals are 55 to 147 Hz, where small speakers give little) · the same update: the app's own mix at 100 % (harshness, buzz) · whether the Devpost line that sends judges to the built-in speakers holds.
+
+**You need:** the full garden of part A (60 plants, 12 of them Bass); the app's plain bookmark; wired headphones, not Bluetooth; two listeners from outside the team, one at a time (friends or family will do); the Key from step 5 of this block.
+
+**Know this first:** in the key of A the lowest Bass note is 55 Hz; in a smaller room the key, and so the Bass, is higher. Taking the headset off to hand it over pauses the garden (block 9); if it is not playing when the next listener has it on, enter again.
+
+#### Steps
+
+1. Open the plain bookmark and enter: the full garden plays. Panel, Sound tab: the Volume reads 80 %, the default. Leave it. Headset volume at the middle, as in block 5.
+2. Speakers: for 30 seconds listen to the lowest notes, under the others. Clearly, faintly or not at all?
+3. Plug in the headphones. The same 30 seconds and the same question. Unplug.
+4. Each listener in turn: fit the headset on them and say only "Listen to the lowest notes, under the others." 30 seconds on the speakers, then 30 on the headphones; they answer clearly, faintly or not at all for each. Then ask "Which would you keep?"
+5. The 100 %, you, on the speakers: the headset's volume to its highest; on the panel, Volume **+** twice, to 100 %. Listen for 30 seconds: harsh? A buzz, a rattle or crackling? Then Volume **−** twice, back to 80 %, and the headset back to the middle.
+
+#### Write down
+
+| Field | You | Listener 1 | Listener 2 |
+|---|---|---|---|
+| The Bass on the built-in speakers | clearly / faintly / no | | |
+| The Bass on the headphones | clearly / faintly / no | | |
+| Which they would keep | speakers / headphones | | |
+
+| Also | Value |
+|---|---|
+| The Key on the panel | letter |
+| The headphones' plug | 3.5 mm socket / USB-C / adapter |
+| At 100 % on the speakers: harsh; buzz, rattle or crackling | no / a little / very; none / which |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The Bass on the speakers | every listener hears it on the speakers, at least faintly | the PM's 16 Oct update §7, L7 (fundamentals 55 to 147 Hz) |
+| Speakers against headphones | a listener who hears it on the headphones and not on the speakers is a fail: the Bass needs overtones that small speakers carry | the same; T-144, T-164 |
+| At 100 % | no buzz, rattle or crackling. The mix ends in a compressor and a −1 dBFS ceiling, so what is left is the speakers or a voice's own tone. Harshness is Parth's rating | the PM's 16 Oct update §7; API_SPEC §1.2 |
+
+#### If it fails
+
+- No Bass on the speakers: write down the Key. The sound pass (T-164) adds overtones to the Bass. The Devpost line for the speakers stays: the delay of Bluetooth headphones is the worse problem.
+- A buzz at 100 %: lower the headset's volume one step at a time until it goes, and write down that level.
+- No sound in the headphones: write down the plug and skip the headphone half of steps 3 and 4.
+
+### Also, ten minutes kept on, startles, and turning it down (L4 and L8; 16 min)
+
+**Needs: T-128d.** **Checked against:** `src/audio/config.ts` (`START_FADE_S` 2.5: from silence the master is −10 dB at 0.3 s and −3 dB at 1 s), `src/ui/config.ts` (`VOLUME_STEP` 0.1: a press moves the Volume 10 %, UX §3.6), `src/ui/Panel.ts` (the **Mono** switch on the Sound tab's last row), API_SPEC §1.2 (`setMono` sums the mix to mono at the master; `resume()` fades in) and §4 (`volume` and `mono` are saved with the settings).
+
+**Answers:** the PM's 16 Oct update §7, L4: a ten-minute "keep it on" test, with the times a listener would stop and the times a sound startled them · L8: comfort, startle, and a way to turn the music down (the Volume on the Sound tab; the Mono switch) · Golden Rule 4 (a session of up to 10 minutes, and satisfying).
+
+**You need:** a wearer, best someone who has not heard the garden today (a friend, or a listener of L7); you, with a clock and a note; the full garden of part A; the app's plain bookmark.
+
+#### Steps
+
+1. Say only: "Play and listen as you would at home, for up to ten minutes. Say 'stop' at the moment you would turn it off, and 'jump' each time a sound makes you jump."
+2. They pinch **Enter the garden**: start the clock. Listen too: does the sound rise from silence over about 2 seconds, or start with a jump?
+3. Write down the minute and second of every "jump", and of "stop". At "stop", ask "Why?", write it down, and let them go on if they like: the stop time stays.
+4. At 10 minutes (or at "stop", if they want to end): say "Now make the music quieter, with your hands only." Time it from your sentence to the first quieter note. Say nothing else for 60 s; after that, show them the orb, and the run is "shown". Write down what they reached for first: the orb, the headset's own volume buttons, or something else.
+5. Panel, Sound tab: Volume **−** until it reads 0 %. Is it silent? Then **+** up to 50 %.
+6. Pinch **Mono** on. Ask them to turn their head left and right: do the plants still come from their own side, or the same from everywhere? Louder, softer or the same?
+7. Leave the session with Mono on and the Volume at 50 %. Enter again: do both read as you left them? Does the sound rise from silence again? Then the Volume back to 80 % and Mono off.
+8. Ask, and write down the words: "Was anything uncomfortable: too loud, sudden, shrill, tiring for your ears?"
+
+#### Write down
+
+| Field | Value |
+|---|---|
+| "stop": the time, and why | m:ss, words; or "not before 10:00" |
+| "jump": each time, and what was playing | m:ss, words each; or "none" |
+| The start at Enter | rose from silence / jumped |
+| Quieter: seconds; alone or shown; reached first for | s; alone / shown; the orb / the headset's buttons / other |
+| Volume at 0 % | silent / still heard |
+| Mono: from their own side or from everywhere; the level | words; louder / softer / the same |
+| After leaving and entering: the Volume at 50 % and Mono on kept; the start rose again | yes / no each |
+| Discomfort | none / their words |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Kept on | no "stop" before 10:00 | the PM's 16 Oct update §7, L4; Golden Rule 4 |
+| Startle | no "jump" | the same, L4 and L8 |
+| The start | the sound rises from silence over about 2.5 s, at Enter and after leaving and entering; never a jump to full level | API_SPEC §1.2 (`resume()`; T-173, P-014) |
+| Turning it down | done with hands only; each Volume press is 10 %; 0 % is silent | the PM's 16 Oct update §7, L8; Golden Rule 1; UX §3.6 |
+| Mono | the plants no longer come from their own side; Mono and the Volume are kept after leaving | API_SPEC §1.2 (`setMono`) and §4 |
+| Comfort | nothing uncomfortable | the PM's 16 Oct update §7, L8 |
+| The time to find "quieter" | write it down: the documents give no number | the PM's 16 Oct update §7, L8 |
+
+#### If it fails
+
+- A "stop" or a "jump": write down what was playing at that moment (a voice, the light, a placed note). Claude takes each to the sound pass (T-164) and files each startle in BUG_LOG.
+- Not found alone in 60 s: write down where they looked. A finding for the panel and its orb (T-151).
+- The Volume or Mono not kept: Claude files it against the panel and the save (T-151, T-128e).
+
 ---
 
 ## Block 15 — The app: a key change listened to (10 min)
@@ -1315,14 +1513,87 @@ The documents give no number. Parth's ratings decide two things: whether the shi
 - Nothing changes at step 4: the bed did not float, or this room was not read. Write that down. Then the only change you can hear is the one at Enter (steps 1 and 2), and the rest waits for the two-room test (TC-DEV-13, block 17).
 - No **Re-place bed** on the panel, or it does something else: write it down and tell Claude. This step is from the plan.
 
+### Also, the sound as you move: does it come from the plant? (L6, T-145; 10 min)
+
+**Needs: T-128d.** **Checked against:** API_SPEC §1.2, "As built (T-145, the spatializer)" (24 equal-power panners; the listener glides after the head with `PARAM_SMOOTH_S` 0.03 s in `src/audio/config.ts`, so the sound settles within about 0.1 s of a head that stops) and `src/render/PerfHud.ts` (its lines show `voices`, not the audio load). The console's WebAudio tab is **(unchecked)**. The same turn in Listen is device script S2, block 6B, step 5.
+
+**Answers:** the PM's 16 Oct update §7, L6: does the sound come from the plant: pointing, fast head turns; buzz, grain, sound trailing the head, crackle · TC-AUD-04 on the headset (no clicks at 24 voices; so far measured in desktop Chromium only) · NFR-PERF-06 (the audio graph within 15 % of one core, no glitches at 24 voices).
+
+**You need:** the full garden of block 14 (60 plants, so many voices sound at once); the app with `?dev=1&flags=perfHud`; the Mac's console over USB for step 6 (a bonus).
+
+#### Steps
+
+1. Enter: the full garden plays. Close your eyes. Point with one finger at where the notes come from and follow them round for two turns of the light. In the third turn open your eyes, still pointing: is your finger on the light? If not, how far off: an eighth of the ring, a quarter, more?
+2. Eyes open, look at the far side of the bed, then turn your head 90° to the left and hold it. Do the notes stay at the bed, now on your right? Then 90° to the right.
+3. Turn your head fast left and right for 30 seconds. Listen for buzz, grain or crackles that are not there when you hold still: none, a little, a lot.
+4. Turn quickly and stop: does the sound trail behind your head and catch up after you stop? Yes or no.
+5. Listen to the note starts for 30 seconds: any ticks? Yes or no. Write down the highest `voices` on the read-out.
+6. (console) In the inspect window open the **WebAudio** tab (in its ⋮ menu, More tools). It shows the AudioContext's **Render Capacity**, in %. Write down the highest while you hold still, and while you turn fast.
+
+#### Write down
+
+| Field | Value |
+|---|---|
+| Pointing with eyes closed: the finger at the third turn | on the light / an eighth of the ring off / a quarter / more |
+| Head turned 90°: the notes stay at the bed | yes / no, each side |
+| Fast turns: buzz, grain or crackles | none / a little / a lot |
+| A quick stop: the sound trails | yes / no |
+| Ticks at note starts; the highest `voices` | yes / no; number |
+| (console) Render Capacity: still; turning fast | %; % |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Pointing | the documents give no number: write it down. A finger more than a quarter of the ring off (4 of its 16 steps) is a reason to run the comparison below | FR-MUS-06 (each plant's sound at its place); the PM's 16 Oct update §7, L6 |
+| Head turned | the notes stay at the bed | TC-DEV-04, FR-MUS-06 |
+| Buzz, grain, crackles, ticks | none | TC-AUD-04; NFR-PERF-06 (no glitches at 24 voices) |
+| Trailing | none you can hear: the listener settles within about 0.1 s | API_SPEC §1.2 (T-145); `PARAM_SMOOTH_S` 0.03 s |
+| Audio cost | Render Capacity at most 15 %, still and turning. It is the nearest reading a page gives to "15 % of one core" | NFR-PERF-06 |
+
+#### If it fails
+
+- Buzz, grain or crackles only while turning: write down the highest `voices` and the Render Capacity. Claude compares them with TC-AUD-04 and files it against T-145.
+- The sound trails: write down about how long (a blink, half a second, more). Claude files it against T-145.
+- No WebAudio tab: write "no tab" and the Chrome version on the Mac.
+
+### Also, the 3D-sound comparison (HRTF A/B, T-145; 15 min)
+
+**Needs: a switch for the HRTF panners, not built.** API_SPEC §1.2 has no HRTF switch: at most 2 HRTF "hero" panners may be added, and only after this comparison justifies them (NFR-PERF-10, FR-MUS-06). Every step is **(from the plan)**: when a switch lands, Claude names it here and takes the mark off. In desktop Chromium two HRTF panners cost no measurable render time (LLD §7.1); the headset is the open question.
+
+**Answers:** T-145 and NFR-PERF-10: are 2 HRTF panners worth having on the headset · is the plant easier to place by ear with them · what they cost on the headset's audio thread (NFR-PERF-06).
+
+**You need:** a helper who works the switch; a coin; the full garden of block 14; the Mac's console over USB with the WebAudio tab, as in the section above.
+
+#### Steps
+
+1. Switch off (equal power for all, as today): hold still for 30 seconds, then turn fast for 30. Write down the highest Render Capacity of each.
+2. Switch on: the same.
+3. Eight rounds. In each, the helper flips the coin and sets the switch (heads on, tails off) without a word. You point with your eyes closed for two turns of the light, as in step 1 above, and open them in the third. Say your guess, "on" or "off", and how far off your finger was. The helper writes down the switch.
+
+#### Write down
+
+| Field | Value |
+|---|---|
+| Render Capacity, switch off: still; turning | %; % |
+| Render Capacity, switch on: still; turning | %; % |
+| Eight rounds: the switch, your guess, the finger off by | on / off; on / off; on / an eighth / a quarter / more, each |
+| A crackle with the switch on that was not there with it off | yes / no |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Heard | your guess right in at least 7 of 8 rounds (by chance 1 in 28), and the finger nearer the light with the switch on | the documents give no number: this script's line; adopting it is Parth's decision |
+| Cost | Render Capacity with the switch on at most 15 %, still and turning; no new crackle | NFR-PERF-06 |
+| Count | never more than 2 HRTF panners | NFR-PERF-10 |
+
+#### If it fails
+
+- Fewer than 7 of 8, or the finger no nearer: the equal-power panners stay, as today. Claude writes the result into the note of NFR-PERF-10.
+- Over 15 %: write down both numbers. HRTF stays out, whatever the ears say.
+
 ---
-
-
-### Also, the sound as you move (T-145)
-1. Let a full garden play and turn your head fast left and right for 30 seconds. Listen for buzz, grain or crackles that are not there when you hold still. Write down: none, a little, a lot.
-2. Turn quickly and stop: does the sound trail behind your head? Write down: yes or no.
-3. Listen to note starts in a full garden: any ticks? Write down: yes or no.
-4. With `?dev=1&flags=perfHud`, read the audio load while turning. Write down the highest number you see.
 
 ## Block 16 — The app: the garden comes back (35 min)
 
@@ -1790,7 +2061,7 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 19 | No drawn hands: did aiming suffer | | 2, 8 | D-027 |
 | 20 | Garden preview: `fps` usual and lowest, with 13 plants and with 80 | | 4 | T-165; TC-PERF-01 |
 | 21 | The garden's look, 1 to 5, and what to change first | | 4 | the art pass (T-163) |
-| 22 | The drone on the headset's speakers, in "Wanderer" and in "Hall" | | 5 | the sound pass (T-164) |
+| 22 | The drone on the headset's speakers, in "Wanderer" and in "Hall"; at 100 %: harsh, buzz or rattle | | 5 | the sound pass (T-164) |
 | 23 | The sound sketch, 1 to 5 | | 5 | T-103 |
 | 24 | Same room twice: does floor area, ceiling height or volume change band | | 1, 6 | D-028; PROGRESS item 21; the wording "same key and scale" |
 | 25 | No Space Setup: does the test ray hit the table | | 7 | T-123 (placing the bed by a pinch) |
@@ -1892,6 +2163,19 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 96 | The palm, pull and drag icons named from your seat; a step that waited more than 60 s | | 11 | T-150; D-053; T-163 |
 | 97 | P0: first sound (s), three plants (s), aided or not, where they stopped, what the hand meant | | 11 | TC-DEV-01; UAT-16 (a first look, below sample); T-166 |
 
+### The sound checks (D-057) — blocks 11, 12, 14 and 15
+
+| # | What | Your answer | From block | Who waits for it |
+|---|---|---|---|---|
+| 98 | Five first plays: how many of 5 said, unprompted, that the sound reacts to them; anybody uncomfortable | | 11 | L5; T-164 |
+| 99 | Pinch to sound, filmed: the three placed notes (ms, after the offset); the panel's ticks, or "not built" | | 12 | F11; API_SPEC §1.2 (at most 70 ms); T-173; T-164 |
+| 100 | The Bass on the built-in speakers and on headphones, for you and two listeners; the Key | | 14 | L7; T-164; the Devpost line for the speakers |
+| 101 | The app at 100 % on the speakers: harsh; buzz, rattle or crackling | | 14 | L7; T-164 |
+| 102 | Ten minutes kept on: the "stop" time; each "jump" and what was playing; the start from silence | | 14 | L4, L8; T-164 |
+| 103 | Turning it down: seconds, alone or shown, what they reached for first; 0 % silent; Mono heard; both kept | | 14 | L8; T-151 |
+| 104 | Pointing at the sound; head turns; buzz, grain, crackles, trailing, ticks; Render Capacity | | 15 | L6; T-145; NFR-PERF-06 |
+| 105 | The HRTF comparison: right guesses of 8; Render Capacity off and on | | 15 | T-145; NFR-PERF-10 |
+
 ---
 
 ## One-hour version, for a borrowed headset
@@ -1910,7 +2194,7 @@ Ask the owner beforehand: headset charged, hand tracking on, Space Setup done in
 8. Block 8, steps 5 to 12 (5 min): the Enter pinch, "Sound unavailable" yes or no on both entries, T2.
 9. Block 18, part A (8 min).
 10. Block 20, by mail (5 min).
-11. Block 5, headset steps 1 to 5 and 9 to 11, only if the Mac is there (8 min).
+11. Block 5, headset steps 1 to 5 and 10 to 12, only if the Mac is there (8 min).
 12. Left out: run 3, blocks 6, 7 and 9, the other beta values, the 80-plant run, block 18 part B, block 19, and every block that needs the garden in the app (10 to 17).
 13. On the results sheet you can fill lines 1 to 9, 11 to 21 and 32, and lines 22 and 23 if the Mac is there.
 14. Optional recording of block 2: Navigator → Camera → Record video. Do not record during block 1 or block 4: recording may lower the frame rate those blocks read. Clear the table and walls of brand names and photos first, and keep other people out of view.
@@ -1958,6 +2242,7 @@ You hand them over (block 20). Claude files them:
 | Pause and resume: is the app told, and does the sound need a pinch (T-152) | block 9 |
 | The key change: keep the shifted notes and the echo swap, or change them (PROGRESS item 27, T-164) | block 15 |
 | The sound direction (T-103, sound pass T-164) | blocks 5 and 14 |
+| The sound pass's Bass overtones, its level at 100 %, its startles and the way to turn it down (T-164); HRTF panners or none (T-145, NFR-PERF-10); the Devpost line for the built-in speakers | the sound checks of blocks 5, 11, 12, 14 and 15 (D-057) |
 | The hand reader's switch to `XRFrame.fillPoses` (follow-up of T-124) | done after this run |
 
 ### The three results that could change the plan the most
@@ -1976,7 +2261,6 @@ Not in this script, because no review note asks for it here and its own task or 
 |---|---|
 | Pull, drag and drag-off, with the 2 cm of movement that decides between them (TC-DEV-03) | device script S2 (T-154), once T-146 is in. Block 13, step 11, only covers a hand lost while shaping |
 | Listen mode; one-hand and look-and-hold modes over a full loop, and the beat ring; the policy sweep on the headset (TC-DEV-04, 06, 11); the Listen half of TC-DEV-07 | device script S2 (T-154): Listen in blocks 6A to 6D, one hand and look and hold in block 9; the policy sweep is not written yet |
-| The 3D-sound comparison (HRTF A/B) | T-145 |
 | The same blocks on a Quest 3S (TC-DEV-12) | a second run of this script, if a 3S is at hand |
 
 ---
@@ -1994,7 +2278,7 @@ Not in this script, because no review note asks for it here and its own task or 
 | P2 permission decline | block 18 |
 | H1 pinch on the ring (TC-DEV-00) | blocks 2 and 3 |
 | F1/F2 frame rates and foveation | block 1 (an empty page), block 4 (the garden drawn), blocks 8 and 9 (the app's empty session and its layer), block 14 (sound and hands) |
-| W1 audio | blocks 1 and 14; the 3D-sound comparison is T-145 |
+| W1 audio | blocks 1 and 14; the 3D-sound comparison is block 15 (it needs an HRTF switch) |
 | A1 anchors ×2 | block 1 (reload, restart), block 6 (after about an hour) |
 | A1 drift | block 14 (ten minutes), block 16 (cm on every return) |
 | M1 mesh | block 1 |
@@ -2113,6 +2397,15 @@ Not in this script, because no review note asks for it here and its own task or 
 | Frame rate with the garden drawn | blocks 4 and 14 |
 | The landing page and the entry (T-126, T-128a) | blocks 0 and 8 |
 | The garden's look in passthrough (T-125) | block 4 |
+| **From the PM's 16 Oct update §7 (D-057; it supersedes PM_PROPOSALS P-020)** | |
+| L4: a ten-minute "keep it on" test, stop and startle times | block 14, ten minutes kept on, steps 1 to 3 |
+| L5: a first play by five new people, thinking aloud | block 11, the five first plays |
+| L6: does the sound come from the plant: pointing, fast turns; buzz, grain, trailing, crackle | block 15, the sound as you move (the T-145 steps that were there, with pass rules) |
+| L7: built-in speakers against headphones, with other listeners | block 14, speakers against headphones |
+| L8: comfort, startle, a way to turn the music down (the Volume, the Mono switch) | block 14, ten minutes kept on, steps 2 and 4 to 8; block 11, the five first plays, step 6 |
+| F11: UI latency filmed at 240 fps, a placed plant and a panel press (it replaces the finger-to-sound row of the last section) | block 12, the film |
+| A pass at 100 % volume | block 5, step 8; block 14, speakers against headphones, step 5 |
+| The HRTF A/B with its cost (T-145) | block 15, the comparison (needs an HRTF switch) |
 
 ---
 
@@ -2124,7 +2417,6 @@ The notes ask for these, and nothing on `develop` shows them. Do not hunt for th
 |---|---|---|---|
 | The time between two pinches of the same hand (about 153 ms expected at 72 Hz) (T-124) | no page times one pinch against the next | the pinch page, as a follow-up of T-124 | 3 |
 | The real gap between thumb and finger at the start and the end of a pinch, in cm | the pinch page judges the gap and does not show it | the same follow-up | 2 |
-| Finger-to-sound time | needs a slow-motion video of a finger and the sound; no code | Parth, with a phone, during block 2; a step for it belongs in device script S2 (T-154) | 2 |
 | Do page timers run at their normal rate in a session, seen and unseen (T-128a, T-162) | nothing shows a timer's rate | T-152, which depends on the answer; or the capability page | 9 |
 | How long the part of `engine.init()` inside the Enter pinch takes (T-128a) | not logged | T-128d, which next edits that click: one `[app]` line | 8 |
 | The longest single audio tick (T-121, T-143) | `stats.cpuEstimate` is an average over time and hides one long tick | T-128d, which adds `stats.triggers` beside it; or T-165 | 14 |

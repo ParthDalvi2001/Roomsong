@@ -149,6 +149,9 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 | Today, 15 Oct (product-owner guess, no headset; Nov 12 guess 6 / 6 / 5 / 5; see DEVPOST_DRAFT §2) | 4 | 3 | 5 | 2 | product-owner |
 
 ## Stand-ups
+### 2026-10-20
+- **01:35 IST — T-173 part 1 and the headset steps for the sound checks; pushed.** Each plant plays on its own 1, 2, 3 or 5-bar cycle in the styles; a note when a plant is placed; a 2.5 s fade-in; a Mono switch (P-009, P-012, P-014). DEVICE_SCRIPT_S1 gains the PM's §7 sound checks (blocks 5, 11, 12, 14, 15); Devpost "How to test" says built-in speakers (Bluetooth lags). Full browser suite 107 of 107 on develop (20 min). T-165 A reviewed: approved, its 4 small fixes done; merge next. Running: T-165 B, T-174.
+
 ### 2026-10-19
 - Done: nothing merged on 18–19 Oct (the Mac was off); 46 of 74. Today: T-173 part 1 review then merge; T-165 A and B finish; G1 prepared; the weekly rule check (no changes). Pace 14–17 Oct: 13 tasks in 4 days; about 10 rows left for agents (about 5 days), so the freeze is safe for the code, not for Stage 1 (no public link, no capture rig, the sound unrated since "bad", no headset; Emergency mode Oct 27). Decisions for Parth: item 37.
 
