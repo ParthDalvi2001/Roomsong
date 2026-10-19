@@ -100,6 +100,9 @@ export class FakeNode {
   readonly delayTime = new FakeParam(0);
   /** createDelay(maxDelayTime); 0 for every other kind. */
   maxDelayTime = 0;
+  /** A GainNode's defaults (MDN: AudioNode.channelCount, channelCountMode). */
+  channelCount = 2;
+  channelCountMode: ChannelCountMode = 'max';
   loop = false;
   type = '';
   panningModel = 'equalpower';

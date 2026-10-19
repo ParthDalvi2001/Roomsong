@@ -118,7 +118,7 @@ describe('settings panel: opening, closing and the tabs (UX §3.6)', () => {
     const header = ['tab:sound', 'tab:access', 'tab:garden', 'close'];
     expect(ids(opened('sound'))).toEqual([
       ...header,
-      ...['tempo:-', 'tempo:+', 'volume:-', 'volume:+', 'reverb:auto', 'reverb:small', 'reverb:off'],
+      ...['tempo:-', 'tempo:+', 'volume:-', 'volume:+', 'reverb:auto', 'reverb:small', 'reverb:off', 'mono'],
     ]);
     expect(ids(opened('access'))).toEqual([
       ...header,
@@ -175,6 +175,8 @@ describe('settings panel: every control writes core settings and shows the value
     ['sound', 'reverb:small', { reverb: 'small' }],
     ['sound', 'reverb:off', { reverb: 'off' }],
     ['sound', 'reverb:auto', { reverb: 'auto' }, { reverb: 'off' }],
+    ['sound', 'mono', { mono: true }],
+    ['sound', 'mono', { mono: false }, { mono: true }],
     ['access', 'oneHand', { oneHand: true }],
     ['access', 'oneHand', { oneHand: false }, { oneHand: true }],
     ['access', 'gazeDwell', { gazeDwell: true }],
@@ -213,8 +215,11 @@ describe('settings panel: every control writes core settings and shows the value
 
   it('shows the current values: read-outs, the chosen option and each switch in words', () => {
     const panel = opened('sound');
-    expect(words(panel)).toEqual(expect.arrayContaining(['Tempo', '84 BPM', 'Volume', '80 %', 'Reverb']));
+    expect(words(panel)).toEqual(
+      expect.arrayContaining(['Tempo', '84 BPM', 'Volume', '80 %', 'Reverb', 'Mono']),
+    );
     expect(control(panel, 'reverb:auto')).toMatchObject({ on: true, text: 'auto' });
+    expect(control(panel, 'mono')).toMatchObject({ on: false, text: 'off' }); // P-014
     press(panel, 'tempo:+');
     press(panel, 'volume:-');
     press(panel, 'reverb:small');

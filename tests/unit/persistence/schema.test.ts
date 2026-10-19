@@ -94,6 +94,12 @@ describe('persistence/schema validateState', () => {
       expect(validateState(odd)?.settings).toEqual({ ...savedGarden().settings, dwellMs: 900 });
     });
 
+    it('loads a save from before the mono switch (P-014) in stereo, with no new schema version', () => {
+      const before = validateState({ ...savedGarden(), settings: omit(savedGarden().settings, 'mono') });
+      expect(before?.settings).toEqual({ ...savedGarden().settings, mono: false });
+      expect(before?.version).toBe(1);
+    });
+
     it('gives a state with no settings the defaults and keeps its plants', () => {
       const state = validateState(omit(savedGarden(), 'settings'));
       expect(state?.settings).toEqual(DEFAULT_SETTINGS);

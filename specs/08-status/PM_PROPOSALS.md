@@ -58,7 +58,7 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** give each plant a seeded cycle length (1, 2, 3 or 5 bars) or a 10–15 % skip chance; raise FR-MUS-11 to Should and apply it outside Listen mode.
 **Why:** consecutive bars correlate at 0.97–1.00 in the prototype renders; cycles of 1/2/3/5 bars repeat only every 30 bars (86 s at 84 BPM).
 **Impact:** S, G0/G1.
-**Status:** approved (D-056, group B: may be built)
+**Status:** approved (D-056, group B); done in the styles (T-173 part 1, 19 Oct; FR-MUS-13)
 
 ### P-010 — Reverb pre-delay and room damping (2026-10-14, Chinmay's Claude)
 **Change:** 5–25 ms of pre-delay inside the generated impulse response, scaled by room size; `IR_LPF_COEF_END` per room.
@@ -76,7 +76,7 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** `placed` plays the new plant's own voice and note quietly at once; all UI sounds tuned to the room's key.
 **Why:** a plant can wait up to one bar (2.9 s at 84 BPM) before it sounds; out-of-key UI breaks the music.
 **Impact:** S.
-**Status:** approved (D-056, group B: may be built)
+**Status:** approved (D-056, group B); done (T-173 part 1, 19 Oct): the placed note in every style
 
 ### P-013 — Seeded per-note level variation (2026-10-14, Chinmay's Claude)
 **Change:** ±1.5 dB per note from a per-session seed; timing stays on the grid.
@@ -88,7 +88,7 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** a quiet root drone while there are fewer than 3 plants; a 2–3 s fade-in at session start; a mono audio switch in Settings; an aliasing check of Bell FM at its top notes.
 **Why:** silent start, unclear home note, startle risk; Quest's hearing setting only adjusts balance.
 **Impact:** S.
-**Status:** approved (D-056, group B: may be built)
+**Status:** approved (D-056, group B); done (T-173 part 1, 19 Oct): the start fade, the mono switch, the Bell check (no aliasing); the drone is T-164's
 
 ### P-015 — Listening-based growth, 5 levels, time-lapse demo (2026-10-14, Chinmay's Claude)
 **Change:** 5 growth levels (seed, sprout, growing, flowering, fruiting) reached by listening hours (2, 12, 72, 432 h, small steps at each doubling); each level adds one sound layer; a seeded 4-note tune per seed; a persisted listening counter (schema bump); a labelled "Time-lapse (demo)" switch in the submitted build.

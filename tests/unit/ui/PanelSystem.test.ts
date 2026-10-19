@@ -401,7 +401,16 @@ function rig(given: { garden?: object | null; room?: object | null } = {}) {
 }
 
 const HEADER = ['tab:sound', 'tab:access', 'tab:garden', 'close'];
-const SOUND = ['tempo:-', 'tempo:+', 'volume:-', 'volume:+', 'reverb:auto', 'reverb:small', 'reverb:off'];
+const SOUND = [
+  'tempo:-',
+  'tempo:+',
+  'volume:-',
+  'volume:+',
+  'reverb:auto',
+  'reverb:small',
+  'reverb:off',
+  'mono',
+];
 const SWITCHES = ['oneHand', 'gazeDwell', 'highContrast', 'reducedMotion', 'beatRing'];
 const ACCESS = [...SWITCHES, 'hand:left', 'hand:right'];
 

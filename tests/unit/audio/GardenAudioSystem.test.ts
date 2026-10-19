@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { GardenAudioSystem } from '../../../src/audio/AudioSystem.js';
 import { bus } from '../../../src/core/index.js';
 import { WANDERER } from '../../../src/garden/index.js';
-import { garden, plant } from '../garden/fixtures.js';
+import { garden, plant, seed } from '../garden/fixtures.js';
 import { FakeEntity, FakeQuery } from '../render/seedRig.js';
 
 import type { GardenState } from '../../../src/garden/index.js';
@@ -30,7 +30,7 @@ function rig() {
       synced.push({ plants, pose: Array.from(pose) });
     },
     setListenerPose: (head: ArrayLike<number>) => listener.push(Array.from(head)),
-    ui: (sound: string) => calls.push(`ui ${sound}`),
+    ui: (sound: string, plantId?: string) => calls.push(['ui', sound, plantId].filter(Boolean).join(' ')),
   };
   const head = new Object3D();
   head.matrixWorld.makeTranslation(0, 1.2, 0);
@@ -120,6 +120,25 @@ describe('GardenAudioSystem', () => {
     r.xr.isPresenting = false;
     r.system.update();
     expect(r.listener[1]).toEqual(r.camera.matrixWorld.elements);
+  });
+
+  it('a seed set into a cell sounds at once (P-012): synced first, then named; a load, an undo, a seed sent back do not', () => {
+    const r = rig();
+    r.beds.add(r.bed);
+    r.signature();
+    const add = (state: GardenState, id: string): void =>
+      bus.emit('garden:changed', { state, diff: { added: [id], removed: [], changed: [] } });
+    bus.emit('garden:seedOut', { seed: seed('s1'), hand: 'right' });
+    const planted = garden([plant('s1', 2, 5)]);
+    r.calls.length = 0;
+    add(planted, 's1');
+    expect(r.calls).toEqual(['syncPlants', 'ui placed s1']);
+    add(planted, 's1'); // the same plant back by its undo petal: no seed was out
+    add(garden([plant('s1', 2, 5), plant('auto-0', 0, 0)]), 'auto-0'); // added with no seed out (a load)
+    bus.emit('garden:seedOut', { seed: seed('s2'), hand: 'left' });
+    bus.emit('garden:seedBack', { seedId: 's2', reason: 'full' });
+    add(garden([plant('s2', 1, 1)]), 's2'); // a seed that went back is out no more
+    expect(r.calls).toEqual(['syncPlants', 'ui placed s1', 'syncPlants', 'syncPlants', 'syncPlants']);
   });
 
   it('a seed let go off the bed bumps (UX §7); one sent back for any other reason makes no sound here', () => {

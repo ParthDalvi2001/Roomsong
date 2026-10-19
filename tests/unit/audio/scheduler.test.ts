@@ -187,6 +187,22 @@ describe('Scheduler: robustness', () => {
     expect((events[0] as Ev).step).toBe(0);
     expect((events[0] as Ev).bar).toBe(0);
   });
+
+  it('nextIndexOf(step): the next time a step comes that is not scheduled yet, and timeOf its audio time (P-012)', () => {
+    const { clock, sched, events } = harness(84);
+    sched.start(0.05);
+    runFor(clock, sched, 1.3);
+    const last = events[events.length - 1] as Ev; // the last step scheduled, up to 120 ms ahead of now
+    for (let step = 0; step < STEPS; step++) {
+      const i = sched.nextIndexOf(step);
+      expect(i % STEPS).toBe(step);
+      expect(i).toBeGreaterThan(last.bar * STEPS + last.step); // never one already handed out
+      expect(i - STEPS).toBeLessThanOrEqual(last.bar * STEPS + last.step); // the first such, not a bar later
+    }
+    const next = sched.nextIndexOf((last.step + 1) % STEPS);
+    runFor(clock, sched, 0.2);
+    expect(events.find((e) => e.bar * STEPS + e.step === next)?.time).toBeCloseTo(sched.timeOf(next), 12);
+  });
 });
 
 describe('Scheduler: a listener that throws', () => {

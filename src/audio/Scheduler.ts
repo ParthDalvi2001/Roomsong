@@ -98,7 +98,13 @@ export class Scheduler {
     return Math.floor(this.elapsedSteps() / STEPS);
   }
 
-  private timeOf(index: number): number {
+  /** The absolute index (bar × STEPS + step) of the next time `step` comes that is not scheduled yet (P-012). */
+  nextIndexOf(step: number): number {
+    return this.nextIndex + ((((step - this.nextIndex) % STEPS) + STEPS) % STEPS);
+  }
+
+  /** Audio time of the absolute step `index`, at the tempo in force. */
+  timeOf(index: number): number {
     return this.anchorTime + (index - this.anchorIndex) * this.stepDur;
   }
 

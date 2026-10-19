@@ -32,6 +32,7 @@ const SETTINGS: GardenState['settings'] = {
   beatRing: true,
   dominantHand: 'right',
   hintsEnabled: true,
+  mono: false,
 };
 
 /** A valid saved garden with `plantCount` plants in cells 0, 1, 2…; `visits` tells two saves of it apart. */

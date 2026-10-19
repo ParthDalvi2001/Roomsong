@@ -22,6 +22,8 @@ import {
   CHOIR_RELEASE_TAU_DIV,
   CHOIR_VIBRATO_CENTS,
   CHOIR_VIBRATO_HZ,
+  CYCLE_BARS,
+  CYCLE_SKIP,
   HEIGHT_GAIN_DB_MIN,
   LIMITER_ATTACK_S,
   LIMITER_KNEE_DB,
@@ -100,6 +102,9 @@ export interface Recipe {
   accentsDb: readonly number[];
   /** §1.4: a pad plant's cutoff moves ± this many octaves over PAD_EVOLVE_BARS. */
   padEvolveOctaves: number;
+  /** P-009: the cycles a plant draws from, in bars ([] = every plant plays every bar), and the 1-bar cycle's skip. */
+  cycleBars: readonly number[];
+  cycleSkip: number;
   /** §1.2 tempo echo: delay in steps, feedback, low-pass in the loop, send level (0 = off). */
   echoSteps: number;
   echoFeedback: number;
@@ -162,6 +167,8 @@ export const TODAY: Readonly<Recipe> = Object.freeze({
   humanizeDb: 0,
   accentsDb: NO_ACCENTS,
   padEvolveOctaves: 0,
+  cycleBars: [],
+  cycleSkip: 0,
   echoSteps: 0,
   echoFeedback: 0,
   echoLpfHz: 2500,
@@ -186,7 +193,10 @@ const SHAKER_8THS: PercHit[] = [0, 2, 4, 6, 8, 10, 12, 14].map((step, i) => ({
   everyBars: 1,
 }));
 
-/** What A, B and C share: the mix of §2, the limiter of §3, the per-step accents and the evolving pad of §1. */
+/**
+ * What A, B and C share: the mix of §2, the limiter of §3, the per-step accents and the evolving pad of §1, and the
+ * plants' cycles of P-009.
+ */
 const ALIVE: Recipe = {
   ...TODAY,
   mixDb: { bell: -9, bass: -11.5, pad: -6.5, choir: -6.5, pluck: -4, shimmer: -14 },
@@ -198,6 +208,8 @@ const ALIVE: Recipe = {
   limiterReleaseS: 0.3,
   accentsDb: ACCENTS_DB,
   padEvolveOctaves: 0.5,
+  cycleBars: CYCLE_BARS,
+  cycleSkip: CYCLE_SKIP,
   echoSend: 0.25,
 };
 

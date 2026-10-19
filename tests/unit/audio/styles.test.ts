@@ -144,7 +144,7 @@ describe('groove (§1.1)', () => {
     const s = STYLES.A;
     const timesOf = async (): Promise<number[]> => {
       const { ctx, run } = await start('A', [plant('even', 'bell', 0, 0), plant('odd', 'bell', 1, 1)]);
-      run(8 * BAR_S);
+      run(16 * BAR_S); // a style rests a plant in half its bars at most (P-009): 8 notes or more each
       return carriers(ctx).map((c) => c.startedAt as number);
     };
     const times = await timesOf();
@@ -189,7 +189,7 @@ describe('groove (§1.1)', () => {
       const moved = carriers(ctx)
         .filter((c) => stepOf(c.startedAt as number) % STEPS === 0) // not the clave of B's percussion
         .map((c) => db(peakOf(envOf(c))) - level);
-      expect(moved.length).toBeGreaterThanOrEqual(32);
+      expect(moved.length).toBeGreaterThanOrEqual(16); // the plant rests in some bars (P-009)
       expect(Math.max(...moved)).toBeGreaterThan(s.humanizeDb * 0.75);
       expect(Math.min(...moved)).toBeLessThan(-s.humanizeDb * 0.75);
     }
@@ -327,6 +327,41 @@ describe('harmony that moves (§1.3)', () => {
     const kicks = percussion(ctx).kick.length;
     expect(fifths.length - kicks).toBe(3);
     expect(notes[1]?.hz).toBeCloseTo(midiToHz(degreeToMidi(2, 'minorPent', 4, -1)), 6); // B♭ over D: degree 4
+  });
+});
+
+describe('the loop varies (P-009)', () => {
+  const BARS = 30; // 1-, 2-, 3- and 5-bar cycles come round together every 30 bars
+  /** The steps that sounded in each bar, one plant a step: "0,2,4" is a bar where the plants of steps 0, 2, 4 played. */
+  const barsOf = (ctx: FakeAudioContext): string[] => {
+    const bars: number[][] = Array.from({ length: BARS }, () => []);
+    for (const c of carriers(ctx)) {
+      const i = stepOf(c.startedAt as number);
+      bars[Math.floor(i / STEPS)]?.push(i % STEPS);
+    }
+    return bars.map((steps) => steps.sort((a, b) => a - b).join(','));
+  };
+  const play = async (style: SoundStyle | null) => {
+    const { ctx, engine, run } = await start(style, bells(8)); // on steps 0, 2 … 14: none is swung
+    run(BARS * BAR_S - STEP_S);
+    return { bars: barsOf(ctx), ctx, triggers: engine.stats.triggers };
+  };
+
+  it('in a style each plant rests on its seeded cycle or skip: bars in a row differ, the same each run, on the grid', async () => {
+    const a = await play('A');
+    const alike = a.bars.filter((bar, i) => i > 0 && bar === a.bars[i - 1]).length;
+    expect(alike).toBeLessThanOrEqual((BARS - 1) / 5); // today: all 29 pairs are alike (below)
+    const played = a.bars.join(',').split(',').length;
+    expect(played / (8 * BARS)).toBeGreaterThan(0.5); // a plant rests one bar of its cycle, never most of them
+    expect(played / (8 * BARS)).toBeLessThan(0.95);
+    expect(a.triggers).toBe(played); // a rested note is not started, and not counted
+    expect((await play('A')).bars).toEqual(a.bars); // seeded by the plants' ids and the session's seed
+    for (const c of carriers(a.ctx)) {
+      const t = c.startedAt as number;
+      expect(Math.abs(t - stepTime(stepOf(t)))).toBeLessThanOrEqual(STYLES.A.humanizeS + 1e-9); // on its step
+    }
+    // Today's sound has no rest: every plant in every bar.
+    expect(new Set((await play(null)).bars)).toEqual(new Set(['0,2,4,6,8,10,12,14']));
   });
 });
 
@@ -475,7 +510,7 @@ describe('the styles (§4)', () => {
     run(BAR_S);
     expect(vi.mocked(renderKarplusStrong).mock.lastCall?.[5]).toBe(2.5);
     engine.setStyle('A');
-    run(BAR_S);
+    run(2 * BAR_S); // two bars: a style rests a plant in some bars (P-009), this bass plant in one of these
     expect(vi.mocked(renderKarplusStrong).mock.lastCall?.[5]).toBe(STYLES.A.stringT60LongS);
     const lastBass = last(
       ctx.of('oscillator').filter((o) => o.type === 'custom' && o.frequency.events.length === 0),
@@ -503,7 +538,7 @@ describe('the styles (§4)', () => {
     // A note humanized ahead of its step is still a note of that step: no other note of it steals its channel.
     // A note stolen before its start is dropped whole (a 'cancel'); a stolen note that sounds is held, then faded.
     const envelopes = ctx.of('panner').flatMap((p) => (p.inputs[0] as FakeNode).inputs);
-    expect(envelopes.length).toBeGreaterThan(1000);
+    expect(envelopes.length).toBeGreaterThan(700); // 80 plants for 13 bars, less the bars a style rests them in (P-009)
     const held = envelopes.filter((e) => e.gain.last('hold') !== undefined);
     expect(held.length).toBeGreaterThan(100);
     const droppedOrEarly = envelopes.filter((e) => {

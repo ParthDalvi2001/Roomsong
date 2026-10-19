@@ -87,6 +87,7 @@ Hosting: static files over HTTPS: GitHub Pages + a mirror of the same build (D-0
 | FR-MUS-10 | *Cut (D-011)* — weekly seasons; the room signature (FR-ROOM-11) decides the mode instead. | — | — |
 | FR-MUS-11 | Listen-mode variations: every 4 bars apply one of: octave echo on a random plant, ghost-note counter-rhythm, swell. Variations are deterministic from a per-session seed. | C | T |
 | FR-MUS-12 | Undo for remove (FR-HND-11) lasts 5 s; the garden state is otherwise always consistent (no orphan audio nodes). | M | T |
+| FR-MUS-13 | (Should, T-173, P-009) In a sound style each plant plays on its own cycle of 1, 2, 3 or 5 bars drawn from its id, resting one bar of each cycle (a 1-bar plant skips 12.5 % of its bars instead), so consecutive bars differ; timing stays on the grid, so the tide and the sound stay in sync. | unit: bar-to-bar variation and determinism |
 
 ### 2.5 Onboarding, UI, accessibility
 | ID | Requirement | Pri | Verify |

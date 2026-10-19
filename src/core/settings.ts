@@ -28,6 +28,8 @@ export interface Settings {
   beatRing: boolean;
   dominantHand: Hand;
   hintsEnabled: boolean;
+  /** P-014: the whole mix in one channel, the same on both sides, for a listener who hears with one ear. */
+  mono: boolean;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
@@ -42,6 +44,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   beatRing: true,
   dominantHand: 'right',
   hintsEnabled: true,
+  mono: false,
 });
 const KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[];
 const REVERBS = ['auto', 'small', 'off'] as const;
@@ -78,6 +81,7 @@ export function validateSettings(raw: unknown, fallback: Readonly<Settings> = DE
       beatRing: bool(r.beatRing, fallback.beatRing),
       dominantHand: oneOf(r.dominantHand, HANDS, fallback.dominantHand),
       hintsEnabled: bool(r.hintsEnabled, fallback.hintsEnabled),
+      mono: bool(r.mono, fallback.mono),
     };
   } catch {
     return { ...fallback }; // only a throwing getter or proxy gets here; stored data has neither

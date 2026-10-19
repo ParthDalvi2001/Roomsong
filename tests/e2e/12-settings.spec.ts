@@ -370,7 +370,16 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
   expect(fov.upDeg).toBeLessThanOrEqual(20 + EDGE);
   expect(fov.rightDeg - fov.leftDeg).toBeCloseTo(40, 0); // 0.40 m wide at 0.55 m
   const header = ['tab:sound', 'tab:access', 'tab:garden', 'close'];
-  const sound = ['tempo:-', 'tempo:+', 'volume:-', 'volume:+', 'reverb:auto', 'reverb:small', 'reverb:off'];
+  const sound = [
+    'tempo:-',
+    'tempo:+',
+    'volume:-',
+    'volume:+',
+    'reverb:auto',
+    'reverb:small',
+    'reverb:off',
+    'mono',
+  ];
   expect(await ids(probe)).toEqual(['orb', ...header, ...sound]);
   for (const target of await probe.evaluate((p) => p.targets())) {
     expect(target.kind).toBe('panel');

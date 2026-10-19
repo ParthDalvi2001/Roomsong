@@ -1,5 +1,5 @@
-// NFR-PERF-08 for the T-164 layers: Layers.groove and Layers.step, the code the scheduler tick runs for every plant
-// note and every step, create nothing with every layer of a style on (groove, echo, breathing filter, drone, kick
+// NFR-PERF-08 for the T-164 layers: Layers.rests (P-009), Layers.groove and Layers.step, the code the scheduler tick
+// runs for every plant note and every step, create nothing with every layer of a style on (groove, echo, breathing filter, drone, kick
 // and shaker). The pool here takes each note and builds nothing: a note's own nodes are the voice triggers the rule
 // allows (CODING_GUIDELINES §5). The probe of the whole tick with a style is in engine.test.ts.
 import { describe, expect, it } from 'vitest';
@@ -86,7 +86,7 @@ describe('the layers per step (NFR-PERF-08, T-164)', () => {
           const time = abs * stepS;
           for (let r = 0; r < records.length; r++) {
             const rec = records[r] as Grooved;
-            if (rec.plant.cell.step !== step) continue;
+            if (rec.plant.cell.step !== step || layers.rests(rec, bar)) continue; // P-009, as the engine's tick
             layers.groove(rec, step, bar, time);
             sink += layers.noteTime + layers.note.gain;
           }

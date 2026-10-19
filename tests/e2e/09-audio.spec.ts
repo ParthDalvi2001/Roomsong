@@ -40,6 +40,8 @@ interface Scene {
   wetOnly?: boolean;
   /** Also measure the share of the energy above this frequency. */
   splitHz?: number;
+  /** Settings.mono (P-014): the mix summed to one channel at the master. */
+  mono?: boolean;
   /**
    * setListenerPose once a frame, as GardenAudioSystem will (T-145), with HEAD held still or turning and swaying
    * (TURN). Without it the head is posed once, before the first tick.
@@ -121,6 +123,7 @@ function render(page: Page, scene: Scene): Promise<Rendered> {
       engine.setTempo(scene.bpm);
       engine.setVolume(1);
       engine.setReverb(scene.reverb);
+      engine.setMono(scene.mono ?? false);
       const tune = (keyRoot: 0 | -3, reverbRt60: number) =>
         engine.setSignature({
           keyRoot,
@@ -361,6 +364,36 @@ test('T-121 TC-AUD-05 pan by position: a plant on the right is louder on the rig
   expect(left.rightMinusLeftDb).toBeLessThanOrEqual(-PAN_MIN_DB);
   expect(Math.abs(near.rightMinusLeftDb)).toBeLessThanOrEqual(CENTRED_DB);
   expect(Math.abs(far.rightMinusLeftDb)).toBeLessThanOrEqual(CENTRED_DB);
+
+  expect(pageErrors).toEqual([]);
+  expect(offHost).toEqual([]);
+});
+
+test('T-173 P-014 mono: a plant on the right sounds the same on both sides, no louder, under the ceiling', async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(String(error)));
+  const offHost = await openApp(page, readRoom('none'));
+  // The bell of the pan test, at the user's right, with the reverb on: the dry pan and the wide return both summed.
+  const scene = (mono: boolean): Scene => ({
+    plants: [{ voice: 'bell', ring: 4, step: 0 }],
+    seconds: 2.5,
+    bpm: 120,
+    reverb: 'auto',
+    mono,
+  });
+  const stereo = await render(page, scene(false));
+  const mono = await render(page, scene(true));
+  console.log(line('bell at step 0, the right, stereo', stereo, 'T-173'));
+  console.log(line('the same in mono', mono, 'T-173'));
+
+  expectBounded(mono);
+  expect(stereo.rightMinusLeftDb).toBeGreaterThanOrEqual(PAN_MIN_DB);
+  expect(Math.abs(mono.rightMinusLeftDb)).toBeLessThan(0.01); // one channel, copied to both sides
+  // (L + R) / 2 on each side keeps half to all of an equal-power pan's power: 0 to −3 dB, never more.
+  expect(mono.rmsDbfs).toBeLessThanOrEqual(stereo.rmsDbfs + 0.1);
+  expect(mono.rmsDbfs).toBeGreaterThan(stereo.rmsDbfs - 3.5);
 
   expect(pageErrors).toEqual([]);
   expect(offHost).toEqual([]);

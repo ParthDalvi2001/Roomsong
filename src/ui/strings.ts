@@ -76,6 +76,7 @@ export const PANEL = {
   percent: '%',
   reverb: 'Reverb',
   reverbs: { auto: 'auto', small: 'small', off: 'off' },
+  mono: 'Mono',
   tunedBy: 'Tuned by:',
   echo: 'echo',
   seconds: 's',

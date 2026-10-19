@@ -21,6 +21,7 @@ export function createAudioEngine(): AudioEngine {
     engine.setTempo(s.tempo);
     engine.setVolume(s.volume);
     engine.setReverb(s.reverb);
+    engine.setMono(s.mono);
   };
   applySettings(settings.get());
   bus.on('settings:changed', (payload) => applySettings(payload.settings));
@@ -52,7 +53,8 @@ export function createAudioEngine(): AudioEngine {
  * the session's `room:signature`: the engine's own tuning is C major pentatonic, and a restored garden must not
  * be heard in it first. From the signature on, the plants follow every `garden:changed` and `room:bedPlaced`
  * (the engine diffs); a bed moved with no event (an anchor re-read after a recentre or a pause) is synced when
- * its `matrixWorld` differs from the pose of the last sync. Each frame the listener is the head.
+ * its `matrixWorld` differs from the pose of the last sync. Each frame the listener is the head. A seed planted
+ * sounds at once (P-012): the sync, then `ui('placed', id)`.
  */
 export class GardenAudioSystem extends createSystem(
   { beds: { required: [BedAnchor] } },
@@ -66,6 +68,8 @@ export class GardenAudioSystem extends createSystem(
   private readonly syncedPose = new Float64Array(16);
   /** This session has its signature. */
   private isTuned = false;
+  /** The id of the seed on a hand (garden:seedOut), until it is planted or goes back; null for none. */
+  private outSeed: string | null = null;
 
   override init(): void {
     this.engine = this.config.engine.value as AudioEngine;
@@ -81,9 +85,16 @@ export class GardenAudioSystem extends createSystem(
         this.isTuned = true;
         this.sync();
       }),
-      bus.on('garden:changed', ({ state }) => {
+      bus.on('garden:seedOut', ({ seed }) => void (this.outSeed = seed.id)),
+      bus.on('garden:changed', ({ state, diff }) => {
         this.plants = state.plants;
-        if (this.isTuned) this.sync();
+        // P-012: the seed on the hand became a plant (it keeps the seed's id, D-031). A load and an undo add
+        // plants too, with no seed out.
+        const planted = this.outSeed !== null && diff.added.includes(this.outSeed) ? this.outSeed : null;
+        if (planted !== null) this.outSeed = null;
+        if (!this.isTuned) return;
+        this.sync();
+        if (planted !== null) this.engine.ui('placed', planted);
       }),
       bus.on('room:bedPlaced', () => {
         if (this.isTuned) this.sync();
@@ -94,6 +105,7 @@ export class GardenAudioSystem extends createSystem(
         this.engine.syncPlants(NO_PLANTS, this.syncedPose);
       }),
       bus.on('garden:seedBack', ({ reason }) => {
+        this.outSeed = null;
         if (reason === 'offBed') this.engine.ui('bump'); // UX §7: a seed let go off the bed
       }),
     );

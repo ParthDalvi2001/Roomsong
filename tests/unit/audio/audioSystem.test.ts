@@ -16,7 +16,7 @@ let engine: audio.AudioEngine;
 
 beforeAll(async () => {
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-  settings.set({ tempo: 120, volume: 0.6, reverb: 'off' });
+  settings.set({ tempo: 120, volume: 0.6, reverb: 'off', mono: true });
   engine = audio.createAudioEngine();
   await engine.init(ctx.audio);
 });
@@ -44,8 +44,9 @@ describe('audio/index.ts', () => {
 });
 
 describe('settings → engine', () => {
-  it('a new engine starts from the settings in force: tempo, volume and reverb', () => {
+  it('a new engine starts from the settings in force: tempo, volume, reverb and mono', () => {
     expect(master().gain.value).toBe(0.6);
+    expect(master().channelCount).toBe(1); // P-014
     expect(send().gain.last('target')).toMatchObject({ value: 0 }); // reverb 'off' mutes the send
     ctx.currentTime = START_DELAY_S + (16 * Scheduler.stepDurationFor(120)) / 2;
     expect(engine.clock.barPhase()).toBeCloseTo(0.5, 9); // half a bar at 120 BPM
@@ -55,10 +56,11 @@ describe('settings → engine', () => {
   it('settings:changed reaches the engine', () => {
     const setTempo = vi.spyOn(engine, 'setTempo');
     const setReverb = vi.spyOn(engine, 'setReverb');
-    settings.set({ tempo: 72, volume: 0.25, reverb: 'small' });
+    settings.set({ tempo: 72, volume: 0.25, reverb: 'small', mono: false });
     expect(setTempo).toHaveBeenLastCalledWith(72);
     expect(setReverb).toHaveBeenLastCalledWith('small');
     expect(master().gain.last('target')).toMatchObject({ value: 0.25 });
+    expect(master().channelCount).toBe(2);
   });
 });
 

@@ -17,7 +17,7 @@ function inRange(s: Settings): boolean {
     ['auto', 'small', 'off'].includes(s.reverb) &&
     [600, 900, 1200].includes(s.dwellMs) &&
     ['left', 'right'].includes(s.dominantHand) &&
-    [s.oneHand, s.gazeDwell, s.highContrast, s.reducedMotion, s.beatRing, s.hintsEnabled].every(
+    [s.oneHand, s.gazeDwell, s.highContrast, s.reducedMotion, s.beatRing, s.hintsEnabled, s.mono].every(
       (v) => typeof v === 'boolean',
     )
   );
@@ -45,6 +45,7 @@ describe('core/settings validateSettings', () => {
       beatRing: [],
       dominantHand: 'both',
       hintsEnabled: undefined,
+      mono: 'yes',
     };
     expect(validateSettings(wrongTypes)).toEqual(DEFAULT_SETTINGS);
 
@@ -62,8 +63,10 @@ describe('core/settings validateSettings', () => {
   it('partial data keeps its valid fields and fills the rest, field by field', () => {
     const result = validateSettings({ tempo: 100, reverb: 'off', dwellMs: 'slow', dominantHand: 'left' });
     expect(result).toEqual({ ...DEFAULT_SETTINGS, tempo: 100, reverb: 'off', dominantHand: 'left' });
-    // API_SPEC §4: a stored garden from before dwellMs gets 900.
+    // API_SPEC §4: a stored garden from before dwellMs gets 900; one from before mono (P-014) gets stereo.
     expect(validateSettings({ gazeDwell: true }).dwellMs).toBe(900);
+    expect(validateSettings({ gazeDwell: true }).mono).toBe(false);
+    expect(validateSettings({ mono: true }).mono).toBe(true);
   });
 
   it('future-version data: known fields are kept, unknown keys and values are dropped', () => {

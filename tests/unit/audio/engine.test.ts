@@ -25,6 +25,8 @@ import {
   REVERB_SMALL_RT60_S,
   REVERB_SWAP_DELAY_S,
   START_DELAY_S,
+  START_FADE_S,
+  START_FADE_TAUS,
   STEAL_FADE_S,
   SUSPEND_FADE_S,
   TICK_MS,
@@ -1137,6 +1139,19 @@ describe('volume and reverb', () => {
     expect(master.gain.events).toHaveLength(events);
   });
 
+  it('P-014 setMono sums the whole mix to one channel at the master, and back; one set before init() is used', async () => {
+    const { ctx, engine } = await start((e) => e.setMono(true));
+    const { master } = graph(ctx);
+    // A one-channel input takes the speakers' down-mix, (L + R) / 2; the destination copies it to both sides.
+    expect([master.channelCount, master.channelCountMode]).toEqual([1, 'explicit']);
+    engine.setMono(false);
+    expect([master.channelCount, master.channelCountMode]).toEqual([2, 'max']);
+    engine.setMono(true);
+    expect(master.channelCount).toBe(1);
+    // Everything heard passes the master: the 24 pans, the reverb's return and the echo's (graph shape above).
+    expect(graph(ctx).breath.inputs).toEqual([master]);
+  });
+
   it("the one reverb follows the signature's decay while 'auto': one RT60 long, stereo, never above 2.0 s", async () => {
     const { ctx, engine, run } = await start();
     const { convolver, wet } = graph(ctx);
@@ -1327,7 +1342,11 @@ describe('the AudioContext (NFR-PERF-10, FR-SYS-05)', () => {
 
     await engine.resume();
     expect(ctx.resume).toHaveBeenCalledTimes(1);
-    expect(master.gain.last('target')).toMatchObject({ value: 0.8, time: frozen, tau: PARAM_SMOOTH_S });
+    // From rest: the start's fade-in again (P-014), from silence.
+    expect(master.gain.events.slice(-2)).toEqual([
+      { type: 'set', value: 0, time: frozen, tau: 0 },
+      { type: 'target', value: 0.8, time: frozen, tau: START_FADE_S / START_FADE_TAUS },
+    ]);
     expect(vi.getTimerCount()).toBe(1);
     run(1);
     const times = starts(ctx);
@@ -1343,8 +1362,27 @@ describe('the AudioContext (NFR-PERF-10, FR-SYS-05)', () => {
     await first;
     run(1);
     expect(ctx.suspend).not.toHaveBeenCalled();
-    expect(graph(ctx).master.gain.last('target')).toMatchObject({ value: 1 });
+    // A fade-out cut short comes straight back: not the start's slow fade.
+    expect(graph(ctx).master.gain.last('target')).toMatchObject({ value: 1, tau: PARAM_SMOOTH_S });
     expect(vi.getTimerCount()).toBe(1);
+  });
+
+  it('P-014: the session starts with the master faded in from silence over 2–3 s; a second resume() leaves it', async () => {
+    const { ctx, engine } = await start((e) => e.setVolume(0.8));
+    const { master } = graph(ctx);
+    const tau = START_FADE_S / START_FADE_TAUS;
+    expect(master.gain.events).toEqual([
+      { type: 'set', value: 0, time: 0, tau: 0 },
+      { type: 'target', value: 0.8, time: 0, tau },
+    ]);
+    expect(START_FADE_S).toBeGreaterThanOrEqual(2);
+    expect(START_FADE_S).toBeLessThanOrEqual(3);
+    // The glide's level at the fade's end, against the volume: within 0.5 dB.
+    expect(20 * Math.log10(1 - Math.exp(-START_FADE_S / tau))).toBeGreaterThan(-0.5);
+    ctx.currentTime = 0.3;
+    await engine.resume(); // xr:sessionStart's, just after the Enter click's init()
+    engine.setVolume(0.8); // settings:changed for another field (Mono, Contrast) hands the same volume again
+    expect(master.gain.events).toHaveLength(2); // the fade goes on
   });
 
   it('suspend() rejects when the context refuses, so the caller can report it', async () => {

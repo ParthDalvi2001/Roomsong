@@ -32,11 +32,14 @@ import {
   LATE_DROP_S,
   MUTE_TAU_S,
   PARAM_SMOOTH_S,
+  PLACED_DB_RE_PLANT,
   PLUCK_STRINGS_PER_TICK,
   REVERB_HPF_HZ,
   REVERB_SMALL_RT60_S,
   REVERB_SWAP_DELAY_S,
   START_DELAY_S,
+  START_FADE_S,
+  START_FADE_TAUS,
   SUSPEND_FADE_S,
   SUSPEND_FADE_TAUS,
   TEMPO_MAX_BPM,
@@ -64,12 +67,16 @@ import type { Voice, VoiceParams } from './voices/note.js';
 import type { Mat4, Vec3 } from '../core/index.js';
 import type { Cell, Plant, RoomSignature } from '../garden/index.js';
 
+type UiSound = 'tick' | 'confirm' | 'bump' | 'removeRev' | 'undoFwd' | 'placed' | 'goodnight';
+
 /** API_SPEC §1.2. */
 export interface AudioEngine {
   /** Creates or resumes the AudioContext; must run inside the Enter gesture (NFR-PERF-10). Rejects if it cannot. */
   init(ctx?: AudioContext): Promise<void>;
   setTempo(bpm: number): void;
   setVolume(v: number): void;
+  /** P-014, Settings.mono: the whole mix summed to one channel at the master, the same on both sides. */
+  setMono(mono: boolean): void;
   /** The one shared reverb: 'auto' follows the signature's reverbRt60, 'small' is a fixed 0.6 s, 'off' mutes the send. */
   setReverb(mode: 'auto' | 'small' | 'off'): void;
   /**
@@ -84,7 +91,9 @@ export interface AudioEngine {
   /** Idempotent and diff-based; plants sound at their world position, equal-power panned. */
   syncPlants(plants: readonly Plant[], bedPose: Mat4): void;
   preview(plant: Plant): void;
-  ui(sound: 'tick' | 'confirm' | 'bump' | 'removeRev' | 'undoFwd' | 'placed' | 'goodnight'): void;
+  ui(sound: Exclude<UiSound, 'placed'>): void;
+  /** P-012: the plant `plantId`, synced and just set into its cell, sounds its own note now, quietly. */
+  ui(sound: 'placed', plantId: string): void;
   enterListen(): void;
   exitListen(): void;
   suspend(): Promise<void>;
@@ -158,6 +167,7 @@ export class Engine implements AudioEngine {
   /** Until setTempo: AudioSystem.ts applies the user's tempo, volume and reverb as soon as it makes the engine. */
   private bpm = TEMPO_MIN_BPM;
   private volume = 1;
+  private mono = false;
   /** Until the first signature: C major pentatonic, the Wanderer tuning (FR-MUS-02). */
   private key: Pick<RoomSignature, 'keyRoot' | 'mode'> = { keyRoot: 0, mode: 'majorPent' };
   /** T-164: the sound style; null = today's sound. The recipe holds its values; the voices read them from it. */
@@ -210,12 +220,26 @@ export class Engine implements AudioEngine {
   }
 
   setVolume(v: number): void {
-    if (!Number.isFinite(v)) return;
+    // The same volume again (settings:changed for another field) must not swap the start's fade for a quick glide.
+    if (!Number.isFinite(v) || Math.min(1, Math.max(0, v)) === this.volume) return;
     this.volume = Math.min(1, Math.max(0, v));
     const g = this.g;
     if (g !== null && this.suspendAt === Infinity) {
       g.master.gain.setTargetAtTime(this.volume, g.ctx.currentTime, PARAM_SMOOTH_S);
     }
+  }
+
+  /**
+   * P-014: a GainNode with one channel, explicit, takes the speakers' down-mix of its stereo inputs, (L + R) / 2,
+   * and the destination copies the one channel to both sides (MDN: AudioNode.channelCountMode; Web Audio spec,
+   * channel up-mixing and down-mixing). A centred plant keeps its level; one at the side is 3 dB down overall.
+   */
+  setMono(mono: boolean): void {
+    this.mono = mono;
+    const master = this.g?.master;
+    if (master === undefined) return;
+    master.channelCount = mono ? 1 : 2;
+    master.channelCountMode = mono ? 'explicit' : 'max';
   }
 
   setReverb(mode: 'auto' | 'small' | 'off'): void {
@@ -305,10 +329,12 @@ export class Engine implements AudioEngine {
     );
   }
 
-  // The next two wait for their tasks: silent and safe to call until then. Of ui(), only 'goodnight' is built.
+  // The next two wait for their tasks: silent and safe to call until then. Of ui(), 'goodnight' and 'placed' are built.
   preview(): void {} // T-147
-  ui(sound: Parameters<AudioEngine['ui']>[0]): void {
-    if (sound === 'goodnight') this.goodnight(); // T-164 builds the others
+  ui(sound: UiSound, plantId = ''): void {
+    if (sound === 'goodnight')
+      this.goodnight(); // T-164 builds the others
+    else if (sound === 'placed') this.placed(plantId);
   }
 
   /** T-148: the nearest plants come forward in the mix from their next note on (Spatializer.place). */
@@ -345,9 +371,18 @@ export class Engine implements AudioEngine {
   async resume(): Promise<void> {
     const g = this.g;
     if (g === null) return; // a context is only ever created by init(), inside the gesture
+    const now = g.ctx.currentTime;
+    const gain = g.master.gain;
+    if (this.timer === null) {
+      // P-014: from rest (init(), or a suspend the tick finished) the master comes up from silence, slowly. A second
+      // resume() while it runs (xr:sessionStart after the Enter click's) leaves the fade alone.
+      gain.setValueAtTime(0, now);
+      gain.setTargetAtTime(this.volume, now, START_FADE_S / START_FADE_TAUS);
+    } else if (this.suspending !== null) {
+      gain.setTargetAtTime(this.volume, now, PARAM_SMOOTH_S); // a fade-out cut short comes straight back
+    }
     this.endSuspend();
     this.timer ??= setInterval(this.tick, TICK_MS);
-    g.master.gain.setTargetAtTime(this.volume, g.ctx.currentTime, PARAM_SMOOTH_S);
     if (g.ctx.state === 'running') return;
     await g.ctx.resume();
     // A suspend() that came while the browser was still starting the context found nothing to fade and only
@@ -390,16 +425,20 @@ export class Engine implements AudioEngine {
     // after it at once would be a burst.
     if (g === null || time < g.ctx.currentTime - LATE_DROP_S) return;
     const list = this.steps[step] as PlantRecord[];
-    this.stats.triggers += list.length;
     const layers = g.layers;
     // The groove (T-164) moves and weights each note; with today's recipe it is the note as it is. A humanized
     // note may start before `time`: no note of this step is stolen for another of it (VoicePool.play's guard).
+    // A style rests a plant in some bars (P-009); the notes that play keep their step.
     const guard = time - this.recipe.humanizeS;
+    let played = 0;
     for (let i = 0; i < list.length; i++) {
       const r = list[i] as PlantRecord;
+      if (layers.rests(r, bar)) continue;
       layers.groove(r, step, bar, time);
       g.pool.play(r.voice, layers.noteTime, layers.note, r.x, r.y, r.z, r, guard);
+      played++;
     }
+    this.stats.triggers += played;
     layers.step(step, time, bar, this.records.size);
   }
 
@@ -466,6 +505,7 @@ export class Engine implements AudioEngine {
       choir,
     };
     this.g = g;
+    this.setMono(this.mono);
     if (this.style !== null) layers.restyle(ctx.currentTime);
     scheduler.start(START_DELAY_S);
     this.applyReverb();
@@ -494,6 +534,32 @@ export class Engine implements AudioEngine {
       p.hz = hzForRing(this.key, ring, 'pad');
       g.pool.play(g.pad, g.ctx.currentTime, p, b[12] as number, b[13] as number, b[14] as number, null);
     }
+  }
+
+  /**
+   * P-012: the plant just set into its cell sounds its own note now, quietly (PLACED_DB_RE_PLANT, inside the UI-sound
+   * rules), in every style: it is the feedback of the planting. When the tide reaches the plant within a step and it
+   * plays there, that note, on the grid and under the light, is the feedback and none is added: two notes of it less
+   * than a step apart would sound doubled. Its pitch is its ring's, in the key: not always a tone of the room chord.
+   */
+  private placed(id: string): void {
+    const g = this.g;
+    const r = this.records.get(id);
+    if (g === null || r === undefined || g.ctx.state !== 'running') return;
+    const s = g.scheduler;
+    const next = s.nextIndexOf(r.plant.cell.step);
+    const now = g.ctx.currentTime;
+    // A styled step note may start humanizeS before its step.
+    const soon = s.stepS + this.recipe.humanizeS;
+    if (s.timeOf(next) - now < soon && !g.layers.rests(r, (next / STEPS) | 0)) return;
+    const p = this.chord;
+    const own = r.params;
+    p.hz = own.hz;
+    p.release = own.release;
+    p.cutoffMul = own.cutoffMul;
+    p.detune = own.detune;
+    p.gain = dbToGain(this.recipe.mixDb[r.plant.voice] + PLACED_DB_RE_PLANT);
+    g.pool.play(r.voice, now, p, r.x, r.y, r.z, r);
   }
 
   /** Settle a pending suspend(): with the context's own promise when the fade is over, with nothing when cancelled. */

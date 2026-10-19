@@ -156,6 +156,8 @@ Tempo and Volume are steppers, not sliders (changed in v1.2): a panel control ac
 No bed-radius control (single annulus bed); bed height ±10 cm stays.
 Interaction: a control lights up on hover and acts when the pinch is released over it; moving off first cancels (FR-HND-16). In gaze mode, dwell for the chosen time. Controls ≥ 3 cm tall. Panel opens via the settings orb (wrist), by pinch / dwell; closes with ✕ or looking away 5 s.
 
+*As built (T-173, 19 Oct):* the Sound tab's last row adds "[off] Mono" right of "Tuned by": the mix summed to mono for a single-sided listener (the Quest's own setting only moves the balance).
+
 ### 3.7 Garden window (non-XR; Should S6, FR-SYS-07, US-24, LLD §11)
 - The same garden in a normal browser tab, when `immersive-ar` is missing (or `?flags=window` in dev). One fixed camera at a seated eye point over a drawn table. No passthrough and no room, so the song is Wanderer and there is no tuning caption. Never the judged path: the dev bench and the demo.
 - The pointer or a touch is the pinch. A seed rides the pointer: click or tap an empty cell to plant it; press and drag a plant to move it; drag it off the ring to remove it; click the petal to undo; click the centre orb to listen. Commit on release as in XR; nothing needs a hover first, so a touch works like the mouse.

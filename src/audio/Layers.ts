@@ -105,13 +105,24 @@ export function grooveSeed(id: string): number {
   return h | 0;
 }
 
-/** A number in [−1, 1) from three integers: mulberry32 of their mix, written out (no closure, no object). */
-function draw(a: number, b: number, c: number): number {
+/** hash() gives an integer below this. */
+const HASH_RANGE = 2 ** 30;
+
+/**
+ * An integer in 0..HASH_RANGE − 1 from three integers: mulberry32 of their mix, written out (no closure, no object).
+ * 30 bits: a small integer, which V8 never puts on the heap where a fraction a call returns can go (P-009's rests).
+ */
+function hash(a: number, b: number, c: number): number {
   let t = (Math.imul(a, 0x9e3779b1) ^ Math.imul(b + 1, 0x85ebca77) ^ Math.imul(c, 0xc2b2ae3d)) | 0;
   t = (t + 0x6d2b79f5) | 0;
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  return (((t ^ (t >>> 14)) >>> 0) / 4294967296) * 2 - 1;
+  return (t ^ (t >>> 14)) >>> 2;
+}
+
+/** A number in [−1, 1) from three integers. */
+function draw(a: number, b: number, c: number): number {
+  return (hash(a, b, c) / HASH_RANGE) * 2 - 1;
 }
 
 export class Layers {
@@ -211,6 +222,20 @@ export class Layers {
         : p.cutoffMul;
     n.gain = p.gain * dbToGain((s.accentsDb[step] as number) + s.humanizeDb * draw(r.seed, bar, 1));
     this.noteTime = time + this.swing(step) + s.humanizeS * draw(r.seed, bar, 2);
+  }
+
+  /**
+   * P-009: the plant rests in `bar`, in one bar of each of its seeded cycle (CYCLE_BARS), or, on the 1-bar cycle,
+   * in a seeded share of its bars. Never with today's recipe, whose cycles are none.
+   */
+  rests(r: Grooved, bar: number): boolean {
+    const s = this.o.recipe;
+    const cycles = s.cycleBars;
+    if (cycles.length === 0) return false;
+    // Bar −1 in the hash: the plant's own cycle and place in it, the same in every bar.
+    const cycle = cycles[hash(r.seed, -1, 5) % cycles.length] as number;
+    if (cycle === 1) return hash(r.seed, bar, 7) < s.cycleSkip * HASH_RANGE;
+    return (bar + (hash(r.seed, -1, 6) % cycle)) % cycle === 0;
   }
 
   /** After the plants of a step: the bar line's automation, then the builds, the drone and the percussion. */

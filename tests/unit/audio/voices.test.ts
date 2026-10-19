@@ -14,6 +14,7 @@ import {
   BASS_TAIL_TAUS,
   BELL_ATTACK_S,
   BELL_FM_RATIO,
+  CENTS_PER_OCTAVE,
   CHOIR_ATTACK_S,
   CHOIR_FORMANT_Q,
   CHOIR_FORMANTS_HZ,
@@ -25,6 +26,7 @@ import {
   CHOIR_TAIL_TAUS,
   CHOIR_VIBRATO_CENTS,
   CHOIR_VIBRATO_HZ,
+  CLAVE_OCTAVES,
   HEIGHT_GAIN_DB_MIN,
   PAD_ATTACK_S,
   PAD_SAW_LEVEL,
@@ -33,15 +35,23 @@ import {
   STEAL_FADE_S,
   STEAL_FADE_TAUS,
 } from '../../../src/audio/config.js';
-import { dbToGain, heightToReleaseS, hueToCutoffMul, voiceParamsFor } from '../../../src/audio/mapping.js';
-import { hzForRing } from '../../../src/audio/theory.js';
+import {
+  dbToGain,
+  heightToReleaseS,
+  hueToCutoffMul,
+  hueToDetuneCents,
+  voiceParamsFor,
+} from '../../../src/audio/mapping.js';
+import { STYLES, TODAY, type Recipe } from '../../../src/audio/styles.js';
+import { degreeToMidi, hzForRing, midiToHz, VOICE_OCTAVE } from '../../../src/audio/theory.js';
 import { Bass, bassPartials } from '../../../src/audio/voices/Bass.js';
 import { Bell } from '../../../src/audio/voices/Bell.js';
 import { Choir, choirPartials } from '../../../src/audio/voices/Choir.js';
 import { Note, type NoteRef, type Voice, type VoiceParams } from '../../../src/audio/voices/note.js';
 import { Pad } from '../../../src/audio/voices/Pad.js';
 import { Pluck } from '../../../src/audio/voices/Pluck.js';
-import { RINGS } from '../../../src/garden/index.js';
+import { ROOT_SEMITONES } from '../../../src/garden/config.js';
+import { MODE_DEGREES, RINGS, type ModeId } from '../../../src/garden/index.js';
 
 import { FakeAudioContext, asNode, last, type FakeNode } from './fakeAudio.js';
 
@@ -151,6 +161,45 @@ describe('Bell (2-operator FM)', () => {
     expect(ref.note.endTime).toBe(carrier.stoppedAt);
     expect(ref.note.levelAt(1)).toBe(0.5);
     expect(ref.note.levelAt(1 + BELL_ATTACK_S)).toBe(0.5); // the attack counts as full level
+  });
+
+  it('P-014: at its top notes, in every style, no partial within 60 dB of the note is over Nyquist at 44.1 or 48 kHz', () => {
+    // Sine FM puts partials at fc ± n·fm with amplitudes J_n(β), β = peak deviation / fm (the strike's, its widest).
+    // J_n(x) = 1/2π ∫ cos(nt − x sin t) dt over one period: the trapezoid rule on a periodic integrand is exact here.
+    const bessel = (n: number, x: number): number => {
+      let sum = 0;
+      for (let k = 0; k < 256; k++)
+        sum += Math.cos(n * ((2 * Math.PI * k) / 256) - x * Math.sin((2 * Math.PI * k) / 256));
+      return sum / 256;
+    };
+    const FLOOR = 10 ** (-60 / 20);
+    const highestPartialHz = (recipe: Recipe, hz: number, cutoffMul: number, detune: number): number => {
+      const { ctx, ref, out } = setup();
+      new Bell(ctx.audio, ref, recipe).trigger(0, params({ hz, cutoffMul, detune }), asNode(out));
+      const [carrier, mod] = ctx.of('oscillator') as [FakeNode, FakeNode];
+      const deviation = ((mod.outputs[0] as FakeNode).gain.events[0] as { value: number }).value;
+      const fm = mod.frequency.value;
+      let n = 0;
+      while (Math.abs(bessel(n + 1, deviation / fm)) >= FLOOR) n++; // past n > β they only fall
+      return carrier.frequency.value * Math.pow(2, carrier.detune.value / CENTS_PER_OCTAVE) + n * fm;
+    };
+    const keys = ROOT_SEMITONES.flatMap((keyRoot) =>
+      (Object.keys(MODE_DEGREES) as ModeId[]).map((mode) => ({ keyRoot, mode })),
+    );
+    // The highest bell of all: a shimmer plant (a bell an octave up) on the outer ring, at the brightest hue.
+    const shimmer = Math.max(...keys.map((key) => hzForRing(key, RINGS - 1, 'shimmer')));
+    // Style B's clave: the plants' Bell on the root, two octaves up, plain.
+    const claveOctave = VOICE_OCTAVE.bell + CLAVE_OCTAVES;
+    const clave = Math.max(...keys.map((k) => midiToHz(degreeToMidi(k.keyRoot, k.mode, 0, claveOctave))));
+    for (const [name, recipe] of [['today', TODAY], ...Object.entries(STYLES)] as [string, Recipe][]) {
+      const tops = [highestPartialHz(recipe, shimmer, hueToCutoffMul(1), hueToDetuneCents(1))];
+      if (recipe.perc.some((hit) => hit.kind === 'clave')) tops.push(highestPartialHz(recipe, clave, 1, 0));
+      for (const top of tops) {
+        expect(top, name).toBeLessThan(44100 / 2);
+        expect(top, name).toBeLessThan(48000 / 2);
+      }
+    }
+    expect(highestPartialHz(TODAY, shimmer, hueToCutoffMul(1), hueToDetuneCents(1))).toBeGreaterThan(17000); // near it
   });
 });
 

@@ -101,10 +101,13 @@ const PLUS_X = 0.11;
 const VALUE_X = -0.015; // the read-out of a stepper, between its two buttons
 const VALUE_W = 0.09;
 const OPTION_X = [-0.04, 0.055, 0.15] as const; // the three choices of Reverb and of Hold time
-const TOGGLE_X = [-0.17, 0.03] as const; // two switches to a row, each with its label to its right
+// Two switches to a row, each with its label to its right; the third column is the Sound tab's Mono (P-014), under
+// the steppers' plus, beside "Tuned by": no tab had a free row for it.
+const TOGGLE_X = [-0.17, 0.03, PLUS_X] as const;
 const TOGGLE_LABEL_M = 0.03; // from a switch's centre to where its label starts
 const TOGGLE_LABEL_W = 0.13;
 const BEAT_LABEL_W = 0.11; // "Main hand" shares its row
+const MONO_LABEL_W = 0.05; // to the panel's edge
 const HAND_LABEL_X = -0.02;
 const HAND_LABEL_W = 0.1;
 const HAND_X = [0.11, 0.17] as const;
@@ -113,9 +116,12 @@ const ACTION_LABEL_X = -0.09;
 const ACTION_LABEL_W = 0.28;
 const TUNED_Y = ROW_Y[3] + 0.005; // the two lines of "Tuned by" sit a little above the last row's middle
 const LINE_M = 0.013; // half the distance between those two lines
-const TUNED_W = 0.19;
-const ECHO_X = 0.01;
-const ECHO_W = 0.18;
+// Both lines end before the Mono switch: "Tuned by: C major," is about 0.165 m, "echo 0.9 s" 0.09 m and the longest
+// second line, "room 120 sq m, ceiling 3.4 m", 0.26 m, in the panel's 50 px font.
+const TUNED_W = 0.175;
+const ECHO_X = -0.01;
+const ECHO_W = 0.095;
+const ROOM_W = 0.27;
 
 const TABS: Readonly<Record<string, PanelTab>> = {
   'tab:sound': 'sound',
@@ -138,6 +144,7 @@ const PATCHES: Readonly<Record<string, (s: Readonly<Settings>) => Partial<Settin
   'reverb:auto': () => ({ reverb: 'auto' }),
   'reverb:small': () => ({ reverb: 'small' }),
   'reverb:off': () => ({ reverb: 'off' }),
+  mono: (s) => ({ mono: !s.mono }),
   oneHand: (s) => ({ oneHand: !s.oneHand }),
   gazeDwell: (s) => ({ gazeDwell: !s.gazeDwell }),
   'dwell:600': () => ({ dwellMs: 600 }),
@@ -167,10 +174,10 @@ const lit = (control: PanelControl, on: boolean): PanelControl => ({ ...control,
 const label = (x: number, y: number, w: number, text: string): PanelText => ({ x, y, w, text, dim: false });
 
 /** A switch: it says "on" or "off" in words, so its state is not carried by its fill alone. */
-function toggle(id: string, column: 0 | 1, y: number, value: boolean): PanelControl {
+function toggle(id: string, column: 0 | 1 | 2, y: number, value: boolean): PanelControl {
   return lit(round(id, TOGGLE_X[column], y, value ? PANEL.on : PANEL.off), value);
 }
-const toggleLabel = (column: 0 | 1, y: number, text: string): PanelText =>
+const toggleLabel = (column: 0 | 1 | 2, y: number, text: string): PanelText =>
   label(TOGGLE_X[column] + TOGGLE_LABEL_M, y, TOGGLE_LABEL_W, text);
 
 /** The two buttons of a tempo or volume stepper. One is dim when the store's validator would not move the value. */
@@ -443,6 +450,7 @@ export class Panel {
       ...REVERBS.map((reverb, i) =>
         lit(wide(`reverb:${reverb}`, OPTION_X[i] ?? 0, ROW_Y[2], PANEL.reverbs[reverb]), s.reverb === reverb),
       ),
+      toggle('mono', 2, ROW_Y[3], s.mono),
     ];
   }
 
@@ -454,10 +462,11 @@ export class Panel {
       label(LEFT_X, ROW_Y[1], LABEL_W, PANEL.volume),
       label(VALUE_X, ROW_Y[1], VALUE_W, `${Math.round(s.volume * 100)} ${PANEL.percent}`),
       label(LEFT_X, ROW_Y[2], LABEL_W, PANEL.reverb),
+      { ...toggleLabel(2, ROW_Y[3], PANEL.mono), w: MONO_LABEL_W },
       label(LEFT_X, TUNED_Y + LINE_M, TUNED_W, `${PANEL.tunedBy} ${keyName(this.signature)},`),
       // UX §3.6: the echo part dims while Reverb is not on auto, when the room's echo is not the one heard.
       { ...label(ECHO_X, TUNED_Y + LINE_M, ECHO_W, echo), dim: s.reverb !== 'auto' },
-      label(LEFT_X, TUNED_Y - LINE_M, FULL_W, roomLine(this.signature, this.features)),
+      label(LEFT_X, TUNED_Y - LINE_M, ROOM_W, roomLine(this.signature, this.features)),
     ];
   }
 

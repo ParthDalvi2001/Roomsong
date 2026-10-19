@@ -69,6 +69,13 @@ export const PARAM_SMOOTH_S = 0.03;
 export const SUSPEND_FADE_S = 0.2;
 /** The suspend fade is a setTargetAtTime glide with this many time constants in it (5 τ ≈ −43 dB). */
 export const SUSPEND_FADE_TAUS = 5;
+/**
+ * P-014: from rest (the session's start, or a resume after a suspend that ran its course) the master fades in from
+ * silence: a setTargetAtTime glide with this many time constants in this many seconds (−10 dB at 0.3 s, −3 dB at
+ * 1 s, −0.4 dB at 2.5 s), so a garden that is already playing never starts at full level (startle).
+ */
+export const START_FADE_S = 2.5;
+export const START_FADE_TAUS = 3;
 
 /** Panner distance curve (LLD §7.1, NFR-PERF-10): gain 1 up to 40 cm from the head, about −6 dB at 80 cm. */
 export const PAN_REF_DISTANCE_M = 0.4;
@@ -149,6 +156,11 @@ export const IR_SAMPLES_PER_TICK = 8000;
  * loudness measured against the whole garden.
  */
 export const UI_LEVEL_DB_RE_PLANT: readonly [number, number] = [-10, 3];
+/**
+ * P-012: the note a plant sounds as it is set into its cell, in dB against a full-height plant of its voice: quiet,
+ * inside UI_LEVEL_DB_RE_PLANT. A new plant's own notes are −10.8 dB with today's sound and −5.4 dB with a style.
+ */
+export const PLACED_DB_RE_PLANT = -9;
 
 /** Weight of the newest tick in the moving average behind `stats.cpuEstimate`. */
 export const TICK_EMA = 0.05;
@@ -257,6 +269,14 @@ export const ACCENTS_DB: readonly number[] = [0, -5, -3, -5, -1, -5, -3, -5, -1,
  * a garden sways the same way each time; give it a session seed if a listener hears the repeat.
  */
 export const GROOVE_SEED = 164;
+/**
+ * P-009, the loop that does not repeat: each plant draws one of these cycles, in bars, from its seed (grooveSeed) and
+ * rests in one bar of each, at a seeded place in it; a plant of the 1-bar cycle skips this share of its bars instead,
+ * a seeded draw a bar. Cycles of 1, 2, 3 and 5 bars come round together every 30 bars (86 s at 84 BPM). A rest
+ * removes a note and moves none: the notes that play stay on the grid, under the tide.
+ */
+export const CYCLE_BARS: readonly number[] = [1, 2, 3, 5];
+export const CYCLE_SKIP = 0.125;
 /** Evolving pad (§1.4): a pad plant's cutoff moves on a sine this many bars long. */
 export const PAD_EVOLVE_BARS = 16;
 /** Tempo echo (§1.2): the DelayNode's longest delay. A style's 6 steps at 60 BPM are 1.5 s. */
