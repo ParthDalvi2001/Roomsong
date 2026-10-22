@@ -30,6 +30,7 @@ import {
   PerfSystem,
   SeedSystem,
   TuningRippleSystem,
+  VineSystem,
 } from './render/index.js';
 import { RoomSystem } from './room/index.js';
 import { CaptionSystem, HintSystem, PanelSystem } from './ui/index.js';
@@ -452,6 +453,7 @@ export async function start(landing: Landing): Promise<void> {
   // Everything drawn on the bed is a child of the bed entity's Object3D (API_SPEC §1.10 rule 5).
   register(world, BedRenderSystem, 50, { guard, engine, bed: room.bed.object3D });
   register(world, HaloSystem, 52, { guard, engine, bed: room.bed.object3D }); // Listen mode (T-148)
+  register(world, VineSystem, 53, { guard, bed: room.bed.object3D }); // the wall vine (T-149)
   register(world, TuningRippleSystem, 55, { guard, engine, bed: room.bed.object3D });
   register(world, CaptionSystem, 60);
   register(world, HintSystem, 61, { bed: room.bed.object3D }); // T-150: its icons stand on the bed

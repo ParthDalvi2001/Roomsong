@@ -254,3 +254,15 @@ export const SEED_BUMP_M = 0.03;
 export const SEED_BUMP_REDUCED_M = SEED_BUMP_M / 2;
 /** UX §7: "Garden is full" when a seed is let go over a full bed. Chosen in T-127: up this long (core's clock). */
 export const GARDEN_FULL_CAPTION_MS = 3000;
+
+/** FR-ROOM-04 (Could C4, D-021, T-149): the vine on the nearest wall. A wall farther than this from the bed's
+ *  centre gets none. The vine is VINE_SEGMENTS pieces of VINE_SEGMENT_M, so a full bed (PLANT_CAPACITY plants)
+ *  grows 1.2 m; it sways this far sideways on its way up. UX §3.5: the whole length grows in 6 s; FR-UI-06: under
+ *  reduced motion it fades in over VINE_FADE_MS instead of growing. */
+export const VINE_WALL_MAX_M = 1.5;
+export const VINE_SEGMENTS = 48;
+export const VINE_SEGMENT_M = 0.025;
+export const VINE_RADIUS_M = 0.008;
+export const VINE_SWAY_M = 0.06;
+export const VINE_GROW_MS = 6000;
+export const VINE_FADE_MS = 400;

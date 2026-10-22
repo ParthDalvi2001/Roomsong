@@ -22,6 +22,7 @@ import { PlantRenderer } from './PlantRenderer.js';
 import { SeedRenderer } from './SeedRenderer.js';
 import { TideRenderer } from './TideRenderer.js';
 import { TuningRipple } from './TuningRipple.js';
+import { VineRenderer } from './VineRenderer.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { SeedMove } from './SeedRenderer.js';
@@ -586,5 +587,59 @@ export class TuningRippleSystem extends createSystem(
 
   private takeCaption(): void {
     if (this.caption.hasComponent(Caption)) this.caption.removeComponent(Caption);
+  }
+}
+
+/**
+ * The vine (FR-ROOM-04, Could C4, D-021; T-149). Priority 53. configData: `guard`, the page's FlashGuard; `bed`,
+ * the bed entity's Object3D. The nearest wall of `room:features` (the one the tuning ripple sweeps) is laid in the
+ * next update, from the bed's pose of that frame (rule 4); the garden's plant count sets the length. A Re-place
+ * (BedAnchor leaving the bed) and `xr:sessionEnd` take the vine away. Decoration only: no target, no caption.
+ */
+export class VineSystem extends createSystem(
+  { beds: { required: [BedAnchor] } },
+  {
+    guard: { type: Types.Object, default: null },
+    bed: { type: Types.Object, default: null },
+  },
+) {
+  private vine!: VineRenderer;
+  private bed!: Object3D;
+  /** The surfaces the next update lays the vine on; null when none wait. */
+  private surfaces: RoomSurfaces | null = null;
+
+  override init(): void {
+    this.vine = new VineRenderer(this.scene, this.config.guard.value as FlashGuard);
+    this.bed = this.config.bed.value as Object3D;
+    this.vine.setReducedMotion(settings.get().reducedMotion);
+    this.cleanupFuncs.push(
+      bus.on('room:features', ({ surfaces }) => void (this.surfaces = surfaces)),
+      bus.on('garden:changed', ({ state }) => this.vine.setPlants(state.plants)),
+      bus.on('settings:changed', ({ settings: s }) => this.vine.setReducedMotion(s.reducedMotion)),
+      bus.on('xr:sessionEnd', () => this.unlay()),
+      // Runs inside RoomSystem's removeComponent, where no circuit breaker reaches: it catches its own.
+      this.queries.beds.subscribe('disqualify', () => {
+        try {
+          this.unlay();
+        } catch (error) {
+          log.error('render', 'the vine could not be taken away', error);
+        }
+      }),
+      () => this.vine.dispose(),
+    );
+  }
+
+  /** `time`: IWSDK's frame time in seconds, in whole milliseconds as the other systems take it. */
+  override update(_delta: number, time: number): void {
+    if (this.surfaces !== null) {
+      this.vine.setWall(this.surfaces.nearestWall, this.bed.matrixWorld.elements);
+      this.surfaces = null;
+    }
+    this.vine.update(Math.round(time * 1000));
+  }
+
+  private unlay(): void {
+    this.surfaces = null;
+    this.vine.setWall(undefined, this.bed.matrixWorld.elements);
   }
 }

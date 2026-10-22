@@ -141,6 +141,7 @@ describe('the systems start() registers (API_SPEC §1.10, the priorities table)'
       ['SeedSystem', '49', '{ guard }'], // T-127
       ['BedRenderSystem', '50', '{ guard, engine, bed: room.bed.object3D }'],
       ['HaloSystem', '52', '{ guard, engine, bed: room.bed.object3D }'], // T-148
+      ['VineSystem', '53', '{ guard, bed: room.bed.object3D }'], // T-149
       ['TuningRippleSystem', '55', '{ guard, engine, bed: room.bed.object3D }'], // T-142, T-142b
       ['CaptionSystem', '60'],
       ['HintSystem', '61', '{ bed: room.bed.object3D }'], // T-150

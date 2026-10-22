@@ -710,3 +710,56 @@ test('T-128c anchors: a second visit brings the bed back at the same pose, and w
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
 });
+
+// T-149 (FR-ROOM-04, Could C4): in the counter room the wall ahead is 0.3 m from the bed, so a full garden
+// (autoplant=80) grows the vine up it: one instanced mesh, one draw call per eye, ≤ 8k triangles. The table room's
+// nearest wall is 1.8 m off (past VINE_WALL_MAX_M), so the cases above draw none.
+test('T-149 the counter room with autoplant=80: the vine grows up the wall ahead, one draw call per eye', async ({
+  page,
+}, testInfo) => {
+  const errors = watch(page);
+  const offHost = await openApp(page, readRoom('counter'), '/?flags=autoplant=80');
+  const probe = await watchRoom(page);
+  await enterXR(page);
+  await heardOf(page, probe, 'room:features');
+  const vine = await page.evaluateHandle(() => {
+    const { world } = window.__roomsong!;
+    const mesh = world.scene.getObjectByName('vine') as import('three').InstancedMesh<
+      import('three').BufferGeometry,
+      import('three').MeshBasicMaterial
+    >;
+    // Its draws in each frame, from the start of that frame's render (as the halo test counts the tide's).
+    let draws = 0;
+    world.scene.onBeforeRender = () => {
+      mesh.userData.draws = draws;
+      draws = 0;
+    };
+    mesh.onBeforeRender = () => draws++;
+    return mesh;
+  });
+  // The whole length in VINE_GROW_MS (6 s) of frame time; the emulator's frames are slowed.
+  await page.waitForFunction((mesh) => mesh.count === 48, vine, { timeout: 40_000 });
+  await xrFrames(page, 3);
+  const drawn = await vine.evaluate((mesh) => ({
+    draws: mesh.userData.draws as number,
+    tris: (mesh.geometry.index!.count / 3) * mesh.count,
+    opacity: mesh.material.opacity,
+    visible: mesh.visible,
+    // The lowest and highest pieces: up the wall at z = -0.75 from the worktop's height (0.92 m).
+    foot: Array.from(mesh.instanceMatrix.array.slice(12, 15)),
+    top: Array.from(mesh.instanceMatrix.array.slice(47 * 16 + 12, 47 * 16 + 15)),
+  }));
+  const eyes = await probe.evaluate((p) => p.eyes());
+  expect(drawn.visible).toBe(true);
+  expect(drawn.draws).toBe(eyes);
+  expect(drawn.tris).toBe(576); // 48 pieces of 12
+  expect(drawn.opacity).toBeCloseTo(0.7, 3);
+  expect(drawn.foot[1]).toBeCloseTo(0.92 + 0.0125, 3);
+  expect(drawn.top[1]).toBeCloseTo(0.92 + 1.2 - 0.0125, 3);
+  expect(drawn.foot[2]).toBeGreaterThan(-0.75);
+  expect(drawn.foot[2]).toBeLessThan(-0.73);
+  await page.screenshot({ path: testInfo.outputPath('vine-counter.png') });
+  console.log(`T-149 vine: ${drawn.draws} draws and ${drawn.tris} triangles in ${eyes} eyes (emulator)`);
+  expect(errors).toEqual([]);
+  expect(offHost).toEqual([]);
+});

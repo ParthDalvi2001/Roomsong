@@ -100,6 +100,7 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
         'SeedSystem',
         'TideRenderer',
         'TuningRippleSystem',
+        'VineSystem', // T-149
         'createPerfHud',
         'stepGlow', // T-160
       ].sort(),
