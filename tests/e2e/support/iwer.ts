@@ -4,59 +4,12 @@
 // emulator supports. Everything here is emulator behaviour; none of it says anything about a headset.
 import { readFileSync } from 'node:fs';
 
+import { roomCapture, type Room } from '../../fixtures/rooms/capture';
+
 import type { JSHandle, Page } from '@playwright/test';
 
-type Vec3 = [x: number, y: number, z: number];
-type Quat = [x: number, y: number, z: number, w: number];
+export type { Room };
 
-// WebXR semantic label -> the label name in the emulator's room capture format. These are the labels the
-// emulator can produce ("desk" is not one of them).
-const SEM_LABEL = {
-  table: 'TABLE',
-  floor: 'FLOOR',
-  ceiling: 'CEILING',
-  wall: 'WALL_FACE',
-  couch: 'COUCH',
-  door: 'DOOR_FRAME',
-  window: 'WINDOW_FRAME',
-  shelf: 'STORAGE',
-  bed: 'BED',
-  screen: 'SCREEN',
-  lamp: 'LAMP',
-  plant: 'PLANT',
-  'wall art': 'WALL_ART',
-  'global mesh': 'GLOBAL_MESH',
-  other: 'OTHER',
-} as const;
-
-// Plane-space orientation for each side a surface can face. In the emulator a plane can only be hit-tested
-// from its local -Y side, and its own living_room capture points +Y away from the room on all 17 planes
-// (a table top has +Y down), so the fixtures do the same. Whether a headset agrees is not known.
-const S = Math.SQRT1_2;
-const PLANE_ORIENTATION = {
-  '+y': [1, 0, 0, 0],
-  '-y': [0, 0, 0, 1],
-  '+z': [0, S, -S, 0],
-  '-z': [S, 0, 0, S],
-  '+x': [0.5, -0.5, 0.5, 0.5],
-  '-x': [0.5, 0.5, -0.5, 0.5],
-} satisfies Record<string, Quat>;
-
-/** tests/fixtures/rooms/*.json: metres, y up, floor at y = 0, the user at the origin looking down -z. */
-export interface Room {
-  description: string;
-  /** `facing` is the side the room is on; `size` is width x depth (horizontal) or width x height (wall). */
-  planes: {
-    label: keyof typeof SEM_LABEL;
-    facing: keyof typeof PLANE_ORIENTATION;
-    center: Vec3;
-    size: [number, number];
-  }[];
-  /** Triangle meshes in room coordinates: xyz triples and index triples. */
-  meshes?: { label: keyof typeof SEM_LABEL; vertices: number[]; indices: number[] }[];
-}
-
-/** tests/fixtures/handPaths/*.json: where one emulated hand is at each time, in the app's reference space. */
 export interface HandPath {
   description: string;
   hand: 'left' | 'right';
@@ -136,37 +89,10 @@ const iwer = (page: Page) =>
     JSHandle<IwerDevice>
   >;
 
-// The emulator downloads its room (dev.emulator.environment in iwsdk.config.json) from this address on every
-// page load. openApp answers that request with the fixture instead, in the emulator's capture format (read
-// from the @iwer/sem 2.5.0 code inside @iwsdk/vite-plugin-dev 1.0.1, a version package.json pins exactly).
-const ROOM_REQUEST = /^https:\/\/www\.unpkg\.com\/@iwer\/sem@[^/]+\/captures\/\w+\.json$/;
-
-function roomCapture(room: Room) {
-  const base64 = (data: Float32Array | Uint32Array) => Buffer.from(data.buffer).toString('base64');
-  const at = ([x, y, z]: Vec3, [qx, qy, qz, qw]: Quat) => ({
-    position: { x, y, z },
-    orientation: { x: qx, y: qy, z: qz, w: qw },
-  });
-  return {
-    spatialEntities: [
-      ...room.planes.map(({ label, facing, center, size: [width, height] }, i) => ({
-        uuid: `plane-${i}`,
-        semanticLabel_META: SEM_LABEL[label],
-        locatable_META: at(center, PLANE_ORIENTATION[facing]),
-        bounded2D_META: { offset: { x: -width / 2, y: -height / 2 }, extent: { width, height } },
-      })),
-      ...(room.meshes ?? []).map(({ label, vertices, indices }, i) => ({
-        uuid: `mesh-${i}`,
-        semanticLabel_META: SEM_LABEL[label],
-        locatable_META: at([0, 0, 0], [0, 0, 0, 1]),
-        triangleMesh_META: {
-          vertices: base64(new Float32Array(vertices)),
-          indices: base64(new Uint32Array(indices)),
-        },
-      })),
-    ],
-  };
-}
+// The emulator asks for its room (dev.emulator.environment in iwsdk.config.json) at this path of the dev server,
+// where the dev plugin of vite.config.ts serves a fixture (BUG-002: nothing comes from unpkg.com). openApp answers
+// it with the test's own fixture instead.
+const ROOM_REQUEST = /^https:\/\/localhost:\d+\/__emulator\/rooms\/\w+\.json$/;
 
 /**
  * `E2E_FRAME_MS=250 npx playwright test 12-settings`: while an XR session runs, every animation frame of the page,
@@ -209,8 +135,9 @@ function slowFrames(ms: number): void {
 /**
  * (a) Open the app with `room` as the emulated room. Resolves once the emulator holds exactly the fixture's
  * planes and meshes, which is always before a session can start. Nothing leaves localhost: the emulator's
- * room request is answered from the fixture; every other HTTP(S) request is aborted, every WebSocket to
- * another host is closed unconnected, and their URLs are returned (the array keeps filling while the page lives).
+ * room request (to the dev server) is answered from the fixture; every HTTP(S) request to another host is aborted,
+ * every WebSocket to another host is closed unconnected, and their URLs are returned (the array keeps filling
+ * while the page lives).
  * `path` opens another page of the same site, for example '/proto/spike/'.
  * The app itself ('/') opens with the `skipOnboarding` flag added (T-150): a spec about something else is not held
  * up by the tutorial's captions and icons, which wait for the player. `onboarding: true` keeps the tutorial.
@@ -230,13 +157,10 @@ export async function openApp(
     return socket.close();
   });
   await page.route(leavesLocalhost, (route) => {
-    const url = route.request().url();
-    if (ROOM_REQUEST.test(url)) {
-      return route.fulfill({ json: roomCapture(room), headers: { 'access-control-allow-origin': '*' } });
-    }
-    offHost.push(url);
+    offHost.push(route.request().url());
     return route.abort();
   });
+  await page.route(ROOM_REQUEST, (route) => route.fulfill({ json: roomCapture(room) }));
   await page.goto(onboarding ? path : withoutOnboarding(path));
   const want = [
     ...room.planes.map((plane) => `plane:${plane.label}`),

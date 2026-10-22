@@ -184,10 +184,14 @@ describe('garden/growth applyVisit: the first visit (FR-MUS-08)', () => {
     const { state, newSeeds, grown } = applyVisit(brandNew(), DAY1, SIG, IST);
     expect(newSeeds.map((x) => x.voice)).toEqual(['pluck', 'choir', 'bass']);
     expect(newSeeds.map((x) => x.id)).toEqual([
-      'seed-2026-10-11-0',
-      'seed-2026-10-11-1',
-      'seed-2026-10-11-2',
+      `seed-2026-10-11-${DAY1}-0`,
+      `seed-2026-10-11-${DAY1}-1`,
+      `seed-2026-10-11-${DAY1}-2`,
     ]);
+    // BUG-006: a garden made later the same day gets starters of its own ids
+    const later = applyVisit(brandNew(DAY1 + 1), DAY1 + 1, SIG, IST).newSeeds.map((x) => x.id);
+    expect(later).not.toEqual(newSeeds.map((x) => x.id));
+    expect(later[0]).toBe(`seed-2026-10-11-${DAY1 + 1}-0`);
     expect(new Set(newSeeds.map((x) => x.hue)).size).toBe(3);
     for (const x of newSeeds) {
       expect(x.receivedAt).toBe(DAY1);

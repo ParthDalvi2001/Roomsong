@@ -15,7 +15,8 @@ import {
 test('E0 every room fixture loads into the emulator', async ({ page }) => {
   for (const name of ROOMS) {
     // openApp resolves only when the emulator holds exactly the fixture's planes and meshes, labels included.
-    await openApp(page, readRoom(name));
+    // BUG-002: the room comes from the dev server, so an offline page (every other host is blocked) still has it.
+    expect(await openApp(page, readRoom(name))).toEqual([]);
   }
 });
 

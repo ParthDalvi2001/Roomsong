@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { iwsdkDev } from '@iwsdk/vite-plugin-dev';
 import { defineConfig, type Plugin } from 'vite';
 
+import { roomCapture, type Room } from './tests/fixtures/rooms/capture';
+
 // Device test pages (T-104 capability spike, T-105 pinch accuracy) and the bed preview (T-125). Each one that
 // exists is built to dist/<same path>, so a headset opens it at <site>/proto/spike/, <site>/proto/pinch/ or
 // <site>/proto/bed/.
@@ -123,8 +125,41 @@ const licenseTexts: Plugin = {
   },
 };
 
+// Dev server only (BUG-002): the emulator fetches its room (`dev.emulator.environment` in iwsdk.config.json) from
+// www.unpkg.com on every page load, and an offline dev page throws "Failed to fetch". The address is fixed inside
+// @iwsdk/vite-plugin-dev, so a script ahead of its injection sends that one fetch to the dev server instead, which
+// answers with the `table` room fixture of tests/fixtures/rooms in the capture format (the room the app is for;
+// tests/e2e/support/iwer.ts answers the same path with each test's own fixture). Not in the build: `apply: 'serve'`.
+const EMULATOR_ROOM_PATH = '/__emulator/rooms/';
+const emulatorRoom: Plugin = {
+  name: 'roomsong-emulator-room',
+  apply: 'serve',
+  transformIndexHtml: {
+    order: 'pre',
+    handler: () => [
+      {
+        tag: 'script',
+        children:
+          '(function (fetch) { window.fetch = function (input, init) {' +
+          ' var url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;' +
+          ' var room = /^https:\\/\\/www\\.unpkg\\.com\\/@iwer\\/sem@[^/]+\\/captures\\/(\\w+)\\.json$/.exec(url);' +
+          ` return fetch.call(window, room ? "${EMULATOR_ROOM_PATH}" + room[1] + ".json" : input, init); }; })(window.fetch);`,
+        injectTo: 'head-prepend', // before the emulator's own script, which @iwsdk/vite-plugin-dev puts at the head's end
+      },
+    ],
+  },
+  configureServer: (server) => {
+    server.middlewares.use(EMULATOR_ROOM_PATH, (req, res, next) => {
+      if (!/^\/\w+\.json$/.test(req.url ?? '')) return next();
+      const room = JSON.parse(readFileSync(join(ROOT, 'tests/fixtures/rooms/table.json'), 'utf8')) as Room;
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify(roomCapture(room)));
+    });
+  },
+};
+
 export default defineConfig({
-  plugins: [iwsdkDev(), contentSecurityPolicy, licenseTexts],
+  plugins: [iwsdkDev(), emulatorRoom, contentSecurityPolicy, licenseTexts],
   server: { host: '0.0.0.0', port: 8081, open: false },
   build: {
     outDir: 'dist',

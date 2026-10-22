@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as core from '../../../src/core/index.js';
 import { TIME_LAPSE_DAY_MS } from '../../../src/garden/config.js';
 import * as lib from '../../../src/garden/index.js';
+import { validateState } from '../../../src/persistence/schema.js';
 
 import { fullBedExcept, garden, plant, seed } from './fixtures.js';
 
@@ -302,7 +303,11 @@ describe('garden/GardenSystem: the signature, then the visit (API_SPEC §1.10 ru
     const state = s.state();
     expect(signature).not.toBe(s.lib.WANDERER);
     expect(state).toEqual(s.lib.applyVisit(fresh, T0, signature, IST).state);
-    expect(state.seeds.map((x) => x.id)).toEqual([`seed-${TODAY}-0`, `seed-${TODAY}-1`, `seed-${TODAY}-2`]);
+    expect(state.seeds.map((x) => x.id)).toEqual([
+      `seed-${TODAY}-${T0}-0`,
+      `seed-${TODAY}-${T0}-1`,
+      `seed-${TODAY}-${T0}-2`,
+    ]);
     expect(state.seeds.map((x) => x.voice)).toEqual(signature.starterVoices);
     expect(s.seen).toEqual([
       ['room:signature', { signature, starterSeeds: true }],
@@ -319,9 +324,9 @@ describe('garden/GardenSystem: the signature, then the visit (API_SPEC §1.10 ru
     s.system.load(s.lib.newGarden(s.time.now, s.core.settings.get()));
     s.features();
     expect(s.state().seeds.map((x) => x.id)).toEqual([
-      'seed-2026-10-13-0',
-      'seed-2026-10-13-1',
-      'seed-2026-10-13-2',
+      `seed-2026-10-13-${Date.UTC(2026, 9, 12, 20)}-0`,
+      `seed-2026-10-13-${Date.UTC(2026, 9, 12, 20)}-1`,
+      `seed-2026-10-13-${Date.UTC(2026, 9, 12, 20)}-2`,
     ]);
   });
 
@@ -850,6 +855,23 @@ describe('garden/GardenSystem: the release table (API_SPEC §1.4)', () => {
 });
 
 describe('garden/GardenSystem: newGarden and setBedHeightOffset (FR-PER-03, FR-UI-10)', () => {
+  it('BUG-006: New garden twice on one day gives starter seeds of their own ids each time, and the save takes them', () => {
+    const s = setup();
+    s.system.load(s.lib.newGarden(T0, s.core.settings.get()));
+    s.features();
+    const ids = () => s.state().seeds.map((x) => x.id);
+    const first = ids();
+    s.time.now = T0 + 1000;
+    s.system.newGarden();
+    const second = ids();
+    s.time.now = T0 + 2000;
+    s.system.newGarden();
+    const third = ids();
+    expect(new Set([...first, ...second, ...third]).size).toBe(9);
+    expect(third).toEqual([0, 1, 2].map((i) => `seed-${TODAY}-${T0 + 2000}-${i}`));
+    expect(validateState(s.state())).toEqual(s.state());
+  });
+
   it('New garden with a seed out and an undo pending: the seed goes back, the token is dropped, three starter seeds come (b1)', () => {
     const s = setup();
     s.system.load(
@@ -900,11 +922,11 @@ describe('garden/GardenSystem: newGarden and setBedHeightOffset (FR-PER-03, FR-U
     s.system.load(s.lib.newGarden(T0, s.core.settings.get()));
     s.features();
     s.palmUp('left');
-    s.pinch('right', seedRef(`seed-${TODAY}-0`));
-    s.system.newGarden(); // the same day: the starter seeds get the same ids
-    expect(s.state().seeds[0]?.id).toBe(`seed-${TODAY}-0`);
+    s.pinch('right', seedRef(`seed-${TODAY}-${T0}-0`));
+    s.system.newGarden(); // the same day and the same clock: the starter seeds get the same ids
+    expect(s.state().seeds[0]?.id).toBe(`seed-${TODAY}-${T0}-0`);
     s.clear();
-    s.release('right', 'carry', seedRef(`seed-${TODAY}-0`), 'bed', cell(0, 0));
+    s.release('right', 'carry', seedRef(`seed-${TODAY}-${T0}-0`), 'bed', cell(0, 0));
     expect(s.seen).toEqual([]);
     expect(s.state().plants).toEqual([]);
 
@@ -914,7 +936,7 @@ describe('garden/GardenSystem: newGarden and setBedHeightOffset (FR-PER-03, FR-U
 
   it('BUG-006: a hand closed on the old seed plants nothing, though the new seed of that id is out on the other palm', () => {
     const s = setup();
-    const id = `seed-${TODAY}-0`;
+    const id = `seed-${TODAY}-${T0}-0`;
     s.system.load(s.lib.newGarden(T0, s.core.settings.get()));
     s.features();
     s.palmUp('left');
@@ -933,7 +955,7 @@ describe('garden/GardenSystem: newGarden and setBedHeightOffset (FR-PER-03, FR-U
 
   it('a seed planted with no pinchStart (the gaze, T-160) is planted after a New garden: the hand-out forgets old pinches', () => {
     const s = setup();
-    const id = `seed-${TODAY}-0`;
+    const id = `seed-${TODAY}-${T0}-0`;
     s.system.load(s.lib.newGarden(T0, s.core.settings.get()));
     s.features();
     s.palmUp('right');
@@ -1015,8 +1037,8 @@ describe('garden/GardenSystem: on the bus (API_SPEC §2, LLD §3.2 Bus order)', 
     expect(s.state().seeds).toHaveLength(3);
 
     s.palmUp('left');
-    s.release('right', 'carry', seedRef(`seed-${TODAY}-0`), 'bed', cell(0, 0));
-    expect(s.state().plants.map((p) => p.id)).toEqual([`seed-${TODAY}-0`]);
+    s.release('right', 'carry', seedRef(`seed-${TODAY}-${T0}-0`), 'bed', cell(0, 0));
+    expect(s.state().plants.map((p) => p.id)).toEqual([`seed-${TODAY}-${T0}-0`]);
   });
 
   it('known limit: a change made from inside a garden:changed handler is applied, logged at error, and told out of order', () => {

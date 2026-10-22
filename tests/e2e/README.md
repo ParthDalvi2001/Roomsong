@@ -22,9 +22,9 @@ npx playwright test 01-enter        # one file
 - **Server:** plain `vite` (not `iwsdk dev up`, which has no port option and opens a managed browser).
 - **Browser:** Playwright's headless shell. WebGL2 runs on SwiftShader (software) with no extra flags.
 - **Network:** `openApp` aborts and records every HTTP(S) request and every WebSocket that would leave localhost,
-  so runs are the same online and offline. One request is answered locally instead: the emulator downloads its room
-  from unpkg.com on every dev page load (`dev.emulator.environment` in `iwsdk.config.json`), and the helper serves
-  the room fixture there. That download is dev tooling; it is not in the production build.
+  so runs are the same online and offline. The emulator's room (`dev.emulator.environment` in `iwsdk.config.json`)
+  comes from the dev server, `/__emulator/rooms/<name>.json`, served by the dev plugin in `vite.config.ts` from the
+  `table` fixture (BUG-002: nothing from unpkg.com); the helper answers that request with the test's own fixture.
 - **Enter:** `xr.offer` is `"none"` (API_SPEC §1.10 rule 2, T-128a): the app offers no session, so the
   emulator's own "Enter XR" button and `iwsdk xr enter` have nothing to grant. `enterXR` selects hands (IWER
   starts on controllers; `enterXR(page, 'controller')` keeps them) and presses the page's own "Enter the garden"

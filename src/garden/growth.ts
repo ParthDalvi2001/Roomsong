@@ -72,13 +72,14 @@ function localDay(now: number, tzOffsetMin: number): Day | null {
 
 /**
  * The seeds a visit brings (FR-MUS-08): the starters on the first visit, afterwards one on a local date later
- * than the last seed's. An id holds its date, and a date brings seeds once, so no id comes twice (D-031).
+ * than the last seed's. An id holds its date, and a date brings seeds once, so no id comes twice (D-031). A
+ * starter's id holds the garden's `createdAt` too: two gardens of one day (New garden) share no id (BUG-006).
  */
 function seedsFor(s: GardenState, now: number, sig: RoomSignature, day: Day): Seed[] {
   const room = SEED_SUPPLY_MAX - s.seeds.length;
   if (s.visits === 0) {
     return sig.starterVoices.slice(0, Math.max(0, room)).map((voice, i) => ({
-      id: `seed-${day.date}-${i}`,
+      id: `seed-${day.date}-${s.createdAt}-${i}`,
       voice,
       hue: hueAt(day.index + i),
       receivedAt: now,
