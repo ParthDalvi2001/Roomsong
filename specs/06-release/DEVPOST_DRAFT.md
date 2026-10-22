@@ -33,16 +33,16 @@ Where each heading comes from:
 
 | Heading | Source of the heading | Words (headings and placeholders counted, markers not) |
 |---|---|---|
-| How to test | SUBMISSION_CHECKLIST §2.1 (a required section; it comes first) | 86 |
+| How to test | SUBMISSION_CHECKLIST §2.1 (a required section; it comes first) | 99 |
 | What it is | HACKATHON_RULES §5.3 "inspiration"; SUBMISSION_CHECKLIST §2.1 "Inspiration" and "What it does", merged to save words | 69 |
 | Your first minute | the brief for this draft; PRD §3.1 (the First Five Minutes flow); its steps are the judge's path, so "How to test" points to it | 62 |
-| After that | SUBMISSION_CHECKLIST §2.1 "What it does" (shaping, Listen, coming back) | 57 |
-| How this meets the brief | SUBMISSION_CHECKLIST §2.1 (required); HACKATHON_RULES §3 (the theme and the design tests) | 57 |
-| How we built it | HACKATHON_RULES §5.3 "how we built it"; SUBMISSION_CHECKLIST §2.1 | 84 |
-| Known limitations | SUBMISSION_CHECKLIST §2.1 (required); CLAUDE.md Golden Rule 11; HACKATHON_RULES §10 C1, C5, C7 | 67 (both alternatives) |
-| What's next | HACKATHON_RULES §5.3 "future plans"; SUBMISSION_CHECKLIST §2.1 (required) | 18 |
+| After that | SUBMISSION_CHECKLIST §2.1 "What it does" (shaping, Listen, coming back) | 54 |
+| How this meets the brief | SUBMISSION_CHECKLIST §2.1 (required); HACKATHON_RULES §3 (the theme and the design tests) | 53 |
+| How we built it | HACKATHON_RULES §5.3 "how we built it"; SUBMISSION_CHECKLIST §2.1 | 79 |
+| Known limitations | SUBMISSION_CHECKLIST §2.1 (required); CLAUDE.md Golden Rule 11; HACKATHON_RULES §10 C1, C5, C7 | 65 (both alternatives) |
+| What's next | HACKATHON_RULES §5.3 "future plans"; SUBMISSION_CHECKLIST §2.1 (required) | 19 |
 
-Total: **500 words with both "Known limitations" alternatives, 492 with the one that is true today** (counted by script with the markers removed, the same count as draft v0's 489 and 481). Laptop mode added 21 words to "How to test"; 12 were cut elsewhere (the fallback list, "built and", two short rewrites). The speakers note (D-057, 19 Oct) added 4 more, "built-in speakers (Bluetooth lags)", and "a click is the pinch" became "a click pinches" (2 fewer). About 8 words of slack: every placeholder filled with a real number or name must replace words, not add them. If the form has no separate hands field (T-115), the hands text of §1.3 (166 words) cannot fit and must shrink to about 20 words inside these 500.
+Total: **500 words with both "Known limitations" alternatives, 492 with the one that is true today** (counted on 23 Oct by script with the markers removed and list markers not counted; the rows above are by that count). On 23 Oct the stillness and Time-lapse sentences (16 words) went into "How to test" and 16 were cut across five sections ("ring-shaped", "to make it", "drag it", "it is", "in which the room's", "explored the idea", "maps … musically; it does", "no table", "palm", "one", two "and" commas). Laptop mode added 21 words to "How to test"; 12 were cut elsewhere (the fallback list, "built and", two short rewrites). The speakers note (D-057, 19 Oct) added 4 more, "built-in speakers (Bluetooth lags)", and "a click is the pinch" became "a click pinches" (2 fewer). About 8 words of slack: every placeholder filled with a real number or name must replace words, not add them. If the form has no separate hands field (T-115), the hands text of §1.3 (166 words) cannot fit and must shrink to about 20 words inside these 500.
 
 **The no-headset path.** The rules ask for a build that launches in Quest Browser (HACKATHON_RULES §5.1) and allow emulator video (§5.2); the FAQ says judges play on a Quest 3 or 3S (§11). Since T-114b anyone without a headset can try the garden: on a browser with no mixed reality the landing page says "The garden opens in this tab: a click or a tap is a pinch." and Enter opens laptop mode. What it is: the same garden, sound, guide and save, seen from a fixed seat over a drawn table; the seed follows the pointer and a click on a free cell plants it; a press and drag moves a plant, or removes it off the ring; a click on the petal undoes; a click on the centre orb starts Listen and a click ends it. What it is not: mixed reality (no passthrough, no real table), the room signature (always the default "Wanderer" tuning), hand poses (no palm up, no palms out), pull (a plant cannot be made taller or shorter), the settings panel (the landing page's switches stand in) or look-and-hold. It is tested only in desktop Chromium by the browser tests (TC-E2E-14 and the laptop timing of T-150). PRD §6 calls S6 "never the judged path", so the copy offers it as a preview after the headset steps, beside the video. The weekly rule check of 15 Oct (T-186) found the rules unchanged; they were not re-read for this draft.
 
@@ -52,16 +52,17 @@ Quest 3 or 3S, hand tracking on, controllers down, built-in speakers (Bluetooth 
 1. In Meta Quest Browser open <GitHub Pages URL> [not yet: T-108]. Mirror: <mirror URL>. Build <hash> (/version.json) [not yet: T-183].
 2. Press Enter the garden; allow hands and room.
 3. Follow "Your first minute", then hold both palms out.
-No headset? Watch the video [not yet: T-181], or open the link on a computer, where a click pinches: no passthrough, room tuning, palm poses or pull.
+4. Sit still eight seconds: the garden opens. Time-lapse (Garden tab): a week in 30 seconds, unsaved.
+No headset? Watch the video [not yet: T-181], or open the link on a computer, where a click pinches: no passthrough, room tuning, poses or pull.
 
 ## What it is
-Instruments ask for skill before they give joy. We wanted a song you grow. Roomsong turns your real table into a glowing ring-shaped garden where every plant sings. Where you plant sets when it plays and how high. A sweep of light plays each plant, always in one scale. Your room tunes it: floor size sets the key, ceiling height the scale, room volume the echo [not yet: T-155].
+Instruments ask for skill before they give joy. We wanted a song you grow. Roomsong turns your real table into a glowing ring garden where every plant sings. Where you plant sets when it plays and how high. A sweep of light plays each plant, always in scale. Your room tunes it: floor size sets the key, ceiling height the scale, room volume the echo [not yet: T-155].
 
 ## Your first minute
-The ring settles on your table (no table: look at a surface and pinch). A ripple crosses table, wall and ceiling, each ringing a note [not yet: T-155]. Hold a palm up: a seed glides in. Pinch it with your other hand; its landing spot lights up. Let go: the sweep makes it sing. Three plants make a song within 90 seconds.
+The ring settles on your table (none: look at a surface and pinch). A ripple crosses table, wall and ceiling, each ringing a note [not yet: T-155]. Hold a palm up: a seed glides in. Pinch it with your other hand; its landing spot lights up. Let go: the sweep makes it sing. Three plants make a song within 90 seconds.
 
 ## After that
-Pull a plant up to make it louder, drag to move it, drag it off the ring to remove it; 5 seconds to undo. Palms out: the lights dim, a halo rises, and the garden performs, music visualization in spatial audio. Saved, it returns to its spot; each day brings a seed, and plants grow.
+Pull a plant up for louder, drag to move it, off the ring to remove it; 5 seconds to undo. Palms out: the lights dim, a halo rises and the garden performs, music visualization in spatial audio. Saved, it returns to its spot; each day brings a seed and plants grow.
 
 ## How this meets the brief
 - Entertainment: a lean-back Listen mode.
@@ -71,11 +72,11 @@ Pull a plant up to make it louder, drag to move it, drag it off the ring to remo
 - Original: synthesized sound, procedural visuals, offline after loading.
 
 ## How we built it
-WebXR with the Immersive Web SDK, Three.js, TypeScript and Web Audio. Plane detection finds the table; a four-step fallback ends in a floating bed. A fixed mapping turns room measurements into key, scale and echo [not yet: T-155]. <20> draw calls [not yet: T-165], 24 pooled voices, a <0.7> MB download. To our knowledge it is the first consumer MR instrument, and the first on Quest, in which the room's geometry tunes the music; art and research projects (MR4MR, ARCHISCORE, RoomTone) explored the idea before us [not yet: T-155].
+WebXR with the Immersive Web SDK, Three.js, TypeScript and Web Audio. Plane detection finds the table; a four-step fallback ends in a floating bed. A fixed mapping turns room measurements into key, scale and echo [not yet: T-155]. <20> draw calls [not yet: T-165], 24 pooled voices, a <0.7> MB download. To our knowledge the first consumer MR instrument, and the first on Quest, whose room geometry tunes the music; art and research projects (MR4MR, ARCHISCORE, RoomTone) came before us [not yet: T-155].
 
 ## Known limitations
 <"Tested on Quest <3/3S> in <N> rooms." | "No headset: tested only in the Immersive Web Emulator, video included.">
-Frame rate, hand feel, target sizes and room readings are unverified on Quest [not yet: T-129, T-165]. The echo maps room size musically; it does not measure acoustics. Rooms without a scanned table or walls get the default tuning. A room near a measuring step can change scale between visits.
+Frame rate, hand feel, target sizes and room readings are unverified on Quest [not yet: T-129, T-165]. The echo follows room size, not measured acoustics. Rooms without a scanned table or walls get the default tuning. A room near a measuring step can change scale between visits.
 
 ## What's next
 <Should-haves that missed 10 Nov.> Shared gardens: a friend's garden in your room's key. <Target launch.>

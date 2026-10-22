@@ -1,6 +1,6 @@
 # Device script S2 — shaping, Listen, restore, pause (T-154)
 
-**Status:** the shaping blocks (TC-DEV-03) are written; on 15 Oct only block 1 could be run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-15 against `develop` ce33e46 (T-146 the shaping gestures, T-147 their drawing, T-127 seed delivery, T-128c the bed on the table). Blocks 6A to 6D (Listen, TC-DEV-04) were written on 2026-10-16 against the T-148 branch at 088ea07, before its merge. Blocks 7, 8 and 9 (TC-DEV-05, 08 and 06) were written on 2026-10-17 against `develop` dca03de (T-128e save, restore and pause; T-160 the accessibility set; T-152 is not built). The hand-over moved from block 9 to block 10.
+**Status:** the shaping blocks (TC-DEV-03) are written; on 15 Oct only block 1 could be run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-15 against `develop` ce33e46 (T-146 the shaping gestures, T-147 their drawing, T-127 seed delivery, T-128c the bed on the table). Blocks 6A to 6D (Listen, TC-DEV-04) were written on 2026-10-16 against the T-148 branch at 088ea07, before its merge. Blocks 7, 8 and 9 (TC-DEV-05, 08 and 06) were written on 2026-10-17 against `develop` dca03de (T-128e save, restore and pause; T-160 the accessibility set; T-152 is not built). The hand-over moved from block 9 to block 10. Blocks 4B, 8B, 9B, 9C and 9D were written on 2026-10-23 against `develop` 36dc6cc (T-152 pause and resume, T-173 stillness, T-174 the Time-lapse switch, T-149 the vine; the petal's hover cue of 23 Oct): emulator-only features, nothing of them seen on a headset.
 
 This script produces results. It contains none.
 
@@ -34,10 +34,15 @@ Every block starts with **Can be run today** or **Needs: a task**. "Today" means
 | 6D | Ten minutes of Listen, and "Goodnight" | the 10-minute end · the Listen half of TC-DEV-07 · wakes at rest | 12 min | needs T-148 and T-128d |
 | 7 | The garden comes back | TC-DEV-05 · after a reload and after closing the Browser: the same cells, the bed at the coin within 4 s or placed again, the same key · a plant made just before closing is kept · the next day one new seed · storage blocked: "Saving unavailable" once | 20 min | needs T-128e |
 | 8 | Pause and resume | TC-DEV-08 · headset off 10 s (3 tries) and the menu 30 s: the garden, the bed and the sound come back, in time, without a pinch · a change made just before is kept | 15 min | needs T-128e; the fade and the phase checks need T-152 |
+| 4B | The petal's glow | is the petal found in 5 s; the 20 % lift when a fingertip or the gaze is on it, within 0.1 s, gone when the hand leaves | 8 min | needs T-128d (the cue on `develop` since 23 Oct) |
+| 8B | Pause and resume, with the caption | T-152: the fade back, the beat where it was, "Pinch to resume sound" when the Browser keeps the sound off | 10 min | needs T-152 (on `develop`) |
+| 9B | Stillness opens the garden | T-173: does a seated head hold still 8 s; does the opening read as anything | 10 min | needs T-173 (on `develop`) |
+| 9C | The Time-lapse switch | T-174: a week in 28 s on screen and in sound; nothing saved | 8 min | needs T-174 (on `develop`) |
+| 9D | The vine on the wall | T-149: a wall within 1.5 m grows it; none without; frame rate | 8 min | needs T-149 (on `develop`) |
 | 9 | One hand, and look and hold | TC-DEV-06 · one hand takes the seed off its own palm · the bed, plants and Listen by looking, the wake by a doubled look · the panel blocks the gaze · the 8°/s hold · the dot over a bright room · the beat ring, read and in time | 50 min | needs T-160 |
 | 10 | Hand the results to Claude | the filled results sheet | 5 min | today |
 
-**Time.** Blocks 0 to 5 and 10: 90 minutes; about 1 h 55 with 15 minutes of setup and one 10-minute break. Block 1 can also be run alone today, right after S1 block 4 (same page, same bookmark): then the S2 sitting is 75 minutes of blocks. Listen (6A to 6D) adds 57 minutes: with it the sitting is about 3 h with setup and two breaks. Listen can also be its own sitting: blocks 0, 6A to 6D and 10, 72 minutes of blocks, about 1 h 35 with setup and one break. Blocks 7 to 9 are 85 minutes; as their own sitting (blocks 0, 7, 8, 9 and 10) 100 minutes of blocks, about 2 h 5 with setup and one break. All of S2 is 3 h 52 of blocks: split it over two sittings.
+**Time.** Blocks 0 to 5 and 10: 90 minutes; about 1 h 55 with 15 minutes of setup and one 10-minute break. Block 1 can also be run alone today, right after S1 block 4 (same page, same bookmark): then the S2 sitting is 75 minutes of blocks. Listen (6A to 6D) adds 57 minutes: with it the sitting is about 3 h with setup and two breaks. Listen can also be its own sitting: blocks 0, 6A to 6D and 10, 72 minutes of blocks, about 1 h 35 with setup and one break. Blocks 7 to 9 are 85 minutes; as their own sitting (blocks 0, 7, 8, 9 and 10) 100 minutes of blocks, about 2 h 5 with setup and one break. All of S2 is 3 h 52 of blocks: split it over two sittings. The 23 Oct blocks (4B, 8B, 9B, 9C, 9D) add 44 minutes; each runs right after its parent block.
 
 **Order.** 0, then 1, then 2 to 5 in order: block 2 makes the plants of different heights that block 3 moves; block 4 removes and brings back; block 5 needs plants in their cells. Then 6A to 6D in order (6D last: it is ten minutes of sitting still), then 7, 8 and 9 in order, then 10. Block 7 plants a small garden of its own and block 8 pauses it; block 9 makes new gardens, so it comes after both. If S1 sitting 2 is on the same day, run S2 blocks 2 to 5 after S1 block 11 and before S1 block 12 (which ends with New garden), and skip S1 block 13 step 11: block 5 here asks the same, with the numbers.
 
@@ -351,6 +356,57 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 - The plant comes back to the bed instead of being removed: you let go before the line. Write down where your fingers were; the line is 5 cm past the outer ring, not at the glass.
 - "Towards you" cannot be done seated, or the headset loses the hand that close: write it down. It is the one removal direction for near-side plants, and the decision is Parth's (it touches a Must, FR-HND-11).
 - The petal cannot be found or pinched: write down the ring and the side. Parth decides on the petal's size and place (UX §9.3).
+
+---
+
+## Block 4B — The petal's glow (8 min)
+
+**Needs: T-128d**, and the petal's hover cue (on `develop` since 23 Oct, emulator only): a fingertip within the petal's 4 cm, or the gaze on it in look-and-hold, lifts it 20 % brighter over 0.1 s, through the flash guard, as a hovered plant is lifted (FR-HND-16); it goes back when the hand or the look leaves.
+
+**Purpose:** see the glow on a real petal, with a fingertip and by looking, and whether a first-timer finds the petal within its 5 s with the glow and "Pinch the petal to undo" (the caption of the first removal of a visit) to help.
+
+**Answers:** FR-HND-16 (the cue within 0.1 s) · UX §9.3 (a petal of 2.5 to 1.0 cm found in time) · UX re-check of 23 Oct, item 6 · FR-UI-11 (the lift counts as a flash).
+
+**You need:** the session of block 4, entered afresh (the caption shows once a visit); for step 5, look and hold on (block 9 shows where).
+
+**Checked against:** `src/render/PetalRenderer.ts` (`setHover`: per hand, the slot it hovers; the lift 1 + `PLANT_HOVER_LIFT` 0.2 × glow, in and out over `HOVER_CUE_MS` 100), `src/render/RenderSystems.ts` (`target:hover` of kind `undo` → `setHover`), `src/render/config.ts` (`PETAL_START_DIAMETER_M` 0.025, `PETAL_END_DIAMETER_M` 0.01, `PETAL_LIFT_M` 0.03), `src/onboarding/OnboardingSystem.ts` (`undoHint` on the first `garden:removed`, 5 s), `src/core/strings.ts`.
+
+### Steps
+
+1. Leave and enter again. Remove one plant sideways (block 4 step 1). Do not look for the petal on purpose: do what you would do to get the plant back. Seconds from the release to your pinch on the petal (count). Did "Pinch the petal to undo" show, before or after you found it?
+2. **The fingertip.** Remove another plant. Bring an open hand's fingertip to within about 3 cm of the petal, without pinching. Does the petal brighten at once (within a blink, 0.1 s)? Move the hand 10 cm away: does it go back at once? In and out three times. Does the glow show at the petal's smallest, near 5 s?
+3. **Both hands.** With the petal lit by one hand, bring the other hand's fingertip to it too, then take the first away: does it stay lit until the last hand leaves?
+4. **The flash cap.** Wave the fingertip in and out of the petal's 4 cm as fast as you can for 3 s and read `flash` on the dev panel.
+5. **By looking.** Look and hold on (the panel, Access). Remove a plant (two hands, as before) and rest your look on the petal: does it brighten as the dwell ring fills, and go back when you look away? Does the dwell bring the plant back?
+6. Twice more as in step 1, on plants of the near side: seconds to the undo pinch, and whether the glow helped you see the petal was a target.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Seconds from release to the undo pinch, each of 3 (steps 1 and 6) | s, s, s |
+| The caption: shown; before / after the petal was found | yes / no; before / after |
+| Fingertip: lit within a blink, n/3; back at once, n/3; lit at its smallest | n/3; n/3; yes / no |
+| Both hands: lit until the last hand leaves | yes / no |
+| `flash` while waving | number |
+| By looking: lit as the ring fills; back on looking away; the plant came back | yes / no, each |
+| The glow helped you know it is a target | yes / no, words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The lift | a visible lift within 0.1 s of the fingertip (or the look) reaching the petal, 3 of 3; back when the hand leaves | FR-HND-16; `HOVER_CUE_MS` |
+| Found in time | the petal pinched within 5 s, 3 of 3 | UX §9.3, FR-MUS-12 |
+| Flash cap | `flash` ≤ 3 | FR-UI-11 |
+| The caption | once a visit, on the first removal, while the petal is there | UX re-check item 6 |
+
+### If it fails
+
+- No lift with the fingertip: write down the distance you reached (the pinch sphere is 4 cm, UX §9.3). Claude files it against the hover cue (RenderSystems `target:hover` of kind `undo`).
+- Lit but not seen at the petal's smallest: write down the seconds; Claude files it for a larger end size (UX §9.3).
+- `flash` above 3: against the FlashGuard.
+- Found late with the glow and the caption: a decision (the petal's size or life), not a bug.
 
 ---
 
@@ -795,6 +851,49 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 
 ---
 
+## Block 8B — Pause and resume, with the caption (10 min)
+
+**Needs: T-152** (on `develop` since 23 Oct, emulator only). This block gives block 8's fade and phase their rules, and tries the caption.
+
+**Purpose:** take the headset off for 10 s and see the sound fade back where the beat was; if the Browser keeps the sound off, see "Pinch to resume sound" bring it back with one pinch.
+
+**Answers:** FR-SYS-05 (out within 300 ms, back in, the tide from its saved phase) · TC-DEV-08 ("phase continuous") · the T-152 caption.
+
+**You need:** the garden of block 7, playing; the "app, dev" bookmark; the console is a bonus (`xr:visibility`, `soundResume`).
+
+**Checked against:** `src/app.ts` (on each `xr:visibility` true the clock is watched; standing still, the caption `soundResume` is raised and the next `gesture:pinchStart` or `gesture:palmUp` resumes the sound), `src/audio/config.ts` (`SUSPEND_FADE_S` 0.2), `src/core/strings.ts` ("Pinch to resume sound").
+
+### Steps
+
+1. Note which plant the light is over. Take the headset off for 10 s (count). Put it on.
+2. Did the sound come back by itself, fading in rather than jumping in? Did the light start again on or just after that plant, with the plants singing in time with it? Any burst, click or jump?
+3. Twice more.
+4. **The caption.** If in any try the sound stayed off: did "Pinch to resume sound" show within about 2 s? Pinch anywhere: the sound must come back within a second. If the sound always came back by itself, write that down: the caption cannot be made to show.
+5. (console) `xr:visibility` false then true each try; a `soundResume` caption line when it showed.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| The sound back by itself; faded / jumped | n/3; each |
+| The light on the return: the same plant or the next / elsewhere | each |
+| Burst, click or jump | none / which try |
+| The caption: showed (which try); the pinch brought the sound back within 1 s | yes / never needed; yes / no |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The fade and the phase | 3 of 3: the sound fades in, the light on the same or the next plant, no burst or click | FR-SYS-05, TC-DEV-08, T-152 |
+| The caption | when the sound stays off, the caption within 2 s and one pinch brings it back | T-152, API_SPEC §1.10 rule 3 |
+
+### If it fails
+
+- The sound stays off with no caption: write down whether a pinch brought it back anyway. Claude files it against T-152 (the clock watch).
+- The light elsewhere or a burst: against T-152 (the phase).
+
+---
+
 ## Block 9 — One hand, and look and hold (50 min)
 
 **Needs: T-160** (on `develop` since 16 Oct; emulator only so far). Two open bugs touch it: BUG-007 (the waiting seed does not light up when a pinch would take it) and BUG-008 (high contrast outlines only the plants and has no 60 % dim). The copy of the Listen orb beside the wrist is not built (D-055). The headset's menus and the Browser's pointer are **(unchecked)**.
@@ -914,6 +1013,144 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 
 ---
 
+## Block 9B — Stillness opens the garden (10 min)
+
+**Needs: T-173 part 2b** (on `develop` since 23 Oct, emulator only; the 8 s, the halo's 25 % and the +2 dB are provisional, API_SPEC v1.2.45). Not in laptop mode.
+
+**Purpose:** find out whether a seated player's head holds still for 8 s at all, and whether the opening (the halo a little brighter over 2 s, the echo wider, the plant you look at a little louder) reads as anything.
+
+**Answers:** P-016 / D-057 (the PM's "about 8 s") · UX §9.8 (8°/s is "still") · whether the opening is seen and heard over a real room.
+
+**You need:** a garden of 6 or more plants, playing; the "app, dev" bookmark (the console shows `stillness:changed`).
+
+**Checked against:** `src/access/config.ts` (`STILL_OPEN_MS` 8000: the head not turning faster than 8°/s with the bed's centre inside the essential-UI box), `src/access/StillnessSystem.ts`, `src/render/HaloRenderer.ts` (`setOpen`: 25 % of the way from the Listen level to full over 2 s), `src/audio/AudioEngine.ts` (`setStillness`: the reverb send ×1.25, the gazed plant +2 dB once per note).
+
+### Steps
+
+1. Sit as usual, hands on the lap, and look at the bed's middle. Count slowly to ten. Did anything change at about eight: the halo, the echo, a plant louder? (console) `stillness:changed` with `isOpen: true`, and after how many seconds?
+2. Turn your head to a plant on the side and back. Did it close (console `isOpen: false`)? Look at the bed again and count: does it open again?
+3. Three tries looking at the middle; three looking at one plant on the near ring. In the plant tries, is that plant a little louder once open?
+4. Now shape a plant (a pull) for a minute. Did it open while your hands worked (hands do not count; only the head)?
+5. Rate 1 to 5: the opening is noticeable; the opening is pleasant; it felt like something I did.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Opened, n/6; seconds to open (console), each | n/6; s |
+| What you saw and heard at the opening | words |
+| Closed on the head turn; opened again | yes / no; yes / no |
+| The looked-at plant louder once open | yes / no / unsure |
+| Opened while shaping | yes / no |
+| Ratings: noticeable, pleasant, mine | 1 to 5, each |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| A seated head can do it | opened in 4 of 6 tries without trying to be a statue | P-016, D-057 |
+| It reads | noticeable rated 3 or more; the opening named without the console | the PM's intent (P-016); no document gives a number |
+| It closes | on a head turn, every time | UX §9.8 (8°/s) |
+
+### If it fails
+
+- Never opens: the head turns past 8°/s while seated, or the bed's centre is outside the box. Claude files it for D-048 (the 8°/s rule) or a longer window.
+- Opens but nothing is seen or heard: the 25 % and the +2 dB are provisional; the ratings decide.
+
+---
+
+## Block 9C — The Time-lapse switch (8 min)
+
+**Needs: T-174** (on `develop` since 23 Oct, emulator only). A demo for the video; nothing of it is saved.
+
+**Purpose:** see a week of growth in 28 s on screen and in sound, and prove the real garden survives it.
+
+**Answers:** D-057 (P-015 and P-028) · API_SPEC v1.2.42: a day every 4 s (stages after 4, 12 and 28 s), the same growth real days use, the save byte-identical over an on/off cycle, off or a reload restores the real garden.
+
+**You need:** the garden of block 7 (plants of day 1 or 2, few leaves); the settings orb; the "app, dev" bookmark.
+
+**Checked against:** `src/garden/config.ts` (`TIME_LAPSE_DAY_MS` 4000), `src/garden/GardenSystem.ts` (`setTimeLapse`: the demo on a copy; `saved` is the real garden), `src/ui/strings.ts` ("Time-lapse" on the Garden tab's Re-place bed row).
+
+### Steps
+
+1. Note the plants' leaves and the day on the Garden line ("Day n"). Open the panel, Garden tab, pinch **Time-lapse** on.
+2. Count: leaves at about 4 s, more at 12, blossoms at 28? Does the sound change with the growth? Does the Garden line's day climb?
+3. Leave it on 40 s. Pinch a plant and pull it (a bed change during the demo reaches the real garden). Pinch Time-lapse off: are the plants as in step 1, with your pull kept?
+4. On again, then leave the session and enter: the garden as in step 1 (plus the pull)? The Garden line's day as before?
+5. Read `fps` and `draws` while it runs with blossoms.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Stages seen at about 4, 12, 28 s | yes / no, each; seconds |
+| The sound changed with the growth | yes / no, words |
+| Off: the plants as before, the pull kept | yes / no; yes / no |
+| After the re-entry: as before; the day as before | yes / no; yes / no |
+| `fps` lowest, `draws` highest with blossoms | numbers |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The demo | the three stages within 30 s, on screen and in sound | API_SPEC v1.2.42, D-057 |
+| Never saved | off and a re-entry both show the real garden, the pull kept | API_SPEC v1.2.42 (the save byte-identical) |
+| Frame rate | `fps` at the headset's rate with blossoms on every plant | Golden Rule 5 |
+
+### If it fails
+
+- The real garden comes back changed (a day older, a plant grown): Claude files it against T-174 (the copy).
+- No stage within 30 s: write down what grew and when.
+
+---
+
+## Block 9D — The vine on the wall (8 min)
+
+**Needs: T-149** (on `develop` since 23 Oct, emulator only). Needs a room where the headset knows a wall (Space Setup).
+
+**Purpose:** see the vine climb the nearest wall when a wall is within 1.5 m of the bed, and nothing when there is none.
+
+**Answers:** T-149 (Could C4) · API_SPEC v1.2.43: one vine up the nearest wall within 1.5 m, from the bed's height, 1.2 m at a full bed, in the plants' hues, grown over 6 s, hidden with no plants, +1 draw per view.
+
+**You need:** a bed within 1.5 m of a scanned wall (tape), then one placed further than 1.5 m from every wall (Re-place bed, or the floating bed of S1); a garden of 10 or more plants.
+
+**Checked against:** `src/render/config.ts` (`VINE_WALL_MAX_M` 1.5, `VINE_GROW_MS` 6000, `VINE_FADE_MS` 400 under reduced motion), `src/render/VineRenderer.ts`, API_SPEC §1.8 (VineSystem at 53).
+
+### Steps
+
+1. With the bed near a wall, enter. Look at that wall: a vine climbs from the bed's height over about 6 s? Its colours those of your plants? How high (tape, from the bed's height)?
+2. Plant two seeds: does it grow a little more? Remove a plant (and let the petal go): a little less?
+3. Re-place the bed more than 1.5 m from every wall (or float it). Is there no vine?
+4. Reduce motion on (the panel, Access): re-enter near the wall. Does it fade in instead of growing?
+5. Read `fps` and `draws` with the vine, against block 2's numbers.
+
+### Write down
+
+| Field | Value |
+|---|---|
+| Seen; seconds to grow; height (cm) with n plants | yes / no; s; cm, n |
+| The colours match the plants | yes / no |
+| Grew with two plants more; shrank with one less | yes / no; yes / no |
+| No vine past 1.5 m / floating | yes / no |
+| Reduce motion: fades in | yes / no |
+| `draws` with and without; `fps` lowest | numbers |
+| Where on the wall it sits: on it, in front, behind | words |
+
+### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| The rule of 1.5 m | a vine on a wall within 1.5 m; none further, none floating | API_SPEC v1.2.43 |
+| On the wall | it reads as growing on the wall, not off it (write down the cm if off) | T-149; FR-ROOM-04 |
+| Cost | +1 draw per view, `fps` at the headset's rate | API_SPEC v1.2.43; Golden Rule 5 |
+
+### If it fails
+
+- A vine inside or far in front of the wall: the plane's pose or the bed's; write down the cm. Claude files it against T-149.
+- No vine near a wall: write down whether S1's room read found walls at all (the ripple's "Walls:" label).
+
+---
+
 ## Block 10 — Hand the results to Claude (5 min)
 
 **Can be run today.**
@@ -972,6 +1209,11 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 | 9 | Listen by looking: started; a short look ended it; the long look ended it; n/3 each | | D-054; FR-HND-12 |
 | 9 | The dot over a window, a white wall, the white sheet; with high contrast | | UX §9.8; T-163 art pass |
 | 9 | Beat ring: ticks seen; on the sheet; the flash with, before or after the note; sound off; in Listen; `flash` and `fps` at 84 and 120 BPM | | FR-UI-07; FR-UI-11; US-17 |
+| 4B | The petal found in 5 s, n/3; the lift within a blink by fingertip and by look, back on leaving; `flash`; the caption | | FR-HND-16; UX §9.3; FR-UI-11; UX re-check item 6 |
+| 8B | The fade back and the light where it was, n/3; the caption and its pinch | | FR-SYS-05; TC-DEV-08; T-152 |
+| 9B | Stillness opened n/6, seconds; what was seen and heard; closes on a turn; ratings | | P-016, D-057 (the 8 s); UX §9.8 |
+| 9C | Time-lapse stages at 4, 12, 28 s; sound; off and re-entry restore the garden; `fps` | | T-174, D-057; API_SPEC v1.2.42 |
+| 9D | The vine: seen, height, colours; none past 1.5 m; reduce motion; `draws` | | T-149; API_SPEC v1.2.43 |
 | 2–6 | `fps` usual and lowest with plants and hands | | Golden Rule 5, TC-PERF-01 |
 | 2–9 | Anything you could only do with a controller (in block 9 part B: with a hand) | | FR-HND-01 (Stage-1 pass/fail) |
 
@@ -983,5 +1225,5 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 - If the pinch test (S1 blocks 2 and 3) changes the hit radius or the outer radius (D-020), update the 4 cm, 35 cm, 57 cm and 10 cm figures here.
 - When T-164 or T-128d builds the shaping sounds, give the sound rows of blocks 2 to 4 their rule.
 - When T-148 is merged: check blocks 6A to 6D against `develop` (the constants, the waking pinch's seed exception, the pause, `18-listen.spec.ts`'s draw count) and take the branch mark off. If D-050's numbers (40°, 1.5 s, 0.6 s, 0.45 m, 30°) change after a sitting, change them here. The gaze dwell on the orb (T-160) is block 9, step 19; the copy of the orb at the wrist is not built (D-055): if it is, add a step to 6A.
-- When T-152 lands: give block 8's fade and phase their rules (FR-SYS-05: out within 300 ms, back in, the tide from its saved phase; a pinch that brings back a sound the Browser kept off) and take the T-152 line off.
+- T-152 landed (23 Oct): block 8B holds the fade, the phase and the caption; block 8's "T-152 is not built" lines are superseded by it (left as the history of the sitting).
 - When BUG-007 or BUG-008 is fixed: block 9 steps 3 and 21 expect the seed lit and the outlines and the dim of high contrast. If the device run changes 8°/s (D-048), the hold times or D-054's factor of 2, change block 9.
