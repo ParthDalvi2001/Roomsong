@@ -70,7 +70,7 @@ interface IwerDevice {
   remote: { dispatch(method: string, params?: object): Promise<unknown> };
 }
 
-export const ROOMS = ['table', 'counter', 'none', 'tiny', 'large', 'no-walls'] as const;
+export const ROOMS = ['table', 'counter', 'none', 'tiny', 'large', 'no-walls', 'floor', 'low-table'] as const;
 
 /**
  * Emulator limit for load to an active session; enterXR also waits this long. The product limit is 5 s on a

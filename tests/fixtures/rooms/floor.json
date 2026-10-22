@@ -1,0 +1,11 @@
+{
+  "description": "Space Setup with no furniture: floor 3.5 x 4 m = 14 m2, ceiling at 2.4 m, four walls, nothing to put the bed on (FR-ROOM-01 levels 3-4 in a room that still has a signature).",
+  "planes": [
+    { "label": "floor", "facing": "+y", "center": [0, 0, 0], "size": [3.5, 4] },
+    { "label": "ceiling", "facing": "-y", "center": [0, 2.4, 0], "size": [3.5, 4] },
+    { "label": "wall", "facing": "+z", "center": [0, 1.2, -2], "size": [3.5, 2.4] },
+    { "label": "wall", "facing": "-z", "center": [0, 1.2, 2], "size": [3.5, 2.4] },
+    { "label": "wall", "facing": "+x", "center": [-1.75, 1.2, 0], "size": [4, 2.4] },
+    { "label": "wall", "facing": "-x", "center": [1.75, 1.2, 0], "size": [4, 2.4] }
+  ]
+}
