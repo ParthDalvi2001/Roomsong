@@ -14,7 +14,8 @@ import {
  * `off`: no tutorial (before a session's signature, a bed with plants, after the session). `tune`: the ripple
  * plays (UX §3.3 step 0). `palm`: open a hand for the seed (1). `plant`: a seed is out, plant it (2). `more`: the
  * 2nd and 3rd seeds, no hint (3). `grow` / `move`: the hint ring with the pull or the drag icon (4). `free`: the
- * gates are done. `listen`: "Rest your hands to listen" (5). `done`: nothing more to teach.
+ * gates are done but not all earned (the net, or the garden window's); earned, it is passed at once. `listen`:
+ * "Show your palms to listen" (5). `done`: nothing more to teach.
  */
 export type OnboardingStep =
   'off' | 'tune' | 'palm' | 'plant' | 'more' | 'grow' | 'move' | 'free' | 'listen' | 'done';
@@ -177,7 +178,12 @@ export class Onboarding {
       return order(wanted) < this.floor ? step : wanted;
     }
     if (step === 'more' || step === 'grow' || step === 'move' || step === 'free') {
-      const isLate = this.nowMs - this.startedMs >= LISTEN_AFTER_MS || this.planted >= LISTEN_AFTER_PLANTS;
+      // The Listen step: when both gates are earned (day 1 has 3 seeds, so LISTEN_AFTER_PLANTS is a later visit's
+      // net), 4 minutes on, or at 6 plantings. A gate the net passed is not earned: its player gets the 4 minutes.
+      const isLate =
+        (step === 'free' && this.hasPulled && this.hasDragged) ||
+        this.nowMs - this.startedMs >= LISTEN_AFTER_MS ||
+        this.planted >= LISTEN_AFTER_PLANTS;
       if (isLate) return this.hasListened ? 'done' : 'listen';
       if (step === 'more') {
         if (this.planted < HINT_RING_AFTER_PLANTS) return 'more';

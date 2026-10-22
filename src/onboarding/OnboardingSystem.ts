@@ -1,5 +1,6 @@
 // The onboarding system (LLD §3, priority 35; API_SPEC §1.10 "Onboarding (T-150)"): feeds the bus to the state
-// machine, raises each step's caption on its own entity and says each step on the bus for ui/Hints.
+// machine, raises each step's caption on its own entity, says each step on the bus for ui/Hints, and says the
+// session's two one-time notices (no seed left, the undo petal).
 import { createSystem, type Entity } from '@iwsdk/core';
 
 import { Caption } from '../core/components.js';
@@ -17,12 +18,21 @@ const CAPTIONS: Partial<Record<OnboardingStep, readonly [xr: StringKey, window: 
 
 /** The plant step's caption in gaze mode (T-160). */
 const GAZE_PLANT: StringKey = 'onboardPlantGaze';
+/** The notices said once a session, on their own entity so a step's caption and a notice do not take each other
+ *  back: a palm up with no seed left (UX §3.3; a new seed each day), the first removal (UX §7, the undo petal). */
+const SEEDS_TOMORROW: StringKey = 'seedsTomorrow';
+const UNDO_HINT: StringKey = 'undoHint';
 
 export class OnboardingSystem extends createSystem({}) {
   readonly machine = new Onboarding((from, to) =>
     log.info('onboarding', `no progress in "${from}" for 60 s: on to "${to}" (D-053)`),
   );
   private caption!: Entity;
+  private notice!: Entity;
+  /** The notices raised this session: each is said once. */
+  private readonly noticed = new Set<StringKey>();
+  /** The seeds of the supply at the latest `garden:changed`: none, and a palm up gets "More seeds tomorrow". */
+  private seeds = 0;
   /** The step last said on the bus. */
   private said: OnboardingStep = 'off';
   /** The steps whose caption was raised this tutorial: each is shown once. */
@@ -41,6 +51,7 @@ export class OnboardingSystem extends createSystem({}) {
 
   override init(): void {
     this.caption = this.createEntity();
+    this.notice = this.createEntity();
     const machine = this.machine;
     this.cleanupFuncs.push(
       // D-053: whenever a session begins on an empty bed, not only on the visit with the starter seeds, so a player
@@ -66,8 +77,17 @@ export class OnboardingSystem extends createSystem({}) {
       }),
       bus.on('garden:changed', ({ state, diff }) => {
         this.plants = state.plants.length;
+        this.seeds = state.seeds.length;
         machine.changed(diff.added.length);
         this.sync();
+      }),
+      // The supply is empty (day 1 has 3 seeds; the next comes tomorrow): the garden hands out nothing, so say why.
+      bus.on('gesture:palmUp', () => {
+        if (this.seeds === 0) this.raiseNotice(SEEDS_TOMORROW);
+      }),
+      // The first removal of the session: the undo petal is a target (UX §7), one hint while it is there.
+      bus.on('garden:removed', () => {
+        if (settings.get().hintsEnabled) this.raiseNotice(UNDO_HINT);
       }),
       bus.on('gesture:release', ({ gesture, target }) => {
         if (target?.kind !== 'plant' || (gesture !== 'pull' && gesture !== 'drag')) return;
@@ -91,7 +111,9 @@ export class OnboardingSystem extends createSystem({}) {
         machine.reset();
         this.isSigned = false;
         this.captioned.clear();
+        this.noticed.clear();
         this.isListening = false;
+        if (this.notice.hasComponent(Caption)) this.notice.removeComponent(Caption);
         this.sync();
       }),
     );
@@ -117,6 +139,14 @@ export class OnboardingSystem extends createSystem({}) {
       this.caption.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });
     }
     bus.emit('onboarding:step', { step });
+  }
+
+  /** Says a notice once a session, through the caption line (CAPTION_MIN_MS, one at a time, FoV); never in Listen. */
+  private raiseNotice(key: StringKey): void {
+    if (this.isListening || this.noticed.has(key)) return;
+    this.noticed.add(key);
+    if (this.notice.hasComponent(Caption)) this.notice.removeComponent(Caption); // one live caption per raiser
+    this.notice.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });
   }
 
   private takeCaption(): void {

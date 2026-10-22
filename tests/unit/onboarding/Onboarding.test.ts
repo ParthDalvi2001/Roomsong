@@ -13,7 +13,10 @@ import { Onboarding } from '../../../src/onboarding/Onboarding.js';
 
 const T0 = 12_345_678; // a frame time of real size, ms
 
-/** A machine at `step` the way the bus gets it there in a headset (or the garden window: `canPull` false). */
+/**
+ * A machine at `step` the way the bus gets it there in a headset (or the garden window: `canPull` false, no pull).
+ * `free` in a headset is passed at once: the gates earned bring the Listen step (step 5).
+ */
 function at(
   step: 'tune' | 'palm' | 'plant' | 'more' | 'grow' | 'move' | 'free',
   canPull = true,
@@ -31,7 +34,7 @@ function at(
   if (step === 'more') return m;
   m.changed(HINT_RING_AFTER_PLANTS - 1);
   if (step === 'grow' || (step === 'move' && !canPull)) return m;
-  m.released('pull');
+  if (canPull) m.released('pull');
   if (step === 'move') return m;
   m.released('drag');
   return m;
@@ -134,15 +137,25 @@ describe('Onboarding: gates 2 and 3, grow then move (step 4)', () => {
     m.released('drag');
     expect(m.step).toBe('grow');
     m.released('pull');
-    expect(m.step).toBe('free'); // the drag made before counts for the move gate
+    expect(m.step).toBe('listen'); // the drag made before counts for the move gate; both earned: step 5
   });
 
-  it('grow -> move -> free, one at a time', () => {
+  it('grow -> move -> listen, one at a time: both gates earned, Listen is taught at once (day 1 has 3 seeds)', () => {
     const m = at('grow');
     m.released('pull');
     expect(m.step).toBe('move');
     m.released('drag');
+    expect(m.step).toBe('listen');
+  });
+
+  it('a gate the net passed is not earned: free, and the 4-minute net brings Listen', () => {
+    const m = at('grow');
+    m.tick(T0 + STEP_STALL_MS); // the pull never came
+    expect(m.step).toBe('move');
+    m.released('drag');
     expect(m.step).toBe('free');
+    m.tick(T0 + LISTEN_AFTER_MS);
+    expect(m.step).toBe('listen');
   });
 
   it('the garden window (a pointer cannot pull) goes from more straight to move', () => {
@@ -201,15 +214,15 @@ describe('Onboarding: the 60 s net (D-053): no one is stuck', () => {
     const m = at('tune');
     m.tick(T0 + 10 * STEP_STALL_MS);
     expect(m.step).toBe('tune');
-    const free = at('free');
+    const free = at('free', false);
     free.tick(T0 + STEP_STALL_MS);
     expect(free.step).toBe('free');
   });
 });
 
-describe('Onboarding: step 5, Listen (4 min or 6 plantings)', () => {
-  it('free -> listen 4 minutes after room:tuned; listen -> done on listen:enter', () => {
-    const m = at('free');
+describe('Onboarding: step 5, Listen (the gates earned, 4 min or 6 plantings)', () => {
+  it('free -> listen 4 minutes after room:tuned (the garden window: no pull to earn); listen -> done on listen:enter', () => {
+    const m = at('free', false);
     m.tick(T0 + LISTEN_AFTER_MS - 1);
     expect(m.step).toBe('free');
     m.tick(T0 + LISTEN_AFTER_MS);
@@ -219,7 +232,7 @@ describe('Onboarding: step 5, Listen (4 min or 6 plantings)', () => {
   });
 
   it('free -> listen at 6 plantings; listen -> done LISTEN_STEP_MS later when nobody listens', () => {
-    const m = at('free');
+    const m = at('free', false);
     m.tick(T0 + 1000);
     m.changed(LISTEN_AFTER_PLANTS - HINT_RING_AFTER_PLANTS);
     expect(m.step).toBe('listen');
@@ -230,11 +243,15 @@ describe('Onboarding: step 5, Listen (4 min or 6 plantings)', () => {
   });
 
   it('a player who found Listen before is not told: done instead of listen', () => {
-    const m = at('free');
+    const m = at('free', false);
     m.listened();
     expect(m.step).toBe('free');
     m.tick(T0 + LISTEN_AFTER_MS);
     expect(m.step).toBe('done');
+    const earned = at('move');
+    earned.listened();
+    earned.released('drag');
+    expect(earned.step).toBe('done');
   });
 });
 

@@ -1,11 +1,12 @@
 /// <reference types="webxr" />
 // T-150, TC-E2E-03 timing (FR-UI-02, Golden Rule 4): the guided first minute in the app, walked by the emulator's
-// hands as a first-time player follows it. After the ripple (room:tuned): "Open your hand" and the palm icon; a
-// seed on the palm: "Pinch, and plant it", the glowing cell and the ghost pinch looping over it; the first plant:
-// its first note (first sound <= 20 s); two more seeds with no caption; then the hint ring round the newest plant
-// with the pull icon (grow), after a pull the drag icon (move), the remove arrow on the rim during the drag; after
-// the drag the gates are done (first loop <= 90 s). The same in the garden window, where a click is the pinch and
-// the grow gate is skipped (a pointer cannot pull). The room with no table, timed (PROGRESS item 23 is open). A
+// hands as a first-time player follows it. After the ripple (room:tuned): "Open your hand, palm up" and the palm
+// icon; a seed on the palm: "Pinch the seed, drop it here", the glowing cell and the ghost pinch looping over it;
+// the first plant: its first note (first sound <= 20 s); two more seeds with no caption; then the hint ring round
+// the newest plant with the pull icon (grow), after a pull the drag icon (move), the remove arrow on the rim during
+// the drag; after the drag the gates are earned and the Listen step comes at once, "Show your palms to listen"
+// (first loop <= 90 s). The same in the garden window, where a click is the pinch and the grow gate is skipped (a
+// pointer cannot pull, so Listen waits for its 4-minute net there). The room with no table, timed (PROGRESS item 23 is open). A
 // returning player's flag: no tutorial. The test emits nothing on the bus; it moves the hands or the mouse and reads.
 // Emulator and desktop browser results only: hands at test speed, software rendering. Nothing here says whether a
 // stranger understands the ghost hand (UAT-16), or how fast a real first minute is.
@@ -316,7 +317,7 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   await hands.lookDown(55); // the table is 55 to 65 degrees below the emulated head
   await hands.putLeft(PALM_DOWN);
 
-  // Step 0 then 1: nothing of the tutorial before room:tuned; then "Open your hand" and the palm icon.
+  // Step 0 then 1: nothing of the tutorial before room:tuned; then "Open your hand, palm up" and the palm icon.
   const tuned = await heard(probe, 'room:tuned');
   await stepAt(probe, 'palm');
   // Said inside room:tuned's own dispatch: OnboardingSystem's handler runs before the probe's, which notes the event.
@@ -335,7 +336,7 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   await xrFrames(page, 4); // the icon's 200 ms fade
   await page.screenshot({ path: '.tmp/t150-1-palm.png' });
 
-  // Step 2: the palm turned up brings a seed; "Pinch, and plant it", the glowing cell and the looping ghost pinch.
+  // Step 2: the palm turned up brings a seed; "Pinch the seed, drop it here", the glowing cell and the looping ghost pinch.
   await hands.putLeft(PALM_UP);
   await stepAt(probe, 'plant');
   await page.waitForFunction((p) => p.caption().key === 'onboardPlant', probe);
@@ -385,7 +386,9 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   await page.screenshot({ path: '.tmp/t150-5-drag.png' });
   await hands.releaseAt(to);
   await heard(probe, 'gesture:release', { gesture: 'drag' });
-  const free = await stepAt(probe, 'free');
+  // Both gates earned: the Listen step at once, "Show your palms to listen" (free is passed, not said).
+  const free = await stepAt(probe, 'listen');
+  await xrFrames(page, 5);
 
   const timing = await probe.evaluate((p, freeAtMs) => {
     const plant = p.heard.find((e) => e.name === 'step' && e.step === 'plant')!.atMs;
@@ -415,6 +418,7 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   expect(timing.captions.filter((key) => key?.startsWith('onboard'))).toEqual([
     'onboardPalm',
     'onboardPlant',
+    'onboardListen',
   ]);
   expect(timing.maxFlashPerS).toBeLessThanOrEqual(3); // FR-UI-11
   expect(timing.maxDraws).toBeLessThanOrEqual(60); // NFR-PERF-03

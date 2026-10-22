@@ -11,7 +11,7 @@ import { openApp, readRoom, SESSION_ENTRY_LIMIT_MS, xrFrames } from './support/i
 const WORLD_READY_MS = 15_000; // the Enter button waits for the world; software rendering takes a few seconds
 const HANDS_OFF =
   'The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking.';
-const WINDOW = 'The garden opens in this tab: a click or a tap is a pinch.';
+const WINDOW = 'The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset.';
 const LOAD_FAILED = 'The garden could not load. Reload the page.';
 const TOGGLES = [
   ['One hand', 'oneHand'],

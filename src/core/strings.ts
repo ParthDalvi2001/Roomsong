@@ -12,13 +12,17 @@ export const STRINGS = {
   goodnight: 'Goodnight',
   // A seed let go over a full bed (UX §7): render's SeedSystem raises it (T-127).
   gardenFull: 'Garden is full',
+  // The supply is empty at a palm up (UX §3.3; a new seed each day): onboarding/ raises it once a session.
+  seedsTomorrow: 'More seeds tomorrow',
+  // The session's first removal (UX §7, the undo petal): onboarding/ raises it once, for the petal's 5 s.
+  undoHint: 'Pinch the petal to undo',
   // The onboarding captions (UX §3.3, T-150): onboarding/ raises them, one per step. The `Click` twins are the
   // garden window's (FR-SYS-07), where a click or a tap is the pinch and the Listen orb is the way to Listen.
-  onboardPalm: 'Open your hand',
-  onboardPlant: 'Pinch, and plant it',
+  onboardPalm: 'Open your hand, palm up', // the seed needs the palm within PALM_UP_MAX_ANGLE_DEG of up
+  onboardPlant: 'Pinch the seed, drop it here', // the pinch is on the seed in the palm, the drop on the cell
   onboardPlantClick: 'Click or tap to plant',
   onboardPlantGaze: 'Look at a cell to plant', // gaze mode (Settings.gazeDwell): a dwell on a free cell plants (T-160)
-  onboardListen: 'Rest your hands to listen',
+  onboardListen: 'Show your palms to listen', // both palms out towards the garden (hands/ palmsOut)
   onboardListenClick: 'Click the orb to listen',
   // The message of a user-facing failure has its error code (ErrorCode, API_SPEC §5) as its key (LLD §8).
   E_SAVE_FAILED: 'Saving unavailable',

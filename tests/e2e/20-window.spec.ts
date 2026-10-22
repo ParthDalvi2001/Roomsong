@@ -10,7 +10,7 @@ type Core = typeof import('../../src/core/index');
 type RoomModule = typeof import('../../src/room/index');
 
 const WORLD_READY_MS = 15_000; // the Enter button waits for the world; software rendering takes a few seconds
-const WINDOW = 'The garden opens in this tab: a click or a tap is a pinch.';
+const WINDOW = 'The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset.';
 /** Bed-local, metres: on the ring, to the user's right, clear of the Listen orb in the centre hole. */
 const ON_RING_M = { x: 0.21, z: 0 };
 

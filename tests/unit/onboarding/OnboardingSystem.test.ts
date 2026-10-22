@@ -1,14 +1,14 @@
 // T-150: OnboardingSystem on the real bus with a fake world: what starts the tutorial and what does not, the caption
 // of each step (once, taken back when the step ends, the garden window's twins), `onboarding:step` once per change,
-// Listen, gaze mode, the hints setting, the 60 s net's log, the session's end. Zero allocation per frame is
-// onboarding.heap.test.ts.
+// Listen, gaze mode, the hints setting, the 60 s net's log, the two one-time notices, the session's end. Zero
+// allocation per frame is onboarding.heap.test.ts.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Caption } from '../../../src/core/components.js';
 import { bus, DEFAULT_SETTINGS, log, settings } from '../../../src/core/index.js';
 import { ONBOARD_CAPTION_MS, STEP_STALL_MS } from '../../../src/onboarding/config.js';
 import { OnboardingSystem } from '../../../src/onboarding/OnboardingSystem.js';
-import { garden, plant } from '../garden/fixtures.js';
+import { garden, plant, seed as supplySeed } from '../garden/fixtures.js';
 import { FakeEntity } from '../render/seedRig.js';
 
 import type { EventMap } from '../../../src/core/index.js';
@@ -36,6 +36,7 @@ function rig() {
   system.init();
   live.push(system);
   const caption = created[0]!;
+  const notice = created[1]!;
   const steps: string[] = [];
   const off = bus.on('onboarding:step', ({ step }) => steps.push(step));
   live.push({ destroy: off } as never);
@@ -48,18 +49,26 @@ function rig() {
     shown: () => (caption.hasComponent(Caption) ? (caption.getValue(Caption, 'key') as string) : null),
     /** Every caption it raised, in order. */
     raised: () => caption.added.filter(([c]) => c === Caption).map(([, v]) => v.key as string),
+    /** Every notice it raised, in order; and the one up now. */
+    notices: () => notice.added.filter(([c]) => c === Caption).map(([, v]) => v.key as string),
+    notice: () => (notice.hasComponent(Caption) ? (notice.getValue(Caption, 'key') as string) : null),
     frame: (seconds = 0.014) => system.update(seconds, (timeS += seconds)),
   };
 }
 
-/** A garden of `plants` plants, the last `added` of them just planted. */
-const changed = (plants: number, added = plants): EventMap['garden:changed'] => {
+/** A garden of `plants` plants, the last `added` of them just planted, `seeds` left in the supply. */
+const changed = (plants: number, added = plants, seeds = 0): EventMap['garden:changed'] => {
   const ids = Array.from({ length: plants }, (_, i) => `p${i}`);
   return {
-    state: garden(ids.map((id, i) => plant(id, 2, i))),
+    state: garden(
+      ids.map((id, i) => plant(id, 2, i)),
+      Array.from({ length: seeds }, (_, i) => supplySeed(`s${i}`)),
+    ),
     diff: { added: ids.slice(plants - added), removed: [], changed: [] },
   };
 };
+const palmUp = { type: 'gesture:palmUp', hand: 'right' } as EventMap['gesture:palmUp'];
+const removed = { plantId: 'p0', undoToken: 'u1', expiresAt: 0 } as unknown as EventMap['garden:removed'];
 const seed = { id: 's1' } as EventMap['garden:seedOut']['seed'];
 const release = (gesture: 'pull' | 'drag' | 'carry', kind = 'plant') =>
   ({ gesture, target: { kind, id: 'p0' } }) as unknown as EventMap['gesture:release'];
@@ -146,8 +155,8 @@ describe('OnboardingSystem: the captions (UX §3.3)', () => {
     bus.emit('garden:changed', changed(3));
     bus.emit('gesture:release', release('pull'));
     bus.emit('gesture:release', release('drag'));
-    expect(r.steps).toEqual(['tune', 'palm', 'plant', 'more', 'grow', 'move', 'free']);
-    expect(r.raised()).toEqual(['onboardPalm', 'onboardPlant']);
+    expect(r.steps).toEqual(['tune', 'palm', 'plant', 'more', 'grow', 'move', 'listen']); // free passed at once
+    expect(r.raised()).toEqual(['onboardPalm', 'onboardPlant', 'onboardListen']);
   });
 
   it('a caption asks for ONBOARD_CAPTION_MS: the line of captions is never held by a slow step', () => {
@@ -198,7 +207,7 @@ describe('OnboardingSystem: the captions (UX §3.3)', () => {
     expect(r.shown()).toBe('onboardListenClick');
   });
 
-  it('the Listen step in a headset says "Rest your hands to listen"; listen:enter ends it', () => {
+  it('the Listen step in a headset says "Show your palms to listen"; listen:enter ends it', () => {
     const r = rig();
     started();
     bus.emit('garden:changed', changed(6)); // LISTEN_AFTER_PLANTS
@@ -246,11 +255,50 @@ describe('OnboardingSystem: Listen, the hints setting, the session', () => {
     const r = rig();
     started();
     bus.emit('garden:changed', changed(3));
-    bus.emit('gesture:release', release('pull'));
-    bus.emit('gesture:release', release('drag'));
+    bus.emit('gesture:release', release('pull')); // no drag: the move gate waits, and Listen comes by time
     r.system.machine.tick(Number.MAX_SAFE_INTEGER);
     r.frame(); // the frame's own tick brings the time back, but the step was taken already
     r.frame();
     expect(r.steps.filter((s) => s === 'listen')).toHaveLength(1);
+  });
+});
+
+describe('OnboardingSystem: the one-time notices (UX re-check 23 Oct)', () => {
+  it('"More seeds tomorrow" at a palm up with an empty supply, once a session, not while seeds are left', () => {
+    const r = rig();
+    started();
+    bus.emit('garden:changed', changed(2, 2, 1)); // one seed left
+    bus.emit('gesture:palmUp', palmUp);
+    expect(r.notices()).toEqual([]);
+    bus.emit('garden:changed', changed(3, 1, 0)); // the last one planted
+    bus.emit('gesture:palmUp', palmUp);
+    expect(r.notice()).toBe('seedsTomorrow');
+    bus.emit('gesture:palmUp', palmUp);
+    expect(r.notices()).toEqual(['seedsTomorrow']);
+    expect(r.shown()).toBeNull(); // the step's caption entity is not touched
+    bus.emit('xr:sessionEnd', { visible: false });
+    expect(r.notice()).toBeNull();
+    started();
+    bus.emit('garden:changed', changed(3, 0, 0));
+    bus.emit('gesture:palmUp', palmUp);
+    expect(r.notices()).toEqual(['seedsTomorrow', 'seedsTomorrow']); // the next session says it again
+  });
+
+  it('"Pinch the petal to undo" on the first removal of the session, once; not in Listen; not with hints off', () => {
+    const r = rig();
+    started();
+    bus.emit('garden:changed', changed(3));
+    bus.emit('listen:enter', {});
+    bus.emit('garden:removed', removed);
+    expect(r.notices()).toEqual([]);
+    bus.emit('listen:exit', { timedOut: false });
+    bus.emit('garden:removed', removed);
+    expect(r.notice()).toBe('undoHint');
+    bus.emit('garden:removed', removed);
+    expect(r.notices()).toEqual(['undoHint']);
+    settings.set({ ...DEFAULT_SETTINGS, hintsEnabled: false });
+    bus.emit('xr:sessionEnd', { visible: false });
+    bus.emit('garden:removed', removed);
+    expect(r.notices()).toEqual(['undoHint']);
   });
 });
