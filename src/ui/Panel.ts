@@ -73,6 +73,9 @@ export interface PanelActions {
   replaceBed(): void;
   /** FR-UI-10: the bed's height offset that is asked for, in metres. */
   setBedHeightOffset(metres: number): void;
+  /** T-174: whether the time-lapse demo runs, read each time the switch is drawn; and the switch's ask. */
+  isTimeLapse(): boolean;
+  setTimeLapse(on: boolean): void;
 }
 
 /** Element `i` of a matrix, of a list of centres or of the panel's timers. */
@@ -85,6 +88,7 @@ const AWAY = 2;
 /** The id of the settings orb: like every control it is an Interactable of kind 'panel'. */
 export const ORB_ID = 'orb';
 const NEW_GARDEN_ID = 'newGarden';
+const TIME_LAPSE_ID = 'timeLapse';
 // The gaze cannot switch itself off: a user with no hand to pinch with could not switch it back on.
 const GAZE_TOGGLE_ID = 'gazeDwell';
 
@@ -114,6 +118,10 @@ const HAND_X = [0.11, 0.17] as const;
 const ACTION_X = -0.15;
 const ACTION_LABEL_X = -0.09;
 const ACTION_LABEL_W = 0.28;
+// The Time-lapse switch (T-174) on the right of the Re-place bed row: its label ends at the panel's edge.
+const REPLACE_LABEL_W = 0.11; // "Re-place bed" is about 0.11 m
+const TIME_LAPSE_X = 0.06;
+const TIME_LAPSE_LABEL_W = 0.105;
 const TUNED_Y = ROW_Y[3] + 0.005; // the two lines of "Tuned by" sit a little above the last row's middle
 const LINE_M = 0.013; // half the distance between those two lines
 // Both lines end before the Mono switch: "Tuned by: C major," is about 0.165 m, "echo 0.9 s" 0.09 m and the longest
@@ -298,7 +306,8 @@ export class Panel {
       label(LEFT_X, ROW_Y[0], FULL_W, gardenLine(this.garden, this.signature)),
       label(LEFT_X, ROW_Y[1], LABEL_W, PANEL.bedHeight),
       label(VALUE_X, ROW_Y[1], VALUE_W, heightText(this.garden)),
-      label(ACTION_LABEL_X, ROW_Y[2], ACTION_LABEL_W, PANEL.replaceBed),
+      label(ACTION_LABEL_X, ROW_Y[2], REPLACE_LABEL_W, PANEL.replaceBed),
+      label(TIME_LAPSE_X + TOGGLE_LABEL_M, ROW_Y[2], TIME_LAPSE_LABEL_W, PANEL.timeLapse),
       label(ACTION_LABEL_X, ROW_Y[3], ACTION_LABEL_W, PANEL.newGarden),
     ];
   }
@@ -436,6 +445,7 @@ export class Panel {
     else if (id === 'height:-') this.actions.setBedHeightOffset(heightAfter(this.garden, -1));
     else if (id === 'height:+') this.actions.setBedHeightOffset(heightAfter(this.garden, 1));
     else if (id === NEW_GARDEN_ID) this.actions.newGarden();
+    else if (id === TIME_LAPSE_ID) this.actions.setTimeLapse(!this.actions.isTimeLapse());
     else if (id === 'replaceBed') {
       // The placement needs the view, and its confirming pinch must not land on a control.
       this.setOpen(false);
@@ -508,6 +518,7 @@ export class Panel {
       { ...round('height:+', PLUS_X, ROW_Y[1], PANEL.plus), dim: atEnd(1) },
       wide('replaceBed', ACTION_X, ROW_Y[2], PANEL.start),
       wide(NEW_GARDEN_ID, ACTION_X, ROW_Y[3], PANEL.hold),
+      { ...toggle(TIME_LAPSE_ID, 1, ROW_Y[2], this.actions.isTimeLapse()), x: TIME_LAPSE_X },
     ];
   }
 }

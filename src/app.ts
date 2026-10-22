@@ -177,7 +177,8 @@ type SavePage = Pick<Window, 'addEventListener' | 'removeEventListener'> & {
 
 /**
  * Saving, all of it (LLD §3.3 G; API_SPEC §1.10 rule 9). Every `garden:changed` and every `settings:changed` hands
- * the saver `garden.state` (not the event's payload) with the live settings in it; the saver is flushed on a
+ * the saver `garden.saved` (not the event's payload) with the live settings in it, once per new state: during the
+ * time-lapse demo that is the real garden, which does not change (T-174). The saver is flushed on a
  * hidden session and at a session's end. When the page is hidden or goes (`pagehide`) it may be closing, and the
  * browser drops an IndexedDB write under way with it: the pending state is then also written at once
  * (`flushNow`). Called right after `garden.load()`, so the garden just loaded is not written back; live settings
@@ -187,13 +188,13 @@ type SavePage = Pick<Window, 'addEventListener' | 'removeEventListener'> & {
  * Exported for its unit test; returns what stops it.
  */
 export function keepSaved(
-  garden: Pick<GardenSystem, 'state'>,
+  garden: Pick<GardenSystem, 'saved'>,
   saver: Pick<PersistenceSystem, 'save' | 'flush' | 'flushNow'>,
   page: SavePage,
   stored: Readonly<Settings>,
   tabs: Pick<BroadcastChannel, 'postMessage' | 'addEventListener'> | null,
 ): () => void {
-  let last = garden.state;
+  let last = garden.saved;
   const save = (): void => {
     if (last !== null) saver.save({ ...last, settings: settings.get() });
   };
@@ -209,7 +210,8 @@ export function keepSaved(
   page.addEventListener('pagehide', leave);
   const offs = [
     bus.on('garden:changed', () => {
-      last = garden.state;
+      if (garden.saved === last) return; // a demo day, or the demo's end: the real garden is the one on disk
+      last = garden.saved;
       save();
     }),
     bus.on('settings:changed', save),

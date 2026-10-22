@@ -414,7 +414,11 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
 
   // Garden: the tab asks, it does not act. A bed-height step is a call on the garden; its answer shows on the panel.
   await press('tab:garden');
-  expect(await ids(probe)).toEqual(['orb', ...header, 'height:-', 'height:+', 'replaceBed', 'newGarden']);
+  expect(await ids(probe)).toEqual([
+    'orb',
+    ...header,
+    ...['height:-', 'height:+', 'replaceBed', 'newGarden', 'timeLapse'],
+  ]);
   await press('height:+');
   expect(await events(probe, 'garden.setBedHeightOffset')).toEqual([0.02]);
   await xrFrames(page, 2);
@@ -630,6 +634,27 @@ test('settings panel: the gaze alone opens it, changes a setting and closes it, 
   await page.waitForFunction((p) => p.settings().dwellMs === 900, probe, { timeout: HOLD_LIMIT_MS });
   // What the gaze meets in the frame right after a selection counts as selected already (Panel.dwell). The
   // emulated head jumps to the next control at once, and on slow frames it landed in that very frame (BUG-004).
+  await xrFrames(page, 2);
+
+  // T-174: the Time-lapse (demo) switch of the Garden tab by gaze: on, and after a look at nothing, off again.
+  await lookAt(await target('tab:garden'));
+  await page.waitForFunction((p) => p.system.panel.tab === 'garden', probe, { timeout: HOLD_LIMIT_MS });
+  await xrFrames(page, 2);
+  const timeLapse = await target('timeLapse');
+  await lookAt(timeLapse);
+  await page.waitForFunction(() => window.__roomsong!.garden.timeLapse, null, { timeout: HOLD_LIMIT_MS });
+  await xrFrames(page, 2);
+  expect(await probe.evaluate((p) => p.words())).toContain('Time-lapse');
+  await page.screenshot({ path: '.tmp/settings-time-lapse.png' });
+  const newGarden = await target('newGarden'); // halfway to it no target is within reach of the gaze
+  await lookAt({
+    x: (timeLapse.x + newGarden.x) / 2,
+    y: (timeLapse.y + newGarden.y) / 2,
+    z: (timeLapse.z + newGarden.z) / 2,
+  });
+  await xrFrames(page, 2);
+  await lookAt(timeLapse);
+  await page.waitForFunction(() => !window.__roomsong!.garden.timeLapse, null, { timeout: HOLD_LIMIT_MS });
   await xrFrames(page, 2);
 
   // A look at Close shuts the panel, and the orb is back.

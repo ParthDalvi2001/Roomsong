@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as core from '../../../src/core/index.js';
+import { TIME_LAPSE_DAY_MS } from '../../../src/garden/config.js';
 import * as lib from '../../../src/garden/index.js';
 
 import { fullBedExcept, garden, plant, seed } from './fixtures.js';
@@ -1069,5 +1070,120 @@ describe('garden/GardenSystem: on the bus (API_SPEC §2, LLD §3.2 Bus order)', 
       'xr:visibility',
     ]);
     expect('update' in system).toBe(false);
+  });
+});
+
+describe('garden/GardenSystem: the time-lapse demo (T-174, D-057)', () => {
+  const PLANTED = T0 - 1000; // a second old at the session's visit: stage 0
+  /** In a session with one young plant, fake timers, and a zone of India at every instant. */
+  function lapsing(over: Partial<Flags> = {}) {
+    vi.useFakeTimers();
+    const s = setup(over);
+    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(IST); // the demo's days are other instants
+    s.system.load(saved([plant('p1', 0, 0, { plantedAt: PLANTED })]));
+    s.features();
+    s.clear();
+    return s;
+  }
+  const grown = (s: ReturnType<typeof setup>) =>
+    s.seen.filter(([name]) => name === 'garden:grown').map(([, e]) => (e as EventMap['garden:grown']).deltas);
+  const stage = (state: GardenState): number => lib.stageFor(state.lastVisitAt - PLANTED);
+
+  it('runs a simulated day a TIME_LAPSE_DAY_MS through the visit real days use: stages 1, 2, 3 at days 1, 3, 7', () => {
+    const s = lapsing();
+    const real = s.state();
+    s.system.setTimeLapse(true);
+    expect(s.system.timeLapse).toBe(true);
+    vi.advanceTimersByTime(TIME_LAPSE_DAY_MS - 1);
+    expect(s.seen).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(stage(s.state())).toBe(1);
+    expect(s.state().lastVisitAt).toBe(T0 + DAY_MS);
+    vi.advanceTimersByTime(6 * TIME_LAPSE_DAY_MS);
+    expect(stage(s.state())).toBe(3);
+    expect(grown(s)).toEqual([
+      [{ plantId: 'p1', from: 0, to: 1 }],
+      [{ plantId: 'p1', from: 1, to: 2 }],
+      [{ plantId: 'p1', from: 2, to: 3 }],
+    ]);
+    expect(s.names().filter((name) => name === 'garden:changed')).toHaveLength(7); // one per day, drawn from it
+    expect(s.system.saved).toBe(real); // the save's garden never moved
+  });
+
+  it('off: the real garden is back, the same object; nothing done meanwhile stays, and no more days pass', () => {
+    const s = lapsing();
+    const real = s.state();
+    s.system.setTimeLapse(true);
+    vi.advanceTimersByTime(3 * TIME_LAPSE_DAY_MS);
+    s.palmUp('left'); // a seed the demo brought is out
+    s.clear();
+    s.system.setTimeLapse(false);
+    expect(s.system.timeLapse).toBe(false);
+    expect(s.state()).toBe(real);
+    expect(s.system.saved).toBe(real);
+    expect(s.names()).toEqual(['garden:seedBack', 'garden:changed']);
+    vi.advanceTimersByTime(10 * TIME_LAPSE_DAY_MS);
+    s.visible(false);
+    s.visible(true); // a real visit again, on the real clock
+    expect(s.state().lastVisitAt).toBe(T0);
+    expect(grown(s)).toEqual([]);
+  });
+
+  it('a change to the bed during the demo reaches the real garden too: its anchor pair and its height are saved', () => {
+    const s = lapsing();
+    s.anchored('pair-1', 1);
+    const real = s.state();
+    s.system.setTimeLapse(true);
+    vi.advanceTimersByTime(TIME_LAPSE_DAY_MS);
+    s.bedPlaced(false); // Re-place: the saved pair is stale
+    expect(s.system.saved).not.toBe(real);
+    expect(s.system.saved).not.toHaveProperty('anchorHandle');
+    expect(s.system.saved).toMatchObject({ lastVisitAt: T0 }); // the real visit, not the demo's day
+    s.anchored('pair-2', 2);
+    s.system.setBedHeightOffset(0.04);
+    const bed = { anchorHandle: 'pair-2', anchorLevel: 2, bedHeightOffset: 0.04 };
+    expect(s.system.saved).toMatchObject({ ...bed, lastVisitAt: T0, visits: real.visits });
+    expect(s.state()).toMatchObject({ ...bed, lastVisitAt: T0 + DAY_MS });
+    s.system.setTimeLapse(false);
+    expect(s.state()).toBe(s.system.saved);
+    expect(s.state()).toMatchObject(bed);
+  });
+
+  it('passes no day while the session is hidden, and the return does not catch the hidden days up', () => {
+    const s = lapsing();
+    s.system.setTimeLapse(true);
+    vi.advanceTimersByTime(TIME_LAPSE_DAY_MS);
+    s.visible(false);
+    s.clear();
+    vi.advanceTimersByTime(5 * TIME_LAPSE_DAY_MS);
+    expect(s.seen).toEqual([]);
+    s.visible(true); // the return's own visit, at the demo's day 1 still
+    expect(s.state().lastVisitAt).toBe(T0 + DAY_MS);
+    vi.advanceTimersByTime(TIME_LAPSE_DAY_MS);
+    expect(s.state().lastVisitAt).toBe(T0 + 2 * DAY_MS);
+  });
+
+  it('starts with the garden under the timeLapse flag; a second on or off changes nothing', () => {
+    const s = lapsing({ timeLapse: true });
+    expect(s.system.timeLapse).toBe(true);
+    const real = s.system.saved;
+    s.system.setTimeLapse(true); // no second timer
+    vi.advanceTimersByTime(TIME_LAPSE_DAY_MS);
+    expect(s.state().lastVisitAt).toBe(T0 + DAY_MS);
+    expect(s.system.saved).toBe(real);
+    s.system.setTimeLapse(false);
+    s.clear();
+    s.system.setTimeLapse(false);
+    expect(s.seen).toEqual([]);
+  });
+
+  it('passes no day before the session has had its visit', () => {
+    vi.useFakeTimers();
+    const s = setup();
+    s.system.load(saved([plant('p1', 0, 0, { plantedAt: PLANTED })]));
+    s.system.setTimeLapse(true);
+    s.clear();
+    vi.advanceTimersByTime(5 * TIME_LAPSE_DAY_MS);
+    expect(s.seen).toEqual([]);
   });
 });

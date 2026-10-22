@@ -54,11 +54,19 @@ const calls = {
   newGarden: [] as object[],
   replaceBed: [] as object[],
   bedHeight: [] as { metres: number }[],
+  timeLapse: [] as boolean[],
 };
+/** The garden's time-lapse demo, as the stand-in garden has it. */
+let isTimeLapse = false;
 const actions: PanelActions = {
   newGarden: () => calls.newGarden.push({}),
   replaceBed: () => calls.replaceBed.push({}),
   setBedHeightOffset: (metres) => calls.bedHeight.push({ metres }),
+  isTimeLapse: () => isTimeLapse,
+  setTimeLapse: (on) => {
+    calls.timeLapse.push(on);
+    isTimeLapse = on;
+  },
 };
 
 /** A pinch that starts and ends on the same control: what hands/ reports as a press. */
@@ -94,6 +102,7 @@ function heard<K extends keyof EventMap>(type: K): EventMap[K][] {
 beforeEach(() => {
   while (off.length > 0) off.pop()?.();
   for (const list of Object.values(calls)) list.length = 0;
+  isTimeLapse = false;
   settings.set({ ...DEFAULT_SETTINGS });
 });
 
@@ -124,7 +133,10 @@ describe('settings panel: opening, closing and the tabs (UX §3.6)', () => {
       ...header,
       ...['oneHand', 'gazeDwell', 'highContrast', 'reducedMotion', 'beatRing', 'hand:left', 'hand:right'],
     ]);
-    expect(ids(opened('garden'))).toEqual([...header, 'height:-', 'height:+', 'replaceBed', 'newGarden']);
+    expect(ids(opened('garden'))).toEqual([
+      ...header,
+      ...['height:-', 'height:+', 'replaceBed', 'newGarden', 'timeLapse'],
+    ]);
     const panel = opened('garden');
     expect(control(panel, 'tab:garden')?.on).toBe(true);
     expect(control(panel, 'tab:sound')?.on).toBe(false);
@@ -390,6 +402,25 @@ describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () =
     expect(asked).toEqual([]);
     press(panel, 'height:+');
     expect(asked).toEqual([{ metres: -0.08 }]);
+  });
+});
+
+describe('settings panel: the Time-lapse (demo) switch (T-174, D-057)', () => {
+  it('shows what the garden says, and a press or a dwell asks for the other; it is no setting', () => {
+    const panel = opened('garden');
+    expect(words(panel)).toContain('Time-lapse');
+    expect(control(panel, 'timeLapse')).toMatchObject({ on: false, text: 'off', dim: false });
+    press(panel, 'timeLapse');
+    expect(calls.timeLapse).toEqual([true]);
+    expect(control(panel, 'timeLapse')).toMatchObject({ on: true, text: 'on' });
+    expect(settings.get()).toEqual(DEFAULT_SETTINGS);
+    settings.set({ gazeDwell: true });
+    lookAt(panel, '');
+    lookAt(panel, 'timeLapse');
+    run(panel, DEFAULT_SETTINGS.dwellMs, 'timeLapse');
+    expect(calls.timeLapse).toEqual([true, false]);
+    isTimeLapse = true; // the flag, or a garden that changed it: the switch reads it when drawn
+    expect(control(panel, 'timeLapse')?.on).toBe(true);
   });
 });
 

@@ -115,3 +115,5 @@ export const UNDO_LIFE_MS = 5000;
 export const LISTEN_MAX_MS = 600_000;
 /** LLD §3.2 (the autoplant flag, API_SPEC §3): plant n goes to cell (seed + 7n) mod 80; 7 shares no factor with 80. */
 export const AUTOPLANT_CELL_STRIDE = 7;
+/** T-174, D-057: the time-lapse demo's simulated day, in real ms: stages 1, 2 and 3 show 4, 12 and 28 s after it starts. */
+export const TIME_LAPSE_DAY_MS = 4000;

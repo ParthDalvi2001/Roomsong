@@ -55,7 +55,13 @@ function recorder() {
 }
 /** What the open panel draws on `tab`. */
 function drawn(tab: PanelTab, highContrast = false) {
-  const panel = new Panel({ newGarden: () => {}, replaceBed: () => {}, setBedHeightOffset: () => {} });
+  const panel = new Panel({
+    newGarden: () => {},
+    replaceBed: () => {},
+    setBedHeightOffset: () => {},
+    isTimeLapse: () => false,
+    setTimeLapse: () => {},
+  });
   for (const id of [ORB_ID, `tab:${tab}`]) {
     panel.down('right', id);
     panel.up('right', id);
@@ -331,6 +337,8 @@ function rig(given: { garden?: object | null; room?: object | null } = {}) {
   const garden = {
     newGarden: () => asked.push('newGarden'),
     setBedHeightOffset: (metres: number) => asked.push(`setBedHeightOffset ${metres}`),
+    timeLapse: false,
+    setTimeLapse: (on: boolean) => asked.push(`setTimeLapse ${on}`),
   };
   const room = { replace: () => asked.push('replace') };
   const canvas = () => ({ width: 0, height: 0, getContext: () => recorder().ctx });
@@ -534,8 +542,9 @@ describe('PanelSystem: what it takes for a press (API_SPEC §1.4)', () => {
     press(ORB_ID);
     press('tab:garden');
     press('height:+');
+    press('timeLapse');
     press('replaceBed');
-    expect(asked).toEqual(['setBedHeightOffset 0.02', 'replace']);
+    expect(asked).toEqual(['setBedHeightOffset 0.02', 'setTimeLapse true', 'replace']);
     expect(system.panel.open).toBe(false);
   });
 

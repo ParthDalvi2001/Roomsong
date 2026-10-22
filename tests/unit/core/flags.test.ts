@@ -4,7 +4,7 @@ import { DEFAULT_FLAGS, parseFlags } from '../../../src/core/flags.js';
 
 const ALL =
   '?flags=perfHud,fovGuide,eventLog,noAnchors,noPlanes,noMeshes,forceLevel=3,fakeDay=+2,seed=42,autoplant=80,' +
-  'skipOnboarding,forceSignature=wanderer,pinchTest,capSpike,window';
+  'skipOnboarding,forceSignature=wanderer,pinchTest,capSpike,window,timeLapse';
 
 describe('core/flags', () => {
   it('has every flag off by default in a dev build', () => {
@@ -15,6 +15,7 @@ describe('core/flags', () => {
       seed: null,
       autoplant: 0,
       window: false,
+      timeLapse: false,
     });
   });
 
@@ -36,6 +37,7 @@ describe('core/flags', () => {
       pinchTest: true,
       capSpike: true,
       window: true,
+      timeLapse: true,
     });
     expect(parseFlags('?flags=fakeDay=-3', true).fakeDay).toBe(-3);
     expect(parseFlags('?flags=fakeDay=%2B1', true).fakeDay).toBe(1);

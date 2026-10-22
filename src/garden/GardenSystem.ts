@@ -3,7 +3,16 @@
 // calls into calls of the pure reducers, and every change into one garden:changed.
 import { bus, clock, flags, log, settings } from '../core/index.js';
 
-import { AUTOPLANT_CELL_STRIDE, DAILY_VOICES, LISTEN_MAX_MS, RINGS, STEPS, UNDO_LIFE_MS } from './config.js';
+import {
+  AUTOPLANT_CELL_STRIDE,
+  DAILY_VOICES,
+  LISTEN_MAX_MS,
+  MS_PER_DAY,
+  RINGS,
+  STEPS,
+  TIME_LAPSE_DAY_MS,
+  UNDO_LIFE_MS,
+} from './config.js';
 import { applyVisit, newGarden } from './growth.js';
 import {
   heightAfterPull,
@@ -25,6 +34,10 @@ const NONE: readonly string[] = Object.freeze([]);
 const LISTEN: EventMap['listen:enter'] = Object.freeze({});
 const WOKEN: EventMap['listen:exit'] = Object.freeze({ timedOut: false });
 const TIMED_OUT: EventMap['listen:exit'] = Object.freeze({ timedOut: true });
+
+/** The ids of `from`'s plants that `other` does not have. */
+const plantsNotIn = (from: GardenState, other: GardenState): string[] =>
+  from.plants.filter((p) => !other.plants.some((q) => q.id === p.id)).map((p) => p.id);
 
 /**
  * The time a new plant gets (T-161): garden time never runs backwards, so never before the last visit. A clock
@@ -53,6 +66,13 @@ export class GardenSystem {
   private listenEnd: ReturnType<typeof setTimeout> | null = null;
   /** The hand whose pinch ended Listen: that pinch is the wake, so its press on the orb does not enter again. */
   private wokeBy: Hand | null = null;
+  /** T-174: the real garden, set aside while the time-lapse demo runs on a copy; null when it is off. */
+  private real: GardenState | null = null;
+  /** The demo's simulated days so far, in ms, and its timer; 0 and null when it is off. */
+  private lapsedMs = 0;
+  private lapse: ReturnType<typeof setInterval> | null = null;
+  /** The session is hidden (xr:visibility): the demo passes no day meanwhile. */
+  private isHidden = false;
 
   /** Subscribes to the bus, for the life of the page: made before any system, so its handlers run first. */
   constructor(
@@ -70,6 +90,7 @@ export class GardenSystem {
     };
     on('room:features', (s, e) => this.tune(s, e.features));
     on('xr:visibility', (_s, e) => {
+      this.isHidden = !e.visible;
       // choice: a pause ends Listen; the return from it is to the garden, not to Listen
       if (e.visible) this.visit();
       else this.stopListen(WOKEN);
@@ -78,12 +99,13 @@ export class GardenSystem {
       this.stopListen(WOKEN);
       this.signature = null;
       this.isVisited = false;
+      this.isHidden = false;
       this.takeBack('reset');
     });
-    on('room:bedPlaced', (s, e) => {
-      if (!e.restored) this.commit(setAnchor(s, null)); // a saved pair is stale
+    on('room:bedPlaced', (_s, e) => {
+      if (!e.restored) this.changeBed((s) => setAnchor(s, null)); // a saved pair is stale
     });
-    on('room:anchored', (s, e) => this.commit(setAnchor(s, { handle: e.handle, level: e.level })));
+    on('room:anchored', (_s, e) => this.changeBed((s) => setAnchor(s, { handle: e.handle, level: e.level })));
     on('gesture:palmUp', (s, e) => this.handOut(s, e.hand));
     // choice: LLD §3.2 lists no pinchStart for the garden, but without it "the seed that hand carried" (its
     // trackingLost row) cannot be told from a hand that held a plant; rule 8 names this event as the start
@@ -111,6 +133,43 @@ export class GardenSystem {
     return this.current;
   }
 
+  /** The garden to save: `state`, or while the time-lapse demo runs the real garden it set aside (T-174). */
+  get saved(): GardenState | null {
+    return this.real ?? this.current;
+  }
+
+  /** The time-lapse demo runs (T-174). */
+  get timeLapse(): boolean {
+    return this.real !== null;
+  }
+
+  /**
+   * T-174, D-057: the time-lapse demo. On: the garden is set aside and the session goes on with a copy, on which
+   * a simulated day passes every TIME_LAPSE_DAY_MS through the visit real days use (garden:changed, garden:grown,
+   * the daily seed). `saved` stays the real garden meanwhile. Off: the real garden is back as it was when the
+   * demo started, and anything done in the demo is gone with it. Not a setting: off at every page load.
+   */
+  setTimeLapse(on: boolean): void {
+    const s = this.current;
+    if (s === null || on === this.timeLapse) return;
+    if (on) {
+      this.real = s; // a state is never mutated (API_SPEC §1.1): the reference is the copy
+      this.lapse = setInterval(() => {
+        if (!this.isVisited || this.isHidden) return; // no day before the session's visit, or while it is hidden
+        this.lapsedMs += MS_PER_DAY;
+        this.visit();
+      }, TIME_LAPSE_DAY_MS);
+      return;
+    }
+    const real = this.real ?? s;
+    if (this.lapse !== null) clearInterval(this.lapse);
+    this.lapse = this.real = null;
+    this.lapsedMs = 0;
+    this.undos.clear(); // a token of the demo's
+    this.takeBack('reset'); // the seed out may be one the demo brought
+    this.commit(real, plantsNotIn(real, s), plantsNotIn(s, real));
+  }
+
   /** Once per page: the saved garden or a new one. Emits garden:changed, every plant id in `diff.added`. */
   load(state: GardenState): void {
     if (this.current !== null) {
@@ -123,6 +182,7 @@ export class GardenSystem {
       loaded,
       loaded.plants.map((p) => p.id),
     );
+    if (this.appFlags.timeLapse) this.setTimeLapse(true);
   }
 
   /**
@@ -151,7 +211,16 @@ export class GardenSystem {
 
   /** FR-UI-10: raises or lowers the bed, in metres, clamped by the reducer. */
   setBedHeightOffset(metres: number): void {
-    if (this.current !== null) this.commit(setBedHeightOffset(this.current, metres));
+    this.changeBed((s) => setBedHeightOffset(s, metres));
+  }
+
+  /**
+   * A change to the bed (its anchor pair, its height): while the time-lapse demo runs it reaches the real garden
+   * too, so that it is saved and the next launch finds the bed where it is (T-174).
+   */
+  private changeBed(reduce: (s: GardenState) => GardenState): void {
+    if (this.real !== null) this.real = reduce(this.real);
+    if (this.current !== null) this.commit(reduce(this.current));
   }
 
   /** Replaces the state, then says so. A reducer that changed nothing returned the same state: no event. */
@@ -179,7 +248,7 @@ export class GardenSystem {
   private visit(): void {
     const s = this.current;
     if (s === null || this.signature === null) return;
-    const now = this.appClock.now();
+    const now = this.appClock.now() + this.lapsedMs;
     const { state, grown, newSeeds } = applyVisit(s, now, this.signature, new Date(now).getTimezoneOffset());
     if (state === s) {
       // choice: "applied" (the palm-up row) is read strictly, so a refused visit hands out no seed either

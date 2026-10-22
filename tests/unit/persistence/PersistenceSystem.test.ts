@@ -205,3 +205,64 @@ describe('persistence/PersistenceSystem', () => {
     expect(store.writtenNow).toHaveLength(1); // written to IndexedDB: nothing pending any more
   });
 });
+
+describe('persistence/PersistenceSystem: navigator.storage.persist() (T-174, D-057)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('asks once, after the first write that succeeded, without waiting for the answer; logs it once', async () => {
+    const persist = vi.fn(() => new Promise<boolean>(() => {})); // a browser that never answers
+    vi.stubGlobal('navigator', { storage: { persist } });
+    const info = vi.spyOn(log, 'info');
+    const store = fakeStore();
+    const system = new PersistenceSystem(store);
+    store.fail = true;
+    vi.spyOn(log, 'error').mockImplementation(() => {});
+    system.save(visit(1));
+    await system.flush();
+    expect(persist).not.toHaveBeenCalled(); // a failed write is no save
+    store.fail = false;
+    for (let i = 2; i <= 4; i++) {
+      system.save(visit(i));
+      await system.flush(); // resolves although persist() never does
+    }
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(store.written).toEqual([visit(2), visit(3), visit(4)]);
+    expect(info).not.toHaveBeenCalled(); // no answer, no line
+
+    vi.stubGlobal('navigator', { storage: { persist: () => Promise.resolve(true) } });
+    const answered = new PersistenceSystem(store);
+    answered.save(visit(5));
+    await answered.flush();
+    await Promise.resolve();
+    expect(info).toHaveBeenCalledExactlyOnceWith('persistence', 'storage.persist()', { granted: true });
+  });
+
+  it('takes a browser without it, or one whose persist() throws or rejects, as no and carries on saving', async () => {
+    const warn = vi.spyOn(log, 'warn').mockImplementation(() => {});
+    const info = vi.spyOn(log, 'info').mockImplementation(() => {});
+    for (const nav of [
+      undefined,
+      {},
+      { storage: {} },
+      {
+        storage: {
+          persist: () => {
+            throw new Error('no');
+          },
+        },
+      },
+      { storage: { persist: () => Promise.reject(new Error('no')) } },
+    ]) {
+      vi.stubGlobal('navigator', nav);
+      const store = fakeStore();
+      const system = new PersistenceSystem(store);
+      system.save(visit(1));
+      await system.flush();
+      system.save(visit(2));
+      await system.flush();
+      await Promise.resolve();
+      expect(store.written).toEqual([visit(1), visit(2)]);
+    }
+    expect(info.mock.calls.length + warn.mock.calls.length).toBe(5); // one line each
+  });
+});

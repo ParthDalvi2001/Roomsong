@@ -12,6 +12,7 @@ export class PersistenceSystem {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private writing: Promise<void> = Promise.resolve(); // the writes, one after the other
   private isFailing = false; // the last write failed: a run of failures is reported once
+  private hasAskedToPersist = false;
 
   /**
    * `onSaveFailed` runs when writes start to fail: once per run of failed writes, and again only after a write
@@ -59,6 +60,7 @@ export class PersistenceSystem {
       await this.store.save(state);
       if (this.pending === state) this.pending = null; // a change made during the write stays pending
       this.isFailing = false;
+      if (!this.hasAskedToPersist) this.askToPersist();
     } catch (err) {
       if (this.isFailing) return; // already reported: a caption or a log line per write would flood both
       this.isFailing = true;
@@ -68,6 +70,25 @@ export class PersistenceSystem {
       } catch (thrown) {
         log.error('persistence', 'onSaveFailed threw', thrown); // it must not stop the writes that follow
       }
+    }
+  }
+
+  /**
+   * T-174, D-057: once, after the first write that succeeded, asks the browser not to evict the save under storage
+   * pressure (`navigator.storage.persist()`, MDN StorageManager.persist). Not awaited; a browser without it, or a
+   * call that throws or rejects, is a no. The answer is logged once.
+   */
+  private askToPersist(): void {
+    this.hasAskedToPersist = true;
+    const answer = (granted: unknown): void => log.info('persistence', 'storage.persist()', { granted });
+    try {
+      const storage = (globalThis.navigator as Navigator | undefined)?.storage;
+      if (typeof storage?.persist !== 'function') return answer('not available');
+      void storage
+        .persist()
+        .then(answer, (err: unknown) => log.warn('persistence', 'storage.persist() failed', err));
+    } catch (err) {
+      log.warn('persistence', 'storage.persist() failed', err);
     }
   }
 }

@@ -13,6 +13,7 @@ const BOOLEAN_FLAGS = [
   'pinchTest',
   'capSpike',
   'window',
+  'timeLapse',
 ] as const;
 type BooleanFlag = (typeof BOOLEAN_FLAGS)[number];
 
@@ -42,6 +43,7 @@ export const DEFAULT_FLAGS: Flags = Object.freeze({
   pinchTest: false,
   capSpike: false,
   window: false,
+  timeLapse: false,
   forceLevel: null,
   fakeDay: 0,
   seed: null,

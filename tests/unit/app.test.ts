@@ -17,8 +17,14 @@ import {
   restoreSettings,
 } from '../../src/app.js';
 import { bus, clock, DEFAULT_SETTINGS, log, settings } from '../../src/core/index.js';
+import { TIME_LAPSE_DAY_MS } from '../../src/garden/config.js';
+import { GardenSystem, stageFor } from '../../src/garden/index.js';
+import { SAVE_DEBOUNCE_MS, STATE_KEY } from '../../src/persistence/config.js';
+import { PersistenceSystem } from '../../src/persistence/index.js';
+import { createStore } from '../../src/persistence/Store.js';
 
-import { savedGarden } from './persistence/fixtures.js';
+import { plant } from './garden/fixtures.js';
+import { memoryBackend, savedGarden } from './persistence/fixtures.js';
 
 import type { SystemHost } from '../../src/app.js';
 import type { Settings } from '../../src/core/index.js';
@@ -530,7 +536,7 @@ function saveRig(
   state: GardenState | null = savedGarden({ settings: settings.get() }),
   stored: Settings = state?.settings ?? DEFAULT_SETTINGS,
 ) {
-  const garden = { state };
+  const garden = { saved: state };
   const saved: GardenState[] = [];
   const calls: string[] = [];
   const saver = {
@@ -569,12 +575,12 @@ function saveRig(
 describe('saving (LLD §3.3 G; API_SPEC §1.10 rule 9)', () => {
   afterEach(() => settings.set(DEFAULT_SETTINGS));
 
-  it("garden:changed saves garden.state, not the event's payload, with the live settings in it", () => {
+  it("garden:changed saves garden.saved, not the event's payload, with the live settings in it", () => {
     settings.set({ tempo: 96 });
     const rig = saveRig(savedGarden({ settings: { ...DEFAULT_SETTINGS, tempo: 96 } }));
     expect(rig.saved).toEqual([]); // the garden just loaded is not written back
     const next = savedGarden({ visits: 4 });
-    rig.garden.state = next;
+    rig.garden.saved = next;
     bus.emit('garden:changed', {
       state: savedGarden({ visits: 99 }),
       diff: { added: [], removed: [], changed: [] },
@@ -631,6 +637,59 @@ describe('saving (LLD §3.3 G; API_SPEC §1.10 rule 9)', () => {
     rig.leave();
     expect(rig.saved).toEqual([]);
     expect(rig.calls).toEqual([]);
+  });
+
+  it('T-174: the demo is never written: the save stays byte for byte, and a setting changed inside it writes the real garden', async () => {
+    const subscribed = vi.spyOn(bus, 'on'); // GardenSystem has no way off the bus: the test takes it off
+    try {
+      const planted = wallMs - 1000;
+      const backend = memoryBackend();
+      const writes = vi.spyOn(backend, 'set');
+      const garden = new GardenSystem();
+      garden.load(
+        savedGarden({ plants: [plant('p1', 1, 2, { plantedAt: planted })], settings: settings.get() }),
+      );
+      const page = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
+      const saver = new PersistenceSystem(createStore([backend]));
+      keepSaved(
+        garden,
+        saver,
+        { ...page, document: { ...page, visibilityState: 'visible' } },
+        settings.get(),
+        null,
+      );
+      bus.emit('room:features', { features: { level: 4 }, surfaces: {} }); // the session's visit, saved
+      await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS);
+      const before = JSON.stringify(backend.data.get(STATE_KEY));
+      expect(writes).toHaveBeenCalledTimes(1);
+
+      const real = garden.saved;
+
+      garden.setTimeLapse(true);
+      await vi.advanceTimersByTimeAsync(8 * TIME_LAPSE_DAY_MS);
+      expect(stageFor(garden.state!.lastVisitAt - planted)).toBe(3); // the demo grew
+      bus.emit('xr:sessionEnd', { visible: false }); // a flush
+      await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS);
+      expect(writes).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(backend.data.get(STATE_KEY))).toBe(before);
+      // A setting changed inside the demo: one write, of the real garden with the new settings, never the demo's.
+      settings.set({ tempo: 96 });
+      await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS);
+      expect(writes).toHaveBeenCalledTimes(2);
+      expect(backend.data.get(STATE_KEY)).toEqual({ ...real, settings: { ...real!.settings, tempo: 96 } });
+      const withTempo = JSON.stringify(backend.data.get(STATE_KEY));
+      garden.newGarden(); // New garden inside the demo: the demo's garden goes, the real one does not
+      await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS);
+      expect(garden.state!.plants).toEqual([]);
+      garden.setTimeLapse(false);
+      await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS);
+      expect(writes).toHaveBeenCalledTimes(2);
+      expect(JSON.stringify(backend.data.get(STATE_KEY))).toBe(withTempo);
+      expect(garden.state).toBe(real); // the real garden is back
+      expect(stageFor(garden.state!.lastVisitAt - planted)).toBe(0);
+    } finally {
+      for (const off of subscribed.mock.results) (off.value as () => void)();
+    }
   });
 });
 

@@ -204,6 +204,8 @@ const panelId = (target: TargetRef | null): string =>
 export interface PanelGarden {
   newGarden(): void;
   setBedHeightOffset(metres: number): void;
+  readonly timeLapse: boolean;
+  setTimeLapse(on: boolean): void;
 }
 /** What the panel needs of the app's RoomSystem (API_SPEC §1.10). */
 export interface PanelRoom {
@@ -266,6 +268,8 @@ export class PanelSystem extends createSystem(
       newGarden: () => garden?.newGarden(),
       replaceBed: () => room?.replace(),
       setBedHeightOffset: (metres) => garden?.setBedHeightOffset(metres),
+      isTimeLapse: () => garden?.timeLapse ?? false,
+      setTimeLapse: (on) => garden?.setTimeLapse(on),
     });
     this.board = makeQuad('settings-panel', PANEL_WIDTH_M, PANEL_HEIGHT_M, PANEL_PX_PER_M);
     this.orb = makeQuad('settings-orb', ORB_DIAMETER_M, ORB_DIAMETER_M, ORB_CANVAS_PX / ORB_DIAMETER_M);

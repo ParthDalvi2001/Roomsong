@@ -105,4 +105,5 @@ export const PANEL = {
   start: 'start',
   newGarden: 'New garden',
   hold: 'hold',
+  timeLapse: 'Time-lapse', // T-174: the demo switch; "(demo)" does not fit the row at a readable size
 } as const;
