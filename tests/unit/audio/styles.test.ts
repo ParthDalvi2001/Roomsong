@@ -197,10 +197,10 @@ describe('groove (§1.1)', () => {
 });
 
 describe('the bus effects (§1.2, §1.4, §3)', () => {
-  /** compressor ← breath ← master; bus → [reverb send, echo send → delay → low-pass → master, low-pass → feedback]. */
+  /** compressor ← dim ← breath ← master; bus → [reverb send, echo send → delay → low-pass → master, low-pass → feedback]. */
   const nodes = (ctx: FakeAudioContext) => {
     const compressor = ctx.of('compressor')[0] as FakeNode;
-    const breath = compressor.inputs[0] as FakeNode;
+    const breath = (compressor.inputs[0] as FakeNode).inputs[0] as FakeNode;
     const delay = ctx.of('delay')[0] as FakeNode;
     const echoSend = delay.inputs[0] as FakeNode; // the feedback is its second input
     const lpf = delay.outputs[0] as FakeNode;

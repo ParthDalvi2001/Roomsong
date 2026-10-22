@@ -6,7 +6,7 @@
 //   channel inputs ─► bus ─┬─► reverb send (AudioEngine)
 //                          └─► echo send ─► delay ─► low-pass ─┬─► master
 //                                             ▲──── feedback ◄─┘
-//   master ─► breath (low-pass) ─► compressor ─► ceiling
+//   master ─► breath (low-pass) ─► dim (the Listen −3 dB) ─► compressor ─► ceiling
 //
 // The six nodes are built once, with the engine's graph. The drone and percussion voices, and the one noise buffer,
 // are made by the first style that plays them, in setStyle and never in the tick. Hot path: `groove` for each plant
@@ -30,6 +30,12 @@ import {
   HARMONY_ROOTS,
   HEIGHT_RELEASE_S_MIN,
   DRONE_REF_HEIGHT,
+  LISTEN_BREATH_BARS,
+  LISTEN_BREATH_HIGH_HZ,
+  LISTEN_BREATH_LOW_HZ,
+  LISTEN_DIM_DB,
+  LISTEN_GLIDE_IN_S,
+  LISTEN_GLIDE_OUT_S,
   NOISE_S,
   NOISE_SEED,
   PAD_EVOLVE_BARS,
@@ -131,6 +137,11 @@ export class Layers {
   /** The drone or percussion note being played. */
   private readonly hit: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 };
   private readonly breath: BiquadFilterNode;
+  private readonly dim: GainNode;
+  /** The Listen sweep (§6) is on: the filter breathes its own range, whatever the recipe's. */
+  private listening = false;
+  /** The last bar line's bar: where the filter is on its sine when Listen starts. */
+  private bar = 0;
   private readonly echoSend: GainNode;
   private readonly delay: DelayNode;
   private readonly feedback: GainNode;
@@ -157,7 +168,8 @@ export class Layers {
     this.breath.type = 'lowpass';
     this.breath.Q.value = FLAT_Q_DB;
     this.breath.frequency.value = ctx.sampleRate / 2; // at Nyquist a low-pass passes everything: today's sound
-    o.master.connect(this.breath).connect(o.compressor);
+    this.dim = ctx.createGain();
+    o.master.connect(this.breath).connect(this.dim).connect(o.compressor);
     this.echoSend = ctx.createGain();
     this.echoSend.gain.value = o.recipe.echoSend;
     this.delay = ctx.createDelay(ECHO_MAX_S);
@@ -193,10 +205,21 @@ export class Layers {
     }
     this.feedback.gain.setTargetAtTime(r.echoFeedback, now, PARAM_SMOOTH_S);
     this.echoLpf.frequency.setTargetAtTime(r.echoLpfHz, now, PARAM_SMOOTH_S);
-    if (r.breathBars === 0)
+    if (r.breathBars === 0 && !this.listening)
       this.breath.frequency.setTargetAtTime(this.o.ctx.sampleRate / 2, now, PARAM_SMOOTH_S);
     if (this.voices === null && (r.perc.length > 0 || r.droneBarsPerChord > 0))
       this.voices = this.makeVoices();
+  }
+
+  /**
+   * §6 the Listen sweep: the filter drops to its Listen range (its 16-bar sine from the last bar line) and the mix
+   * goes −3 dB, gliding in over 1.2 s; out, back to the recipe's point over 0.8 s. The engine lifts the reverb send.
+   */
+  listen(on: boolean, now: number): void {
+    this.listening = on;
+    const tau = (on ? LISTEN_GLIDE_IN_S : LISTEN_GLIDE_OUT_S) / BAR_GLIDE_TAUS;
+    this.dim.gain.setTargetAtTime(on ? dbToGain(LISTEN_DIM_DB) : 1, now, tau);
+    this.breath.frequency.setTargetAtTime(this.breathHz(this.bar), now, tau);
   }
 
   /** The echo's send: the recipe's level, or shut while the reverb is 'off' (a dry sound, FR-ROOM-06). */
@@ -276,11 +299,21 @@ export class Layers {
       this.echoS = echo;
       this.delay.delayTime.setTargetAtTime(echo, this.time, tau);
     }
-    if (r.breathBars === 0) return;
-    const octaves = Math.log2(r.breathHighHz / r.breathLowHz) / 2;
-    const sweep = Math.sin((2 * Math.PI * bar) / r.breathBars);
-    const hz = Math.sqrt(r.breathLowHz * r.breathHighHz) * Math.pow(2, octaves * sweep);
-    this.breath.frequency.setTargetAtTime(hz, this.time, tau);
+    this.bar = bar;
+    if (r.breathBars === 0 && !this.listening) return;
+    this.breath.frequency.setTargetAtTime(this.breathHz(bar), this.time, tau);
+  }
+
+  /** §1.4: the filter's point at `bar` on the recipe's sine, or in Listen on the sweep's (§6); open when neither breathes. */
+  private breathHz(bar: number): number {
+    const r = this.o.recipe;
+    const on = this.listening;
+    const low = on ? LISTEN_BREATH_LOW_HZ : r.breathLowHz;
+    const high = on ? LISTEN_BREATH_HIGH_HZ : r.breathHighHz;
+    const bars = on ? LISTEN_BREATH_BARS : r.breathBars;
+    if (bars === 0) return this.o.ctx.sampleRate / 2;
+    const octaves = Math.log2(high / low) / 2;
+    return Math.sqrt(low * high) * Math.pow(2, octaves * Math.sin((2 * Math.PI * bar) / bars));
   }
 
   /** §1.3: on the first bar of each chord, its root and fifth, held to the next chord. */

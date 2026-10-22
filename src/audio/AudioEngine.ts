@@ -6,7 +6,7 @@
 //      └─► channel[i] ─┬─► PannerNode[i] (equal-power) ─────────────────────────────────────► master gain ─┐
 //           i = 0..23  └─► bus ─┬─► high-pass ─► send (one gain) ─► ConvolverNode (×1) ─► wet return ──────┤
 //                               └─► tempo echo (T-164, Layers.ts) ─────────────────────────────────────────┤
-//              master gain ─► breathing low-pass (Layers.ts) ─► compressor ─► ceiling (−1 dBFS) ─► destination
+//              master gain ─► breathing low-pass ─► Listen dim (Layers.ts) ─► compressor ─► ceiling (−1 dBFS) ─► destination
 //
 // Everything in the diagram but the note is built once, in init(). Hot path = tick(): Scheduler → triggerStep →
 // VoicePool.play → Voice.trigger. A trigger makes a note's own nodes (sources are single-use in Web Audio) and
@@ -25,11 +25,16 @@ import {
 } from '../garden/index.js';
 
 import {
+  BAR_GLIDE_TAUS,
   FLAT_Q_DB,
   HEIGHT_RELEASE_S_MAX,
   IR_SAMPLES_PER_TICK,
   IR_SEED,
   LATE_DROP_S,
+  LISTEN_GLIDE_IN_S,
+  LISTEN_GLIDE_OUT_S,
+  LISTEN_SEND_ADD,
+  LISTEN_SEND_MAX,
   MUTE_TAU_S,
   PARAM_SMOOTH_S,
   PLACED_DB_RE_PLANT,
@@ -56,6 +61,7 @@ import { Scheduler } from './Scheduler.js';
 import { Spatializer } from './Spatializer.js';
 import { STYLES, TODAY, type Recipe, type SoundStyle } from './styles.js';
 import { hzForRing, VOICE_OCTAVE } from './theory.js';
+import { UI_SOUNDS, type UiSoundSpec } from './uiSounds.js';
 import { VoicePool } from './VoicePool.js';
 import { Bass } from './voices/Bass.js';
 import { Bell } from './voices/Bell.js';
@@ -184,6 +190,8 @@ export class Engine implements AudioEngine {
   private readonly chord: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 };
 
   private reverbMode: 'auto' | 'small' | 'off' = 'auto';
+  /** In Listen (§6): the sweep is on and the reverb send lifted. */
+  private listening = false;
   /** Decay of the signature: the default until the first one, like the Wanderer tuning above. */
   private signatureRt60 = REVERB_RT60_DEFAULT_S;
   /** The decay asked for last: the one the convolver holds, or the one on its way to it. 0 = none yet. */
@@ -329,21 +337,24 @@ export class Engine implements AudioEngine {
     );
   }
 
-  // The next two wait for their tasks: silent and safe to call until then. Of ui(), 'goodnight' and 'placed' are built.
-  preview(): void {} // T-147
+  preview(): void {} // T-147: waits for its task; silent and safe to call until then
+
   ui(sound: UiSound, plantId = ''): void {
-    if (sound === 'goodnight')
-      this.goodnight(); // T-164 builds the others
+    if (sound === 'goodnight') this.goodnight();
     else if (sound === 'placed') this.placed(plantId);
+    else this.uiNotes(UI_SOUNDS[sound]);
   }
 
-  /** T-148: the nearest plants come forward in the mix from their next note on (Spatializer.place). */
+  /**
+   * T-148: the nearest plants come forward in the mix from their next note on (Spatializer.place). T-164 §6: the
+   * sweep (Layers.listen) and the reverb send +LISTEN_SEND_ADD, gliding over the visual transition.
+   */
   enterListen(): void {
-    if (this.g !== null) this.g.space.isFocused = true;
+    this.listen(true);
   }
 
   exitListen(): void {
-    if (this.g !== null) this.g.space.isFocused = false;
+    this.listen(false);
   }
 
   /** FR-SYS-05: the master fades out, then the context stops. The tick does the stop, on the audio clock. */
@@ -562,6 +573,33 @@ export class Engine implements AudioEngine {
     g.pool.play(r.voice, now, p, r.x, r.y, r.z, r);
   }
 
+  private listen(on: boolean): void {
+    const g = this.g;
+    if (g === null) return;
+    g.space.isFocused = on;
+    this.listening = on;
+    g.layers.listen(on, g.ctx.currentTime);
+    this.applyReverb((on ? LISTEN_GLIDE_IN_S : LISTEN_GLIDE_OUT_S) / BAR_GLIDE_TAUS);
+  }
+
+  /** §6: a UI sound's notes of the room chord on its voice, from now, at the bed's centre (uiSounds.ts). */
+  private uiNotes(s: UiSoundSpec): void {
+    const g = this.g;
+    if (g === null || g.ctx.state !== 'running') return;
+    const p = this.chord;
+    p.gain = dbToGain(this.recipe.mixDb[s.voice] + s.db);
+    p.release = s.releaseS;
+    p.cutoffMul = s.cutoffMul;
+    p.detune = 0;
+    const now = g.ctx.currentTime;
+    const b = this.bed;
+    const chord = chordDegrees(this.key.mode);
+    for (const n of s.notes) {
+      p.hz = hzForRing(this.key, chord[n.tone], s.voice) * s.octave;
+      g.pool.play(g[s.voice], now + n.atS, p, b[12] as number, b[13] as number, b[14] as number, null);
+    }
+  }
+
   /** Settle a pending suspend(): with the context's own promise when the fade is over, with nothing when cancelled. */
   private endSuspend(result?: Promise<void>): void {
     this.suspendAt = Infinity;
@@ -575,12 +613,14 @@ export class Engine implements AudioEngine {
    * Point the one reverb at the decay in force. A new decay starts the render of its impulse response and renders
    * none of it: renderSlice does. The last decay asked for wins over whatever was on its way.
    */
-  private applyReverb(): void {
+  private applyReverb(tau = PARAM_SMOOTH_S): void {
     const g = this.g;
     if (g === null) return;
     const now = g.ctx.currentTime;
     const off = this.reverbMode === 'off';
-    g.send.gain.setTargetAtTime(off ? 0 : this.recipe.reverbSend, now, PARAM_SMOOTH_S);
+    const send = this.recipe.reverbSend;
+    const level = this.listening ? Math.min(LISTEN_SEND_MAX, send + LISTEN_SEND_ADD) : send; // §6, in Listen
+    g.send.gain.setTargetAtTime(off ? 0 : level, now, tau);
     g.layers.openEcho(!off, now); // 'off' is a dry sound: no tempo echo either (T-164)
     const rt60 = Math.min(
       this.reverbMode === 'small' ? REVERB_SMALL_RT60_S : this.signatureRt60,

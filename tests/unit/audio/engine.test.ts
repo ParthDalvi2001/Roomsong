@@ -157,7 +157,7 @@ function graph(
 > {
   const shaper = ctx.destination.inputs[0] as FakeNode;
   const compressor = shaper.inputs[0] as FakeNode;
-  const breath = compressor.inputs[0] as FakeNode;
+  const breath = (compressor.inputs[0] as FakeNode).inputs[0] as FakeNode; // through the Listen dim (T-164 §6)
   const convolver = ctx.of('convolver')[0] as FakeNode;
   const send = convolver.inputs[0] as FakeNode;
   const lowCut = send.inputs[0] as FakeNode;
@@ -237,8 +237,11 @@ describe('graph shape (NFR-PERF-10, TC-PERF-09)', () => {
     expect(g.shaper.kind).toBe('waveShaper');
     expect(g.shaper.inputs).toEqual([g.compressor]);
     expect(g.compressor.kind).toBe('compressor');
-    // The breathing filter (T-164) sits between the master gain and the compressor; today it is wide open.
-    expect(g.compressor.inputs).toEqual([g.breath]);
+    // The breathing filter (T-164) sits between the master gain and the compressor, through the Listen dim (§6, a
+    // gain at 1 outside Listen); today it is wide open.
+    const dim = g.compressor.inputs[0] as FakeNode;
+    expect(dim).toMatchObject({ kind: 'gain', inputs: [g.breath] });
+    expect(dim.gain.value).toBe(1);
     expect(g.breath).toMatchObject({ kind: 'biquad', type: 'lowpass' });
     expect(g.breath.frequency.value).toBe(ctx.sampleRate / 2);
     expect(g.breath.inputs).toEqual([g.master]);
@@ -1447,13 +1450,12 @@ describe('the AudioContext (NFR-PERF-10, FR-SYS-05)', () => {
 });
 
 describe('what later tasks fill in', () => {
-  it('preview, ui and Listen mode are silent and safe to call until then', async () => {
+  it('preview is silent and safe to call until then; Listen mode makes no node (uiSounds.test.ts has the sweep)', async () => {
     const { ctx, engine } = await start();
     const api: AudioEngine = engine; // the contract's signatures (API_SPEC §1.2)
     const fixed = ctx.nodes.length;
     expect(() => {
       api.preview(plant('a', 'bell', 0, 0));
-      api.ui('tick');
       api.enterListen();
       api.exitListen();
     }).not.toThrow();

@@ -142,13 +142,11 @@ describe('the engine in Listen mode (T-148)', () => {
     ).toEqual([1, 1]);
   });
 
-  it("ui('goodnight') plays the room chord on Pad from the bed's centre, now; the other ui sounds are still silent", async () => {
+  it("ui('goodnight') plays the room chord on Pad from the bed's centre, now", async () => {
     const { ctx, engine } = await start();
     engine.syncPlants([], BED);
     ctx.currentTime = 5;
     const fixed = ctx.nodes.length; // the graph has two low-passes of its own (T-164)
-    engine.ui('tick');
-    expect(ctx.nodes).toHaveLength(fixed);
     engine.ui('goodnight');
     const filters = ctx.nodes.slice(fixed).filter((n) => n.kind === 'biquad'); // one low-pass per pad note
     expect(filters).toHaveLength(3);

@@ -336,3 +336,17 @@ export const BREATH_NOISE: NoiseShape = { type: 'bandpass', hz: 900, q: 1, attac
 /** Style B's clave: a Bell this many octaves over the root, this short. */
 export const CLAVE_OCTAVES = 2;
 export const CLAVE_RELEASE_S = 0.05;
+
+/**
+ * The Listen sweep (SOUND_PASS_T164.md §6, UX §6): in Listen the breathing master low-pass breathes this range on
+ * this cycle in every style, the mix is this much down and the reverb send this much up (to at most LISTEN_SEND_MAX),
+ * gliding in over the visual transition (1.2 s) and out over 0.8 s (HaloSystem's times), in BAR_GLIDE_TAUS each.
+ */
+export const LISTEN_BREATH_LOW_HZ = 800;
+export const LISTEN_BREATH_HIGH_HZ = 4000;
+export const LISTEN_BREATH_BARS = 16;
+export const LISTEN_DIM_DB = -3;
+export const LISTEN_SEND_ADD = 0.07;
+export const LISTEN_SEND_MAX = 0.35;
+export const LISTEN_GLIDE_IN_S = 1.2;
+export const LISTEN_GLIDE_OUT_S = 0.8;

@@ -57,7 +57,7 @@ describe('the layers per step (NFR-PERF-08, T-164)', () => {
       });
       layers.restyle(0);
       // The fake keeps each parameter event as an object: the breathing filter's glide, once a bar, is counted.
-      const breath = (compressor.inputs[0] as FakeNode).frequency;
+      const breath = ((compressor.inputs[0] as FakeNode).inputs[0] as FakeNode).frequency; // through the Listen dim
       let glides = 0;
       breath.setTargetAtTime = (): FakeParam => {
         glides++;
