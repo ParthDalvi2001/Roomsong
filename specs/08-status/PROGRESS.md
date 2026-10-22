@@ -151,6 +151,9 @@ emulator: draws — · tris — · JS ms — · heap — · bundle: dist 7.36 MB
 | Today, 15 Oct (product-owner guess, no headset; Nov 12 guess 6 / 6 / 5 / 5; see DEVPOST_DRAFT §2) | 4 | 3 | 5 | 2 | product-owner |
 
 ## Stand-ups
+### 2026-10-23
+- **00:55 IST — performance A and B, the first session's words; pushed (D-058: graphics first).** T-165 A: one shader compile at the session's first posed frame, no AudioListener, the hand rays off, no IBL, the plant outline shells merged, empty meshes hidden; B: one fillPoses per hand, Vector3 frames, TC-E2E-09 and TC-E2E-10 built. The worst frame in the emulator is now **46 draws / 99 712 triangles for both eyes** (was 68–70 at the audit; budget 60). A UX re-check of the built UI (`.tmp/UX_RECHECK_2026-10-23.md`) found the flows right and the first session's words wrong: fixed ("Open your hand, palm up", "Pinch the seed, drop it here", "Show your palms to listen", "More seeds tomorrow", "Pinch the petal to undo"; the Listen step once both gates are earned). Full suite 105 of 107 then the 2 load flakes alone green; verify 1 828. Built and in merge: the time-lapse switch (T-174), the UI sounds and Listen sweep (T-164), vines (T-149), stillness (T-173 2b); building: the visual polish pass, the render-and-measure tool. 50 of 74.
+
 ### 2026-10-20
 - **01:35 IST — T-173 part 1 and the headset steps for the sound checks; pushed.** Each plant plays on its own 1, 2, 3 or 5-bar cycle in the styles; a note when a plant is placed; a 2.5 s fade-in; a Mono switch (P-009, P-012, P-014). DEVICE_SCRIPT_S1 gains the PM's §7 sound checks (blocks 5, 11, 12, 14, 15); Devpost "How to test" says built-in speakers (Bluetooth lags). Full browser suite 107 of 107 on develop (20 min). T-165 A reviewed: approved, its 4 small fixes done; merge next. Running: T-165 B, T-174.
 
