@@ -3,6 +3,8 @@
 // controller path (FR-HND-01). IWER's emulated hands arrive through the same API and need no adapter.
 // Not seen on a headset: whether Quest Browser sends selectstart/selectend for a hand pinch is unverified
 // (FR-HND-02), so a session that has sent none for a hand reports select = pinch (LLD §4).
+import { Vector3 } from '@iwsdk/core';
+
 import { log } from '../core/index.js';
 
 import {
@@ -18,10 +20,39 @@ import { PinchMachine } from './poses/pinch.js';
 import type { HandFrame, InputSource } from './InputSource.js';
 import type { Hand, Vec3 } from '../core/index.js';
 
+declare global {
+  interface XRFrame {
+    /** WebXR Hand Input: each space's pose as a 4 x 4 matrix in one call; false if one has none. Not in @types/webxr. */
+    fillPoses?(spaces: XRSpace[], baseSpace: XRSpace, transforms: Float32Array): boolean;
+  }
+}
+
 const axisFilter = () => new OneEuroFilter(ONE_EURO_MIN_CUTOFF_HZ, ONE_EURO_BETA, ONE_EURO_D_CUTOFF_HZ);
+
+/** The joints read each frame, in the order of their matrices in `Track.poses`. */
+const JOINTS: readonly XRHandJoint[] = [
+  'thumb-tip',
+  'index-finger-tip',
+  'wrist',
+  'index-finger-phalanx-proximal',
+  'pinky-finger-phalanx-proximal',
+];
+/** A column-major 4 x 4 matrix keeps its translation at 12..14. */
+const POSITION = 12;
+// Scratch for one read: `sample` runs to the end before the next one starts.
+const thumb = new Vector3();
+const index = new Vector3();
+const wrist = new Vector3();
+const indexKnuckle = new Vector3();
+const pinkyKnuckle = new Vector3();
 
 /** One hand between frames. `detach` replaces it, so nothing held in one session reaches the next. */
 class Track {
+  /** The XRHand last read, and its JOINTS spaces (fewer if it lacks one): fetched again only for a new XRHand. */
+  joints: XRHand | null = null;
+  readonly spaces: XRJointSpace[] = [];
+  /** This frame's JOINTS poses: one matrix each, written by fillPoses or, without it, by getJointPose. */
+  readonly poses = new Float32Array(16 * JOINTS.length);
   tracked = false;
   lastMs = 0;
   readonly pinch = new PinchMachine();
@@ -155,10 +186,31 @@ export class HandSampler implements InputSource {
     return null;
   }
 
-  // shortcut: getJointPose creates platform objects per joint, switch to XRFrame.fillPoses after the device run (T-129)
-  private at(joints: XRHand, joint: XRHandJoint): DOMPointReadOnly | undefined {
-    const jointSpace = joints.get(joint);
-    return jointSpace && this.frame!.getJointPose?.(jointSpace, this.space!)?.transform.position;
+  /**
+   * This frame's JOINTS poses into `track.poses`: one fillPoses call, which creates nothing (a getJointPose per
+   * joint makes a new pose each). False: a joint has no pose, or the hand lacks one. Unverified on a headset (T-129).
+   */
+  private fill(joints: XRHand, track: Track): boolean {
+    if (track.joints !== joints) {
+      track.joints = joints;
+      track.spaces.length = 0;
+      for (const joint of JOINTS) {
+        const space = joints.get(joint);
+        if (space) track.spaces.push(space);
+      }
+    }
+    if (track.spaces.length < JOINTS.length) return false;
+    const frame = this.frame!;
+    if (frame.fillPoses) return frame.fillPoses(track.spaces, this.space!, track.poses);
+    // shortcut: no browser we know lacks fillPoses (Quest Browser and Chromium ship it); drop this fallback after the device run (T-129).
+    for (let k = 0; k < JOINTS.length; k++) {
+      const position = frame.getJointPose?.(track.spaces[k]!, this.space!)?.transform.position;
+      if (!position) return false;
+      track.poses[16 * k + POSITION] = position.x;
+      track.poses[16 * k + POSITION + 1] = position.y;
+      track.poses[16 * k + POSITION + 2] = position.z;
+    }
+    return true;
   }
 
   /**
@@ -166,12 +218,13 @@ export class HandSampler implements InputSource {
    * five joints are read before anything is written, so a read that throws leaves `out` untouched too.
    */
   private read(joints: XRHand, track: Track, timeMs: number, out: HandFrame): boolean {
-    const thumb = this.at(joints, 'thumb-tip');
-    const index = this.at(joints, 'index-finger-tip');
-    const wrist = this.at(joints, 'wrist');
-    const indexKnuckle = this.at(joints, 'index-finger-phalanx-proximal');
-    const pinkyKnuckle = this.at(joints, 'pinky-finger-phalanx-proximal');
-    if (!thumb || !index || !wrist || !indexKnuckle || !pinkyKnuckle) return false;
+    if (!this.fill(joints, track)) return false;
+    const poses = track.poses;
+    thumb.fromArray(poses, POSITION);
+    index.fromArray(poses, 16 + POSITION);
+    wrist.fromArray(poses, 32 + POSITION);
+    indexKnuckle.fromArray(poses, 48 + POSITION);
+    pinkyKnuckle.fromArray(poses, 64 + POSITION);
     // The pinch point is midway between the two tips. A pose with NaN in it counts as no pose.
     const x = (thumb.x + index.x) / 2;
     const y = (thumb.y + index.y) / 2;

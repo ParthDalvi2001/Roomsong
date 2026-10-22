@@ -8,6 +8,7 @@
 // one box for each of its 251 shaping frames, in GestureMachine.test.ts after its preview test had run; nothing
 // when this test ran alone). Nothing in src/ makes an object of a preview's shape but the machine, so the app's
 // payloads keep their number fields. Keep matchers and other non-numbers out of this file's payload shapes.
+import { Vector3 } from '@iwsdk/core';
 import { describe, expect, it } from 'vitest';
 
 import { bus } from '../../../src/core/index.js';
@@ -43,13 +44,14 @@ describe('GestureMachine: no allocation per frame while a plant is shaped (T-146
     };
     const machine = new GestureMachine('right');
     const frame = createHandFrame('right');
-    const onPlant: Vec3 = { x: 0.2101, y: 1.0003, z: -1.0002 };
-    const inDeadZone: Vec3 = { x: 0.2151, y: 1.0103, z: -1.0002 }; // 1.1 cm from where the pinch begins
-    const pulled: Vec3[] = [1.0533, 1.0791].map((y) => ({ x: 0.2113, y, z: -1.0007 }));
+    // Vector3s, as every HandFrame's are (createHandFrame): the machine copies them into its payloads.
+    const onPlant: Vec3 = new Vector3(0.2101, 1.0003, -1.0002);
+    const inDeadZone: Vec3 = new Vector3(0.2151, 1.0103, -1.0002); // 1.1 cm from where the pinch begins
+    const pulled: Vec3[] = [1.0533, 1.0791].map((y) => new Vector3(0.2113, y, -1.0007));
     // Along ring 2, 1 mm either side of the border of two cells (inside the dead band), 4 cm from the plant.
     const dragged: Vec3[] = [-0.001, 0.001].map((offM) => {
       const rad = BORDER_RAD + offM / RING_2_M;
-      return { x: RING_2_M * Math.cos(rad), y: 1.0007, z: -1 + RING_2_M * Math.sin(rad) };
+      return new Vector3(RING_2_M * Math.cos(rad), 1.0007, -1 + RING_2_M * Math.sin(rad));
     });
     let timeMs = 0;
     // One period of 400 frames, 10 ms each. The plant is pinched, held in the dead zone, pulled (the hand lost

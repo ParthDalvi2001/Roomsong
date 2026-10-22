@@ -75,9 +75,9 @@ describe('PointerSource: no object per frame', () => {
   }, 30_000);
 });
 
-// Not zero: 228 bytes a frame (Node 24.14, three runs: 227.5 to 228.2), every run, and no collection. They are
-// boxed numbers, not objects (API_SPEC v1.2.3: "creates no objects"), measured part by part on 2026-10-16: the
-// ray alone, WindowStage.project with fractions, is 80 (three's own calls, 5 boxes); a sample of a pointer at
-// rest is 144, the stores into the frame's plain vectors, as HandSampler.test.ts found for its 120. The events
-// cost nothing. The bound sits 32 above, so one object of 32 bytes a frame (a closure, a small array) shows.
-const BYTES_PER_FRAME = 260;
+// Not zero: 102 bytes a frame (Node 24.14, three runs: 101.76 to 101.76), every run, and no collection. They are
+// boxed numbers, not objects (API_SPEC v1.2.3: "creates no objects"): 48 of them with the pointer still or moving
+// and no click or target, in the calls into WindowStage and three (measured 2026-10-17). Until T-165 the frame's
+// vectors were plain { x, y, z }, whose stores V8 boxes once IWSDK is loaded: 228 bytes a frame. The bound sits
+// 32 above, so one object of 32 bytes a frame (a closure, a small array) shows, and plain vectors fail.
+const BYTES_PER_FRAME = 134;

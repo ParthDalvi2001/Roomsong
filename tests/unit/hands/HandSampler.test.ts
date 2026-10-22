@@ -9,7 +9,7 @@ import { PALM_REST_OFFSET_M, PINCH_LOCKOUT_MS } from '../../../src/hands/config.
 import { HandSampler } from '../../../src/hands/HandSampler.js';
 import { createHandFrame } from '../../../src/hands/InputSource.js';
 
-import { heapCost } from './heapCost.js';
+import { heapCost, PROBE_BYTES } from './heapCost.js';
 
 import type { Hand, Vec3 } from '../../../src/core/index.js';
 
@@ -18,6 +18,8 @@ afterEach(() => vi.restoreAllMocks());
 const FRAME_MS = 14;
 const OPEN_M = 0.09;
 const CLOSED_M = 0.005;
+/** toBeCloseTo digits for a position: 1 µm, as joint poses are float32 (fillPoses writes a Float32Array). */
+const MICRON = 6;
 const JOINTS = [
   'thumb-tip',
   'index-finger-tip',
@@ -28,7 +30,8 @@ const JOINTS = [
 type Joint = (typeof JOINTS)[number];
 
 interface JointSpace {
-  pose: { transform: { position: Vec3 } } | undefined;
+  /** Undefined: the platform has no pose for this joint this frame. */
+  position: Vec3 | undefined;
 }
 
 /** One hand's input source. Its joint positions are plain objects a test moves in place. */
@@ -47,7 +50,7 @@ class FakeHand {
       'index-finger-phalanx-proximal': point(),
       'pinky-finger-phalanx-proximal': point(),
     };
-    for (const joint of JOINTS) this.spaces.set(joint, { pose: { transform: { position: this.at[joint] } } });
+    for (const joint of JOINTS) this.spaces.set(joint, { position: this.at[joint] });
     this.pose({ x: 0, y: 1, z: -0.4 }, OPEN_M);
   }
 
@@ -67,14 +70,47 @@ class FakeHand {
 
   /** The platform reports no pose for this joint (`false`), or reports it again. */
   track(joint: Joint, tracked: boolean): void {
-    this.spaces.get(joint)!.pose = tracked ? { transform: { position: this.at[joint] } } : undefined;
+    this.spaces.get(joint)!.position = tracked ? this.at[joint] : undefined;
   }
+}
+
+/** Joint k's position in fillPoses' output: a column-major 4 x 4 matrix per space keeps it at 12..14. */
+const at16 = (k: number, axis: 0 | 1 | 2) => 16 * k + 12 + axis;
+
+/**
+ * An XRFrame's two joint reads, as the WebXR Hand Input spec has them: fillPoses writes the caller's array (NaN and
+ * false for a joint with no pose) and creates nothing; getJointPose returns a new pose on every call.
+ */
+function fakeFrame({ fillPoses = true } = {}): XRFrame {
+  const frame = {
+    getJointPose: (space: JointSpace) => {
+      const p = space.position;
+      return p && { transform: { position: { x: p.x, y: p.y, z: p.z } }, radius: 0.01 };
+    },
+    fillPoses: (spaces: JointSpace[], _base: XRSpace, transforms: Float32Array) => {
+      let allValid = true;
+      for (let k = 0; k < spaces.length; k++) {
+        const p = spaces[k]!.position;
+        if (p === undefined) {
+          transforms.fill(NaN, 16 * k, 16 * k + 16);
+          allValid = false;
+          continue;
+        }
+        transforms[at16(k, 0)] = p.x;
+        transforms[at16(k, 1)] = p.y;
+        transforms[at16(k, 2)] = p.z;
+      }
+      return allValid;
+    },
+  };
+  if (!fillPoses) return { getJointPose: frame.getJointPose } as unknown as XRFrame;
+  return frame as unknown as XRFrame;
 }
 
 type SelectType = 'selectstart' | 'selectend';
 
 /** A session with two hands, its frame, and the select events a test fires by hand. */
-function fakeXR() {
+function fakeXR(options: { fillPoses?: boolean } = {}) {
   const listeners: Record<SelectType, Set<(event: XRInputSourceEvent) => void>> = {
     selectstart: new Set(),
     selectend: new Set(),
@@ -88,7 +124,7 @@ function fakeXR() {
     removeEventListener: (type: SelectType, fn: (event: XRInputSourceEvent) => void) =>
       listeners[type].delete(fn),
   } as unknown as XRSession;
-  const frame = { getJointPose: (space: JointSpace) => space.pose } as unknown as XRFrame;
+  const frame = fakeFrame(options);
   const fire = (type: SelectType, inputSource: object) => {
     const event = { type, inputSource } as unknown as XRInputSourceEvent;
     listeners[type].forEach((fn) => fn(event));
@@ -97,8 +133,8 @@ function fakeXR() {
 }
 
 /** A sampler attached to a fake session, and `sample()` on a clock that advances 14 ms per call. */
-function setup() {
-  const xr = fakeXR();
+function setup(options: { fillPoses?: boolean } = {}) {
+  const xr = fakeXR(options);
   const sampler = new HandSampler();
   sampler.attach(xr.session);
   sampler.setFrame(xr.frame, xr.space);
@@ -124,9 +160,9 @@ describe('HandSampler: joints to HandFrame', () => {
     const { right, sample } = setup();
     right.pose({ x: 0.1, y: 0.8, z: -0.45 }, OPEN_M);
     const { pinchPos } = sample();
-    expect(pinchPos.x).toBeCloseTo(0.1, 9);
-    expect(pinchPos.y).toBeCloseTo(0.8, 9);
-    expect(pinchPos.z).toBeCloseTo(-0.45, 9);
+    expect(pinchPos.x).toBeCloseTo(0.1, MICRON);
+    expect(pinchPos.y).toBeCloseTo(0.8, MICRON);
+    expect(pinchPos.z).toBeCloseTo(-0.45, MICRON);
   });
 
   it.each(['right', 'left'] as const)(
@@ -140,9 +176,9 @@ describe('HandSampler: joints to HandFrame', () => {
       expect(palmNormal.y).toBeCloseTo(1, 9);
       expect(Math.hypot(palmNormal.x, palmNormal.y, palmNormal.z)).toBeCloseTo(1, 9);
       // A seed rests 3 cm above the middle of the palm: the wrist and the two knuckles, here at y = 1.
-      expect(palmPos.x).toBeCloseTo(0, 9);
-      expect(palmPos.y).toBeCloseTo(1 + PALM_REST_OFFSET_M, 9);
-      expect(palmPos.z).toBeCloseTo(-0.4 + (0.15 + 0.06 + 0.07) / 3, 9);
+      expect(palmPos.x).toBeCloseTo(0, MICRON);
+      expect(palmPos.y).toBeCloseTo(1 + PALM_REST_OFFSET_M, MICRON);
+      expect(palmPos.z).toBeCloseTo(-0.4 + (0.15 + 0.06 + 0.07) / 3, MICRON);
     },
   );
 
@@ -291,8 +327,8 @@ describe('HandSampler: a hand that is lost and found', () => {
     right.pose({ x: 0.25, y: 0.8, z: -0.3 }, OPEN_M); // it comes back somewhere else
     const found = sample();
     expect(found.tracked).toBe(true);
-    expect(found.pinchPos.x).toBeCloseTo(0.25, 9);
-    expect(found.pinchPos.y).toBeCloseTo(0.8, 9);
+    expect(found.pinchPos.x).toBeCloseTo(0.25, MICRON);
+    expect(found.pinchPos.y).toBeCloseTo(0.8, MICRON);
     expect(found.velocity.x).toBe(0);
   });
 
@@ -378,11 +414,10 @@ describe('HandSampler: the session', () => {
   it('never throws into the frame loop: a frame that cannot be read is an untracked hand, logged once', () => {
     const { sampler, frame, space, sample } = setup();
     const error = vi.spyOn(log, 'error').mockImplementation(() => undefined);
-    const stale = {
-      getJointPose: () => {
-        throw new Error('InvalidStateError: the frame is not active'); // what WebXR does outside the callback
-      },
-    } as unknown as XRFrame;
+    const inactive = () => {
+      throw new Error('InvalidStateError: the frame is not active'); // what WebXR does outside the callback
+    };
+    const stale = { fillPoses: inactive, getJointPose: inactive } as unknown as XRFrame;
     const before = structuredClone(sample());
     expect(before.tracked).toBe(true);
     sampler.setFrame(stale, space);
@@ -396,20 +431,77 @@ describe('HandSampler: the session', () => {
   });
 });
 
+describe('HandSampler: one fillPoses call per hand (T-165)', () => {
+  it('reads the five joints with one fillPoses call per hand, never getJointPose', () => {
+    const { frame, right, sample } = setup();
+    const fillPoses = vi.spyOn(frame, 'fillPoses');
+    const getJointPose = vi.spyOn(frame, 'getJointPose');
+    const lookUp = vi.spyOn(right.hand, 'get');
+    for (let i = 0; i < 3; i++) {
+      expect(sample('left').tracked).toBe(true);
+      expect(sample('right').tracked).toBe(true);
+    }
+    expect(fillPoses).toHaveBeenCalledTimes(6);
+    expect(fillPoses.mock.calls[0]![0]).toHaveLength(5);
+    expect(getJointPose).not.toHaveBeenCalled();
+    expect(lookUp).toHaveBeenCalledTimes(5); // the joint spaces once per XRHand, not once per frame
+  });
+
+  it('gives the same HandFrame as one getJointPose per joint, the fallback for a frame without fillPoses', () => {
+    const batch = setup();
+    const single = setup({ fillPoses: false });
+    const getJointPose = vi.spyOn(single.frame, 'getJointPose');
+    const steps: ((hand: FakeHand) => void)[] = [
+      (hand) => hand.pose({ x: 0.1, y: 0.8, z: -0.45 }, OPEN_M),
+      (hand) => hand.pose({ x: 0.13, y: 0.83, z: -0.41 }, CLOSED_M),
+      (hand) => hand.pose({ x: 0.12, y: 0.84, z: -0.42 }, CLOSED_M, 'up'),
+      (hand) => hand.track('wrist', false),
+      (hand) => hand.track('wrist', true),
+      (hand) => hand.pose({ x: -0.2, y: 0.9, z: -0.3 }, 0.025),
+      (hand) => hand.pose({ x: -0.21, y: 0.91, z: -0.31 }, OPEN_M, 'up'),
+    ];
+    let tracked = 0;
+    for (const step of steps) {
+      for (const hand of ['left', 'right'] as const) {
+        step(batch[hand]);
+        step(single[hand]);
+        const expected = structuredClone(single.sample(hand));
+        expect(batch.sample(hand)).toEqual(expected);
+        if (expected.tracked) tracked++;
+      }
+    }
+    expect(tracked).toBe(12); // all but the two samples with no wrist
+    expect(getJointPose).toHaveBeenCalled();
+  });
+
+  it('reads the new XRHand when the platform replaces the input source, not the old one', () => {
+    const { right, inputSources, sample } = setup();
+    expect(sample().tracked).toBe(true);
+    inputSources[1] = new FakeHand('right');
+    right.track('wrist', false); // the old hand's joints have no pose any more
+    expect(sample().tracked).toBe(true);
+  });
+
+  it('a fillPoses that returns false is an untracked hand, and nothing is written', () => {
+    const { frame, sample } = setup();
+    const before = structuredClone(sample());
+    vi.spyOn(frame, 'fillPoses').mockReturnValue(false); // the array still holds the last, finite poses
+    expect(sample()).toEqual({ ...before, tracked: false });
+  });
+});
+
 describe('HandSampler: no object per frame', () => {
   it('the sampler writes into the frame it is given and creates no object', () => {
     const WARM_UP = 60_000;
-    const ROUNDS = 2000; // a short window: at 120 bytes a frame no collection falls into it
+    const ROUNDS = 2000; // a short window: a leak of 2 bytes a frame shows as growth before a collection runs
     // Whole numbers on purpose: fingertips at whole metres, one sample a second. V8 boxes a fractional number
     // (16 bytes) when it hands one to a function it did not inline, and a whole number never.
-    // Still not zero: 120 bytes a frame for two hands (Node 24.14), every run. Cause, from the T-124 review:
-    // the six stores into out.palmNormal and out.palmPos, one 16-byte box per value that is not whole (left
-    // hand 3 a sample, right hand 3 flat or 6 tilted: 7.5 x 16). The trigger is the process, not the code: the
-    // same run costs 0 when IWSDK and three.js are not loaded, and this file loads them through core/. With
-    // real hand positions the review measured 232 to 272 bytes a frame for one hand. Short-lived numbers, no
-    // objects. The bound sits 30 bytes above the 120, so an object of 32 bytes per frame shows. If this file
-    // ever stops loading core/, the baseline drops to 0 and the bound has to drop with it.
-    const BYTES_PER_FRAME = 150;
+    // Measured 2026-10-17 (Node 24.14): 600 bytes a run, the probe's own, so the bound is the probe's. It fails the
+    // two costs T-165 removed. Plain { x, y, z } frame vectors: once IWSDK is loaded (HandSampler loads it), V8
+    // boxes each fraction stored into them, 120 bytes a frame here and 232 to 272 for one real hand (T-124
+    // review). And a getJointPose per joint: the fake frame's makes a new pose per call, as a platform's does,
+    // 1 480 bytes a frame.
+    const BYTES_PER_RUN = PROBE_BYTES;
     const { right, left, sampler, frames, fire } = setup();
     const kept = [
       frames.right.pinchPos,
@@ -436,7 +528,7 @@ describe('HandSampler: no object per frame', () => {
     sampleAll(WARM_UP);
 
     const costs = Array.from({ length: 5 }, () => heapCost(() => sampleAll(ROUNDS)));
-    const clean = costs.filter((cost) => cost.gcs === 0 && cost.grewBytes < BYTES_PER_FRAME * ROUNDS);
+    const clean = costs.filter((cost) => cost.gcs === 0 && cost.grewBytes < BYTES_PER_RUN);
     expect(clean.length, JSON.stringify(costs)).toBeGreaterThan(0);
     expect(frames.right).toMatchObject({ tracked: true, pinchPos: { x: 0, y: 1, z: -1 } });
     const now = [frames.right.pinchPos, frames.right.palmPos, frames.right.palmNormal, frames.right.velocity];

@@ -2,6 +2,8 @@
 // commits. IDLE, CARRYING (a seed), PRESSED (orb, undo petal, panel control) and PINCHED (a plant, or nothing);
 // a pinched plant becomes PULLING or DRAGGING once the hand leaves the dead zone (FR-HND-08/10). The hover
 // (FR-HND-16) and the tracking-loss grace with its revert (FR-HND-15) hold for every one of them.
+import { Vector3 } from '@iwsdk/core';
+
 import { bus } from '../core/index.js';
 import { bedZone } from '../garden/index.js';
 
@@ -115,16 +117,16 @@ export class GestureMachine {
 
   constructor(hand: Hand) {
     this.palmUpEvent = { type: 'gesture:palmUp', hand };
-    this.startEvent = { type: 'gesture:pinchStart', hand, target: null, pos: { x: 0, y: 0, z: 0 } };
+    // Vector3 payload positions, as the HandFrame's (InputSource.ts): the copies into them box nothing.
+    this.startEvent = { type: 'gesture:pinchStart', hand, target: null, pos: new Vector3() };
     this.pullEvent = { type: 'gesture:pull', hand, target: this.held, dy: 0 };
-    const pos = { x: 0, y: 0, z: 0 };
-    this.dragEvent = { type: 'gesture:drag', hand, target: this.held, pos, zone: 'inner' };
+    this.dragEvent = { type: 'gesture:drag', hand, target: this.held, pos: new Vector3(), zone: 'inner' };
     this.releaseEvent = {
       type: 'gesture:release',
       hand,
       gesture: 'none',
       target: null,
-      pos: { x: 0, y: 0, z: 0 },
+      pos: new Vector3(),
       zone: 'inner',
       cell: null,
       dy: null,

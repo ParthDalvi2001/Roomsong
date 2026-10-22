@@ -1,5 +1,7 @@
 // The one seam between an input device and the gesture machine (FR-SYS-07, API_SPEC §1.4). hands/ owns the
 // interface and the WebXR implementation (HandSampler); window/ implements it for a pointer (LLD §11).
+import { Vector3 } from '@iwsdk/core';
+
 import type { Hand, Vec3 } from '../core/index.js';
 
 export interface HandFrame {
@@ -29,7 +31,9 @@ export interface InputSource {
   sample(hand: Hand, timeMs: number, out: HandFrame): void;
 }
 
-const zero = (): Vec3 => ({ x: 0, y: 0, z: 0 });
+// A Vector3, not { x, y, z }: once IWSDK is loaded, V8 boxes each fraction stored into a plain literal, as
+// some literal of that shape there holds a non-number (T-165; measured in HandSampler.test, PointerSource.heap.test).
+const zero = (): Vec3 => new Vector3();
 
 /** An untracked, zeroed frame: the caller keeps one per hand and passes it to `sample` every frame. */
 export function createHandFrame(hand: Hand): HandFrame {
