@@ -75,14 +75,20 @@ function probe(page: Page): Promise<JSHandle<Probe>> {
       onPage: (x, y, z) => {
         const ndc = bed.localToWorld(bed.position.clone().set(x, y, z)).project(world.camera);
         const rect = world.renderer.domElement.getBoundingClientRect();
-        return { x: rect.left + ((ndc.x + 1) / 2) * rect.width, y: rect.top + ((1 - ndc.y) / 2) * rect.height };
+        return {
+          x: rect.left + ((ndc.x + 1) / 2) * rect.width,
+          y: rect.top + ((1 - ndc.y) / 2) * rect.height,
+        };
       },
       caption: () => captions.shown,
       plants: () => garden.state?.plants.length ?? 0,
       saveFive: (cells, ageDays, more) => {
         const state = garden.state!;
         const now = Date.now();
-        const seeds = [...state.seeds, ...more.map((seed, i) => ({ id: `polish-${i}`, ...seed, receivedAt: now }))];
+        const seeds = [
+          ...state.seeds,
+          ...more.map((seed, i) => ({ id: `polish-${i}`, ...seed, receivedAt: now })),
+        ];
         const plants = cells.map((cell, i) => ({
           id: seeds[i]!.id,
           voice: seeds[i]!.voice,
@@ -100,9 +106,13 @@ function probe(page: Page): Promise<JSHandle<Probe>> {
 
 async function enterWindow(page: Page): Promise<JSHandle<Probe>> {
   await page.getByRole('main').getByRole('status').waitFor();
-  await page.waitForFunction((text) => document.querySelector('[role=status]')?.textContent === text, WINDOW, {
-    timeout: WORLD_READY_MS,
-  });
+  await page.waitForFunction(
+    (text) => document.querySelector('[role=status]')?.textContent === text,
+    WINDOW,
+    {
+      timeout: WORLD_READY_MS,
+    },
+  );
   const p = await probe(page);
   await page.getByRole('main').getByRole('button', { name: 'Enter the garden' }).click();
   await page.waitForFunction((p) => p.isBedShown(), p, { timeout: 10_000 });
@@ -136,9 +146,13 @@ test.use({ viewport: { width: 1440, height: 900 } });
 
 test('laptop mode: landing, the empty bed with the first caption and hint', async ({ page }) => {
   await openPlain(page);
-  await page.waitForFunction((text) => document.querySelector('[role=status]')?.textContent === text, WINDOW, {
-    timeout: WORLD_READY_MS,
-  });
+  await page.waitForFunction(
+    (text) => document.querySelector('[role=status]')?.textContent === text,
+    WINDOW,
+    {
+      timeout: WORLD_READY_MS,
+    },
+  );
   await page.screenshot({ path: shot('landing-laptop'), fullPage: true });
   const p = await enterWindow(page);
   const rest = await p.evaluate((p) => p.onPage(0.36, 0, 0));
@@ -175,11 +189,9 @@ test('laptop mode: high contrast with five plants', async ({ page }) => {
 
 test('emulator: landing, the bed placed on the table, the first caption', async ({ page }) => {
   await openApp(page, readRoom('table'), '/', { onboarding: true });
-  await page.waitForFunction(
-    () => document.querySelector('[role=status]')?.textContent === '',
-    undefined,
-    { timeout: WORLD_READY_MS },
-  );
+  await page.waitForFunction(() => document.querySelector('[role=status]')?.textContent === '', undefined, {
+    timeout: WORLD_READY_MS,
+  });
   await page.screenshot({ path: shot('landing-emulator'), fullPage: true });
   await enterXR(page);
   const p = await probe(page);
