@@ -43,6 +43,8 @@ export function createAudioEngine(): AudioEngine {
     engine.exitListen();
     if (timedOut) engine.ui('goodnight');
   });
+  // P-016 (T-173): a still head facing the bed opens the garden; the gazed plant comes forward.
+  bus.on('stillness:changed', ({ isOpen, plantId }) => engine.setStillness(isOpen, plantId));
 
   return engine;
 }

@@ -39,6 +39,8 @@ import {
   LISTEN_ENTER_MS,
   LISTEN_EXIT_MS,
   MOSS,
+  STILL_HALO,
+  STILL_RAMP_MS,
   VIOLET,
 } from './config.js';
 
@@ -100,6 +102,9 @@ export class HaloRenderer {
   private isListening = false;
   /** How far the scene is into Listen, 0..1, before easing. */
   private progress = 0;
+  /** P-016: the garden is open (a still head), and how far the halo is into it, 0..1, over STILL_RAMP_MS. */
+  private isOpen = false;
+  private open = 0;
   private lastMs = Number.NaN;
   private isReducedMotion = false;
   /** What of the background the dome covers outside Listen: CONTRAST_DIM in high contrast, else 0. */
@@ -168,6 +173,11 @@ export class HaloRenderer {
     this.isListening = isListening;
   }
 
+  /** P-016: on `stillness:changed`: the halo glides up STILL_HALO over STILL_RAMP_MS, or back down. */
+  setOpen(isOpen: boolean): void {
+    this.isOpen = isOpen;
+  }
+
   /** UX §5, FR-UI-06: no rise and no drift; the fades and the breath stay. */
   setReducedMotion(isReduced: boolean): void {
     this.isReducedMotion = isReduced;
@@ -191,11 +201,15 @@ export class HaloRenderer {
     const step = elapsed > 0 ? elapsed / (this.isListening ? LISTEN_ENTER_MS : LISTEN_EXIT_MS) : 0;
     const progress = this.isListening ? Math.min(1, was + step) : Math.max(0, was - step);
     if (progress !== was) this.progress = progress;
+    const wasOpen = this.open;
+    const openStep = elapsed > 0 ? elapsed / STILL_RAMP_MS : 0;
+    const open = this.isOpen ? Math.min(1, wasOpen + openStep) : Math.max(0, wasOpen - openStep);
+    if (open !== wasOpen) this.open = open;
     // High contrast's dim lives on the bed, which RoomSystem hides while it places it. Asked for as gone while the
     // bed is hidden, so the guard counts its going and holds its coming back like any change (BUG-008 review).
     const contrastCover = this.dome.parent?.visible === false ? 0 : this.contrastCover;
     const isAtRest = this.haloState[0] === 0 && this.domeState[0] === 0 && contrastCover === 0;
-    if (progress === 0 && isAtRest) return;
+    if (progress === 0 && open === 0 && isAtRest) return;
     const eased = progress * progress * (3 - 2 * progress);
 
     // The deeper of the two dims, never their product: high contrast in Listen is Listen's 40 %, not 24 %.
@@ -207,12 +221,16 @@ export class HaloRenderer {
     const breath = Number.isFinite(barPhase)
       ? 0.5 + 0.5 * Math.cos(2 * Math.PI * barPhase * BREATHS_PER_BAR)
       : 1;
-    const lit = this.guard.request(this.haloElement, eased * (HALO_LOW + (1 - HALO_LOW) * breath), nowMs);
+    // P-016: the open garden lifts the halo STILL_HALO of the way from Listen's level to 1, so in Listen the
+    // breath stays (0.81 to 1 instead of 0.75 to 1) and nothing is asked past the guard's 1.
+    const listening = eased * (HALO_LOW + (1 - HALO_LOW) * breath);
+    const wanted = listening + (1 - listening) * STILL_HALO * open * open * (3 - 2 * open);
+    const lit = this.guard.request(this.haloElement, wanted, nowMs);
     this.haloState[0] = lit;
     this.haloState[2] = this.isReducedMotion ? 0 : (nowMs % HALO_DRIFT_MS) / HALO_DRIFT_MS;
     this.halo.visible = lit > 0;
     // The rise goes straight into the matrix's y scale (matrixAutoUpdate is off): a setter would box it.
-    this.halo.matrix.elements[5] = this.isReducedMotion ? 1 : eased;
+    this.halo.matrix.elements[5] = this.isReducedMotion ? 1 : Math.max(eased, open);
     this.halo.matrixWorldNeedsUpdate = true;
   }
 

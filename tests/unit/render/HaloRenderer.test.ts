@@ -15,6 +15,8 @@ import {
   HALO_LOW,
   LISTEN_ENTER_MS,
   LISTEN_EXIT_MS,
+  STILL_HALO,
+  STILL_RAMP_MS,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
 import { HaloRenderer } from '../../../src/render/HaloRenderer.js';
@@ -123,6 +125,46 @@ describe('HaloRenderer: the dome and the halo (T-148, UX §3.5)', () => {
     expect(peaks).toHaveLength(2);
     expect(Math.max(...lit)).toBeCloseTo(1, 3);
     expect(Math.min(...lit)).toBeCloseTo(HALO_LOW, 3);
+  });
+
+  it('stillness (P-016): the halo glides up to STILL_HALO over 2 s and back; in Listen it stays under 1 and breathes', () => {
+    const { halo, guard, read, run } = make();
+    run(100);
+    halo.setOpen(true);
+    const rising = run(STILL_RAMP_MS + 2 * FRAME_MS).map((frame) => frame.lit);
+    expect(rising.every((v, i) => i === 0 || v >= rising[i - 1]!)).toBe(true); // one slow swing, no step
+    expect(read().lit).toBeCloseTo(STILL_HALO, 3);
+    expect([halo.halo.visible, halo.halo.matrix.elements[5], read().seen]).toEqual([true, 1, 1]); // no dome
+    halo.setListening(true);
+    run(LISTEN_ENTER_MS + 2000, 84);
+    const lit = run((4 * 60_000) / 84, 84).map((frame) => frame.lit);
+    expect(Math.max(...lit)).toBeCloseTo(1, 3);
+    expect(Math.min(...lit)).toBeCloseTo(HALO_LOW + (1 - HALO_LOW) * STILL_HALO, 3); // brighter, still breathing
+    halo.setOpen(false);
+    run(STILL_RAMP_MS + 2 * FRAME_MS, 84);
+    expect(Math.min(...run((4 * 60_000) / 84, 84).map((frame) => frame.lit))).toBeCloseTo(HALO_LOW, 3);
+    halo.setListening(false);
+    run(LISTEN_EXIT_MS + 2 * FRAME_MS);
+    expect(read()).toMatchObject({ lit: 0, seen: 1 });
+    expect(guard.takePeak()).toBeLessThanOrEqual(FLASH_CAP_PER_S);
+  });
+
+  it('T-152: a pause mid-Listen (no frames for 30 s) is one guarded change on the return, not a flash', () => {
+    const { halo, guard, run } = make();
+    halo.setListening(true);
+    run(LISTEN_ENTER_MS / 3, 84); // the fade-in a third of the way when the frames stop
+    guard.takePeak();
+    let t = 100_000;
+    const lit: number[] = [];
+    for (let i = 0; i < 72; i++) {
+      halo.update(((t += 14) / ((4 * 60_000) / 84)) % 1, t); // the return: the time jumps 30 s in one frame
+      lit.push((halo.halo.material.uniforms.uHalo!.value as Float32Array)[0]!);
+    }
+    expect(lit[0]).toBeGreaterThan(0.7); // the fade completes in that one frame
+    expect(guard.takePeak()).toBeLessThanOrEqual(FLASH_CAP_PER_S);
+    expect(mostInAnyClip(lit.map((value, i) => ({ t: 100_000 + 14 * (i + 1), value })))).toBeLessThanOrEqual(
+      FLASH_CAP_PER_S,
+    );
   });
 
   for (const bpm of [60, 84, 90, 120]) {

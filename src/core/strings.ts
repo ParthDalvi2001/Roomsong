@@ -28,6 +28,9 @@ export const STRINGS = {
   E_SAVE_FAILED: 'Saving unavailable',
   // A session with no sound (API_SPEC §1.10 rule 2): src/app.ts raises it. The garden still works, silent.
   E_AUDIO_CONTEXT: 'Sound unavailable',
+  // T-152: back from a pause, the browser kept the context suspended (it wants a gesture): the first pinch or palm
+  // up resumes it. src/app.ts raises it after the same grace as "Sound unavailable".
+  soundResume: 'Pinch to resume sound',
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

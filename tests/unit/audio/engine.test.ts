@@ -1357,6 +1357,26 @@ describe('the AudioContext (NFR-PERF-10, FR-SYS-05)', () => {
     times.forEach((t, i) => expect(t).toBeCloseTo(stepTime(i), 9)); // no step lost, none doubled
   });
 
+  it('T-152: the bar phase is the same after resume() as before suspend(), and no step bursts out on the return', async () => {
+    const { ctx, engine, run } = await start();
+    engine.syncPlants(sixteenPlucks(), BED);
+    run(2.3);
+    const done = engine.suspend();
+    run(SUSPEND_FADE_S + TICK_S);
+    await done;
+    const phase = engine.clock.barPhase();
+    const frozen = ctx.currentTime; // the context's clock stands still while it is suspended
+    const before = starts(ctx).length;
+    await engine.resume();
+    expect(engine.clock.barPhase()).toBe(phase);
+    run(1);
+    const after = starts(ctx).slice(before);
+    expect(after.length).toBeGreaterThan(0);
+    expect(after.length).toBeLessThanOrEqual(Math.ceil((1 + LOOK_AHEAD_S) / STEP_S + 1) * 16);
+    for (const t of after) expect(t).toBeGreaterThanOrEqual(frozen); // none in the past: no burst
+    expect(engine.clock.barPhase()).toBeCloseTo((phase + 1 / STEP_S / STEPS) % 1, 6);
+  });
+
   it('resume() during the fade cancels the suspend; a second suspend() while one is pending is the same one', async () => {
     const { ctx, engine, run } = await start();
     const first = engine.suspend();

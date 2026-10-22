@@ -45,6 +45,9 @@ import {
   START_DELAY_S,
   START_FADE_S,
   START_FADE_TAUS,
+  STILL_GAZE_DB,
+  STILL_RAMP_TAU_S,
+  STILL_SEND_MUL,
   SUSPEND_FADE_S,
   SUSPEND_FADE_TAUS,
   TEMPO_MAX_BPM,
@@ -72,6 +75,9 @@ import { Pluck } from './voices/Pluck.js';
 import type { Voice, VoiceParams } from './voices/note.js';
 import type { Mat4, Vec3 } from '../core/index.js';
 import type { Cell, Plant, RoomSignature } from '../garden/index.js';
+
+/** P-016: the gazed plant's lift, as a gain, once. */
+const STILL_GAZE_GAIN = dbToGain(STILL_GAZE_DB);
 
 type UiSound = 'tick' | 'confirm' | 'bump' | 'removeRev' | 'undoFwd' | 'placed' | 'goodnight';
 
@@ -102,6 +108,11 @@ export interface AudioEngine {
   ui(sound: 'placed', plantId: string): void;
   enterListen(): void;
   exitListen(): void;
+  /**
+   * P-016: the garden opened (`isOpen`) by a still head: the reverb send glides up STILL_SEND_MUL; the plant
+   * `plantId` ('' for none) plays its next notes STILL_GAZE_DB louder, on top of Listen's distance focus, once.
+   */
+  setStillness(isOpen: boolean, plantId: string): void;
   suspend(): Promise<void>;
   resume(): Promise<void>;
   /** Audio-clock based. */
@@ -192,6 +203,9 @@ export class Engine implements AudioEngine {
   private reverbMode: 'auto' | 'small' | 'off' = 'auto';
   /** In Listen (§6): the sweep is on and the reverb send lifted. */
   private listening = false;
+  /** P-016: the garden is open (a still head), and the plant the gaze rests on ('' for none). */
+  private isOpen = false;
+  private gazedId = '';
   /** Decay of the signature: the default until the first one, like the Wanderer tuning above. */
   private signatureRt60 = REVERB_RT60_DEFAULT_S;
   /** The decay asked for last: the one the convolver holds, or the one on its way to it. 0 = none yet. */
@@ -357,6 +371,22 @@ export class Engine implements AudioEngine {
     this.listen(false);
   }
 
+  setStillness(isOpen: boolean, plantId: string): void {
+    this.gazedId = plantId;
+    if (isOpen === this.isOpen) return;
+    this.isOpen = isOpen;
+    const g = this.g;
+    if (g !== null) g.send.gain.setTargetAtTime(this.sendLevel(), g.ctx.currentTime, STILL_RAMP_TAU_S);
+  }
+
+  /** The reverb send in force: the recipe's, +LISTEN_SEND_ADD in Listen (§6, capped), STILL_SEND_MUL wider while the garden is open, 0 with the reverb off. */
+  private sendLevel(): number {
+    if (this.reverbMode === 'off') return 0;
+    const send = this.recipe.reverbSend;
+    const level = this.listening ? Math.min(LISTEN_SEND_MAX, send + LISTEN_SEND_ADD) : send;
+    return level * (this.isOpen ? STILL_SEND_MUL : 1);
+  }
+
   /** FR-SYS-05: the master fades out, then the context stops. The tick does the stop, on the audio clock. */
   suspend(): Promise<void> {
     const g = this.g;
@@ -446,6 +476,7 @@ export class Engine implements AudioEngine {
       const r = list[i] as PlantRecord;
       if (layers.rests(r, bar)) continue;
       layers.groove(r, step, bar, time);
+      if (r.plant.id === this.gazedId) layers.note.gain *= STILL_GAZE_GAIN; // P-016: once, on top of the focus
       g.pool.play(r.voice, layers.noteTime, layers.note, r.x, r.y, r.z, r, guard);
       played++;
     }
@@ -467,7 +498,7 @@ export class Engine implements AudioEngine {
     lowCut.frequency.value = REVERB_HPF_HZ;
     lowCut.Q.value = FLAT_Q_DB;
     const send = ctx.createGain();
-    send.gain.value = this.recipe.reverbSend;
+    send.gain.value = this.sendLevel();
     const convolver = ctx.createConvolver();
     // P-022: every response has one energy (IR_ENERGY), so every room is as wet; normalize would scale it by length.
     convolver.normalize = false;
@@ -618,9 +649,7 @@ export class Engine implements AudioEngine {
     if (g === null) return;
     const now = g.ctx.currentTime;
     const off = this.reverbMode === 'off';
-    const send = this.recipe.reverbSend;
-    const level = this.listening ? Math.min(LISTEN_SEND_MAX, send + LISTEN_SEND_ADD) : send; // §6, in Listen
-    g.send.gain.setTargetAtTime(off ? 0 : level, now, tau);
+    g.send.gain.setTargetAtTime(this.sendLevel(), now, tau);
     g.layers.openEcho(!off, now); // 'off' is a dry sound: no tempo echo either (T-164)
     const rt60 = Math.min(
       this.reverbMode === 'small' ? REVERB_SMALL_RT60_S : this.signatureRt60,

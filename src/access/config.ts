@@ -35,3 +35,9 @@ export const BEAT_TICK_LIFT_M = 0.002;
 export const BEAT_TICK_REST = 0.3;
 export const BEAT_TICK_TIDE_LIFT = 0.2;
 export const BEAT_TICK_FLASH_LIFT = 0.7;
+
+/**
+ * P-016 (T-173, D-057): a head held still (not turning faster than 8 deg/s, UX §9.8) with the bed's centre inside
+ * the essential-UI box (FR-UI-03) for this long opens the garden. Provisional: the PM's "about 8 s"; a device check.
+ */
+export const STILL_OPEN_MS = 8000;

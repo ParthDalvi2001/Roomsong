@@ -5,7 +5,7 @@
 import { World, XRInputVisualAdapter, type Entity } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 
-import { BeatRingSystem, GazeDwellSystem } from './access/index.js';
+import { BeatRingSystem, GazeDwellSystem, StillnessSystem } from './access/index.js';
 import { createAudioEngine, GardenAudioSystem, type AudioEngine } from './audio/index.js';
 import { Caption } from './core/components.js';
 import {
@@ -58,6 +58,8 @@ const AUDIO_START_GRACE_MS = 3000;
 const WIRING_CAPTION_MS = 5000;
 /** The caption of a session with no sound (API_SPEC §1.10 rule 2). */
 const NO_SOUND: StringKey = 'E_AUDIO_CONTEXT';
+/** T-152: the caption of a return from a pause whose context the browser did not resume; a gesture will. */
+const SOUND_RESUME: StringKey = 'soundResume';
 /** The caption of writes that fail (LLD §3.3 G, §8): "Saving unavailable". */
 const SAVE_FAILED: StringKey = 'E_SAVE_FAILED';
 const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[];
@@ -330,6 +332,19 @@ export function followSession(
   const xr = world.renderer.xr;
   const caption = world.createEntity();
   const raiseNoSound = (): void => raise(caption, NO_SOUND);
+  const takeBack = (): void => {
+    if (caption.hasComponent(Caption)) caption.removeComponent(Caption);
+  };
+  // T-152: a context the browser left suspended on the return from a pause is resumed by the first pinch or palm
+  // up (a select event is a user activation), and the caption that asked for it goes with the gesture.
+  const onGesture = (): void => {
+    disarm();
+    engine.resume().then(takeBack, (error: unknown) => log.error('app', 'E_AUDIO_CONTEXT', error));
+  };
+  const disarm = (): void => {
+    bus.off('gesture:pinchStart', onGesture);
+    bus.off('gesture:palmUp', onGesture);
+  };
   // Three.js listens for the session's end before it announces its start, so a session that ends in between
   // gives an end with no start. An `xr:sessionEnd` is emitted only for a session whose start was emitted.
   let started = false;
@@ -372,20 +387,36 @@ export function followSession(
     // Where this session found the audio clock: 0 before the first context, and where the last session left it
     // after that. A clock that has not moved by the end of the grace is a context the browser did not start or
     // did not resume, and nothing rejects for that.
-    const audioAt = engine.clock.now();
-    grace = setTimeout(() => {
-      if (engine.clock.now() === audioAt) raiseNoSound();
-    }, AUDIO_START_GRACE_MS);
+    watchClock(raiseNoSound);
   });
+  // T-152: the same watch on each return from a pause; a clock still standing then asks for a gesture.
+  const offSeen = bus.on('xr:visibility', ({ visible }) => {
+    if (!visible || !isOpen || sound.failed) return;
+    watchClock(() => {
+      raise(caption, SOUND_RESUME);
+      bus.on('gesture:pinchStart', onGesture);
+      bus.on('gesture:palmUp', onGesture);
+    });
+  });
+  function watchClock(then: () => void): void {
+    const audioAt = engine.clock.now();
+    clearTimeout(grace);
+    grace = setTimeout(() => {
+      if (engine.clock.now() === audioAt) then();
+    }, AUDIO_START_GRACE_MS);
+  }
   const offEnd = bus.on('xr:sessionEnd', () => {
     isOpen = false;
     clearTimeout(grace);
+    disarm();
     // Taken back with its session: one raised in a session without sound must not show in the next one.
-    if (caption.hasComponent(Caption)) caption.removeComponent(Caption);
+    takeBack();
   });
   return () => {
     offStart();
+    offSeen();
     offEnd();
+    disarm();
   };
 }
 
@@ -447,6 +478,7 @@ export async function start(landing: Landing): Promise<void> {
   const hands = register(world, HandSystem, 20);
   register(world, GazeDwellSystem, 25, { room, guard }); // gaze dwell and its reticle (T-160)
   register(world, BeatRingSystem, 26, { guard, engine, bed: room.bed.object3D }); // the beat ring (T-160)
+  register(world, StillnessSystem, 27, { bed: room.bed.object3D }); // stillness opens the garden (P-016, T-173)
   register(world, OnboardingSystem, 35); // T-150: the guided first minute
   register(world, GardenAudioSystem, 40, { engine });
   register(world, SeedSystem, 49, { guard });

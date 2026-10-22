@@ -103,6 +103,14 @@ export const REVERB_SEND = 0.28;
 export const REVERB_HPF_HZ = 200;
 /** Gain of the reverb return while it is open. */
 export const WET_RETURN = 1;
+/**
+ * P-016 (T-173): a still head facing the bed opens the garden: the reverb send this many times its level (+1.9 dB, a
+ * little wider), glided with this time constant (about 2 s to settle), and the plant the gaze rests on this much
+ * louder on each of its notes. Provisional until a headset listen.
+ */
+export const STILL_SEND_MUL = 1.25;
+export const STILL_RAMP_TAU_S = 0.7;
+export const STILL_GAZE_DB = 2;
 /** Audio seconds to wait after muting the reverb return before swapping the impulse response. */
 export const REVERB_SWAP_DELAY_S = 0.12;
 /** setTargetAtTime time constant for muting the reverb return. */

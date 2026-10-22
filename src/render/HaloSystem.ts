@@ -68,6 +68,7 @@ export class HaloSystem extends createSystem(
         if (timedOut) this.sayGoodnight();
       }),
       bus.on('room:signature', () => void (this.isTuned = true)),
+      bus.on('stillness:changed', ({ isOpen }) => this.halo.setOpen(isOpen)), // P-016
       bus.on('xr:sessionEnd', () => void (this.isTuned = false)),
       bus.on('target:hover', ({ hand, target }) => {
         this.hovered[hand === 'left' ? 0 : 1] = target?.kind === 'orb';

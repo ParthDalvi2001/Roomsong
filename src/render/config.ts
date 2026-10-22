@@ -224,6 +224,13 @@ export const HALO_PEAK = 0.9;
 export const HALO_LOW = 0.75;
 export const HALO_BEATS_PER_BREATH = 2;
 export const HALO_DRIFT_MS = 60_000;
+/**
+ * P-016 (T-173): a still head facing the bed opens the garden: the halo lit this much of the way from where Listen
+ * has it (0 outside Listen) to 1, glided in and out over STILL_RAMP_MS: one slow swing each way, never a blink
+ * (FR-UI-11). Provisional until a headset look.
+ */
+export const STILL_HALO = 0.25;
+export const STILL_RAMP_MS = 2000;
 /** UX §2 (the Listen orb glows in the bed's centre hole), chosen in T-148: this far above the glass, as wide as a
  *  target, under the supply orb's ring (10 cm up, T-127; not a target). Its pinch target is `orb` / this id. It is
  *  drawn at a plant's rest brightness, lifted as a plant is when hovered, and at full in Listen. */

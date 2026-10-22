@@ -136,6 +136,7 @@ describe('the systems start() registers (API_SPEC §1.10, the priorities table)'
       ['HandSystem', '20'],
       ['GazeDwellSystem', '25', '{ room, guard }'], // T-160
       ['BeatRingSystem', '26', '{ guard, engine, bed: room.bed.object3D }'], // T-160
+      ['StillnessSystem', '27', '{ bed: room.bed.object3D }'], // P-016, T-173
       ['OnboardingSystem', '35'], // T-150
       ['GardenAudioSystem', '40', '{ engine }'], // T-128d
       ['SeedSystem', '49', '{ guard }'], // T-127
@@ -349,7 +350,7 @@ function sessionRig(soundFailed: boolean) {
       caption = null;
     },
   };
-  const audio = { nowS: 0 };
+  const audio = { nowS: 0, resume: vi.fn(() => Promise.resolve()) };
   const landing = { ready: vi.fn(), granted: vi.fn(), failed: vi.fn() };
   const sound = { failed: soundFailed };
   const heard: string[] = [];
@@ -358,7 +359,7 @@ function sessionRig(soundFailed: boolean) {
   stops.push(
     followSession(
       { renderer: { xr }, createEntity: () => entity } as never,
-      { clock: { now: () => audio.nowS } } as never,
+      { clock: { now: () => audio.nowS }, resume: audio.resume } as never,
       landing,
       sound,
     ),
@@ -430,6 +431,67 @@ describe('the session on the bus (API_SPEC §1.10 rule 3)', () => {
     expect(rig.heard).toEqual(['xr:sessionStart true', 'xr:visibility false']);
     session.show('visible');
     expect(rig.heard).toEqual(['xr:sessionStart true', 'xr:visibility false', 'xr:visibility true']);
+  });
+});
+
+describe('"Pinch to resume sound" (T-152): the return from a pause', () => {
+  const pinch = { type: 'gesture:pinchStart', hand: 'right' } as never;
+
+  it('a clock still standing a grace after the return: the caption, and the first pinch resumes the context and takes it back', async () => {
+    const rig = sessionRig(false);
+    const session = rig.begin();
+    rig.audio.nowS = 2;
+    vi.advanceTimersByTime(AUDIO_START_GRACE_MS);
+    session.show('hidden');
+    session.show('visible');
+    expect(rig.heard.slice(-2)).toEqual(['xr:visibility false', 'xr:visibility true']);
+    vi.advanceTimersByTime(AUDIO_START_GRACE_MS - 1);
+    expect(rig.caption()).toBeNull();
+    vi.advanceTimersByTime(1);
+    expect(rig.caption()).toEqual({ key: 'soundResume', expiresAt: wallMs + 5000 });
+    expect(rig.audio.resume).not.toHaveBeenCalled();
+    bus.emit('gesture:pinchStart', pinch);
+    bus.emit('gesture:pinchStart', pinch);
+    expect(rig.audio.resume).toHaveBeenCalledTimes(1); // once: the gesture disarms itself
+    await Promise.resolve();
+    expect(rig.ops).toEqual(['add', 'remove']);
+  });
+
+  it('a clock that moves on after the return, or a session with no sound at all: nothing is asked, and a pinch resumes nothing', () => {
+    const rig = sessionRig(false);
+    const session = rig.begin();
+    rig.audio.nowS = 2;
+    vi.advanceTimersByTime(AUDIO_START_GRACE_MS);
+    session.show('hidden');
+    session.show('visible');
+    rig.audio.nowS = 2.5;
+    vi.advanceTimersByTime(AUDIO_START_GRACE_MS);
+    expect(rig.caption()).toBeNull();
+    bus.emit('gesture:pinchStart', pinch);
+    expect(rig.audio.resume).not.toHaveBeenCalled();
+
+    const silent = sessionRig(true);
+    const quiet = silent.begin();
+    quiet.show('hidden');
+    quiet.show('visible');
+    vi.advanceTimersByTime(AUDIO_START_GRACE_MS);
+    expect(silent.caption()?.key).toBe(NO_SOUND); // the start's own, still up
+    expect(silent.ops).toEqual(['add']);
+  });
+
+  it('the session ending disarms the gesture and takes the caption back', () => {
+    const rig = sessionRig(false);
+    const session = rig.begin();
+    rig.audio.nowS = 2;
+    vi.advanceTimersByTime(AUDIO_START_GRACE_MS);
+    session.show('hidden');
+    session.show('visible');
+    vi.advanceTimersByTime(AUDIO_START_GRACE_MS);
+    expect(rig.caption()?.key).toBe('soundResume');
+    rig.end();
+    expect(rig.ops).toEqual(['add', 'remove']);
+    bus.emit('gesture:pinchStart', pinch);
+    expect(rig.audio.resume).not.toHaveBeenCalled();
   });
 });
 
