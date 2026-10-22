@@ -10,6 +10,11 @@ export const CAPTION_MAX_WORDS = 6;
 /** UX §3.3: a caption is drawn this far ahead of the head, and this far below the gaze line ("slightly below"). */
 export const CAPTION_DISTANCE_M = 0.6;
 export const CAPTION_BELOW_GAZE_DEG = 8;
+/** FR-SYS-07 (the garden window, UX §3.7): the window's camera line runs 10 degrees above the bed's centre, so 8
+ *  degrees below it is the guide cell and its hint (T-150), and the caption covered them. In the window a caption
+ *  sits this far below the camera line instead: a subtitle over the bed's near rim, inside the view box
+ *  (NFR-FOV-01: 20 degrees less the quad's 2.4). A session keeps CAPTION_BELOW_GAZE_DEG. */
+export const CAPTION_BELOW_CAMERA_WINDOW_DEG = 17;
 /**
  * The caption's quad. UX §5 asks for a 1.6 cm cap height at 0.6 m (FR-UI-04: at least 1.4 cm): the font is 0.44 of
  * the quad's height and a sans-serif capital is about 0.72 of its font size, so 0.05 m gives 1.6 cm.

@@ -22,6 +22,8 @@ const GAZE_PLANT: StringKey = 'onboardPlantGaze';
  *  back: a palm up with no seed left (UX §3.3; a new seed each day), the first removal (UX §7, the undo petal). */
 const SEEDS_TOMORROW: StringKey = 'seedsTomorrow';
 const UNDO_HINT: StringKey = 'undoHint';
+/** The tutorial's end: the one thing it never named, the settings orb on the back of a hand (UX re-check item 12). */
+const SETTINGS_HINT: StringKey = 'settingsHint';
 
 export class OnboardingSystem extends createSystem({}) {
   readonly machine = new Onboarding((from, to) =>
@@ -100,7 +102,10 @@ export class OnboardingSystem extends createSystem({}) {
         machine.listened();
         this.sync();
       }),
-      bus.on('listen:exit', () => void (this.isListening = false)),
+      bus.on('listen:exit', () => {
+        this.isListening = false;
+        this.sayDone(); // a `done` reached in Listen (listen:enter ends the Listen step) says it now
+      }),
       bus.on('settings:changed', ({ settings: next }) => {
         if (next.hintsEnabled)
           machine.setGazeOnly(next.gazeDwell); // the gaze plants by a look (T-160); it cannot pull or drag
@@ -139,6 +144,12 @@ export class OnboardingSystem extends createSystem({}) {
       this.caption.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });
     }
     bus.emit('onboarding:step', { step });
+    this.sayDone();
+  }
+
+  /** At `done`, once a session: where settings are. Not in the garden window (no orb there), not with hints off. */
+  private sayDone(): void {
+    if (this.machine.step === 'done' && !this.inWindow && settings.get().hintsEnabled) this.raiseNotice(SETTINGS_HINT);
   }
 
   /** Says a notice once a session, through the caption line (CAPTION_MIN_MS, one at a time, FoV); never in Listen. */

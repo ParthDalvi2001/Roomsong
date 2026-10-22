@@ -4,8 +4,9 @@
 // Its arrival (T-147): the removed plant dissolves into a burst of petals at the release point, which drift to
 // the cell, where the undo petal is the one that stays; the others are a small pool of instances after the 80.
 // Nothing here listens to the bus or reads a clock: the wiring calls show, hide and clear from the garden's
-// events and update once per frame (API_SPEC §1.8). High contrast: a cream outline (FR-UI-05). update allocates
-// nothing.
+// events and update once per frame (API_SPEC §1.8). High contrast: a cream outline (FR-UI-05). A fingertip or the
+// gaze on a petal lifts it 20 % brighter through the guard, as a hovered seed (FR-HND-16): an accidental removal
+// shows its way back. update allocates nothing.
 import {
   CircleGeometry,
   Color,
@@ -25,6 +26,7 @@ import {
   BURST_POOL,
   BURST_SPREAD_M,
   FLASH_MIN_DELTA,
+  HOVER_CUE_MS,
   PETAL_ASPECT,
   PETAL_END_DIAMETER_M,
   PETAL_FADE_IN_MS,
@@ -33,6 +35,7 @@ import {
   PETAL_SEGMENTS,
   PETAL_START_DIAMETER_M,
   PLANT_CAPACITY,
+  PLANT_HOVER_LIFT,
   PLANT_LIGHTNESS,
   PLANT_OUTLINE_M,
   PLANT_REST_BRIGHTNESS,
@@ -41,7 +44,7 @@ import {
 import { CREAM_RGB, glsl } from './outline.js';
 
 import type { FlashGuard } from './FlashGuard.js';
-import type { Vec3 } from '../core/index.js';
+import type { Hand, Vec3 } from '../core/index.js';
 import type { Plant } from '../garden/index.js';
 import type { Object3D } from 'three';
 
@@ -137,6 +140,16 @@ export class PetalRenderer {
   private flying = 0;
   /** The frame time, kept for `fly`: a fraction handed to a method is boxed (see resize). */
   private readonly now = new Float64Array(1);
+  // FR-HND-16, the hover cue: per hand (left, right), the slot of the petal it hovers (-1: none); per slot, the
+  // plant's colour at full, how far the hover's glow is in (0..1), its lift (1 + PLANT_HOVER_LIFT × glow), and
+  // whether it is drawn above its rest brightness (then the guard is asked until it is back); the last frame's
+  // time, for the glow's ease.
+  private readonly hoverSlot = new Int16Array(2).fill(-1);
+  private readonly unit = new Float32Array(PLANT_CAPACITY * 3);
+  private readonly glow = new Float32Array(PLANT_CAPACITY);
+  private readonly lift = new Float32Array(PLANT_CAPACITY).fill(1);
+  private readonly lit = new Uint8Array(PLANT_CAPACITY);
+  private readonly lastMs = new Float64Array([Number.NaN, 0]); // and the ease's step this frame
 
   constructor(
     parent: Object3D,
@@ -219,12 +232,12 @@ export class PetalRenderer {
     this.widthM[slot] = PETAL_START_DIAMETER_M;
     this.resize(slot);
     // The plant's own colour at a plant's rest brightness (the palette is written in sRGB, UX §5), fully there.
-    colour
-      .setHSL(plant.hue, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace)
-      .multiplyScalar(PLANT_REST_BRIGHTNESS)
-      .toArray(this.colours.array, slot * 4);
+    colour.setHSL(plant.hue, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace).toArray(this.unit, slot * 3);
+    colour.multiplyScalar(PLANT_REST_BRIGHTNESS).toArray(this.colours.array, slot * 4);
     this.colours.array[slot * 4 + 3] = 1;
     this.colours.needsUpdate = true;
+    this.glow[slot] = this.lit[slot] = 0;
+    this.lift[slot] = 1;
     // A new thing on a reused element: at rest, with no swing in progress, whatever the last petal here left.
     this.guard.reset(this.firstElement + slot, PLANT_REST_BRIGHTNESS);
     this.arrive(slot, from);
@@ -242,7 +255,18 @@ export class PetalRenderer {
     this.widthM[slot] = 0;
     this.resize(slot);
     this.arrival[slot] = AT_ONCE; // the rest of its burst, if it is still in the air, lands by itself
+    if (this.hoverSlot[0] === slot) this.hoverSlot[0] = -1;
+    if (this.hoverSlot[1] === slot) this.hoverSlot[1] = -1;
     this.mesh.visible = this.liveCount > 0 || this.flying > 0;
+  }
+
+  /**
+   * FR-HND-16, UX §9.3: the petal that hand (or the gaze, named for the dominant hand) would take now, the id of
+   * `target:hover` of kind `undo`, or null. It glows PLANT_HOVER_LIFT brighter, in and out over HOVER_CUE_MS, as a
+   * hovered seed does. One per hand; two hands on one petal are one glow; an id with no petal glows nothing.
+   */
+  setHover(hand: Hand, plantId: string | null): void {
+    this.hoverSlot[hand === 'left' ? 0 : 1] = plantId === null ? -1 : (this.slotOf.get(plantId) ?? -1);
   }
 
   /** Takes every petal away, and every petal of a burst still in the air: New garden drops every undo token. */
@@ -277,6 +301,11 @@ export class PetalRenderer {
     this.outline.visible = this.outline.count > 0;
     if ((this.liveCount === 0 && this.flying === 0) || !Number.isFinite(nowMs)) return;
     this.now[0] = nowMs;
+    const passedMs = nowMs - this.lastMs[0]!; // NaN on the first frame: no ease then
+    this.lastMs[0] = nowMs;
+    if (passedMs > 0) this.lastMs[1] = passedMs / HOVER_CUE_MS;
+    else this.lastMs[1] = 0; // two stores, not one `? :`: see the loop below
+    this.easeHover();
     if (this.flying > 0) this.fly();
     const alpha = this.colours.array;
     const matrix = this.mesh.instanceMatrix.array;
@@ -305,17 +334,49 @@ export class PetalRenderer {
       // Until its fade is a luminance change (half of FLASH_MIN_DELTA, where the guard starts a swing), a petal
       // keeps the brightness show() drew it at and the guard is not asked: asked for an element that has not
       // swung yet, it cost a boxed number per call (16 bytes, measured). That is the first 21 ms of the fade.
-      // A petal that fades in (reduced motion) asks for the lower of its fade in and its fade out.
+      // A petal that fades in (reduced motion) asks for the lower of its fade in and its fade out. A hovered
+      // petal (FR-HND-16) asks for its brightness times the lift easeHover set, and one lifted asks until it is
+      // back at rest, as the guard may hold it lit.
+      // Math.min, never `wanted = PLANT_REST_BRIGHTNESS` in a branch: a value that is a constant on one path and
+      // a fraction on the other is boxed per call (16 bytes, measured; FlashGuard.request notes the same).
+      const lift = this.lift[slot]!;
       let wanted = (PLANT_REST_BRIGHTNESS * leftMs) / PETAL_FADE_MS;
       if (arrival === FADE_IN)
         wanted = Math.min(wanted, (PLANT_REST_BRIGHTNESS * sinceMs) / PETAL_FADE_IN_MS);
-      else if (wanted > PLANT_REST_BRIGHTNESS - FLASH_MIN_DELTA / 2) continue;
-      const granted = this.guard.request(this.firstElement + slot, wanted, nowMs);
-      alpha[slot * 4 + 3] = granted / PLANT_REST_BRIGHTNESS;
+      else if (wanted > PLANT_REST_BRIGHTNESS - FLASH_MIN_DELTA / 2 && lift === 1 && this.lit[slot] === 0)
+        continue;
+      wanted = Math.min(wanted, PLANT_REST_BRIGHTNESS) * lift;
+      const granted = this.guard.request(this.firstElement + slot, Math.min(1, wanted), nowMs);
+      // The fade is a fade of the alpha; the lift above rest is in the colour, which the alpha cannot exceed.
+      alpha[slot * 4 + 3] = Math.min(1, granted / PLANT_REST_BRIGHTNESS);
+      const level = Math.max(granted, PLANT_REST_BRIGHTNESS);
+      alpha[slot * 4] = this.unit[slot * 3]! * level;
+      alpha[slot * 4 + 1] = this.unit[slot * 3 + 1]! * level;
+      alpha[slot * 4 + 2] = this.unit[slot * 3 + 2]! * level;
+      this.lit[slot] = granted > PLANT_REST_BRIGHTNESS ? 1 : 0;
       this.colours.needsUpdate = true;
       if (arrival === FADE_IN && granted >= PLANT_REST_BRIGHTNESS) this.arrival[slot] = AT_ONCE;
     }
     this.mesh.visible = this.liveCount > 0 || this.flying > 0;
+  }
+
+  /**
+   * The hover cue's ease (FR-HND-16), per frame before the main loop: the glow of a hovered petal goes in, and
+   * of one no longer hovered out, over HOVER_CUE_MS; each one's lift, 1 + PLANT_HOVER_LIFT × glow, is what the
+   * loop asks the guard for. The guard is asked in the loop only, once per petal: a second call site here would
+   * not be inlined (measured: 16 bytes per call, the fraction it returns, boxed). Creates nothing.
+   */
+  private easeHover(): void {
+    const moved = this.lastMs[1]!;
+    const hover0 = this.hoverSlot[0];
+    const hover1 = this.hoverSlot[1];
+    for (let i = 0; i < this.liveCount; i++) {
+      const slot = this.live[i]!;
+      const glow = this.glow[slot]!;
+      if (slot === hover0 || slot === hover1) {
+        if (glow < 1) this.lift[slot] = 1 + PLANT_HOVER_LIFT * (this.glow[slot] = Math.min(1, glow + moved));
+      } else if (glow > 0) this.lift[slot] = 1 + PLANT_HOVER_LIFT * (this.glow[slot] = Math.max(0, glow - moved));
+    }
   }
 
   dispose(): void {

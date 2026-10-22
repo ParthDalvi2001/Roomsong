@@ -301,4 +301,36 @@ describe('OnboardingSystem: the one-time notices (UX re-check 23 Oct)', () => {
     bus.emit('garden:removed', removed);
     expect(r.notices()).toEqual(['undoHint']);
   });
+
+  it('"Turn a hand over for settings" at done, once; after Listen when done came in it; not in the window, not with hints off', () => {
+    const r = rig();
+    started();
+    bus.emit('garden:changed', changed(3));
+    bus.emit('gesture:release', release('pull'));
+    bus.emit('gesture:release', release('drag')); // listen
+    bus.emit('listen:enter', {}); // done, in Listen: nothing yet
+    expect(r.notices()).toEqual([]);
+    bus.emit('listen:exit', { timedOut: false });
+    expect(r.notice()).toBe('settingsHint');
+    bus.emit('listen:enter', {});
+    bus.emit('listen:exit', { timedOut: false });
+    expect(r.notices()).toEqual(['settingsHint']);
+    bus.emit('xr:sessionEnd', { visible: false });
+    started();
+    settings.set({ ...DEFAULT_SETTINGS, hintsEnabled: false }); // done by stop(): no hint
+    expect(r.steps.slice(-1)).toEqual(['done']);
+    expect(r.notices()).toEqual(['settingsHint']);
+    bus.emit('xr:sessionEnd', { visible: false });
+    settings.set({ ...DEFAULT_SETTINGS });
+    r.xr.isPresenting = false; // the garden window has no orb
+    started();
+    bus.emit('garden:changed', changed(3));
+    bus.emit('gesture:release', release('drag'));
+    r.system.machine.tick(Number.MAX_SAFE_INTEGER); // 4 minutes on: listen
+    r.frame();
+    bus.emit('listen:enter', {});
+    bus.emit('listen:exit', { timedOut: false });
+    expect(r.steps.slice(-1)).toEqual(['done']);
+    expect(r.notices()).toEqual(['settingsHint']);
+  });
 });

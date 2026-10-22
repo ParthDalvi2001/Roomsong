@@ -18,6 +18,7 @@ import { bus, CAPTION_MIN_MS, clock, log, settings, STRINGS, type StringKey } fr
 import {
   CAPTION_BACKDROP,
   CAPTION_BACKDROP_HIGH_CONTRAST,
+  CAPTION_BELOW_CAMERA_WINDOW_DEG,
   CAPTION_BELOW_GAZE_DEG,
   CAPTION_CANVAS_H,
   CAPTION_CANVAS_W,
@@ -101,7 +102,14 @@ const CAPTION_ELEMENT: Readonly<FovElement> = {
   halfWidthM: CAPTION_WIDTH_M / 2,
   halfHeightM: CAPTION_HEIGHT_M / 2,
 };
-const CAPTION_DROP_M = CAPTION_DISTANCE_M * Math.tan((CAPTION_BELOW_GAZE_DEG * Math.PI) / 180);
+/**
+ * How far below the gaze line a caption appears, in metres at CAPTION_DISTANCE_M: UX §3.3's angle in a session, the
+ * garden window's own outside one (CAPTION_BELOW_CAMERA_WINDOW_DEG). Called when a caption comes on, not per frame.
+ */
+export function captionDropM(inSession: boolean): number {
+  const degrees = inSession ? CAPTION_BELOW_GAZE_DEG : CAPTION_BELOW_CAMERA_WINDOW_DEG;
+  return CAPTION_DISTANCE_M * Math.tan((degrees * Math.PI) / 180);
+}
 const TEXT_MAX_PX = CAPTION_CANVAS_W - 2 * CAPTION_FONT_PX; // one font size of padding at each end
 
 /**
@@ -179,12 +187,13 @@ export class CaptionSystem extends createSystem({ captions: { required: [Caption
     // one frame late (about 1.25 degrees at 90 degrees per second and 72 Hz), and a caption riding the edge of the
     // box would trail by that much. The emulator cannot show the difference: device check. Outside a session
     // there is no head pose, and the camera is the view.
-    const head = this.xrManager.isPresenting ? this.player.head.matrixWorld : this.camera.matrixWorld;
+    const inSession = this.xrManager.isPresenting;
+    const head = inSession ? this.player.head.matrixWorld : this.camera.matrixWorld;
     if (key !== this.key) {
       this.key = key;
       this.mesh.visible = key !== null;
       if (key !== null) {
-        this.wanted.set(0, -CAPTION_DROP_M, -CAPTION_DISTANCE_M).applyMatrix4(head);
+        this.wanted.set(0, -captionDropM(inSession), -CAPTION_DISTANCE_M).applyMatrix4(head);
         this.stale = true;
       }
     }

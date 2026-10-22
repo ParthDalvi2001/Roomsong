@@ -4,8 +4,13 @@ import { Matrix4, Vector3 } from '@iwsdk/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CAPTION_MIN_MS, createClock, log, STRINGS } from '../../../src/core/index.js';
-import { CaptionQueue } from '../../../src/ui/Captions.js';
-import { CAPTION_MAX_WORDS } from '../../../src/ui/config.js';
+import { captionDropM, CaptionQueue } from '../../../src/ui/Captions.js';
+import {
+  CAPTION_DISTANCE_M,
+  CAPTION_HEIGHT_M,
+  CAPTION_MAX_WORDS,
+  FOV_HALF_V_DEG,
+} from '../../../src/ui/config.js';
 import { clampToFov, fovBoundsDeg } from '../../../src/ui/FovGuard.js';
 import { heapCost, PROBE_BYTES } from '../hands/heapCost.js';
 
@@ -182,6 +187,16 @@ describe('what a caption costs per frame (CODING_GUIDELINES §5)', () => {
     expect(shown).toBe(5 * ROUNDS); // the caption was on screen in every frame
     expect(edges.rightDeg).toBeLessThanOrEqual(25 + 1e-9);
     expect(keeper.kept).not.toBeNull();
+  });
+});
+
+describe('where a caption appears (UX §3.3; FR-SYS-07 in the garden window)', () => {
+  it('sits 8 degrees below the gaze in a session and lower in the window, both inside the view box', () => {
+    const degreesDown = (dropM: number) => (Math.atan(dropM / CAPTION_DISTANCE_M) * 180) / Math.PI;
+    expect(degreesDown(captionDropM(true))).toBeCloseTo(8, 6);
+    expect(captionDropM(false)).toBeGreaterThan(captionDropM(true));
+    // The quad's lower edge, in the window: no further down than the box's edge, so the guard never holds it.
+    expect(degreesDown(captionDropM(false) + CAPTION_HEIGHT_M / 2)).toBeLessThanOrEqual(FOV_HALF_V_DEG);
   });
 });
 

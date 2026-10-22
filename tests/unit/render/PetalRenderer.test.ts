@@ -13,6 +13,7 @@ import {
   BURST_POOL,
   BURST_SPREAD_M,
   FLASH_MIN_DELTA,
+  HOVER_CUE_MS,
   PETAL_FADE_IN_MS,
   PETAL_ASPECT,
   PETAL_END_DIAMETER_M,
@@ -20,6 +21,7 @@ import {
   PETAL_LIFT_M,
   PETAL_START_DIAMETER_M,
   PLANT_CAPACITY,
+  PLANT_HOVER_LIFT,
   PLANT_LIGHTNESS,
   PLANT_REST_BRIGHTNESS,
   PLANT_SATURATION,
@@ -443,5 +445,81 @@ describe('PetalRenderer: high contrast (FR-UI-05, BUG-008)', () => {
     settings.set({ highContrast: false });
     petals.update(T0 + 3 * FRAME_MS);
     expect([petals.outline.count, petals.outline.visible]).toEqual([0, false]);
+  });
+});
+
+describe('PetalRenderer: the hover cue (FR-HND-16, UX §9.3)', () => {
+  const SLOT = 4 * STEPS + 9;
+  const unitG = new Color().setHSL(0.25, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace).g;
+  /** What reaches the eye of the petal at cell (4, 9): its green over the plant's own, times its opacity. */
+  const seen = (petals: PetalRenderer): number => {
+    const colour = petals.mesh.geometry.getAttribute('aColour');
+    return (colour.getY(SLOT) / unitG) * colour.getW(SLOT);
+  };
+  function hovering() {
+    const made = make();
+    made.petals.show('p', removed(4, 9), T0 + 5000);
+    const series: Drawn[] = [];
+    let t = T0;
+    const run = (ms: number): void => {
+      for (const end = t + ms; t < end; t += FRAME_MS) {
+        made.petals.update(t);
+        series.push({ t: t - T0, value: seen(made.petals) });
+      }
+    };
+    return { ...made, series, run, alpha: () => made.petals.mesh.geometry.getAttribute('aColour').getW(SLOT) };
+  }
+
+  it('a hovered petal lifts 20 % over HOVER_CUE_MS, through the guard, and eases back when the hover leaves', () => {
+    const { petals, guard, series, run, alpha } = hovering();
+    run(500);
+    expect(seen(petals)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
+    petals.setHover('right', 'p');
+    run(HOVER_CUE_MS + FRAME_MS);
+    expect(seen(petals)).toBeCloseTo(PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT), 4);
+    expect(alpha()).toBe(1); // the lift is in the colour: the alpha never goes past 1
+    // Two hands on it are one glow, and the glow stays while one of them is still there.
+    petals.setHover('left', 'p');
+    petals.setHover('right', null);
+    run(300);
+    expect(seen(petals)).toBeCloseTo(PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT), 4);
+    petals.setHover('left', null);
+    run(HOVER_CUE_MS + FRAME_MS);
+    expect(seen(petals)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 4);
+    // A level, never a blink: no step larger than a frame's share of the ease; in and out are two changes.
+    const steps = series.slice(1).map((each, i) => Math.abs(each.value - series[i]!.value));
+    expect(Math.max(...steps)).toBeLessThan((1.01 * PLANT_REST_BRIGHTNESS * PLANT_HOVER_LIFT * FRAME_MS) / HOVER_CUE_MS);
+    expect(changeTimes(series)).toHaveLength(2);
+    expect(guard.takePeak()).toBe(2);
+  });
+
+  it('the cap holds: a fourth change in a second waits, lit, until the window has room (FR-UI-11)', () => {
+    const { petals, guard, run } = hovering();
+    run(200);
+    for (let i = 0; i < 2; i++) {
+      petals.setHover('right', 'p');
+      run(200);
+      petals.setHover('right', null);
+      run(200);
+    }
+    // The 4th swing is refused: the petal holds within FLASH_MIN_DELTA of its lit pivot (the guard's drift).
+    expect(seen(petals)).toBeGreaterThan(PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT) - FLASH_MIN_DELTA - 1e-6);
+    expect(seen(petals)).toBeLessThan(PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT) + 1e-6);
+    run(1000);
+    expect(seen(petals)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 4); // asked on until it is back
+    expect(guard.takePeak()).toBe(3);
+  });
+
+  it('an id with no petal glows nothing; hide takes the hover with it', () => {
+    const { petals, run } = hovering();
+    petals.setHover('right', 'other');
+    run(HOVER_CUE_MS + FRAME_MS);
+    expect(seen(petals)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
+    petals.setHover('right', 'p');
+    run(HOVER_CUE_MS + FRAME_MS);
+    petals.hide('p');
+    petals.show('p', removed(4, 9), T0 + 9000);
+    run(HOVER_CUE_MS + FRAME_MS);
+    expect(seen(petals)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5); // the new petal is not hovered
   });
 });

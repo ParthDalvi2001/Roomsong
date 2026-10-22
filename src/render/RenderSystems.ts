@@ -305,9 +305,10 @@ export class BedRenderSystem extends createSystem(
         for (const hand of HANDS) this.onHover(hand, null, null);
         for (const hand of HANDS) this.plants.setTint(hand, null, 0);
       }),
-      bus.on('target:hover', ({ hand, target, cell }) =>
-        this.onHover(hand, target?.kind === 'plant' ? target.id : null, cell),
-      ),
+      bus.on('target:hover', ({ hand, target, cell }) => {
+        this.onHover(hand, target?.kind === 'plant' ? target.id : null, cell);
+        this.petals.setHover(hand, target?.kind === 'undo' ? target.id : null); // FR-HND-16: the petal's cue
+      }),
       // FR-HND-15 (D-030): the plant a lost hand held is dimmed until the hint's longest time, or its return
       bus.on('hands:lost', ({ hand, held }) => {
         if (held?.kind === 'plant') this.plants.setTint(hand, held.id, this.frameMs + HAND_HINT_MAX_MS);

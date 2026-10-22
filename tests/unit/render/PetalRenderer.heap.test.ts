@@ -33,8 +33,14 @@ describe('PetalRenderer.update per frame (NFR-PERF-08)', () => {
         }
       }
     };
+    // A hover (FR-HND-16) walks over the petals as the frames go, one every 250 ms, so its glow in and out and
+    // its lifted colour are in the measurement too; the ids are made here, not in the round.
+    const ids = Array.from({ length: RINGS * STEPS }, (_, i) => `p${i}`);
     const round = (): void => {
-      for (let frame = 0; frame < FRAMES; frame++) petals.update(startMs + frame);
+      for (let frame = 0; frame < FRAMES; frame++) {
+        if (frame % 250 === 0) petals.setHover('right', ids[(frame / 250) % ids.length]!);
+        petals.update(startMs + frame);
+      }
     };
     const costs: { gcs: number; grewBytes: number }[] = [];
     // A heap that shrank is no proof either: V8 frees some things with no collection the profiler counts.

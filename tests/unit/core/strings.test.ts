@@ -60,12 +60,15 @@ describe('core/strings', () => {
   it('holds the two one-time notices onboarding/ raises (UX re-check 23 Oct), at most six words', () => {
     expect(STRINGS.seedsTomorrow).toBe('More seeds tomorrow');
     expect(STRINGS.undoHint).toBe('Pinch the petal to undo');
+    expect(STRINGS.settingsHint).toBe('Turn a hand over for settings');
+    for (const key of ['seedsTomorrow', 'undoHint', 'settingsHint'] as const)
+      expect(STRINGS[key].split(' ').length, key).toBeLessThanOrEqual(6);
   });
 
   it('keys the message of a failure by its error code', () => {
     expect(STRINGS.E_SAVE_FAILED).toBe('Saving unavailable');
     expect(STRINGS.E_AUDIO_CONTEXT).toBe('Sound unavailable'); // a session with no sound (API_SPEC §1.10 rule 2)
-    const notices = ['gardenFull', 'goodnight', 'seedsTomorrow', 'undoHint', 'soundResume']; // T-152: an instruction
+    const notices = ['gardenFull', 'goodnight', 'seedsTomorrow', 'undoHint', 'soundResume', 'settingsHint']; // T-152: an instruction
     const failures = entries.filter(([k]) => !/^(ripple|place|onboard)/.test(k) && !notices.includes(k));
     for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);
   });

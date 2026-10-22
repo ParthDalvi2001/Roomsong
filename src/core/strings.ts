@@ -16,6 +16,8 @@ export const STRINGS = {
   seedsTomorrow: 'More seeds tomorrow',
   // The session's first removal (UX §7, the undo petal): onboarding/ raises it once, for the petal's 5 s.
   undoHint: 'Pinch the petal to undo',
+  // The tutorial's end (UX §3.3 step 6): the settings orb rides the back of the non-dominant hand; once a session.
+  settingsHint: 'Turn a hand over for settings',
   // The onboarding captions (UX §3.3, T-150): onboarding/ raises them, one per step. The `Click` twins are the
   // garden window's (FR-SYS-07), where a click or a tap is the pinch and the Listen orb is the way to Listen.
   onboardPalm: 'Open your hand, palm up', // the seed needs the palm within PALM_UP_MAX_ANGLE_DEG of up

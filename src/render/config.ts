@@ -41,7 +41,10 @@ export const BED_RIM_M = MARKER_RADIUS_M;
 export const GUIDE_LINE_M = 0.0012;
 export const GUIDE_LINE_ALPHA = 0.5;
 export const MARKER_LINE_M = 0.002;
-export const MARKER_ALPHA = 0.3;
+/** D-058 polish: at 0.3 the 80 markers read as a grid of targets over the ring lines; quieter at rest, the hover
+ *  cue (MARKER_HOVER_ALPHA) stands out more. Not lower: the level-3 ghost fades them out at the cue's rate, and
+ *  from 0.25 that fade still lasts two 72 Hz frames (UX §9.2: a fade, never a cut). */
+export const MARKER_ALPHA = 0.25;
 /** FR-HND-16, chosen in T-119: the marker of the cell a release will land on is drawn this strong: the cue. */
 export const MARKER_HOVER_ALPHA = 1;
 /** UX §5: a hover cue moves between rest and hover over this long, in and out (FR-HND-16). */
@@ -236,13 +239,15 @@ export const STILL_RAMP_MS = 2000;
  *  drawn at a plant's rest brightness, lifted as a plant is when hovered, and at full in Listen. */
 export const LISTEN_ORB_LIFT_M = 0.02;
 export const LISTEN_ORB_ID = 'listen';
-export const LISTEN_ORB_DETAIL = 1;
+export const LISTEN_ORB_DETAIL = 2;
 /** UX §3.5: the 10-minute end shows "Goodnight". Chosen in T-148: as long as the wiring's own captions. */
 export const GOODNIGHT_CAPTION_MS = 5000;
 
-/** FR-HND-04: a seed is drawn as wide as a target, in the orb and on a hand alike; a sphere of 80 triangles. */
+/** FR-HND-04: a seed is drawn as wide as a target, in the orb and on a hand alike; a sphere of 320 triangles
+ *  (D-058 polish: at 80 its unlit flat colour showed a faceted, jaggy outline on the pictures; the same count
+ *  for the Listen orb). */
 export const SEED_DIAMETER_M = TARGET_VISIBLE_DIAMETER_M;
-export const SEED_DETAIL = 1;
+export const SEED_DETAIL = 2;
 /** UX §7 (the supply orb, FR-MUS-08), chosen in T-127: the waiting seeds hang on a ring this wide, this high over
  *  the bed's centre hole, one place per seed of the supply: the count is the seeds there. Inside the view box
  *  whenever the bed is (NFR-FOV-01); not a target, so it takes no reach and no pinch from the Listen orb below. */
