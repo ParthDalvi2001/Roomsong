@@ -21,7 +21,8 @@
     "test:e2e": "playwright test",
     "test:e2e:heap": "E2E_HEAP=1 playwright test 27-heap",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-dist.mjs && node scripts/check-size.mjs",
-    "audit": "npm audit --omit=dev --audit-level=high"
+    "audit": "npm audit --omit=dev --audit-level=high",
+    "audio:renders": "playwright test -c tests/renders/playwright.config.ts"
   },
   "dependencies": {
     "@iwsdk/core": "1.0.1",
