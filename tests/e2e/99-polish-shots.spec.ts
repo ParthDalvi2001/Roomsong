@@ -129,6 +129,8 @@ async function withFivePlants(page: Page): Promise<JSHandle<Probe>> {
   return p;
 }
 
+// Pictures for the polish pass, not a check: run apart (`POLISH_SHOTS=1 npx playwright test tests/e2e/99-polish-shots.spec.ts`).
+test.skip(process.env.POLISH_SHOTS !== '1', 'polish shots: run with POLISH_SHOTS=1');
 test.beforeAll(() => mkdirSync(DIR, { recursive: true }));
 test.use({ viewport: { width: 1440, height: 900 } });
 

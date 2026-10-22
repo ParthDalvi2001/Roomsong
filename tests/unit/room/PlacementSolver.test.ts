@@ -424,7 +424,7 @@ describe('PlacementSolver: the bed stays in seated reach (TC-ROOM-02)', () => {
         }
       }
     }
-    expect(runs).toBe(8 * 4 * 3 * 5 * 3 * 4);
+    expect(runs).toBe(rooms.length * 4 * 3 * 5 * 3 * 4); // every fixture room plus the two made here
   });
 });
 
