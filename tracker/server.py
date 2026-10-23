@@ -28,7 +28,7 @@ PHASES = [
     ('Phase 3', 'Polish', (11, 4), (11, 11)),
     ('Phase 4', 'Release', (11, 12), (11, 17)),
 ]
-GATES = [('G0', (10, 17)), ('Headset due', (10, 20)), ('G1', (10, 24)), ('G2', (11, 3)),
+GATES = [('G0', (10, 17)), ('H1 headset', (10, 20)), ('G1', (10, 24)), ('Emergency mode', (10, 27)), ('G2', (11, 3)),
          ('Feature freeze', (11, 12)), ('Code freeze', (11, 15)), ('Submit', (11, 17))]
 AGENT_QUIET_S = 300  # an agent silent this long without handing back was stopped with its session
 
