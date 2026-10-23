@@ -12,7 +12,8 @@ import {
   InstancedMesh,
   Matrix4,
   MeshBasicMaterial,
-  PlaneGeometry,
+  Shape,
+  ShapeGeometry,
   Types,
   type Object3D,
 } from '@iwsdk/core';
@@ -24,6 +25,7 @@ import { PLANT_FLASH_BRIGHTNESS, PLANT_REST_BRIGHTNESS, stepGlow } from '../rend
 import { CAPTION_TEXT_COLOUR } from '../ui/index.js';
 
 import {
+  BEAT_TICK_CAP_SEGMENTS,
   BEAT_TICK_FLASH_LIFT,
   BEAT_TICK_LENGTH_M,
   BEAT_TICK_LIFT_M,
@@ -50,7 +52,7 @@ export class BeatRingSystem extends createSystem(
     bed: { type: Types.Object, default: null },
   },
 ) {
-  mesh!: InstancedMesh<PlaneGeometry, MeshBasicMaterial>;
+  mesh!: InstancedMesh<ShapeGeometry, MeshBasicMaterial>;
   /** Per step: the brightness the guard handed out last (0..1 of cream). */
   readonly brightness = new Float64Array(STEPS);
   private guard!: FlashGuard;
@@ -68,7 +70,13 @@ export class BeatRingSystem extends createSystem(
     this.engine = this.config.engine.value as AudioEngine;
     this.guard = this.config.guard.value as FlashGuard;
     this.firstElement = this.guard.claim(STEPS, 0);
-    const geometry = new PlaneGeometry(BEAT_TICK_LENGTH_M, BEAT_TICK_WIDTH_M).rotateX(-Math.PI / 2); // flat, along x
+    // A flat stadium along x (D-058 polish: round caps, where a plain rectangle read as a placeholder bar).
+    const cap = BEAT_TICK_WIDTH_M / 2;
+    const half = BEAT_TICK_LENGTH_M / 2 - cap;
+    const stadium = new Shape()
+      .absarc(half, 0, cap, -Math.PI / 2, Math.PI / 2, false)
+      .absarc(-half, 0, cap, Math.PI / 2, (3 * Math.PI) / 2, false);
+    const geometry = new ShapeGeometry(stadium, BEAT_TICK_CAP_SEGMENTS).rotateX(-Math.PI / 2);
     const material = new MeshBasicMaterial({
       transparent: true,
       blending: AdditiveBlending, // light added to the view: brightness 0 is no tick at all

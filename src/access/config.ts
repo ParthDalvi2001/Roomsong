@@ -26,6 +26,8 @@ export const BEAT_TICK_RADIUS_M = BED_OUTER + 0.015;
 export const BEAT_TICK_LENGTH_M = 0.016;
 export const BEAT_TICK_WIDTH_M = 0.006;
 export const BEAT_TICK_LIFT_M = 0.002;
+/** D-058 polish: each end of a tick is a half circle of this many segments (a stadium, not a bar). */
+export const BEAT_TICK_CAP_SEGMENTS = 6;
 /**
  * Tick brightness (0..1 of cream, added to the view): at rest; the lift the tide's crest gives a tick of an empty
  * step (the tide position); and the lift it gives a tick whose step holds a plant (the trigger flash). Through the

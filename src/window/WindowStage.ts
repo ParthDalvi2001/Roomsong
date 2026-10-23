@@ -1,12 +1,25 @@
 // The garden window's stage (FR-SYS-07, Should S6, LLD §11): one fixed camera at a seated eye point over a
 // virtual table, the pointer's ray onto the bed plane, and the page's lifecycle as the xr:* events a session
 // would give (API_SPEC §1.10 rule 3). The headset-free bench and demo; never the judged path.
-import { BoxGeometry, MathUtils, Mesh, MeshBasicMaterial, Plane, Raycaster, Vector2, Vector3 } from 'three';
+import {
+  BoxGeometry,
+  MathUtils,
+  Mesh,
+  MeshBasicMaterial,
+  Plane,
+  PlaneGeometry,
+  Raycaster,
+  Vector2,
+  Vector3,
+} from 'three';
 
 import { bus } from '../core/index.js';
 import { LANDING } from '../ui/index.js';
 
 import {
+  FLOOR_BELOW_BED_M,
+  FLOOR_COLOUR,
+  FLOOR_SIZE_M,
   REST_SPOT_X_M,
   TABLE_COLOUR,
   TABLE_DEPTH_M,
@@ -55,6 +68,15 @@ export class WindowStage {
     table.matrixAutoUpdate = false;
     table.updateMatrix();
     bed.add(table);
+    // D-058: a floor under the table; after the table, which the tests take as the bed's first child.
+    const floor = new Mesh(
+      new PlaneGeometry(FLOOR_SIZE_M, FLOOR_SIZE_M).rotateX(-Math.PI / 2),
+      new MeshBasicMaterial({ color: FLOOR_COLOUR }),
+    );
+    floor.position.y = -FLOOR_BELOW_BED_M;
+    floor.matrixAutoUpdate = false;
+    floor.updateMatrix();
+    bed.add(floor);
   }
 
   /**
