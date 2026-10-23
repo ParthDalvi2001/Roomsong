@@ -182,5 +182,10 @@ export default defineConfig({
     esbuildOptions: { target: 'esnext' },
   },
   publicDir: 'public',
+  // Vite's default cache is node_modules/.vite, and a worktree has no node_modules of its own: every worktree's dev
+  // server then shares the root's, and one that re-optimises its dependencies replaces the files the others serve,
+  // whose pages reload ("Outdated Optimize Dep": the "execution context destroyed" of e2e runs on a busy host).
+  // One cache per worktree, git-ignored.
+  cacheDir: '.vite',
   base: './',
 });
