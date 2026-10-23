@@ -110,7 +110,11 @@ export function captionDropM(inSession: boolean): number {
   const degrees = inSession ? CAPTION_BELOW_GAZE_DEG : CAPTION_BELOW_CAMERA_WINDOW_DEG;
   return CAPTION_DISTANCE_M * Math.tan((degrees * Math.PI) / 180);
 }
-const TEXT_MAX_PX = CAPTION_CANVAS_W - 2 * CAPTION_FONT_PX; // one font size of padding at each end
+/** D-058 polish: the text starts past the pill's rounded end (its radius is half the pill's height) plus a quarter
+ *  font, so no letter sits in the curve; 876 px are left for the words, and the longest caption (29 characters at
+ *  56 px semibold) takes about 810. */
+const PAD_PX = (CAPTION_CANVAS_H - 2 * CAPTION_OUTLINE_PX) / 2 + CAPTION_FONT_PX / 4;
+const TEXT_MAX_PX = CAPTION_CANVAS_W - 2 * PAD_PX;
 
 /**
  * Draws the caption on screen (LLD §3, priority 60; API_SPEC §1.9). The caption appears a little below the gaze,
@@ -225,7 +229,7 @@ export class CaptionSystem extends createSystem({ captions: { required: [Caption
     ctx.textBaseline = 'middle';
     // The outline is drawn half inside and half outside the backdrop, so the backdrop keeps clear of the canvas edge.
     const textWidth = Math.min(ctx.measureText(text).width, TEXT_MAX_PX);
-    const width = textWidth + 2 * (CAPTION_FONT_PX - CAPTION_OUTLINE_PX);
+    const width = textWidth + 2 * (PAD_PX - CAPTION_OUTLINE_PX);
     const height = CAPTION_CANVAS_H - 2 * CAPTION_OUTLINE_PX;
     ctx.beginPath();
     ctx.roundRect((CAPTION_CANVAS_W - width) / 2, CAPTION_OUTLINE_PX, width, height, height / 2);

@@ -1,6 +1,6 @@
 // Polish pass pictures (D-058), not a check: the garden window as Parth sees it on a laptop, and the emulator's
-// landing, placed bed and first caption. Writes .tmp/polish/<prefix>-*.png. Run alone: `npx playwright test 99-polish`.
-// Prefix: SHOT_PREFIX=after (default "before").
+// landing, placed bed and first caption. Writes .tmp/polish/<prefix>-*.png. Not part of the suite: run
+// `npm run polish:shots` (POLISH_SHOTS=1); prefix with SHOT_PREFIX=after (default "before").
 import { mkdirSync } from 'node:fs';
 
 import { test, type JSHandle, type Page } from '@playwright/test';
@@ -15,7 +15,7 @@ const DIR = '.tmp/polish';
 const PREFIX = process.env.SHOT_PREFIX ?? 'before';
 const shot = (name: string) => `${DIR}/${PREFIX}-${name}.png`;
 const WORLD_READY_MS = 15_000;
-const WINDOW = 'The garden opens in this tab: a click or a tap is a pinch.';
+const WINDOW = 'The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset.';
 /** One plant on each ring, spread round the bed; grown for 8, 4, 2 days, 0 and 0 (GROWTH_STAGE_DAYS 1/3/7). */
 const CELLS = [
   { ring: 0, step: 0 },
@@ -139,8 +139,7 @@ async function withFivePlants(page: Page): Promise<JSHandle<Probe>> {
   return p;
 }
 
-// Pictures for the polish pass, not a check: run apart (`POLISH_SHOTS=1 npx playwright test tests/e2e/99-polish-shots.spec.ts`).
-test.skip(process.env.POLISH_SHOTS !== '1', 'polish shots: run with POLISH_SHOTS=1');
+test.skip(process.env.POLISH_SHOTS !== '1', 'pictures only: npm run polish:shots');
 test.beforeAll(() => mkdirSync(DIR, { recursive: true }));
 test.use({ viewport: { width: 1440, height: 900 } });
 
