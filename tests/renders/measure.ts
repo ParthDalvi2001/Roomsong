@@ -119,6 +119,67 @@ export function longestSilenceS(
 }
 
 /**
+ * The share of the energy above `hz` between `fromS` and `toS`, in dB (0 = all of it): the signal through a
+ * 2nd-order Butterworth high-pass (RBJ cookbook biquad, Q = 1/√2) against the signal itself. The Listen sweep's
+ * low-pass reach: the share above 4 kHz falls as the filter closes.
+ */
+export function shareAboveDb(
+  channels: readonly Float32Array[],
+  sampleRate: number,
+  hz: number,
+  fromS: number,
+  toS: number,
+): number {
+  const w0 = (2 * Math.PI * hz) / sampleRate;
+  const alpha = Math.sin(w0) / (2 * Math.SQRT1_2);
+  const a0 = 1 + alpha;
+  const b0 = (1 + Math.cos(w0)) / 2 / a0;
+  const b1 = -(1 + Math.cos(w0)) / a0;
+  const a1 = (-2 * Math.cos(w0)) / a0;
+  const a2 = (1 - alpha) / a0;
+  let total = 0;
+  let above = 0;
+  const lo = Math.round(fromS * sampleRate);
+  for (const c of channels) {
+    let x1 = 0;
+    let x2 = 0;
+    let y1 = 0;
+    let y2 = 0;
+    const hi = Math.min(c.length, Math.round(toS * sampleRate));
+    for (let i = lo; i < hi; i++) {
+      const x0 = c[i] as number;
+      const y0 = b0 * x0 + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2;
+      x2 = x1;
+      x1 = x0;
+      y2 = y1;
+      y1 = y0;
+      total += x0 * x0;
+      above += y0 * y0;
+    }
+  }
+  return total > 0 ? 10 * Math.log10(above / total) : Number.NaN;
+}
+
+/** From the first 10 ms window over −60 dBFS to the end of the last: a UI sound's start and length. NaN if none. */
+export function activeSpanS(
+  channels: readonly Float32Array[],
+  sampleRate: number,
+): { startS: number; endS: number } {
+  const window = Math.round(SILENCE_WINDOW_S * sampleRate);
+  const length = channels[0]?.length ?? 0;
+  let startS = Number.NaN;
+  let endS = Number.NaN;
+  for (let start = 0; start + window <= length; start += window) {
+    let sum = 0;
+    for (const c of channels) for (let i = start; i < start + window; i++) sum += (c[i] as number) ** 2;
+    if (db(Math.sqrt(sum / (window * channels.length))) < SILENCE_DBFS) continue;
+    if (Number.isNaN(startS)) startS = start / sampleRate;
+    endS = (start + window) / sampleRate;
+  }
+  return { startS, endS };
+}
+
+/**
  * The largest click between `fromS` and `toS` (as tests/e2e/09-audio.spec.ts): the biggest sample-to-sample jump,
  * either channel, less the larger of the two jumps on each side of it. A step is one jump far above its
  * neighbours; a loud high note is not.

@@ -3,7 +3,15 @@
 // channels, −20.0 LUFS (BS.1770-4: the −0.691 offset cancels the K-weighting at 1 kHz for a dual-mono sine).
 import { describe, expect, it } from 'vitest';
 
-import { integratedLufs, longestSilenceS, measure, wavBytes, worstClick } from '../../renders/measure.js';
+import {
+  activeSpanS,
+  integratedLufs,
+  longestSilenceS,
+  measure,
+  shareAboveDb,
+  wavBytes,
+  worstClick,
+} from '../../renders/measure.js';
 
 const SR = 48000;
 const sine = (seconds: number, peak: number, hz = 1000): Float32Array =>
@@ -30,6 +38,11 @@ describe('measure', () => {
     const s = sine(2, 0.1);
     s.fill(0, SR, SR + Math.round(0.3 * SR));
     expect(longestSilenceS([s, s], SR, 0)).toBeCloseTo(0.3, 1);
+    s.fill(0, 0, SR / 2);
+    expect(activeSpanS([s, s], SR)).toEqual({ startS: 0.5, endS: 2 });
+    expect(activeSpanS([new Float32Array(SR)], SR).startS).toBeNaN();
+    expect(shareAboveDb([sine(1, 0.1)], SR, 4000, 0, 1)).toBeLessThan(-20);
+    expect(shareAboveDb([sine(1, 0.1, 8000)], SR, 4000, 0, 1)).toBeGreaterThan(-1);
     const step = new Float32Array(SR);
     step.fill(0.25, SR / 2);
     const click = worstClick([step, step], SR, 0, 1);
