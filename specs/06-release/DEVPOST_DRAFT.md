@@ -37,12 +37,12 @@ Where each heading comes from:
 | What it is | HACKATHON_RULES §5.3 "inspiration"; SUBMISSION_CHECKLIST §2.1 "Inspiration" and "What it does", merged to save words | 69 |
 | Your first minute | the brief for this draft; PRD §3.1 (the First Five Minutes flow); its steps are the judge's path, so "How to test" points to it | 62 |
 | After that | SUBMISSION_CHECKLIST §2.1 "What it does" (shaping, Listen, coming back) | 54 |
-| How this meets the brief | SUBMISSION_CHECKLIST §2.1 (required); HACKATHON_RULES §3 (the theme and the design tests) | 53 |
-| How we built it | HACKATHON_RULES §5.3 "how we built it"; SUBMISSION_CHECKLIST §2.1 | 79 |
+| How this meets the brief | SUBMISSION_CHECKLIST §2.1 (required); HACKATHON_RULES §3 (the theme and the design tests); the weekly rule check of 23 Oct (IWSDK named) | 58 |
+| How we built it | HACKATHON_RULES §5.3 "how we built it"; SUBMISSION_CHECKLIST §2.1 | 74 |
 | Known limitations | SUBMISSION_CHECKLIST §2.1 (required); CLAUDE.md Golden Rule 11; HACKATHON_RULES §10 C1, C5, C7 | 65 (both alternatives) |
 | What's next | HACKATHON_RULES §5.3 "future plans"; SUBMISSION_CHECKLIST §2.1 (required) | 19 |
 
-Total: **500 words with both "Known limitations" alternatives, 492 with the one that is true today** (counted on 23 Oct by script with the markers removed and list markers not counted; the rows above are by that count). On 23 Oct the stillness and Time-lapse sentences (16 words) went into "How to test" and 16 were cut across five sections ("ring-shaped", "to make it", "drag it", "it is", "in which the room's", "explored the idea", "maps … musically; it does", "no table", "palm", "one", two "and" commas). Laptop mode added 21 words to "How to test"; 12 were cut elsewhere (the fallback list, "built and", two short rewrites). The speakers note (D-057, 19 Oct) added 4 more, "built-in speakers (Bluetooth lags)", and "a click is the pinch" became "a click pinches" (2 fewer). About 8 words of slack: every placeholder filled with a real number or name must replace words, not add them. If the form has no separate hands field (T-115), the hands text of §1.3 (166 words) cannot fit and must shrink to about 20 words inside these 500.
+Total: **500 words with both "Known limitations" alternatives, 492 with the one that is true today** (counted on 23 Oct by script with the markers removed and list markers not counted; the rows above are by that count). On 23 Oct the stillness and Time-lapse sentences (16 words) went into "How to test" and 16 were cut across five sections ("ring-shaped", "to make it", "drag it", "it is", "in which the room's", "explored the idea", "maps … musically; it does", "no table", "palm", "one", two "and" commas). The same day the weekly rule check (an open Devpost question: may plain WebXR apps submit by URL) put "Built with the Immersive Web SDK (IWSDK)." into "How this meets the brief" (7 words); "How we built it" opens "IWSDK (WebXR), …" (4 fewer) and three words went ("path", "sits", "a"). Laptop mode added 21 words to "How to test"; 12 were cut elsewhere (the fallback list, "built and", two short rewrites). The speakers note (D-057, 19 Oct) added 4 more, "built-in speakers (Bluetooth lags)", and "a click is the pinch" became "a click pinches" (2 fewer). About 8 words of slack: every placeholder filled with a real number or name must replace words, not add them. If the form has no separate hands field (T-115), the hands text of §1.3 (166 words) cannot fit and must shrink to about 20 words inside these 500.
 
 **The no-headset path.** The rules ask for a build that launches in Quest Browser (HACKATHON_RULES §5.1) and allow emulator video (§5.2); the FAQ says judges play on a Quest 3 or 3S (§11). Since T-114b anyone without a headset can try the garden: on a browser with no mixed reality the landing page says "The garden opens in this tab: a click or a tap is a pinch." and Enter opens laptop mode. What it is: the same garden, sound, guide and save, seen from a fixed seat over a drawn table; the seed follows the pointer and a click on a free cell plants it; a press and drag moves a plant, or removes it off the ring; a click on the petal undoes; a click on the centre orb starts Listen and a click ends it. What it is not: mixed reality (no passthrough, no real table), the room signature (always the default "Wanderer" tuning), hand poses (no palm up, no palms out), pull (a plant cannot be made taller or shorter), the settings panel (the landing page's switches stand in) or look-and-hold. It is tested only in desktop Chromium by the browser tests (TC-E2E-14 and the laptop timing of T-150). PRD §6 calls S6 "never the judged path", so the copy offers it as a preview after the headset steps, beside the video. The weekly rule check of 15 Oct (T-186) found the rules unchanged; they were not re-read for this draft.
 
@@ -66,13 +66,14 @@ Pull a plant up for louder, drag to move it, off the ring to remove it; 5 second
 
 ## How this meets the brief
 - Entertainment: a lean-back Listen mode.
-- Hands-first: bare hands only; no controller path.
-- Seated: the bed sits 0.45 m ahead, within reach; first sound in <N> s; ten-minute visits.
+- Hands-first: bare hands only; no controllers.
+- Seated: the bed 0.45 m ahead, within reach; first sound in <N> s; ten-minute visits.
 - Purposeful MR: the table is the stage, the room the tuning [not yet: T-155].
 - Original: synthesized sound, procedural visuals, offline after loading.
+- Built with the Immersive Web SDK (IWSDK).
 
 ## How we built it
-WebXR with the Immersive Web SDK, Three.js, TypeScript and Web Audio. Plane detection finds the table; a four-step fallback ends in a floating bed. A fixed mapping turns room measurements into key, scale and echo [not yet: T-155]. <20> draw calls [not yet: T-165], 24 pooled voices, a <0.7> MB download. To our knowledge the first consumer MR instrument, and the first on Quest, whose room geometry tunes the music; art and research projects (MR4MR, ARCHISCORE, RoomTone) came before us [not yet: T-155].
+IWSDK (WebXR), Three.js, TypeScript and Web Audio. Plane detection finds the table; a four-step fallback ends in a floating bed. A fixed mapping turns room measurements into key, scale and echo [not yet: T-155]. <20> draw calls [not yet: T-165], 24 pooled voices, <0.7> MB download. To our knowledge the first consumer MR instrument, and the first on Quest, whose room geometry tunes the music; art and research projects (MR4MR, ARCHISCORE, RoomTone) came before us [not yet: T-155].
 
 ## Known limitations
 <"Tested on Quest <3/3S> in <N> rooms." | "No headset: tested only in the Immersive Web Emulator, video included.">
@@ -86,12 +87,12 @@ Claims that hang on a human decision, not a task (resolve before T-180):
 
 | Claim in the copy | Depends on | Today |
 |---|---|---|
-| "the bed sits 0.45 m ahead, within reach" | D-041: a restored bed may sit 0.10 m further, its far edge up to 0.85 m (PROGRESS item 31) | true for a new placement; true for a restore only with "no slack" |
+| "the bed 0.45 m ahead, within reach" | D-041: a restored bed may sit 0.10 m further, its far edge up to 0.85 m (PROGRESS item 31) | true for a new placement; true for a restore only with "no slack" |
 | "First sound in <N> s" | PROGRESS items 23 and 26c: in a room with no table the plan's sum is 22 s, not 20 | with a table, 15.1 s at test speed in the emulator (T-150); with no table the 20 s rule fails until Parth picks a, b or c (the browser test logs that case without asserting it) |
 | The three named antecedents | PROGRESS item 16a: "keep the names" or "no names" | the no-names version is "art and research prototypes" |
 | "A room near a measuring step can change scale between visits" | PROGRESS item 21 and T-129: the real drift is unmeasured | keep the sentence until the device check |
 | Any "same room, same song" line | T-129 two-session check | not written anywhere above, on purpose |
-| "bare hands only; no controller path" | HACKATHON_RULES §10 C1, UAT-01 on device or, in Emergency mode, in the emulator | true by design; the whole loop runs hands-only in the emulator (TC-E2E-03, and TC-E2E-07 for one hand and look-and-hold); proven only at T-184 |
+| "bare hands only; no controllers" | HACKATHON_RULES §10 C1, UAT-01 on device or, in Emergency mode, in the emulator | true by design; the whole loop runs hands-only in the emulator (TC-E2E-03, and TC-E2E-07 for one hand and look-and-hold); proven only at T-184 |
 | "built-in speakers (Bluetooth lags)" | D-057; DEVICE_SCRIPT_S1 block 14, "speakers against headphones" (is the Bass there on the speakers) | the lag of Bluetooth headphones on Quest 3 is widely reported, not measured by the team; the app is tested on no speaker yet |
 | "or open the link on a computer" (laptop mode) | PRD §6: S6 is "never the judged path"; Parth and Chinmay say whether judges are offered it at all | true in the build (TC-E2E-14); the sentence says what it lacks |
 
