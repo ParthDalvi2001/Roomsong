@@ -258,8 +258,19 @@ describe('PlacementSolver: the chain picks the first level that can place the be
     expect((await place({ planes: [at(1.1)] })).level).toBe(2);
     expect((await place({ planes: [at(0.49)] })).level).toBe(4);
     expect((await place({ planes: [at(1.11)] })).level).toBe(4);
-    // A low table is level 1 by its label; without the label it is too low.
-    expect((await place({ planes: [surface('table', [0, 0.4, -0.45], [1, 0.6])] })).level).toBe(1);
+  });
+
+  it('BUG-010: a labelled table is level 1 only inside the same 0.5 to 1.1 m band; a coffee table falls through', async () => {
+    const table = (heightM: number) => surface('table', [0, heightM, -0.55], [1, 0.6]);
+    expect((await place({ planes: [table(0.72)] })).level).toBe(1);
+    expect((await place({ planes: [table(0.5)] })).level).toBe(1);
+    // 0.42 m: the bed would be 1.18 m under the eyes, past a seated reach (golden rule 2). Not level 1, not level
+    // 2 (the band), and a hit there is below SURFACE_MIN_HEIGHT_M: the chain ends on the floating bed.
+    const low = await place({ planes: [table(0.42)], hit: { x: 0, y: 0.42, z: -0.45 }, pinch: true });
+    expect(low.level).toBe(4);
+    expect((await place({ planes: [table(1.2)] })).level).toBe(4); // and a shelf above the band
+    // The band is the plane's height, not the bed's: a 1.1 m desk under tall eyes is still a table.
+    expect((await place({ planes: [table(1.1)], head: headAt(0, 1.6, 0) })).level).toBe(1);
   });
 });
 

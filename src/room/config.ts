@@ -15,8 +15,9 @@ export const BED_FAR_EDGE_MAX_M = 0.75;
 /** FR-ROOM-01 level 1: the plane labels that mean a table. The emulator has no `desk` (tests/e2e/README.md). */
 export const TABLE_LABELS: readonly string[] = ['table', 'desk'];
 /**
- * FR-ROOM-01 level 2: the surface's height above the floor, which is y = 0 in the local-floor space. The lower
- * value is also the lowest hit a level-3 pinch confirms (D-034): the floor is out of seated reach.
+ * FR-ROOM-01 levels 1 and 2: the surface's height above the floor, which is y = 0 in the local-floor space (a
+ * labelled table outside it is not used either, BUG-010: a 0.42 m coffee table is past a seated reach, golden
+ * rule 2). The lower value is also the lowest hit a level-3 pinch confirms (D-034): the floor is out of seated reach.
  */
 export const SURFACE_MIN_HEIGHT_M = 0.5;
 export const SURFACE_MAX_HEIGHT_M = 1.1;

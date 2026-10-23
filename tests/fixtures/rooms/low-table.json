@@ -1,5 +1,5 @@
 {
-  "description": "Sofa and coffee table: a labelled table only 0.42 m high, 0.55 m ahead (below the 0.5 m surface band of level 2, but labelled, so level 1), floor 3.5 x 4 m = 14 m2, ceiling at 2.4 m, four walls.",
+  "description": "Sofa and coffee table: a labelled table only 0.42 m high, 0.55 m ahead, below the 0.5 m band levels 1 and 2 share (BUG-010), so the chain falls to level 3 and, with nothing in reach to hit, the floating bed; floor 3.5 x 4 m = 14 m2, ceiling at 2.4 m, four walls.",
   "planes": [
     { "label": "table", "facing": "+y", "center": [0, 0.42, -0.55], "size": [1.0, 0.6] },
     { "label": "floor", "facing": "+y", "center": [0, 0, 0], "size": [3.5, 4] },

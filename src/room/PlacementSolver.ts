@@ -123,7 +123,7 @@ interface Spot extends Vec3 {
 
 /**
  * The point of `plane` to put the bed at, or null when the plane does not qualify for `level` (FR-ROOM-01,
- * D-034): it is level, it is a table (level 1) or 0.5..1.1 m high (level 2), it is at least 0.25 m below the
+ * D-034): it is level, it is 0.5..1.1 m high and, at level 1, a table (BUG-010), it is at least 0.25 m below the
  * eyes, and it is within reach: its point nearest the default spot is in front of the user and at most 0.75 m
  * from the head, so part of the bed always rests on it. The bed goes from the head toward that point as far as
  * the surface goes, up to 0.45 m and not below 0.35 m (FR-ROOM-03); poseAt holds it to that range.
@@ -140,8 +140,9 @@ function spotOn(head: Head, plane: RoomPlane, level: 1 | 2): Spot | null {
   const halfZ = plane.extents.y / 2;
   const isUsable = Number.isFinite(ax + az + nx + ny + nz + bx + bz + cx + cy + cz) && halfX > 0 && halfZ > 0;
   if (!isUsable || Math.abs(ny) < LEVEL_MIN_COS) return null;
+  // BUG-010: the band holds at level 1 too: a labelled 0.42 m coffee table put the bed 1.18 m under the eyes.
   const isInBand = cy >= SURFACE_MIN_HEIGHT_M && cy <= SURFACE_MAX_HEIGHT_M;
-  const fits = level === 1 ? TABLE_LABELS.includes(plane.label) : isInBand;
+  const fits = isInBand && (level === 2 || TABLE_LABELS.includes(plane.label));
   // no bed higher than the floating one would be
   if (!fits || cy > head.y - FLOATING_DROP_M) return null;
 
