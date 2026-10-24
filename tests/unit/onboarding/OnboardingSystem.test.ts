@@ -309,8 +309,10 @@ describe('OnboardingSystem: the one-time notices (UX re-check 23 Oct)', () => {
     bus.emit('garden:changed', changed(3));
     bus.emit('garden:removed', removed);
     expect(r.notices()).toEqual(['undoHintGaze']);
+    settings.set({ ...DEFAULT_SETTINGS }); // gaze off mid-session: the notice was said, whatever its wording
+    bus.emit('garden:removed', removed);
+    expect(r.notices()).toEqual(['undoHintGaze']);
     bus.emit('xr:sessionEnd', { visible: false });
-    settings.set({ ...DEFAULT_SETTINGS });
     r.xr.isPresenting = false; // the garden window: read at room:tuned
     started();
     bus.emit('garden:changed', changed(3));
@@ -349,6 +351,9 @@ describe('OnboardingSystem: the one-time notices (UX re-check 23 Oct)', () => {
     bus.emit('gesture:release', release('drag')); // listen
     bus.emit('listen:enter', {}); // done, in Listen: nothing yet
     expect(r.notices()).toEqual([]);
+    bus.emit('listen:exit', { timedOut: true }); // the 10-minute end: "Goodnight" has the line, not the hint
+    expect(r.notices()).toEqual([]);
+    bus.emit('listen:enter', {});
     bus.emit('listen:exit', { timedOut: false });
     expect(r.notice()).toBe('settingsHint');
     bus.emit('listen:enter', {});

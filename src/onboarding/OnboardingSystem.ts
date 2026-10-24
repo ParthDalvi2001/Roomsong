@@ -97,7 +97,7 @@ export class OnboardingSystem extends createSystem({}) {
       // The first removal of the session: the undo petal is a target (UX §7), one hint while it is there.
       bus.on('garden:removed', () => {
         const s = settings.get();
-        if (s.hintsEnabled) this.raiseNotice(UNDO_HINT[this.inWindow ? 1 : s.gazeDwell ? 2 : 0]);
+        if (s.hintsEnabled) this.raiseNotice(UNDO_HINT[this.inWindow ? 1 : s.gazeDwell ? 2 : 0], 'undoHint');
       }),
       bus.on('gesture:release', ({ gesture, target }) => {
         if (target?.kind !== 'plant' || (gesture !== 'pull' && gesture !== 'drag')) return;
@@ -110,9 +110,11 @@ export class OnboardingSystem extends createSystem({}) {
         machine.listened();
         this.sync();
       }),
-      bus.on('listen:exit', () => {
+      bus.on('listen:exit', ({ timedOut }) => {
         this.isListening = false;
-        this.sayDone(); // a `done` reached in Listen (listen:enter ends the Listen step) says it now
+        // A `done` reached in Listen (listen:enter ends the Listen step) says it now; not after the 10-minute end,
+        // whose line is "Goodnight" (UX §3.5): the hint would queue ahead of it.
+        if (!timedOut) this.sayDone();
       }),
       bus.on('settings:changed', ({ settings: next }) => {
         if (next.hintsEnabled)
@@ -159,13 +161,16 @@ export class OnboardingSystem extends createSystem({}) {
   private sayDone(): void {
     const s = settings.get();
     if (this.machine.step !== 'done' || this.inWindow || !s.hintsEnabled) return;
-    this.raiseNotice(s.oneHand || s.gazeDwell ? SETTINGS_HINT_LOOK : SETTINGS_HINT);
+    this.raiseNotice(s.oneHand || s.gazeDwell ? SETTINGS_HINT_LOOK : SETTINGS_HINT, SETTINGS_HINT);
   }
 
-  /** Says a notice once a session, through the caption line (CAPTION_MIN_MS, one at a time, FoV); never in Listen. */
-  private raiseNotice(key: StringKey): void {
-    if (this.isListening || this.noticed.has(key)) return;
-    this.noticed.add(key);
+  /**
+   * Says a notice once a session, through the caption line (CAPTION_MIN_MS, one at a time, FoV); never in Listen.
+   * `id` is the notice, apart from its wording: a mode that changes mid-session swaps the twin, not the once.
+   */
+  private raiseNotice(key: StringKey, id: StringKey = key): void {
+    if (this.isListening || this.noticed.has(id)) return;
+    this.noticed.add(id);
     if (this.notice.hasComponent(Caption)) this.notice.removeComponent(Caption); // one live caption per raiser
     this.notice.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });
   }
