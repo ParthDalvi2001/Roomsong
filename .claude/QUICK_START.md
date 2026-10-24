@@ -14,3 +14,4 @@ npx claude-token-optimizer@2.3.20 audit   # token check of the always-loaded ins
 - Git: work on `develop` through feature branches or agent worktrees, squash-merged after verify and review. `main` is release-only and pushed by Parth.
 - Two dev servers at once clash on port 8081: give the second one another port.
 - `npm run audio:renders` — WAVs and numbers of the mix to `.tmp/renders/` (about 1 min; one Playwright run at a time; `E2E_PORT=8097` if 8081 is busy; `-- -g P-023` for one group).
+- `WORST_ROOM=table npx playwright test tests/e2e/26-worst-frame.spec.ts` for the table-room worst frame; the default is the counter (the vine in view).

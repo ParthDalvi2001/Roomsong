@@ -1,7 +1,9 @@
 /// <reference types="webxr" />
 // TC-E2E-09 (NFR-PERF-03/04/09; TC-PERF-02 and the scene check of TC-PERF-08; T-165): the app's own worst frame in
 // the emulator. A full bed (autoplant=80) in bloom (a reload with fakeDay=7 makes every plant seven days old), the
-// table room, high contrast and gaze dwell on, and all at once: a seed out, an undo petal waiting, the settings panel
+// room WORST_ROOM names (the counter by default: its wall is near enough for the vine to draw; the table room's is
+// 1.8 m off, so there the vine never draws), high contrast and gaze dwell on, and all at once: a seed out, an undo
+// petal waiting, the settings panel
 // open with New garden held (its ring and its fill), a caption up and a plant being pulled. One perf:sample there
 // and one in Listen. Deterministic: the gestures are the app's own events, emitted on its bus as 22-save-restore
 // does, and the app's systems draw what they mean; the head looks level, so the gaze meets no cell, orb or petal it
@@ -10,7 +12,13 @@
 // half (requested by IWSDK, never confirmed on a device).
 import { expect, test, type JSHandle, type Page } from '@playwright/test';
 
-import { enterXR, openApp, readRoom, xrFrames } from './support/iwer';
+import { enterXR, openApp, readRoom, ROOMS, xrFrames } from './support/iwer';
+
+/** WORST_ROOM=counter|table|…: 'counter' puts the vine in the frame; WORST_ROOM=table gives the figure recorded before. */
+const WORST_ROOM = process.env.WORST_ROOM ?? 'counter';
+if (!(ROOMS as readonly string[]).includes(WORST_ROOM))
+  throw new Error(`WORST_ROOM=${WORST_ROOM}: not one of ${ROOMS.join(', ')}`);
+const ROOM = WORST_ROOM as (typeof ROOMS)[number];
 
 const DRAW_BUDGET = 60; // NFR-PERF-03, counted in the emulator (both views)
 const TRIANGLE_BUDGET = 150_000; // NFR-PERF-04
@@ -260,7 +268,7 @@ test('TC-E2E-09 the worst frame, full bed in bloom: draws, triangles, voices and
   const errors = watch(page);
   // The garden is planted and saved on a first load, then seven days pass: every plant is in bloom at the visit.
   // The load's own garden:changed comes before the save handlers (app.ts A7, A8): the settings change saves it.
-  const room = readRoom('table');
+  const room = readRoom(ROOM);
   const firstOffHost = await openApp(page, room, '/?flags=autoplant=80');
   await appReady(page);
   await setSettings(page, { highContrast: true });
@@ -310,7 +318,7 @@ test('TC-E2E-09 the worst frame, full bed in bloom: draws, triangles, voices and
   });
   const scene = await p.evaluate((p) => p.scene());
   console.log(
-    `T-165 TC-E2E-09 (emulator, both views, no culling, 80 plants in bloom): the worst frame ${report(worst)}; ` +
+    `T-165 TC-E2E-09 (emulator, ${ROOM} room, both views, no culling, 80 plants in bloom): the worst frame ${report(worst)}; ` +
       `in Listen ${report(listen)}; ${scene.lights} lights, shadow map ${scene.shadowMap ? 'on' : 'off'}`,
   );
 

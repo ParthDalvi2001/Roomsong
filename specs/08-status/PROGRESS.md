@@ -146,7 +146,7 @@
 | device | — | **no headset** (T-000; Emergency mode from 27 Oct) | — |
 
 ## Perf (latest)
-emulator, 23 Oct: worst frame **46 draws** (both eyes; budget 60) · **99 712 triangles** (budget 150k) · **JS 1.74 ms** (budget 6; 26-worst-frame, 00:55) · heap **+1.13 % in 5 min** (36.56 → 36.97 MB after a full collection), `src/` 8.3 kB a frame at 14 fps (23 Oct 20:30, after the day's merges; the largest owner FlashGuard.request 1.1 kB) · voices ≤ 24 · bundle **743.6 kB gzip** of 4 000 (check-size) · 0 lights, no shadow map, no post-processing · device fps: no headset
+emulator, 25 Oct: worst frame **48 draws** (both eyes, the counter room with the vine; budget 60) · **103 972 triangles** (budget 150k) · **JS 2.03 ms** (budget 6; 26-worst-frame) · heap **+1.13 % in 5 min** (36.56 → 36.97 MB after a full collection), `src/` 8.3 kB a frame at 14 fps (23 Oct 20:30, after the day's merges; the largest owner FlashGuard.request 1.1 kB) · voices ≤ 24 · bundle **743.6 kB gzip** of 4 000 (check-size) · 0 lights, no shadow map, no post-processing · device fps: no headset
 
 ## Judging self-scores (/10)
 | Gate | Innovation | Experience | Technical | Polish | By |
