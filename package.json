@@ -23,6 +23,7 @@
     "gallery": "playwright test --config tests/tools/playwright.gallery.config.ts",
     "polish:shots": "POLISH_SHOTS=1 playwright test 99-polish",
     "gallery": "playwright test --config tests/tools/playwright.gallery.config.ts",
+    "video:capture": "playwright test --config tests/tools/playwright.video.config.ts",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-dist.mjs && node scripts/check-size.mjs",
     "audit": "npm audit --omit=dev --audit-level=high",
     "audio:renders": "playwright test -c tests/renders/playwright.config.ts"
