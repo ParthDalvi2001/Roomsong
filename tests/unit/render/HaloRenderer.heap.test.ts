@@ -7,6 +7,7 @@ import { Group } from 'three';
 import { describe, expect, it } from 'vitest';
 
 import { settings } from '../../../src/core/index.js';
+import { HALO_LOW, STILL_HALO } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
 import { HaloRenderer } from '../../../src/render/HaloRenderer.js';
 import { OrbRenderer } from '../../../src/render/OrbRenderer.js';
@@ -16,6 +17,7 @@ const MOST_ROUNDS = 40;
 const FRAMES = 20_000; // 278 s at 72 Hz, a frame a ms below: what matters is the count
 const BAR_FRAMES = 206; // 84 BPM at 72 Hz
 const TOGGLE_FRAMES = 2000;
+const OPEN_FRAMES = 4000; // P-016: the garden opens and closes out of step with the breath
 const CONTRAST_FRAMES = 3000; // high contrast flips out of step with Listen: every mix of the two dims runs
 const BED_FRAMES = 7000; // and the bed is hidden and shown (Re-place) out of step with both
 
@@ -64,6 +66,54 @@ describe('Listen light per frame (NFR-PERF-08)', () => {
       expect(halo.halo.visible).toBe(false);
       expect(guard.takePeak()).toBeGreaterThan(0);
       expect(orb.outline.count).toBe(1);
+    },
+  );
+
+  it(
+    "the halo allocates nothing through the open garden's ramps up and down inside Listen's breath (P-016)",
+    { timeout: 60_000 },
+    () => {
+      const guard = new FlashGuard();
+      const parent = new Group();
+      const halo = new HaloRenderer(parent, guard);
+      halo.setListening(true);
+      const PHASES: unknown[] = [null];
+      for (let i = 0; i < FRAMES; i++) PHASES.push((i % BAR_FRAMES) / BAR_FRAMES + 0.0001);
+      let t = 100_000;
+      let opened = 0;
+      const round = (): void => {
+        for (let i = 1; i <= FRAMES; i++) {
+          // Open and closed every OPEN_FRAMES (56 s): the 2 s ramp up and the ramp down, 143 frames each, with
+          // the breath under them; a boxed number in either ramp would be 2.3 kB a round, in the breath 320 kB.
+          if (i % OPEN_FRAMES === 1) {
+            const isOpen = Math.floor(i / OPEN_FRAMES) % 2 === 0;
+            halo.setOpen(isOpen);
+            if (isOpen) opened++;
+          }
+          t += 14;
+          halo.update(PHASES[i] as number, t);
+        }
+      };
+      const costs: { gcs: number; grewBytes: number }[] = [];
+      const isClean = (cost: { gcs: number; grewBytes: number }): boolean =>
+        cost.gcs === 0 && cost.grewBytes >= 0 && cost.grewBytes < PROBE_BYTES;
+      for (let i = 0; i < MOST_ROUNDS; i++) {
+        if (i === 0) round(); // warm up
+        const cost = heapCost(round);
+        costs.push(cost);
+        if (isClean(cost)) break;
+      }
+      expect(isClean(costs[costs.length - 1]!), JSON.stringify(costs)).toBe(true);
+      console.log(
+        `P-016 HaloRenderer.setOpen, ${opened} opens: heap ${JSON.stringify(costs[costs.length - 1])} per ` +
+          `${FRAMES} frames, after ${costs.length} rounds (Node)`,
+      );
+      // It did the work: the round ends open, the halo lit at least the breath's trough lifted STILL_HALO of the
+      // way to 1, which is above Listen's own trough.
+      expect(opened).toBeGreaterThanOrEqual(3);
+      const lit = (halo.halo.material.uniforms.uHalo!.value as Float32Array)[0]!;
+      expect(lit).toBeGreaterThanOrEqual(HALO_LOW + (1 - HALO_LOW) * STILL_HALO - 1e-6);
+      expect(guard.takePeak()).toBeGreaterThan(0);
     },
   );
 });
