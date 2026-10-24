@@ -76,6 +76,8 @@ export interface PanelActions {
   /** T-174: whether the time-lapse demo runs, read each time the switch is drawn; and the switch's ask. */
   isTimeLapse(): boolean;
   setTimeLapse(on: boolean): void;
+  /** A press or a dwell acted on `id` (ORB_ID for the orb): its sound (T-164 §6), before what it does. */
+  pressed(id: string): void;
 }
 
 /** Element `i` of a matrix, of a list of centres or of the panel's timers. */
@@ -87,7 +89,7 @@ const AWAY = 2;
 
 /** The id of the settings orb: like every control it is an Interactable of kind 'panel'. */
 export const ORB_ID = 'orb';
-const NEW_GARDEN_ID = 'newGarden';
+export const NEW_GARDEN_ID = 'newGarden';
 const TIME_LAPSE_ID = 'timeLapse';
 // The gaze cannot switch itself off: a user with no hand to pinch with could not switch it back on.
 const GAZE_TOGGLE_ID = 'gazeDwell';
@@ -424,6 +426,7 @@ export class Panel {
   private select(id: string): void {
     if (id === ORB_ID) {
       this.selected = true;
+      this.actions.pressed(id);
       this.setOpen(!this.isOpen);
       return;
     }
@@ -431,6 +434,7 @@ export class Panel {
     // The gaze switch is dim for the gaze only: a pinch still switches it.
     if (control === undefined || (control.dim && id !== GAZE_TOGGLE_ID)) return;
     this.selected = true;
+    this.actions.pressed(id);
     const patch = PATCHES[id];
     const tab = TABS[id];
     if (patch !== undefined) settings.set(patch(settings.get()));

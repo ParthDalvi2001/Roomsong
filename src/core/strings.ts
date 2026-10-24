@@ -16,8 +16,11 @@ export const STRINGS = {
   seedsTomorrow: 'More seeds tomorrow',
   // The session's first removal (UX §7, the undo petal): onboarding/ raises it once, for the petal's 5 s.
   undoHint: 'Pinch the petal to undo',
+  undoHintGaze: 'Look at the petal to undo', // gaze mode (Settings.gazeDwell): a dwell on the petal undoes (T-160)
+  undoHintClick: 'Click the petal to undo', // the garden window (FR-SYS-07): a click is the pinch
   // The tutorial's end (UX §3.3 step 6): the settings orb rides the back of the non-dominant hand; once a session.
   settingsHint: 'Turn a hand over for settings',
+  settingsHintLook: 'Look for the settings orb', // one-hand or gaze mode: the orb waits in the view box (FR-UI-09, FR-HND-12)
   // The onboarding captions (UX §3.3, T-150): onboarding/ raises them, one per step. The `Click` twins are the
   // garden window's (FR-SYS-07), where a click or a tap is the pinch and the Listen orb is the way to Listen.
   onboardPalm: 'Open your hand, palm up', // the seed needs the palm within PALM_UP_MAX_ANGLE_DEG of up
@@ -33,6 +36,7 @@ export const STRINGS = {
   // T-152: back from a pause, the browser kept the context suspended (it wants a gesture): the first pinch or palm
   // up resumes it. src/app.ts raises it after the same grace as "Sound unavailable".
   soundResume: 'Pinch to resume sound',
+  soundResumeClick: 'Click to resume sound', // the garden window: a click is the pinch
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

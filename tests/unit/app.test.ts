@@ -146,7 +146,7 @@ describe('the systems start() registers (API_SPEC §1.10, the priorities table)'
       ['TuningRippleSystem', '55', '{ guard, engine, bed: room.bed.object3D }'], // T-142, T-142b
       ['CaptionSystem', '60'],
       ['HintSystem', '61', '{ bed: room.bed.object3D }'], // T-150
-      ['PanelSystem', '62', '{ garden, room }'], // T-151, with the app's own garden and room (T-128d)
+      ['PanelSystem', '62', '{ garden, room, engine }'], // T-151, with the app's own garden and room (T-128d); engine: tick and confirm (T-164 §6)
     ]);
     expect(source.indexOf('breakOtherSystems(world);')).toBeGreaterThan(
       source.lastIndexOf('register(world,'),
@@ -333,6 +333,7 @@ function sessionRig(soundFailed: boolean) {
   const handlers: Record<string, (() => void)[]> = {};
   const xr = {
     session: null as FakeSession | null,
+    isPresenting: true, // false in the garden window, which never presents
     addEventListener: (type: string, handler: () => void) => void (handlers[type] ??= []).push(handler),
     getSession: () => xr.session,
   };
@@ -365,6 +366,7 @@ function sessionRig(soundFailed: boolean) {
     ),
   );
   return {
+    xr,
     ops,
     audio,
     landing,
@@ -477,6 +479,24 @@ describe('"Pinch to resume sound" (T-152): the return from a pause', () => {
     vi.advanceTimersByTime(AUDIO_START_GRACE_MS);
     expect(silent.caption()?.key).toBe(NO_SOUND); // the start's own, still up
     expect(silent.ops).toEqual(['add']);
+  });
+
+  it('in the garden window the caption says "Click to resume sound"; a release (a gaze select, a click) resumes too (23 Oct audit F3)', async () => {
+    const rig = sessionRig(false);
+    rig.xr.isPresenting = false;
+    bus.emit('xr:sessionStart', { visible: true }); // WindowStage.enter()
+    rig.audio.nowS = 2;
+    vi.advanceTimersByTime(AUDIO_START_GRACE_MS);
+    bus.emit('xr:visibility', { visible: false }); // the tab hidden, then seen again
+    bus.emit('xr:visibility', { visible: true });
+    vi.advanceTimersByTime(AUDIO_START_GRACE_MS);
+    expect(rig.caption()?.key).toBe('soundResumeClick');
+    bus.emit('gesture:release', { type: 'gesture:release', hand: 'right', gesture: 'press' } as never);
+    expect(rig.audio.resume).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    expect(rig.ops).toEqual(['add', 'remove']);
+    bus.emit('gesture:pinchStart', pinch); // disarmed with the release
+    expect(rig.audio.resume).toHaveBeenCalledTimes(1);
   });
 
   it('the session ending disarms the gesture and takes the caption back', () => {

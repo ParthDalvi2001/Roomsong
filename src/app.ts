@@ -58,8 +58,10 @@ const AUDIO_START_GRACE_MS = 3000;
 const WIRING_CAPTION_MS = 5000;
 /** The caption of a session with no sound (API_SPEC §1.10 rule 2). */
 const NO_SOUND: StringKey = 'E_AUDIO_CONTEXT';
-/** T-152: the caption of a return from a pause whose context the browser did not resume; a gesture will. */
+/** T-152: the caption of a return from a pause whose context the browser did not resume; a gesture will. In the
+ *  garden window a click is the pinch (FR-SYS-07), so its caption says so. */
 const SOUND_RESUME: StringKey = 'soundResume';
+const SOUND_RESUME_CLICK: StringKey = 'soundResumeClick';
 /** The caption of writes that fail (LLD §3.3 G, §8): "Saving unavailable". */
 const SAVE_FAILED: StringKey = 'E_SAVE_FAILED';
 const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[];
@@ -335,15 +337,22 @@ export function followSession(
   const takeBack = (): void => {
     if (caption.hasComponent(Caption)) caption.removeComponent(Caption);
   };
-  // T-152: a context the browser left suspended on the return from a pause is resumed by the first pinch or palm
-  // up (a select event is a user activation), and the caption that asked for it goes with the gesture.
+  // T-152: a context the browser left suspended on the return from a pause is resumed by the first pinch, palm up
+  // or release (a select event is a user activation; a gaze select is a release, with a hand present to count as
+  // one), and the caption that asked for it goes with the gesture.
   const onGesture = (): void => {
     disarm();
     engine.resume().then(takeBack, (error: unknown) => log.error('app', 'E_AUDIO_CONTEXT', error));
   };
+  const arm = (): void => {
+    bus.on('gesture:pinchStart', onGesture);
+    bus.on('gesture:palmUp', onGesture);
+    bus.on('gesture:release', onGesture);
+  };
   const disarm = (): void => {
     bus.off('gesture:pinchStart', onGesture);
     bus.off('gesture:palmUp', onGesture);
+    bus.off('gesture:release', onGesture);
   };
   // Three.js listens for the session's end before it announces its start, so a session that ends in between
   // gives an end with no start. An `xr:sessionEnd` is emitted only for a session whose start was emitted.
@@ -393,9 +402,8 @@ export function followSession(
   const offSeen = bus.on('xr:visibility', ({ visible }) => {
     if (!visible || !isOpen || sound.failed) return;
     watchClock(() => {
-      raise(caption, SOUND_RESUME);
-      bus.on('gesture:pinchStart', onGesture);
-      bus.on('gesture:palmUp', onGesture);
+      raise(caption, xr.isPresenting ? SOUND_RESUME : SOUND_RESUME_CLICK); // the window never presents
+      arm();
     });
   });
   function watchClock(then: () => void): void {
@@ -489,7 +497,7 @@ export async function start(landing: Landing): Promise<void> {
   register(world, TuningRippleSystem, 55, { guard, engine, bed: room.bed.object3D });
   register(world, CaptionSystem, 60);
   register(world, HintSystem, 61, { bed: room.bed.object3D }); // T-150: its icons stand on the bed
-  register(world, PanelSystem, 62, { garden, room });
+  register(world, PanelSystem, 62, { garden, room, engine }); // engine: its tick and confirm (T-164 §6)
   breakOtherSystems(world);
   if (flags.dev) window.__roomsong = { world, engine, garden };
   // A7: every system hears the first garden:changed, and before Enter is usable. A restored garden is drawn when

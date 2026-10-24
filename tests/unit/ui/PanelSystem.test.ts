@@ -61,6 +61,7 @@ function drawn(tab: PanelTab, highContrast = false) {
     setBedHeightOffset: () => {},
     isTimeLapse: () => false,
     setTimeLapse: () => {},
+    pressed: () => {},
   });
   for (const id of [ORB_ID, `tab:${tab}`]) {
     panel.down('right', id);
@@ -332,7 +333,7 @@ afterEach(() => {
 });
 
 /** PanelSystem on fake entities, in a session, the head level at EYE; `given` is its configData. */
-function rig(given: { garden?: object | null; room?: object | null } = {}) {
+function rig(given: { garden?: object | null; room?: object | null; engine?: object | null } = {}) {
   const asked: string[] = [];
   const garden = {
     newGarden: () => asked.push('newGarden'),
@@ -341,6 +342,7 @@ function rig(given: { garden?: object | null; room?: object | null } = {}) {
     setTimeLapse: (on: boolean) => asked.push(`setTimeLapse ${on}`),
   };
   const room = { replace: () => asked.push('replace') };
+  const engine = { ui: (sound: string) => asked.push(`ui ${sound}`) };
   const canvas = () => ({ width: 0, height: 0, getContext: () => recorder().ctx });
   vi.stubGlobal('document', { createElement: canvas });
   const xr = { isPresenting: true };
@@ -366,6 +368,7 @@ function rig(given: { garden?: object | null; room?: object | null } = {}) {
   system.queries = { hands } as never;
   system.config.garden.value = 'garden' in given ? given.garden : garden;
   system.config.room.value = 'room' in given ? given.room : room;
+  system.config.engine.value = 'engine' in given ? given.engine : engine;
   system.init();
   live.push(system);
 
@@ -512,7 +515,7 @@ describe('PanelSystem: what it takes for a press (API_SPEC §1.4)', () => {
   });
 
   it('drops a hold when the hand is lost: New garden does not start, however long it was held', () => {
-    const { watch, frame, press, pinch, release, emit, asked, system, mesh } = rig();
+    const { watch, frame, press, pinch, release, emit, asked, system, mesh } = rig({ engine: null }); // no ticks in `asked`
     watch();
     frame();
     press(ORB_ID);
@@ -536,7 +539,7 @@ describe('PanelSystem: what it takes for a press (API_SPEC §1.4)', () => {
   });
 
   it('hands the Garden tab on to the garden and the room it was given', () => {
-    const { watch, frame, press, asked, system } = rig();
+    const { watch, frame, press, asked, system } = rig({ engine: null }); // no ticks in `asked`
     watch();
     frame();
     press(ORB_ID);
@@ -652,5 +655,22 @@ describe('PanelSystem: the ring of a hold (UX §8)', () => {
     expect(fill.geometry.drawRange.count).toBe((CUE_SEGMENTS / 2) * 6); // half way round: two triangles a step
     for (let ms = 0; ms < NEW_GARDEN_HOLD_MS / 2; ms += 50) frame(50);
     expect(fill.geometry.drawRange.count).toBe(CUE_SEGMENTS * 6);
+  });
+});
+
+describe('the UI sounds of the panel (T-164 §6)', () => {
+  it("every press that acts is engine.ui('tick'), Re-place bed too (its confirm is the bed's landing); with no engine, no sound and no throw", () => {
+    const { watch, frame, press, asked } = rig();
+    watch();
+    frame();
+    press(ORB_ID);
+    press('tab:garden');
+    press('replaceBed');
+    expect(asked).toEqual(['ui tick', 'ui tick', 'ui tick', 'replace']);
+    const silent = rig({ engine: null });
+    silent.watch();
+    silent.frame();
+    expect(() => silent.press(ORB_ID)).not.toThrow();
+    expect(silent.asked).toEqual([]);
   });
 });

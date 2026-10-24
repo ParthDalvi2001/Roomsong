@@ -52,6 +52,7 @@ import {
   gazeTarget,
   hasPose,
   isHeadTurning,
+  NEW_GARDEN_ID,
   ORB_ELEMENT,
   ORB_ID,
   orbHome,
@@ -211,18 +212,27 @@ export interface PanelGarden {
 export interface PanelRoom {
   replace(): void;
 }
+/** What the panel needs of the app's audio engine (API_SPEC §1.10): its two sounds (T-164 §6). */
+export interface PanelSounds {
+  ui(sound: 'tick' | 'confirm'): void;
+}
 
 /**
  * Owns the settings panel and its orb (UX §3.6): creates them, places them, redraws the panel when something it
  * shows has changed, and disposes of them. Priority 62 (API_SPEC §1.10), with the app's `garden` and `room` as
- * `configData`: the Garden tab calls `garden.newGarden()`, `garden.setBedHeightOffset(metres)` and `room.replace()`.
+ * `configData`: the Garden tab calls `garden.newGarden()`, `garden.setBedHeightOffset(metres)` and `room.replace()`;
+ * every press or dwell that acts is `engine.ui('tick')`, New garden's hold `ui('confirm')` (T-164 §6).
  * A press arrives as `gesture:release` with the control as its target (API_SPEC §1.4); a gaze dwell is worked out
  * here, from the head pose, while `Settings.gazeDwell` is on. The orb rides the hand that is not the dominant one,
  * read from that hand's `HandState` (hands/).
  */
 export class PanelSystem extends createSystem(
   { hands: { required: [HandState] } },
-  { garden: { type: Types.Object, default: null }, room: { type: Types.Object, default: null } },
+  {
+    garden: { type: Types.Object, default: null },
+    room: { type: Types.Object, default: null },
+    engine: { type: Types.Object, default: null },
+  },
 ) {
   /** The panel's state and rules: open or not, the tab, what is on show. */
   panel!: Panel;
@@ -262,6 +272,7 @@ export class PanelSystem extends createSystem(
   override init(): void {
     const garden = this.config.garden.value as PanelGarden | null;
     const room = this.config.room.value as PanelRoom | null;
+    const engine = this.config.engine.value as PanelSounds | null;
     if (garden === null || room === null)
       log.error('ui', 'the settings panel has no garden or no room: its Garden tab will do nothing');
     this.panel = new Panel({
@@ -270,6 +281,8 @@ export class PanelSystem extends createSystem(
       setBedHeightOffset: (metres) => garden?.setBedHeightOffset(metres),
       isTimeLapse: () => garden?.timeLapse ?? false,
       setTimeLapse: (on) => garden?.setTimeLapse(on),
+      // Re-place bed is a plain press: its confirm sounds when the bed lands (room:bedPlaced, GardenAudioSystem).
+      pressed: (id) => engine?.ui(id === NEW_GARDEN_ID ? 'confirm' : 'tick'),
     });
     this.board = makeQuad('settings-panel', PANEL_WIDTH_M, PANEL_HEIGHT_M, PANEL_PX_PER_M);
     this.orb = makeQuad('settings-orb', ORB_DIAMETER_M, ORB_DIAMETER_M, ORB_CANVAS_PX / ORB_DIAMETER_M);

@@ -9,6 +9,7 @@ import {
   longestSilenceS,
   measure,
   shareAboveDb,
+  spectralCentroidHz,
   wavBytes,
   worstClick,
 } from '../../renders/measure.js';
@@ -43,6 +44,10 @@ describe('measure', () => {
     expect(activeSpanS([new Float32Array(SR)], SR).startS).toBeNaN();
     expect(shareAboveDb([sine(1, 0.1)], SR, 4000, 0, 1)).toBeLessThan(-20);
     expect(shareAboveDb([sine(1, 0.1, 8000)], SR, 4000, 0, 1)).toBeGreaterThan(-1);
+    const high = sine(1, 0.1, 3000);
+    const two = sine(1, 0.1).map((v, i) => v + (high[i] as number));
+    expect(spectralCentroidHz([two], SR, 0, 1)).toBeCloseTo(2000, -1); // 1 and 3 kHz, equal: 2 kHz ± 5
+    expect(spectralCentroidHz([new Float32Array(SR)], SR, 0, 1)).toBeNaN();
     const step = new Float32Array(SR);
     step.fill(0.25, SR / 2);
     const click = worstClick([step, step], SR, 0, 1);

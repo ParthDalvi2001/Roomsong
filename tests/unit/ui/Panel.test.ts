@@ -55,6 +55,7 @@ const calls = {
   replaceBed: [] as object[],
   bedHeight: [] as { metres: number }[],
   timeLapse: [] as boolean[],
+  pressed: [] as string[],
 };
 /** The garden's time-lapse demo, as the stand-in garden has it. */
 let isTimeLapse = false;
@@ -67,6 +68,7 @@ const actions: PanelActions = {
     calls.timeLapse.push(on);
     isTimeLapse = on;
   },
+  pressed: (id) => calls.pressed.push(id),
 };
 
 /** A pinch that starts and ends on the same control: what hands/ reports as a press. */
@@ -1078,5 +1080,18 @@ describe('panel strings', () => {
   it('do not promise eye control: the gaze mode is named for what it asks (UX §9.7)', () => {
     expect(PANEL.gazeDwell).toBe('Look and hold');
     expect(all.join(' ')).not.toMatch(/eye|gaze|dwell/i);
+  });
+});
+
+describe('the sound of a press (T-164 §6)', () => {
+  it('reports each press or dwell that acts with its id, before it acts; one on nothing on show reports none', () => {
+    const panel = new Panel(actions);
+    press(panel, 'height:+'); // the panel is closed: nothing is on show
+    press(panel, ORB_ID);
+    press(panel, 'tab:garden');
+    press(panel, 'height:+');
+    press(panel, 'replaceBed');
+    expect(calls.pressed).toEqual([ORB_ID, 'tab:garden', 'height:+', 'replaceBed']);
+    expect(calls.replaceBed).toHaveLength(1);
   });
 });

@@ -6,7 +6,7 @@ import { Matrix4, Object3D } from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { GardenAudioSystem } from '../../../src/audio/AudioSystem.js';
-import { bus } from '../../../src/core/index.js';
+import { bus, settings } from '../../../src/core/index.js';
 import { WANDERER } from '../../../src/garden/index.js';
 import { garden, plant, seed } from '../garden/fixtures.js';
 import { FakeEntity, FakeQuery } from '../render/seedRig.js';
@@ -60,11 +60,16 @@ describe('GardenAudioSystem', () => {
     r.beds.add(r.bed);
     r.placed();
     r.system.update();
-    expect(r.calls).toEqual([]); // a restored garden must not be heard in the engine's default key
+    // The bed landed: its chord (§6) from the bed, which the engine gets with no plant: a restored garden must not
+    // be heard in the engine's default key.
+    expect(r.calls).toEqual(['syncPlants', 'ui confirm']);
+    expect(r.synced[0]!.plants).toEqual([]);
+    expect(r.synced[0]!.pose).toEqual(r.bed.object3D!.matrixWorld.elements);
+    r.calls.length = 0;
     r.signature();
     expect(r.calls).toEqual(['setSignature', 'syncPlants']);
-    expect(r.synced[0]!.plants).toBe(restored.plants);
-    expect(r.synced[0]!.pose).toEqual(r.bed.object3D!.matrixWorld.elements);
+    expect(r.synced[1]!.plants).toBe(restored.plants);
+    expect(r.synced[1]!.pose).toEqual(r.bed.object3D!.matrixWorld.elements);
   });
 
   it('tuned: every garden:changed and room:bedPlaced syncs; a still bed is not synced again frame after frame', () => {
@@ -138,13 +143,75 @@ describe('GardenAudioSystem', () => {
     bus.emit('garden:seedOut', { seed: seed('s2'), hand: 'left' });
     bus.emit('garden:seedBack', { seedId: 's2', reason: 'full' });
     add(garden([plant('s2', 1, 1)]), 's2'); // a seed that went back is out no more
-    expect(r.calls).toEqual(['syncPlants', 'ui placed s1', 'syncPlants', 'syncPlants', 'syncPlants']);
+    // the 'full' seedBack bumps (§6)
+    expect(r.calls).toEqual([
+      'syncPlants',
+      'ui placed s1',
+      'syncPlants',
+      'syncPlants',
+      'ui bump',
+      'syncPlants',
+    ]);
   });
 
-  it('a seed let go off the bed bumps (UX §7); one sent back for any other reason makes no sound here', () => {
+  it('a seed let go off the bed, over a full bed or by a lost hand bumps (UX §7, §6); a reset makes no sound', () => {
     const r = rig();
     for (const reason of ['full', 'lost', 'reset', 'offBed'] as const)
       bus.emit('garden:seedBack', { seedId: 's', reason });
-    expect(r.calls).toEqual(['ui bump']);
+    expect(r.calls).toEqual(['ui bump', 'ui bump', 'ui bump']);
+  });
+});
+
+describe('the UI sounds of the garden (T-164 §6)', () => {
+  it('a removal plays removeRev; the plant back by its petal plays undoFwd, not placed; a load of it later plays nothing', () => {
+    const r = rig();
+    r.signature();
+    r.calls.length = 0;
+    const a = plant('a', 1, 2);
+    bus.emit('garden:removed', { plantId: 'a', undoToken: { plant: a }, expiresAt: 5000 });
+    const add = (id: string): void =>
+      bus.emit('garden:changed', { state: garden([a]), diff: { added: [id], removed: [], changed: [] } });
+    add('a');
+    add('a');
+    expect(r.calls).toEqual(['ui removeRev', 'syncPlants', 'ui undoFwd', 'syncPlants']);
+  });
+
+  it('a carried seed or a dragged plant ticks at each new cell it would land in, per hand; a hover over a plant never', () => {
+    const r = rig();
+    const hover = (
+      hand: 'left' | 'right',
+      cell: { ring: number; step: number } | null,
+      target = null as never,
+    ) => bus.emit('target:hover', { hand, target, cell });
+    hover('right', { ring: 1, step: 2 });
+    hover('right', { ring: 1, step: 2 });
+    hover('right', { ring: 1, step: 3 });
+    hover('left', { ring: 1, step: 3 }); // the other hand's first cell
+    hover('right', null);
+    hover('right', { ring: 1, step: 3 }); // back over the bed
+    hover('right', { ring: 2, step: 0 }, { kind: 'plant', id: 'p' } as never); // a hover, not a drag
+    expect(r.calls).toEqual(['ui tick', 'ui tick', 'ui tick', 'ui tick']);
+  });
+
+  it('with the gaze mode on, a cell the gaze crosses does not tick: its dwell ring is the cue there (FR-HND-12)', () => {
+    const r = rig();
+    settings.set({ gazeDwell: true });
+    try {
+      bus.emit('target:hover', { hand: 'right', target: null, cell: { ring: 1, step: 2 } });
+      bus.emit('target:hover', { hand: 'right', target: null, cell: { ring: 1, step: 3 } });
+      expect(r.calls).toEqual([]);
+    } finally {
+      settings.set({ gazeDwell: false });
+    }
+  });
+
+  it('the bed landed (room:bedPlaced, a restore too) plays confirm after the sync, so it sounds from the bed', () => {
+    const r = rig();
+    r.beds.add(r.bed);
+    r.signature();
+    r.calls.length = 0;
+    r.placed();
+    bus.emit('room:bedPlaced', { placement: PLACEMENT, restored: true });
+    expect(r.calls).toEqual(['syncPlants', 'ui confirm', 'syncPlants', 'ui confirm']);
   });
 });

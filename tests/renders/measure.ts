@@ -160,6 +160,81 @@ export function shareAboveDb(
   return total > 0 ? 10 * Math.log10(above / total) : Number.NaN;
 }
 
+/** In-place iterative radix-2 FFT; `re.length` a power of two. */
+function fft(re: Float64Array, im: Float64Array): void {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      const tr = re[i] as number;
+      re[i] = re[j] as number;
+      re[j] = tr;
+      const ti = im[i] as number;
+      im[i] = im[j] as number;
+      im[j] = ti;
+    }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const wr = Math.cos((-2 * Math.PI) / len);
+    const wi = Math.sin((-2 * Math.PI) / len);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1;
+      let ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const a = i + k;
+        const b = a + len / 2;
+        const xr = (re[b] as number) * cr - (im[b] as number) * ci;
+        const xi = (re[b] as number) * ci + (im[b] as number) * cr;
+        re[b] = (re[a] as number) - xr;
+        im[b] = (im[a] as number) - xi;
+        re[a] = (re[a] as number) + xr;
+        im[a] = (im[a] as number) + xi;
+        const t = cr * wr - ci * wi;
+        ci = cr * wi + ci * wr;
+        cr = t;
+      }
+    }
+  }
+}
+
+/**
+ * The spectral centroid of the mono sum between `fromS` and `toS`, in Hz: the magnitude-weighted mean frequency
+ * of one Hann-windowed FFT over the whole window (zero-padded to a power of two). A brightness figure: the
+ * Listen sweep's low-pass pulls it down. NaN when silent.
+ */
+export function spectralCentroidHz(
+  channels: readonly Float32Array[],
+  sampleRate: number,
+  fromS: number,
+  toS: number,
+): number {
+  const lo = Math.round(fromS * sampleRate);
+  const hi = Math.min(channels[0]?.length ?? 0, Math.round(toS * sampleRate));
+  const count = hi - lo;
+  if (count <= 0) return Number.NaN;
+  let n = 1;
+  while (n < count) n <<= 1;
+  const re = new Float64Array(n);
+  const im = new Float64Array(n);
+  for (let i = 0; i < count; i++) {
+    const hann = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (count - 1));
+    let sum = 0;
+    for (const c of channels) sum += c[lo + i] as number;
+    re[i] = (hann * sum) / channels.length;
+  }
+  fft(re, im);
+  let weighted = 0;
+  let total = 0;
+  for (let k = 0; k <= n / 2; k++) {
+    const magnitude = Math.hypot(re[k] as number, im[k] as number);
+    weighted += (k * sampleRate * magnitude) / n;
+    total += magnitude;
+  }
+  return total > 0 ? weighted / total : Number.NaN;
+}
+
 /** From the first 10 ms window over −60 dBFS to the end of the last: a UI sound's start and length. NaN if none. */
 export function activeSpanS(
   channels: readonly Float32Array[],

@@ -31,6 +31,8 @@ interface Scene {
   listen?: { enterAtS: number; exitAtS: number };
   /** The panners lead nowhere: what is rendered is the reverb's return alone (as 09-audio.spec.ts). */
   wetOnly?: boolean;
+  /** Named [from, to) windows, each measured as a Band. */
+  windows?: Record<string, [number, number]>;
   volume?: number;
   /** No tick from atS for ms: a stalled main thread. */
   stall?: { atS: number; ms: number };
@@ -55,23 +57,22 @@ interface Numbers extends Measures {
   soundStartS: number;
   soundEndS: number;
   renderMsPerS: number;
-  /** With `listen`: the mix before, inside and after Listen, and the entry's deepest 50 ms dip. */
-  listen?: ListenNumbers;
+  /** Peak of the mono sum (L + R) / 2, in dBFS: the pan law cancelled, for a sound against a plant at another spot. */
+  peakMonoDbfs: number;
+  /** One per `windows` entry. */
+  bands?: Record<string, Band>;
+  /** With `listen`: the deepest 50 ms window in the 2 s after enterListen against the deepest in the 2 s before, in dB. */
+  entryMinDb?: number;
 }
 
 interface Band {
   rmsDbfs: number;
   /** The share of the energy above 4 kHz, in dB (0 = all of it): the sweep's low-pass closing. */
   above4kDb: number;
-}
-
-interface ListenNumbers {
-  /** The 3 s before enterListen, the 3 s before exitListen, the last 3 s. */
-  before: Band;
-  inside: Band;
-  after: Band;
-  /** The deepest 50 ms window in the 2 s after enterListen against the deepest in the 2 s before, in dB: a pump or a dip. */
-  entryMinDb: number;
+  /** The magnitude-weighted mean frequency of the mono sum, in Hz: brightness. */
+  centroidHz: number;
+  /** Peak of the mono sum in the window, dBFS: a UI sound's first note alone, before its second starts. */
+  peakMonoDbfs: number;
 }
 
 const OUT = fileURLToPath(new URL('../../.tmp/renders/', import.meta.url));
@@ -88,13 +89,16 @@ const ONE_STYLE: Style = STYLES.length === 1 ? (STYLES[0] ?? null) : null;
 const styleName = (style: Style): string => style ?? 'today';
 /** Not on a tick's render quantum: a second suspend on one quantum throws. */
 const UI_AT_S = 0.51;
-/** SOUND_PASS_T164 §6: each UI sound's level against a new plant of its voice, and its release. */
-const UI_TARGETS: Record<UiSound, string> = {
-  tick: 'Bell −12 dB, 0.06 s',
-  bump: 'Bass −8 dB, 0.12 s',
-  confirm: 'Pluck −6 dB, 0.6 s, three notes 40 ms apart',
-  removeRev: 'Bell −10 dB, 0.3 s, three notes 50 ms apart',
-  undoFwd: 'Bell −10 dB, 0.3 s, three notes 50 ms apart',
+/**
+ * src/audio/uiSounds.ts: each UI sound's voice and its level against a full-height plant of that voice as built
+ * (the tick is −10, not SOUND_PASS_T164 §6's −12: the P-025 floor, a shortcut noted there), and what §6 says.
+ */
+const UI_LEVELS: Record<UiSound, { voice: Voice; db: number; spec: string }> = {
+  tick: { voice: 'bell', db: -10, spec: '§6 −12 dB, release 0.06 s; one octave up, darker' },
+  bump: { voice: 'bass', db: -8, spec: '§6 −8 dB, 0.12 s; darkest' },
+  confirm: { voice: 'pluck', db: -6, spec: '§6 −6 dB, 0.6 s; three notes 40 ms apart' },
+  removeRev: { voice: 'bell', db: -10, spec: '§6 −10 dB, 0.3 s; three notes 50 ms apart' },
+  undoFwd: { voice: 'bell', db: -10, spec: '§6 −10 dB, 0.3 s; three notes 50 ms apart' },
 };
 const SAMPLE_RATE = 48000;
 const PEAK_TOLERANCE_DB = 0.001;
@@ -233,28 +237,44 @@ function render(page: Page, scene: Scene): Promise<Numbers & { wav: string }> {
         ascii += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
       const db = (x: number) => (x > 0 ? 20 * Math.log10(x) : -Infinity);
       const span = M.activeSpanS(ch, sampleRate);
-      const band = (from: number, to: number): Band => ({
-        rmsDbfs: M.measure(slice(from, to), sampleRate).rmsDbfs,
-        above4kDb: M.shareAboveDb(ch, sampleRate, 4000, from, to),
-      });
-      let listenNumbers: ListenNumbers | undefined;
+      const rmsDbfs = (from: number, to: number): number => M.measure(slice(from, to), sampleRate).rmsDbfs;
+      const [left, right] = ch;
+      const monoPeakDb = (from: number, to: number): number => {
+        let peakMono = 0;
+        const hi = Math.min(left?.length ?? 0, Math.round(to * sampleRate));
+        for (
+          let i = Math.round(from * sampleRate);
+          left !== undefined && right !== undefined && i < hi;
+          i++
+        ) {
+          peakMono = Math.max(peakMono, Math.abs(((left[i] as number) + (right[i] as number)) / 2));
+        }
+        return db(peakMono);
+      };
+      const bands: Record<string, Band> = {};
+      for (const [name, [from, to]] of Object.entries(scene.windows ?? {})) {
+        bands[name] = {
+          rmsDbfs: rmsDbfs(from, to),
+          above4kDb: M.shareAboveDb(ch, sampleRate, 4000, from, to),
+          centroidHz: M.spectralCentroidHz(ch, sampleRate, from, to),
+          peakMonoDbfs: monoPeakDb(from, to),
+        };
+      }
+      let entryMinDb: number | undefined;
       if (scene.listen !== undefined) {
-        const { enterAtS: on, exitAtS: off } = scene.listen;
+        const on = scene.listen.enterAtS;
         // The bed has quiet 50 ms windows between notes anyway: the deepest after the entry against the deepest before.
         const deepestDb = (from: number, to: number): number => {
           let min = Infinity;
-          for (let t = from; t + 0.05 <= to; t += 0.05) min = Math.min(min, band(t, t + 0.05).rmsDbfs);
+          for (let t = from; t + 0.05 <= to; t += 0.05) min = Math.min(min, rmsDbfs(t, t + 0.05));
           return min;
         };
-        listenNumbers = {
-          before: band(on - 3, on),
-          inside: band(off - 3, off),
-          after: band(scene.seconds - 3, scene.seconds),
-          entryMinDb: deepestDb(on, on + 2) - deepestDb(on - 2, on),
-        };
+        entryMinDb = deepestDb(on, on + 2) - deepestDb(on - 2, on);
       }
       return {
-        ...(listenNumbers === undefined ? {} : { listen: listenNumbers }),
+        ...(scene.windows === undefined ? {} : { bands }),
+        ...(entryMinDb === undefined ? {} : { entryMinDb }),
+        peakMonoDbfs: monoPeakDb(0, scene.seconds),
         ...M.measure(ch, sampleRate),
         triggers: engine.stats.triggers,
         late,
@@ -363,8 +383,24 @@ test('P-023 five-voice reference renders: each style in the Wanderer and three r
   ]);
 });
 
-test('UI sounds in an empty bed: the peak and the length of each (SOUND_PASS_T164 §6)', async ({ page }) => {
-  const results: Record<string, Numbers> = {};
+test('UI sounds in an empty bed: the peak and the length of each, against a full-height plant of its voice (SOUND_PASS_T164 §6)', async ({
+  page,
+}) => {
+  // One full-height plant of each voice alone on ring 0, step 0: beside the bed's centre, where the UI sounds play,
+  // at the same depth from the head (cellCentre: x = r·cos 0). The scheduler plays its note at 0.08 s and every
+  // bar; the peak is its loudest. Peaks of the mono sum: the pan law of the 0.12 m offset cancels (±0.15 dB left).
+  const plants: Record<string, Numbers> = {};
+  for (const voice of ['bell', 'bass', 'pluck', 'pad', 'choir'] as const) {
+    const r = await renderTo(page, `plant-${voice}`, {
+      plants: [{ voice, ring: 0, step: 0 }],
+      seconds: 6,
+      signature: WANDERER,
+      style: ONE_STYLE,
+    });
+    expectBounded(r);
+    plants[voice] = r;
+  }
+  const sounds: Record<string, Numbers & { rePlantDb: number; firstNoteRePlantDb: number }> = {};
   const rows: string[] = [];
   for (const ui of ['tick', 'bump', 'confirm', 'removeRev', 'undoFwd'] as const) {
     const r = await renderTo(page, `ui-${ui}`, {
@@ -373,52 +409,96 @@ test('UI sounds in an empty bed: the peak and the length of each (SOUND_PASS_T16
       signature: WANDERER,
       style: ONE_STYLE,
       ui,
+      windows: { first: [UI_AT_S, UI_AT_S + 0.04] }, // the first note alone: the second starts at 40 or 50 ms
     });
     expect(r.peakDbfs).toBeLessThanOrEqual(CEILING_DBFS + PEAK_TOLERANCE_DB);
     expect(r.peakDbfs).toBeGreaterThan(SILENCE_DBFS); // the sound exists (T-164 built it)
-    results[ui] = r;
+    const { voice, db, spec } = UI_LEVELS[ui];
+    const plant = plants[voice]?.peakMonoDbfs ?? Number.NaN;
+    const rePlantDb = r.peakMonoDbfs - plant;
+    const firstNoteRePlantDb = (r.bands?.first?.peakMonoDbfs ?? Number.NaN) - plant;
+    const off = firstNoteRePlantDb - db;
+    sounds[ui] = { ...r, rePlantDb, firstNoteRePlantDb };
     const length = r.soundEndS - r.soundStartS;
-    rows.push(`| ${ui} | ${r.peakDbfs.toFixed(1)} | ${length.toFixed(2)} | ${UI_TARGETS[ui]} |`);
+    rows.push(
+      `| ${ui} | ${r.peakDbfs.toFixed(1)} | ${length.toFixed(2)} | ${voice} ${plant.toFixed(1)} | ${firstNoteRePlantDb.toFixed(1)} | ` +
+        `${rePlantDb.toFixed(1)} | ${db} | ${Math.abs(off) <= 1 ? 'within ±1' : `${off > 0 ? '+' : ''}${off.toFixed(1)}`} | ${spec} |`,
+    );
     console.log(`UI ${rows[rows.length - 1]}`);
   }
-  writeJson('ui.json', results);
+  writeJson('ui.json', { sounds, plants });
   writeSection('UI sounds', [
-    `Style ${styleName(ONE_STYLE)}; ui() at ${UI_AT_S} s in an empty bed. Length: first to last 10 ms window over −60 dBFS, so it holds the reverb tail.`,
+    `Style ${styleName(ONE_STYLE)}; ui() at ${UI_AT_S} s in an empty bed. Length: first to last 10 ms window over −60 dBFS (holds the reverb tail). ` +
+      'Plant: one full-height plant of the voice alone, ring 0 step 0 (beside the centre, where the sounds play); both as peaks of the mono sum, so the pan law cancels. ' +
+      "Built = uiSounds.ts's dB. First note = the mono peak in the sound's first 40 ms (a three-note sound's second note starts at 40 or 50 ms); the whole sound's peak sums the overlap. The tick's octave and darker cutoff are in its number.",
     '',
-    '| Sound | Peak dBFS | Length s | §6 (level vs a new plant of its voice, release) |',
-    '|---|---|---|---|',
+    '| Sound | Peak dBFS | Length s | Plant: mono peak dBFS | First note vs plant dB | Whole sound vs plant dB | Built dB | ±1 dB (first note) | §6 |',
+    '|---|---|---|---|---|---|---|---|---|',
     ...rows,
   ]);
 });
 
-test('Listen sweep: enterListen at 5 s, exitListen at 15 s, 20 s (SOUND_PASS_T164 §6)', async ({ page }) => {
+test('Listen sweep: enterListen at 5 s, exitListen at 15 s, 20 s; its reach over 46 s in Listen (SOUND_PASS_T164 §6)', async ({
+  page,
+}) => {
+  const f = (x: number) => x.toFixed(1);
   const scene: Scene = {
     plants: FIVE_VOICES,
     seconds: 20,
     signature: WANDERER,
     style: ONE_STYLE,
     listen: { enterAtS: 5.01, exitAtS: 15.01 }, // off a tick's render quantum, as UI_AT_S
+    windows: { before: [2.01, 5.01], inside: [12.01, 15.01], after: [17, 20] },
   };
   const mix = await renderTo(page, 'listen-sweep', scene);
   expectBounded(mix);
   const wet = await render(page, { ...scene, wetOnly: true });
-  const l = mix.listen as ListenNumbers;
-  const w = wet.listen as ListenNumbers;
-  const f = (x: number) => x.toFixed(1);
+  const l = mix.bands as Record<'before' | 'inside' | 'after', Band>;
+  const w = wet.bands as Record<'before' | 'inside', Band>;
   const lines = [
     `- mix RMS before / inside / after: ${f(l.before.rmsDbfs)} / ${f(l.inside.rmsDbfs)} / ${f(l.after.rmsDbfs)} dBFS ` +
       `(inside − before ${f(l.inside.rmsDbfs - l.before.rmsDbfs)} dB; §6: −3 dB plus what the low-pass takes)`,
-    `- share above 4 kHz before / inside / after: ${f(l.before.above4kDb)} / ${f(l.inside.above4kDb)} / ${f(l.after.above4kDb)} dB`,
+    `- share above 4 kHz before / inside / after: ${f(l.before.above4kDb)} / ${f(l.inside.above4kDb)} / ${f(l.after.above4kDb)} dB; ` +
+      `centroid ${l.before.centroidHz.toFixed(0)} / ${l.inside.centroidHz.toFixed(0)} / ${l.after.centroidHz.toFixed(0)} Hz`,
     `- reverb return alone (panners cut) before / inside: ${f(w.before.rmsDbfs)} / ${f(w.inside.rmsDbfs)} dBFS ` +
-      `(${f(w.inside.rmsDbfs - w.before.rmsDbfs)} dB; the send 0.28 → 0.35 is +1.9 dB before the dim and the low-pass)`,
-    `- entry: deepest 50 ms window in the 2 s after enterListen ${f(l.entryMinDb)} dB against the deepest in the 2 s before (a smooth −3 dB dim reads about −3)`,
+      `(${f(w.inside.rmsDbfs - w.before.rmsDbfs)} dB; the send 0.28 → 0.35 is +1.9 dB before the dim and the low-pass, which the return runs through)`,
+    `- entry: deepest 50 ms window in the 2 s after enterListen ${f(mix.entryMinDb ?? Number.NaN)} dB against the deepest in the 2 s before (a smooth −3 dB dim reads about −3)`,
   ];
   for (const line of lines) console.log(`Listen ${line}`);
-  writeJson('listen.json', { mix, wet: { ...wet, wav: undefined } });
+
+  // The reach: 46 s in Listen is the sweep's 16 bars at 84 BPM; the exit's glide is LISTEN_GLIDE_OUT_S, 0.8 s.
+  // Enter at 5 s, not 2: the opening bar is sparse, and "before" has to be the bed as it plays.
+  const reach = await renderTo(page, 'listen-reach', {
+    plants: FIVE_VOICES,
+    seconds: 55,
+    signature: WANDERER,
+    style: ONE_STYLE,
+    listen: { enterAtS: 5.01, exitAtS: 51.01 },
+    windows: {
+      'before, 2–5 s': [2.01, 5.01],
+      'entry, 5–8 s (0–3 s in)': [5.01, 8.01],
+      '28–31 s (23–26 s in)': [28, 31],
+      '48–51 s (43–46 s in)': [48.01, 51.01],
+      'exit glide, 51–51.8 s': [51.01, 51.81],
+      'after, 51.8–54.8 s': [51.81, 54.81],
+    },
+  });
+  expectBounded(reach);
+  const reachRows = Object.entries(reach.bands ?? {}).map(
+    ([name, b]) => `| ${name} | ${f(b.rmsDbfs)} | ${f(b.above4kDb)} | ${b.centroidHz.toFixed(0)} |`,
+  );
+  for (const row of reachRows) console.log(`Listen reach ${row}`);
+  writeJson('listen.json', { mix, wet: { ...wet, wav: undefined }, reach });
   writeSection('Listen sweep', [
-    `Style ${styleName(ONE_STYLE)}; the five-voice bed; windows [2,5), [12,15), [17,20) s. The sweep closes over 16 bars (46 s at 84 BPM): 10 s in Listen shows its start.`,
+    `Style ${styleName(ONE_STYLE)}; the five-voice bed. 20 s: enter at 5 s, exit at 15 s; windows [2,5), [12,15), [17,20) s.`,
     '',
     ...lines,
+    '',
+    'Reach, 52 s: enter at 2 s, exit at 48 s (46 s in Listen = the sweep\'s 16 bars at 84 BPM). The exit glide is 0.8 s: "after" against "before" says whether it is back in time.',
+    '',
+    '| Window | RMS dBFS | Above 4 kHz dB | Centroid Hz |',
+    '|---|---|---|---|',
+    ...reachRows,
   ]);
 });
 

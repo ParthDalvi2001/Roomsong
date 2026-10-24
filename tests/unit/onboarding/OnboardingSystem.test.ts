@@ -302,6 +302,45 @@ describe('OnboardingSystem: the one-time notices (UX re-check 23 Oct)', () => {
     expect(r.notices()).toEqual(['undoHint']);
   });
 
+  it('the undo hint has its twins: "Look at the petal to undo" in gaze mode, "Click the petal to undo" in the window (23 Oct audit F2)', () => {
+    const r = rig();
+    settings.set({ ...DEFAULT_SETTINGS, gazeDwell: true });
+    started();
+    bus.emit('garden:changed', changed(3));
+    bus.emit('garden:removed', removed);
+    expect(r.notices()).toEqual(['undoHintGaze']);
+    bus.emit('xr:sessionEnd', { visible: false });
+    settings.set({ ...DEFAULT_SETTINGS });
+    r.xr.isPresenting = false; // the garden window: read at room:tuned
+    started();
+    bus.emit('garden:changed', changed(3));
+    bus.emit('garden:removed', removed);
+    expect(r.notices()).toEqual(['undoHintGaze', 'undoHintClick']);
+  });
+
+  it('at done in one-hand or gaze mode the hint is "Look for the settings orb": the orb waits in the view box (23 Oct audit F1)', () => {
+    const r = rig();
+    settings.set({ ...DEFAULT_SETTINGS, oneHand: true });
+    started();
+    bus.emit('garden:changed', changed(3));
+    bus.emit('gesture:release', release('pull'));
+    bus.emit('gesture:release', release('drag')); // listen
+    bus.emit('listen:enter', {});
+    bus.emit('listen:exit', { timedOut: false });
+    expect(r.steps.slice(-1)).toEqual(['done']);
+    expect(r.notices()).toEqual(['settingsHintLook']);
+    bus.emit('xr:sessionEnd', { visible: false });
+    settings.set({ ...DEFAULT_SETTINGS, gazeDwell: true });
+    started();
+    bus.emit('garden:changed', changed(3));
+    r.system.machine.tick(Number.MAX_SAFE_INTEGER); // the gaze cannot pull or drag: the 60 s net moves it on
+    r.frame();
+    bus.emit('listen:enter', {});
+    bus.emit('listen:exit', { timedOut: false });
+    expect(r.steps.slice(-1)).toEqual(['done']);
+    expect(r.notices()).toEqual(['settingsHintLook', 'settingsHintLook']); // once a session, each
+  });
+
   it('"Turn a hand over for settings" at done, once; after Listen when done came in it; not in the window, not with hints off', () => {
     const r = rig();
     started();

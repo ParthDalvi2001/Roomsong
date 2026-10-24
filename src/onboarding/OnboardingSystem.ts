@@ -21,9 +21,16 @@ const GAZE_PLANT: StringKey = 'onboardPlantGaze';
 /** The notices said once a session, on their own entity so a step's caption and a notice do not take each other
  *  back: a palm up with no seed left (UX §3.3; a new seed each day), the first removal (UX §7, the undo petal). */
 const SEEDS_TOMORROW: StringKey = 'seedsTomorrow';
-const UNDO_HINT: StringKey = 'undoHint';
-/** The tutorial's end: the one thing it never named, the settings orb on the back of a hand (UX re-check item 12). */
+/** The undo hint, as the step captions: for a headset, the garden window (a click), and gaze mode (a dwell). */
+const UNDO_HINT: readonly [xr: StringKey, window: StringKey, gaze: StringKey] = [
+  'undoHint',
+  'undoHintClick',
+  'undoHintGaze',
+];
+/** The tutorial's end: the one thing it never named, the settings orb on the back of a hand (UX re-check item 12);
+ *  in one-hand or gaze mode the orb waits in the view box instead (PanelSystem), so the hint says to look for it. */
 const SETTINGS_HINT: StringKey = 'settingsHint';
+const SETTINGS_HINT_LOOK: StringKey = 'settingsHintLook';
 
 export class OnboardingSystem extends createSystem({}) {
   readonly machine = new Onboarding((from, to) =>
@@ -89,7 +96,8 @@ export class OnboardingSystem extends createSystem({}) {
       }),
       // The first removal of the session: the undo petal is a target (UX §7), one hint while it is there.
       bus.on('garden:removed', () => {
-        if (settings.get().hintsEnabled) this.raiseNotice(UNDO_HINT);
+        const s = settings.get();
+        if (s.hintsEnabled) this.raiseNotice(UNDO_HINT[this.inWindow ? 1 : s.gazeDwell ? 2 : 0]);
       }),
       bus.on('gesture:release', ({ gesture, target }) => {
         if (target?.kind !== 'plant' || (gesture !== 'pull' && gesture !== 'drag')) return;
@@ -149,7 +157,9 @@ export class OnboardingSystem extends createSystem({}) {
 
   /** At `done`, once a session: where settings are. Not in the garden window (no orb there), not with hints off. */
   private sayDone(): void {
-    if (this.machine.step === 'done' && !this.inWindow && settings.get().hintsEnabled) this.raiseNotice(SETTINGS_HINT);
+    const s = settings.get();
+    if (this.machine.step !== 'done' || this.inWindow || !s.hintsEnabled) return;
+    this.raiseNotice(s.oneHand || s.gazeDwell ? SETTINGS_HINT_LOOK : SETTINGS_HINT);
   }
 
   /** Says a notice once a session, through the caption line (CAPTION_MIN_MS, one at a time, FoV); never in Listen. */
