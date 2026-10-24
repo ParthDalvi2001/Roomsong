@@ -13,6 +13,10 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Status:** proposed | approved (D-0xx) | rejected (reason)
 ```
 
+## Summary for Chinmay (25 Oct)
+**Built from your plan (emulator only, no headset):** the A fixes (T-172), the B set (T-173: per-plant cycles, the placed note, start fade, mono, stillness opens the garden), the UI sounds from the room chord and the Listen sweep (T-164), the Time-lapse switch and `storage.persist()` (T-174), and the render-and-measure tool `npm run audio:renders` (P-023/026/027).
+**Waiting on Parth:** the sound style A, B or C (item 35; until then the app keeps today's sound, the Bass 6.8 LU over the Bell), going live on Pages with a mirror (P-008, items 3 and 37 (2)), the plant colours (item 34) and the ripple captions (item 39 b); P-024 waits for a headset.
+
 ## Entries
 
 ### P-001 — Rename Bloomtone → Roomsong (2026-10-09, Chinmay's Claude)
@@ -52,7 +56,7 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** turn on Pages for the repo and keep a mirror.
 **Why:** every `github.io` link returned 404 on 14 Oct; the submitted URL depends on it.
 **Impact:** XS (settings; Parth's action, PROGRESS item 3 / T-108).
-**Status:** proposed
+**Status:** proposed; waiting on Parth (PROGRESS items 3 and 37 (2)): the link still answers 404 on 25 Oct; the daily uptime check of both links is built (T-187, f77a786)
 
 ### P-009 — Break the static loop (2026-10-14, Chinmay's Claude)
 **Change:** give each plant a seeded cycle length (1, 2, 3 or 5 bars) or a 10–15 % skip chance; raise FR-MUS-11 to Should and apply it outside Listen mode.
@@ -76,7 +80,7 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** `placed` plays the new plant's own voice and note quietly at once; all UI sounds tuned to the room's key.
 **Why:** a plant can wait up to one bar (2.9 s at 84 BPM) before it sounds; out-of-key UI breaks the music.
 **Impact:** S.
-**Status:** approved (D-056, group B); done (T-173 part 1, 19 Oct): the placed note in every style
+**Status:** approved (D-056, group B); done (T-173 part 1, 19 Oct): the placed note in every style; the UI sounds from the room chord built (T-164, v1.2.44, 23 Oct) and wired to their events (v1.2.48, 25 Oct)
 
 ### P-013 — Seeded per-note level variation (2026-10-14, Chinmay's Claude)
 **Change:** ±1.5 dB per note from a per-session seed; timing stays on the grid.
@@ -94,13 +98,13 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** 5 growth levels (seed, sprout, growing, flowering, fruiting) reached by listening hours (2, 12, 72, 432 h, small steps at each doubling); each level adds one sound layer; a seeded 4-note tune per seed; a persisted listening counter (schema bump); a labelled "Time-lapse (demo)" switch in the submitted build.
 **Why:** growth is days-only and silent today, so judges never meet it; pitch: "your room tunes it, your listening grows it".
 **Impact:** M; FR-MUS-09, FR-PER-01/02, API_SPEC `GrowthDelta`, the renderer; G2.
-**Status:** partly approved (D-057): only the "Time-lapse (demo)" switch over today's day-based growth, never saved (T-174); the listening-hours growth is skipped
+**Status:** partly approved (D-057): the time-lapse part built (T-174, API_SPEC v1.2.42, 23 Oct): a "Time-lapse" switch on the Garden tab and the `timeLapse` flag, a simulated day every 4 s, never saved; the listening-hours growth skipped (D-057)
 
 ### P-016 — Stillness opens the garden (2026-10-14, Chinmay's Claude)
 **Change:** a still head facing the bed for ~8 s → halo brighter, reverb slightly wider, growth counted ×2; the gazed plant +2 dB.
 **Why:** gives "listening" a real input with no gesture; strengthens Listen mode and accessibility.
 **Impact:** S; G2.
-**Status:** approved (D-056, D-057): to build without the growth ×2 part (T-173 part 2)
+**Status:** approved (D-056, D-057); built without the growth ×2 part (T-173 part 2b, API_SPEC v1.2.45, 23 Oct): a head still on the bed for 8 s lifts the halo, widens the reverb send and the gazed plant sings 2 dB louder
 
 ### P-017 — Clap-to-tune spike (2026-10-14, Chinmay's Claude)
 **Change:** a 1-day timeboxed headset test: mic in an immersive session, clap detection, RT60 from T20, fallback to the Sabine estimate.
@@ -140,7 +144,7 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** 60 s, 48 kHz WAV renders of the five-voice mix (Wanderer plus three signatures) with loudness, peak and L/R numbers; references within ±0.5 dB, before and after T-164.
 **Why:** the real mix has never been heard or measured; the Bass is about 5 dB above the Bell.
 **Impact:** S; tooling; headset week.
-**Status:** approved (D-057): one render-and-measure tool with P-026 and P-027 (T-173 part 2)
+**Status:** approved (D-057); built as `npm run audio:renders` (T-173 part 2a, TC-AUD-09, 23 Oct): 60 s five-voice WAVs with LUFS, peak and balance; rooms −11.2 to −11.6 LUFS, peaks ≤ −2.3 dBFS; in today's sound the Bass is 6.8 LU over the Bell, in style B level (`.tmp/renders/STYLES.md`)
 
 ### P-024 — Developer audio capture switch and health log (2026-10-16, Chinmay's Claude)
 **Change:** a developer-only switch that taps the master output with an AudioWorklet into a 48 kHz WAV, plus a once-a-second log (context state, sample rate, latencies, dropouts if available, tick timing, voice count).
@@ -152,22 +156,22 @@ Do not edit any other file under `specs/` from the PM's copy. To send: paste thi
 **Change:** UI sounds start at the current audio time; −10 to +3 LU relative to the music; partials inside the room's chord; ≤ 70 ms from pinch to sound.
 **Why:** feedback lagging 70–100 ms is rated worse; the scheduler's look-ahead alone is 95–120 ms.
 **Impact:** XS (rules); with T-164.
-**Status:** approved (D-056); done as rules (T-172, 17 Oct): level read as dB against a full-height plant of the same voice; the 70 ms rule is a device measurement; the sounds themselves are T-164
+**Status:** approved (D-056); done as rules (T-172, 17 Oct): level read as dB against a full-height plant of the same voice; the 70 ms rule is a device measurement. The sounds built to these rules (T-164, v1.2.44, 23 Oct; the render tool fails a silent one) and wired (v1.2.48, 25 Oct)
 
 ### P-026 — Same-key room renders for an ABX test (2026-10-16, Chinmay's Claude)
 **Change:** same-key, same-seed renders that change only the reverb, plus pairs 1.2 vs 1.6 s and 1.6 vs 2.0 s.
 **Why:** proves "the room changes the sound" before the Devpost copy claims it.
 **Impact:** S; tooling; before G2.
-**Status:** approved (D-057): in the render-and-measure tool (T-173 part 2)
+**Status:** approved (D-057); built in `npm run audio:renders` (T-173 part 2a, TC-AUD-09, 23 Oct): same-key blind ABX reverb pairs 1.2/1.6 and 1.6/2.0 s; the room's reverb barely moves the level, so the test is honest
 
 ### P-027 — Scheduler and voice-steal stress renders (2026-10-16, Chinmay's Claude)
 **Change:** offline renders with injected main-thread stalls of 50/95/120/200 ms; a steal in a near-silent bed; a solo Bell at its top notes.
 **Why:** the −34.7 dB residual after a steal, Bell aliasing and the C♯6/D6 partial clash are untested.
 **Impact:** S; tests only; headset week.
-**Status:** approved (D-057): in the render-and-measure tool (T-173 part 2); the Bell part done in T-173 part 1
+**Status:** approved (D-057); built in `npm run audio:renders` (T-173 part 2a, TC-AUD-09, 23 Oct): stalls to 120 ms leave nothing late, 200 ms one note 12.9 ms late; a steal's worst click 51.6 dB below the bed; the Bell part done in T-173 part 1
 
 ### P-028 — A testable, durable listening clock (if P-015 is adopted) (2026-10-16, Chinmay's Claude)
 **Change:** count monotonic visible session time with a cap per tick; the time-lapse switch never writes the real counter; Playwright-clock e2e tests; call `navigator.storage.persist()`.
 **Why:** `AudioContext.currentTime` cannot be faked in e2e tests; a multi-year garden lives in best-effort storage.
 **Impact:** S; with P-015.
-**Status:** partly approved (D-057): only `navigator.storage.persist()` (T-174); the listening clock is skipped with P-015
+**Status:** partly approved (D-057): `navigator.storage.persist()` built (T-174, API_SPEC v1.2.42, 23 Oct: once after the first save, feature-detected, never blocking); the listening clock skipped with P-015
