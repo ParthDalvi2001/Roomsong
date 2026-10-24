@@ -2,7 +2,7 @@
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * file LICENSES/IWSDK-MIT.txt in the root directory of this source tree.
  */
 
 // The boot (LLD §3.3 A): the landing page first, then the app chunk. This file and what it imports without
