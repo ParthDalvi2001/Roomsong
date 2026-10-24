@@ -1,0 +1,44 @@
+# Uptime (T-187): once a day through the judging window (the submission, 17 Nov, to 11 Dec 2026) a GET of each
+# link: HTTP 200 and the page's own <title>Roomsong</title>, else the job fails. A failed run emails the repository
+# owner (GitHub's default notification for a failed workflow run on the default branch), so the outage is seen
+# without opening Actions. No deploy, no checkout, no secrets. GitHub runs schedules from the default branch only:
+# this file must be on main before the submission lock (SPRINT_PLAN T-187). The mirror (D-022) is the repository
+# variable MIRROR_URL (Settings > Secrets and variables > Actions > Variables); skipped while it is not set.
+name: uptime
+
+on:
+  schedule:
+    - cron: '17 3 * * *' # daily at 03:17 UTC (08:47 IST); GitHub may run a schedule some minutes late
+  workflow_dispatch: # Actions > uptime > Run workflow: a check at any date
+
+permissions: {} # nothing is read or written in the repository
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Both links answer 200 and are Roomsong
+        env:
+          PAGES_URL: https://parthdalvi2001.github.io/Roomsong/
+          MIRROR_URL: ${{ vars.MIRROR_URL }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          today=$(date -u +%F)
+          if [ "$EVENT" = schedule ] && { [ "$today" \< 2026-11-17 ] || [ "$today" \> 2026-12-11 ]; }; then
+            echo "$today is outside the judging window: nothing to check"
+            exit 0
+          fi
+          for url in "$PAGES_URL" "$MIRROR_URL"; do
+            if [ -z "$url" ]; then
+              echo "no mirror yet (repository variable MIRROR_URL is unset): skipped"
+              continue
+            fi
+            # -f: an HTTP error is a failure; -L: Pages may redirect; an empty body fails the grep too
+            if curl -fsSL --max-time 30 "$url" | grep -q '<title>Roomsong</title>'; then
+              echo "$url: 200, Roomsong"
+            else
+              echo "::error::$url is down, or not Roomsong"
+              exit 1
+            fi
+          done

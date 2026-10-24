@@ -144,7 +144,7 @@ State: **done** · **not done** (on track) · **at risk** (a date, a human or a 
 | Tag `v1.0.0-submission`, lock `main`, review on the `github-pages` environment, 17 Nov 12:00 | not done | T-185 |
 | Submit, 17 Nov 18:00 IST; confirmation screenshot | not done; `specs/06-release/evidence/` does not exist yet | T-185 |
 | Post-submission smoke test | not done | T-185 |
-| Uptime checks to 11 Dec | not done; `uptime.yml` does not exist yet and must be on `main` before the lock | T-187 |
+| Uptime checks to 11 Dec | built (`uptime.yml`, 25 Oct); must be on `main` before the lock; `MIRROR_URL` to set when the mirror is chosen | T-187 |
 
 ### 3.2 Form fields (§2)
 | Item | State | Task |

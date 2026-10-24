@@ -86,7 +86,7 @@ Tags mark commits on `main`; none of them triggers a deploy (§2).
 
 ## 6. Uptime during judging (2026-11-18 → 2026-12-11; T-187)
 - **Both links, daily:** `curl -fsS https://parthdalvi2001.github.io/Roomsong/version.json` and `curl -fsS <mirror>/version.json`. Both answer, and both show the submitted `commit`.
-- `.github/workflows/uptime.yml` (a scheduled run of those two checks that opens an issue on failure) is **not built yet**; until it is, the check is by hand. GitHub runs schedules from the default branch only, which is `main`: `uptime.yml` must be on `main` before the submission lock.
+- `.github/workflows/uptime.yml` is built (`uptime.yml`, 25 Oct): daily, HTTP 200 and the page title on both links, a failed run emails the owner (no issue is opened); it does not compare `version.json`'s `commit`, which stays the by-hand check of bullet 1; the mirror is the repository variable `MIRROR_URL`. GitHub runs schedules from the default branch only, which is `main`: `uptime.yml` must be on `main` before the submission lock.
 - Human also opens the Pages URL on the headset twice a week (when one exists).
 - If the Pages link is down:
   1. Check the mirror. If it is up, the entry is still reachable through the link in the Devpost description; point the README link at it.
