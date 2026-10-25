@@ -1,6 +1,6 @@
 # Device script S1 — the sittings with a headset (T-129)
 
-**Status:** the blocks marked "can be run today" are ready to run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8; the tuning ripple's look (T-142) added to block 17 on 2026-10-16 against `develop` af94284; the first-minute guide (T-150) added to block 11 and the ripple's notes (T-142b) to block 17 on 2026-10-17 against `develop` dca03de; the PM's headset-week sound checks (Chinmay's 16 Oct update §7, which supersedes PM_PROPOSALS P-020; D-057) added to blocks 5, 11, 12, 14 and 15 on 2026-10-19 against `develop` 079944d.
+**Status:** the blocks marked "can be run today" are ready to run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8; the tuning ripple's look (T-142) added to block 17 on 2026-10-16 against `develop` af94284; the first-minute guide (T-150) added to block 11 and the ripple's notes (T-142b) to block 17 on 2026-10-17 against `develop` dca03de; the PM's headset-week sound checks (Chinmay's 16 Oct update §7, which supersedes PM_PROPOSALS P-020; D-057) added to blocks 5, 11, 12, 14 and 15 on 2026-10-19 against `develop` 079944d; the device checks left open by the work of 23 to 25 Oct (the coffee table after BUG-010, the device half of T-166's room matrix, the chord when the bed lands) added to blocks 10 and 17 on 2026-10-25 against `develop` 93af00a.
 
 This script produces results. It contains none.
 
@@ -28,25 +28,25 @@ You need only this file during the sitting.
 | 7 | A room without Space Setup | what the headset gives with no room scan · a saved anchor asked for in another room | 10 min | today |
 | 8 | The app: landing page and Enter | start times (T1, T2) · no drawn hands · does one click start sound and session | 15 min | today |
 | 9 | The app: headset off and on, the menu, leaving | what a pause looks like to the app · does the sound come back by itself | 15 min | today (the steps you listen to: T-128d) |
-| 10 | The app: the bed on your table | the bed on the real table · the hint when no table is found · the table limits of D-034 | 15 min | needs T-128c |
+| 10 | The app: the bed on your table | the bed on the real table · the hint when no table is found · the table limits of D-034 · a coffee table after BUG-010 | 15 min, and 7 min for the coffee table | needs T-128c (the coffee table: the BUG-010 fix too) |
 | 11 | The app: plant, first sound, first loop | first sound within 20 s, first loop within 90 s · does a plant land where your fingers are · the first-minute guide: the ghost pinch, the hints from your seat, a stranger's first minute (T-150) · five first plays, thinking aloud (L5) | 10 min, and 8 min for the guide (12 more with a stranger); the five first plays 60 min, a sitting of their own | needs T-128d (with T-127); the guide needs T-150 |
 | 12 | The app: the settings panel and its orb | the orb · reading the panel · hitting its buttons · the long hold · by looking · pinch to sound, filmed (F11) | 15 min, and 10 min for the film (10 more on the Mac afterwards) | needs T-128d; the film's panel press needs T-164 |
 | 13 | The app: hands lost | the the hand-out-of-view icon (a palm in a dashed ring) words · the 0.2 s grace | 10 min | needs T-128d (with T-127) |
 | 14 | The app: ten minutes with a full garden | frame rate with sound and hands · steady time · Bass on the speakers · drift of the bed · what a hand lights up (T-119) · speakers against headphones, and the app at 100 % (L7) · ten minutes kept on, startles, turning it down (L4, L8) | 30 min, and 31 min for the sound checks | needs T-128d |
 | 15 | The app: a key change listened to | the re-tune, rated · does the sound come from the plant (L6) · the 3D-sound comparison (HRTF A/B, T-145) | 10 min, and 10 min for the sound as you move (15 more for the comparison) | needs T-128d; the comparison needs an HRTF switch, not built |
 | 16 | The app: the garden comes back | the saved place: does the bed return, in how many seconds, how many cm off · the reach slack · the anchor count · a week later, in bloom (T-119) | 35 min | needs T-128e |
-| 17 | Rooms against the tape measure | what the app reads of a room, against your tape · two rooms sound different · the tuning ripple's look and its three notes, once (T-142, T-142b) | 10 min a room, and 20 min once for the ripple | needs T-128c; the ripple needs T-128d, its notes T-142b |
+| 17 | Rooms against the tape measure | what the app reads of a room, against your tape · two rooms sound different · the tuning ripple's look and its three notes, once (T-142, T-142b) · the room matrix in six rooms, the device half of T-166 · the chord when the bed lands, once | 10 min a room (18 with the matrix), 20 min once for the ripple and 4 for the landing chord | needs T-128c; the ripple and the matrix need T-128d, the ripple's notes T-142b, the landing chord its fix |
 | 18 | Say no: the room permission, and hand tracking off | P2 permission decline · what the app says | 15 min | today |
 | 19 | Clear the site's data | do the saved places go with it | 10 min | part A today (USB cable) · part B needs T-128e |
 | 20 | Hand the results to Claude | the filled results sheet | 10 min | today |
 
-All of it is about 5 h 30 of blocks (5 h 45 with the stranger of block 11), over 6 hours with setup and breaks. That is too long for one sitting, so there are two, and a walk through other rooms. The PM's headset-week sound checks (D-057) add 51 minutes, and an hour with five new people: they have sittings of their own, in the table below.
+All of it is about 5 h 30 of blocks (5 h 45 with the stranger of block 11), over 6 hours with setup and breaks. That is too long for one sitting, so there are two, and a walk through other rooms. The PM's headset-week sound checks (D-057) add 51 minutes, and an hour with five new people: they have sittings of their own, in the table below. The checks of 23 to 25 Oct add 7 minutes to block 10, 8 minutes a room to the room walk (six rooms) and 4 minutes once.
 
 | Sitting | Blocks, in this order | Time |
 |---|---|---|
 | **Sitting 1, the test pages and the app's entry.** Can be run today | 0 to 9 · 18 · 20 (and 19 part A only if time is left and you have a USB cable) | 2 h 50 of blocks; about 3 h 35 with 30 minutes of setup and two short breaks |
 | **Sitting 2, the garden in the app.** Needs T-128c, T-128d and T-128e | 0 again for the new build (10 min) · the listening steps of 9 (5 min) · 10 to 16 · 19 (part A, if not done in sitting 1, and part B) · 20 | 2 h 50 of blocks (3 h with the stranger of block 11); about 3 h 30 with setup and breaks |
-| **Room walk.** Needs T-128c | 17, in each other room you can reach; its ripple steps once, in room 1 (needs T-128d; the notes T-142b) | 10 minutes a room, and 20 minutes once; any day you have the headset |
+| **Room walk.** Needs T-128c | 17, in each other room you can reach; its ripple steps and the landing chord once, in room 1 (needs T-128d; the notes T-142b; the chord its fix); the room matrix in the six rooms it names (needs T-128d) | 10 minutes a room, 18 with the matrix, and 24 minutes once; any day you have the headset |
 | **The sound checks (D-057).** Needs T-128d | 0 again for the new build (10 min) · the film of block 12 (F11) · the two sound checks of block 14 (L7; L4 and L8) · the sound as you move of block 15 (L6) · 20. Each check starts from its own "You need", so they also fit into sitting 2, each right after its block | 51 min of checks, 71 with blocks 0 and 20; about 1 h 30 with setup and a break. The 3D-sound comparison adds 15 min once its switch is built |
 | **Five first plays (L5).** Needs T-128d | the five first plays of block 11 | 60 minutes and five people new to Roomsong; any day you have the headset |
 | **One hour, a friend's headset.** Can be run today | see "One-hour version" near the end | 1 hour |
@@ -911,6 +911,58 @@ The four ways, which the app calls levels: **1** a surface the headset labels as
 - No ring 15 seconds after you see the room: tell Claude. It is a top-severity bug.
 - The bed floats although you sit at your Space Setup table: check that you faced the table, and that "This device" says "Table detection: on." (block 8). If the pinch page said `table` in block 2 and the app floats, the app is wrong: tell Claude, and name D-040.
 - No pale ring and no words in the second room: the headset gave no hit-test there. Compare with `hitTest.hits` of block 7.
+
+### Also, a coffee table after BUG-010 (7 min)
+
+**Needs: T-128c and the BUG-010 fix** (on `develop` since 23 Oct; block 0 tells you the build has it). Checked against `develop` 93af00a. Run it right after part B, at the same coffee table.
+
+**Purpose:** before BUG-010 a surface labelled `table` was taken at any height, so a coffee table 0.42 m high put the bed 1.18 m under the eyes (the emulator's `low-table` room). Since the fix a labelled table must also be 0.5 to 1.1 m above the floor, as at level 2. Two questions only a headset answers: does Space Setup label a coffee table `table` at all, and where does the bed go when a coffee table is all there is.
+
+**Answers:** BUG-010 (the device check) · D-034 (the limit of 0.5 m) · PROGRESS item 41 (the room's sound with a floating bed beside a low table) · TC-E2E-13's `low-table` room on a headset.
+
+**You need:** a sofa or a low chair with a coffee table about 40 cm high in front of it, in a room where you ran Space Setup and added the coffee table (if Space Setup asks what it is, choose "Table" (unchecked)); the tape; the capability page bookmark; the "app, dev" bookmark; the console, if you have the cable.
+
+**Checked against:** `src/room/PlacementSolver.ts` (`spotOn`: a plane is used at level 1 when it is labelled `table` or `desk` and is 0.5 to 1.1 m above the floor, at level 2 when it is in that band; nothing less than 0.25 m below the eyes), `src/room/config.ts` (`SURFACE_MIN_HEIGHT_M` 0.5, `SURFACE_MAX_HEIGHT_M` 1.1, `FLOATING_DROP_M` 0.25), `tests/e2e/29-room-matrix.spec.ts` (the `low-table` room: level 4, the bed 0.45 m ahead and 0.25 m under the eyes).
+
+**Know this first:** the app should not put the bed on the coffee table. With nothing else at table height in reach it shows the pale ring after 3 seconds; a pinch on the coffee table floats the bed (a hit lower than 0.5 m is not used), and so does waiting 10 seconds. A floating bed reads no room: the song is in the default tuning ("Wanderer").
+
+#### Steps
+
+1. Before the headset: with the tape, the coffee table's height (floor to its top) and, sitting on the sofa, your eye height (floor to the corner of your eye; ask someone, or hold the tape against your cheek).
+2. Open the capability page and run it once, sitting on the sofa (block 1's first run). Write down `planes.labels`: is the coffee table there, and as `table`, `other` or another word? Write down its height if the page shows one.
+3. Open "app, dev". Sit on the sofa, facing the coffee table, and pinch **Enter the garden**. Count the seconds until the pale ring or the bed shows.
+4. When the pale ring shows, look at the coffee table and pinch. Where does the bed land: on the coffee table, or floating in front of you?
+5. (console) Read `[events] room:placementLevel` (the numbers in order) and `[events] room:bedPlaced` (`level`). Read `[events] room:signature`: `keyRoot` and `mode`.
+6. With the tape, floor to the middle of the ring. Your eye height minus that is the bed's drop under your eyes.
+7. Plant one seed as in block 11. Can you reach the bed from the sofa without leaning forward? Would you have wanted it on the coffee table?
+8. Leave the session.
+
+#### Write down
+
+| Field | Value |
+|---|---|
+| Coffee table height; your eye height on the sofa | cm; cm |
+| Capability page: the coffee table's label | `table` / `desk` / `other` / another word / not found |
+| Seconds from Enter to the pale ring or the bed | seconds |
+| (console) Levels in order; the level placed | numbers; number |
+| Where the bed landed | on the coffee table / floating / elsewhere |
+| Drop under the eyes (eye height minus the ring's height) | cm |
+| (console) The room's key | `keyRoot`, `mode` |
+| Reach from the sofa without leaning; wanted it on the coffee table | yes / no; yes / no |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| Not on the coffee table | the bed does not land on a surface lower than 0.5 m: level 4 (floating), or level 2 or 3 on something else in the band | BUG-010, D-034 |
+| Reach | the ring's middle 35 to 45 cm in front of your head, its far edge at most 75 cm; a floating bed 25 cm under your eyes (the emulator: 0.25 m) | Golden Rule 2, FR-ROOM-01, FR-ROOM-03 |
+| The label | write down what Space Setup gave: it decides whether BUG-010 could happen on a real headset at all | BUG-010 |
+| The room's sound | floating means the default tuning: write down the key; Parth decides PROGRESS item 41 | PROGRESS item 41 |
+
+#### If it fails
+
+- The bed lands on the coffee table: the build lacks the fix (block 0), or the headset reads the coffee table higher than 0.5 m (write down the page's height). Tell Claude and name BUG-010.
+- The floating bed is too high or too low to reach from the sofa: write down the drop. Its height (25 cm under the eyes) is a first guess (D-034).
 
 ---
 
@@ -1882,6 +1934,113 @@ Do this part last in this block. The flag `fakeDay=+7` makes the garden a week o
 - Fewer than three: write down which instrument was missing, and which surface had no sweep.
 - A note out of tune: write down which (pad, bell or pluck), and the Key on the panel's Garden tab.
 
+### Also, the room matrix: the device half of T-166 (8 min a room, six rooms)
+
+**Needs: T-128c and T-128d** (a seed that sings). Checked against `develop` 93af00a and `tests/e2e/29-room-matrix.spec.ts`. Run it during the room walk: in each room, block 17's steps 1 to 5 first, then these.
+
+**Purpose:** the emulator runs the app in six made-up rooms (TC-E2E-13) and prints one line for each: the level, how far ahead of the head and how far below the eyes the bed is, the time from Enter to the first note, and the draw calls. This is the same in six real rooms.
+
+**Answers:** T-166 (the device half: six real rooms, all playable) · TC-DEV-02 (c) to (f) · Golden Rule 2 (reach) and 4 (first sound within 20 s) · NFR-PERF-03 (draws).
+
+**You need:** the tape; the "app, dev" bookmark (its read-out shows `fps`, `draws` and `tris`); the console, if you have the cable; three seeds to give in each room. The first room gets the starter seeds; in each other room press **New garden** on the panel's Garden tab first (block 12 shows where), so every room starts from an empty bed and three seeds.
+
+**Which real room stands in for which emulator room:**
+
+| Emulator room | What it stands for | A real room to use | The emulator's line (23 Oct) |
+|---|---|---|---|
+| `tiny` | a small room with a table | a study or box room of about 5 to 8 m², at its desk | level 1; 0.45 m ahead; 0.88 m under the eyes; first note 1.4 s; 14 draws |
+| `large` | a large room, the table re-centred | a living or dining room of 30 m² or more, at a big table whose middle is 1 m or more from your seat | level 1; 0.45 m; 0.85 m; 1.0 s; 14 |
+| `floor` | no table: the floor and the walls only | a scanned room, on a chair with nothing at table height within reach (a bedroom, a hall) | level 4; 0.45 m; 0.25 m; 5.8 s; 16 |
+| `no-walls` | no walls: the default tuning ("Wanderer") | a Space Setup with the furniture and no walls, if Space Setup lets you finish without them (unchecked); else an open-plan space with far walls; else write "not possible" | level 1; 0.45 m; 0.86 m; 1.0 s; 14 |
+| `low-table` | a very low table | the sofa and coffee table of block 10 ("a coffee table after BUG-010"): copy its numbers | level 4; 0.45 m; 0.25 m; 5.4 s; 16 |
+| `none` | no scene data | the second room, never scanned (blocks 7 and 10, part C); and once with the room permission declined (block 18, part B) | level 4; 0.45 m; 0.25 m; 5.3 s; 16 |
+
+The emulator's times are not yours: there the test plants the seed the moment one is there, here you plant it by hand. The emulator counts the first note of a plant (the tide's, or the placed note).
+
+#### Steps, once per room
+
+1. Before the headset: your eye height on the seat (floor to the corner of your eye), and the table's height if there is one.
+2. Open "app, dev". Pinch **Enter the garden** and start counting seconds aloud at that pinch.
+3. If the pale ring shows: look at your table (straight ahead if there is none) and pinch.
+4. Plant one seed as in block 11: palm up, pinch the seed, drop it on the bed. Write down your count when it first sings.
+5. Right after that note, look at the bed and read the read-out: `fps`, `draws`, `tris`.
+6. (console) `[events] room:bedPlaced`: `level`. `[events] room:signature`: `keyRoot`, `mode`, `reverbRt60`.
+7. With the tape: level from your nose (the headset's front) to the ring's middle, and to its far edge; floor to the ring's middle. Your eye height minus that is the drop.
+8. Leave the session.
+
+#### Write down, one column per room
+
+| | `tiny` | `large` | `floor` | `no-walls` | `low-table` | `none` (no scan) | `none` (declined) |
+|---|---|---|---|---|---|---|---|
+| The real room (name, m²) | | | | | | | |
+| Level | | | | | | | |
+| Bed ahead: nose to the ring's middle (cm) | | | | | | | |
+| Far edge: nose to the ring's far edge (cm) | | | | | | | |
+| Under the eyes: eye height minus the ring's height (cm) | | | | | | | |
+| Enter to the first note, planting by hand (s) | | | | | | | |
+| `fps`; `draws`; `tris` right after the note | | | | | | | |
+| `keyRoot`, `mode`, `reverbRt60` | | | | | | | |
+| Playable: a seed planted and heard | | | | | | | |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| All playable | in every room the bed lands, a seed is planted and it sings | T-166, TC-DEV-02 |
+| Reach | the ring's middle 35 to 45 cm ahead and its far edge at most 75 cm, in every room | Golden Rule 2, FR-ROOM-03, D-020 |
+| Under the eyes | at least 25 cm: a table's own drop at a table, 25 cm for a floating bed | D-034, FR-ROOM-01 |
+| First sound | within 20 s of the Enter pinch, your planting included | FR-SYS-03, Golden Rule 4 |
+| Draws and frame rate | `draws` at most 60 and `fps` at least 60 (72 is the aim) | NFR-PERF-03, Golden Rule 5 |
+| Against the emulator | write both; a level that differs from the emulator's line is the result to report | TC-E2E-13 |
+
+#### If it fails
+
+- No bed within 15 seconds in a room: a top-severity bug. Tell Claude with the room's name and the console's level lines.
+- A table room at level 3 or 4: see block 10's "If it fails"; the room then does not tune the song.
+- `draws` above 60: write down the room and what was in view (the vine on a wall, the ripple). Claude compares it with TC-E2E-09.
+
+### Also, the chord when the bed lands (4 min, room 1 only)
+
+**Needs: the landing-chord fix** (not on `develop` on 25 Oct: run this once block 0 shows a build that has it), on top of T-128d. Checked against `develop` 93af00a: `src/audio/AudioSystem.ts` (`room:bedPlaced` plays `ui('confirm')`) and `src/audio/uiSounds.ts` (`confirm`: the room chord as three plucked notes rising, 40 ms apart).
+
+**Purpose:** when the bed lands, three quick plucked notes rise: the room's chord. Since 91f079a (25 Oct) the chord waits for the room's re-tune, so the first landing of a page and a later one play the same chord, in the room's key; before it, the first landing's chord was dropped by the re-tune and not heard at all.
+
+**Answers:** the landing-chord fix · T-164 §6 (the bed's chord) · API_SPEC §1.2 (UI sounds from the room chord, T-172 and P-025).
+
+**You need:** room 1, if its key is not the default (block 17: `keyRoot` other than 0, or `mode` other than `majorPent`); else another room whose key is not; the "app, dev" bookmark; the console, if you have it.
+
+**Know this first:** the landing chord is short (about a tenth of a second) and comes just before the ripple's first note (0.3 s). Listen at the moment the ring settles.
+
+#### Steps
+
+1. Close the app's tab: a fresh page starts in the default key. Open "app, dev" again.
+2. Enter, eyes on the table. Listen for the three rising notes as the bed lands, then to the ripple's chord and the song after it.
+3. (console) `[events] room:signature`: `keyRoot`, `mode`.
+4. Open the panel's Garden tab and pinch **Re-place bed**; let the bed land on the table again. Listen to the three notes again.
+5. Did the two landing chords sound the same? Did the first one sit in tune with the ripple's chord and the song?
+6. Leave. Add `,forceSignature=wanderer` to the end of the address, close the tab, open it again and enter: the default key throughout, the reference in which the chords always match.
+
+#### Write down
+
+| Field | Value |
+|---|---|
+| The room's key | `keyRoot`, `mode` |
+| First landing: three notes heard; in tune with the ripple and the song | yes / no; yes / no / not sure |
+| Re-place: the same chord as the first landing | yes / no / not sure |
+| The Wanderer run: the landing chord in tune | yes / no |
+
+#### Pass rules
+
+| Check | Rule | Source |
+|---|---|---|
+| In the room's key | the first landing's chord is the Re-place one, and sits in tune with the ripple and the song | the landing-chord fix; T-164 §6; API_SPEC §1.2 |
+| Heard | three rising notes at each landing | T-164 §6 |
+
+#### If it fails
+
+- The first chord differs from the Re-place one, or clashes with the ripple: the build lacks the fix (block 0), or the fix does not hold on a headset. Write down the key and tell Claude.
+- No chord at all: if the ripple's notes come, write it down for T-164; if nothing sounds, see block 11's "If it fails".
+
 ---
 
 ## Block 18 — Say no: the room permission, and hand tracking off (15 min)
@@ -2176,6 +2335,22 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 104 | Pointing at the sound; head turns; buzz, grain, crackles, trailing, ticks; Render Capacity | | 15 | L6; T-145; NFR-PERF-06 |
 | 105 | The HRTF comparison: right guesses of 8; Render Capacity off and on | | 15 | T-145; NFR-PERF-10 |
 
+### The checks of 23 to 25 Oct — blocks 10 and 17
+
+| # | What | Your answer | From block | Who waits for it |
+|---|---|---|---|---|
+| 106 | Coffee table: its height; its Space Setup label | | 10 | BUG-010 |
+| 107 | Coffee table: the level placed; on it or floating; the drop under your eyes (cm) | | 10 | BUG-010; D-034 |
+| 108 | Coffee table: the room's key with that bed; reach from the sofa; wanted it on the coffee table | | 10 | PROGRESS item 41 |
+| 109 | Room matrix `tiny`: the real room; level; ahead, far edge, under the eyes (cm); first note (s); `fps`, `draws` | | 17 | T-166; TC-E2E-13 |
+| 110 | Room matrix `large`: the same numbers | | 17 | T-166; D-034 (re-centre) |
+| 111 | Room matrix `floor`: the same numbers | | 17 | T-166 |
+| 112 | Room matrix `no-walls`: the same numbers, or "not possible" | | 17 | T-166; FR-ROOM-04 |
+| 113 | Room matrix `low-table`: the numbers of 107 | | 10, 17 | T-166; BUG-010 |
+| 114 | Room matrix `none`: the same numbers, unscanned and declined | | 17, 18 | T-166; P2 |
+| 115 | All six playable; a room over 60 draws or under 60 fps | | 17 | T-166; NFR-PERF-03 |
+| 116 | The landing chord: the first landing in the room's key; the same as Re-place | | 17 | the landing-chord fix; T-164 §6 |
+
 ---
 
 ## One-hour version, for a borrowed headset
@@ -2305,7 +2480,7 @@ Not in this script, because no review note asks for it here and its own task or 
 | Time to the first surface, against the 3-second wait | block 10 (level 1 means it was there in time; the seconds are counted); brackets in blocks 1 and 2 |
 | Hit-test without Space Setup | block 7; block 10, part C |
 | Outline of a round table; cost of an unused hit-test source | last section |
-| A coffee table 0.4 m high | block 10, part B |
+| A coffee table 0.4 m high | block 10, part B; and "a coffee table after BUG-010" |
 | The two height limits and the 5 degrees (D-034) | blocks 1, 2 and 10, your tape |
 | **From T-140** | |
 | `room:features` against a tape in three rooms; the same room twice | block 17 |
@@ -2406,6 +2581,10 @@ Not in this script, because no review note asks for it here and its own task or 
 | F11: UI latency filmed at 240 fps, a placed plant and a panel press (it replaces the finger-to-sound row of the last section) | block 12, the film |
 | A pass at 100 % volume | block 5, step 8; block 14, speakers against headphones, step 5 |
 | The HRTF A/B with its cost (T-145) | block 15, the comparison (needs an HRTF switch) |
+| **From the work of 23 to 25 Oct** | |
+| BUG-010: does Space Setup label a 0.4 m coffee table `table`; where the bed goes, its level and its drop | block 10, a coffee table after BUG-010 |
+| T-166, the device half: six real rooms for the matrix's six, with the matrix's numbers | block 17, the room matrix |
+| The bed-landing chord in the room's key on the first placement (after its fix) | block 17, the chord when the bed lands |
 
 ---
 
