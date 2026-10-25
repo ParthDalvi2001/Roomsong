@@ -71,6 +71,12 @@ export class GardenAudioSystem extends createSystem(
   private readonly syncedPose = new Float64Array(16);
   /** This session has its signature. */
   private isTuned = false;
+  /**
+   * §6: a bed landed and its chord waits for the `room:signature` that follows a placement in the same chain
+   * (RoomSystem.settle → features → GardenSystem.tune): the re-tune releases every note, so a chord played at
+   * `room:bedPlaced` would be dropped whenever the key changes (every first placement outside the Wanderer).
+   */
+  private chordDue = false;
   /** The id of the seed on a hand (garden:seedOut), until it is planted or goes back; null for none. */
   private outSeed: string | null = null;
   /** Plants removed this session and not undone: one of them added again is an undo (§6 `undoFwd`). */
@@ -91,6 +97,10 @@ export class GardenAudioSystem extends createSystem(
         this.engine.setSignature(signature); // tuned first, then the plants: none is heard in the old key
         this.isTuned = true;
         this.sync();
+        if (this.chordDue) {
+          this.chordDue = false;
+          this.engine.ui('confirm'); // the bed landed (§6): its chord, in the new key, after the re-tune
+        }
       }),
       bus.on('garden:seedOut', ({ seed }) => void (this.outSeed = seed.id)),
       bus.on('garden:changed', ({ state, diff }) => {
@@ -124,15 +134,17 @@ export class GardenAudioSystem extends createSystem(
         kept[i] = ring;
         kept[i + 1] = step;
       }),
-      // §6: the bed landed (a restore too): its chord, from the bed. Before the signature the engine gets the bed
-      // with no plant, so the chord is at the bed and no restored plant is heard in the engine's default key.
+      // §6: the bed landed (a restore too): its chord, from the bed, once the signature that follows has tuned the
+      // engine (chordDue). Before the signature the engine gets the bed with no plant, so the chord is at the bed
+      // and no restored plant is heard in the engine's default key.
       bus.on('room:bedPlaced', () => {
         this.sync();
-        this.engine.ui('confirm');
+        this.chordDue = true;
       }),
       // The next session must not start with this one's plants at this one's place.
       bus.on('xr:sessionEnd', () => {
         this.isTuned = false;
+        this.chordDue = false;
         this.removed.clear();
         this.engine.syncPlants(NO_PLANTS, this.syncedPose);
       }),

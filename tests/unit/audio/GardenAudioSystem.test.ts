@@ -60,14 +60,14 @@ describe('GardenAudioSystem', () => {
     r.beds.add(r.bed);
     r.placed();
     r.system.update();
-    // The bed landed: its chord (§6) from the bed, which the engine gets with no plant: a restored garden must not
-    // be heard in the engine's default key.
-    expect(r.calls).toEqual(['syncPlants', 'ui confirm']);
+    // The bed landed: the engine gets the bed with no plant (a restored garden must not be heard in the engine's
+    // default key); its chord (§6) waits for the signature that follows, whose re-tune would drop it.
+    expect(r.calls).toEqual(['syncPlants']);
     expect(r.synced[0]!.plants).toEqual([]);
     expect(r.synced[0]!.pose).toEqual(r.bed.object3D!.matrixWorld.elements);
     r.calls.length = 0;
     r.signature();
-    expect(r.calls).toEqual(['setSignature', 'syncPlants']);
+    expect(r.calls).toEqual(['setSignature', 'syncPlants', 'ui confirm']);
     expect(r.synced[1]!.plants).toBe(restored.plants);
     expect(r.synced[1]!.pose).toEqual(r.bed.object3D!.matrixWorld.elements);
   });
@@ -205,13 +205,23 @@ describe('the UI sounds of the garden (T-164 §6)', () => {
     }
   });
 
-  it('the bed landed (room:bedPlaced, a restore too) plays confirm after the sync, so it sounds from the bed', () => {
+  it("the bed landed (room:bedPlaced, a restore too): its chord plays once, at the signature that follows the placement (the re-tune would drop it), after the sync; a signature with no placement plays none; a session's end forgets it", () => {
     const r = rig();
     r.beds.add(r.bed);
     r.signature();
     r.calls.length = 0;
     r.placed();
     bus.emit('room:bedPlaced', { placement: PLACEMENT, restored: true });
-    expect(r.calls).toEqual(['syncPlants', 'ui confirm', 'syncPlants', 'ui confirm']);
+    expect(r.calls).toEqual(['syncPlants', 'syncPlants']);
+    r.signature();
+    expect(r.calls).toEqual(['syncPlants', 'syncPlants', 'setSignature', 'syncPlants', 'ui confirm']);
+    r.calls.length = 0;
+    r.signature(); // a re-tune with no placement before it
+    expect(r.calls).toEqual(['setSignature', 'syncPlants']);
+    r.placed();
+    bus.emit('xr:sessionEnd', { visible: false });
+    r.calls.length = 0;
+    r.signature();
+    expect(r.calls).toEqual(['setSignature', 'syncPlants']);
   });
 });

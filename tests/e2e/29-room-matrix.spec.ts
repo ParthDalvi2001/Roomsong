@@ -9,7 +9,15 @@
 // permission declined) is a device matter.
 import { expect, test, type JSHandle, type Page } from '@playwright/test';
 
-import { enterXR, openApp, playHandPath, readHandPath, readRoom, WORLD_READY_MS, xrFrames } from './support/iwer';
+import {
+  enterXR,
+  openApp,
+  playHandPath,
+  readHandPath,
+  readRoom,
+  WORLD_READY_MS,
+  xrFrames,
+} from './support/iwer';
 
 type Core = typeof import('../../src/core/index');
 type RoomModule = typeof import('../../src/room/index');
@@ -34,7 +42,13 @@ const DRAWS_MAX = 60; // NFR-PERF-03, both eyes
 interface Probe {
   heard: { type: string; atMs: number; level?: number; key?: number; mode?: string; rt60?: number }[];
   enterAtMs: number;
+  /** The first sound of any kind (the bed's chord, T-164 §6): FR-SYS-03's 20 s. */
+  firstSoundAtMs: number;
+  /** The planted seed's first note on the grid: a trigger after `plant()`'s count. */
   firstNoteAtMs: number;
+  triggersBefore: number;
+  /** JS ms of the frame that heard `room:signature`: the re-tune, and the bed's chord rendering its strings. */
+  signatureFrameMs: number;
   samples: PerfSample[];
   seedId: string | null;
   plants(): number;
@@ -66,17 +80,29 @@ async function probeRoom(page: Page): Promise<JSHandle<Probe>> {
     const bed = world.getSystem(room.RoomSystem)!.bed;
     const update = world.update.bind(world);
     world.update = (delta, time) => {
+      const was = heard.length;
+      const t0 = performance.now();
       update(delta, time);
-      // The tide's notes count in triggers; the placed note (P-012) only in the voices sounding.
-      if (probe.firstNoteAtMs === 0 && (engine.stats.triggers > 0 || engine.stats.voices > 0))
-        probe.firstNoteAtMs = performance.now();
+      const now = performance.now();
+      if (heard.slice(was).some((e) => e.type === 'room:signature')) probe.signatureFrameMs = now - t0;
+      // The tide's notes count in triggers; the placed note (P-012) and the bed's chord only in the voices sounding.
+      if (probe.firstSoundAtMs === 0 && (engine.stats.triggers > 0 || engine.stats.voices > 0))
+        probe.firstSoundAtMs = now;
+      if (
+        probe.firstNoteAtMs === 0 &&
+        probe.triggersBefore >= 0 &&
+        engine.stats.triggers > probe.triggersBefore
+      )
+        probe.firstNoteAtMs = now;
     };
     document
       .querySelector('main button')
       ?.addEventListener('click', () => (probe.enterAtMs = performance.now()), { capture: true });
     const heard: Probe['heard'] = [];
     const at = () => performance.now();
-    core.bus.on('room:placementLevel', ({ level }) => heard.push({ type: 'room:placementLevel', atMs: at(), level }));
+    core.bus.on('room:placementLevel', ({ level }) =>
+      heard.push({ type: 'room:placementLevel', atMs: at(), level }),
+    );
     core.bus.on('room:bedPlaced', ({ placement }) =>
       heard.push({ type: 'room:bedPlaced', atMs: at(), level: placement.level }),
     );
@@ -94,7 +120,10 @@ async function probeRoom(page: Page): Promise<JSHandle<Probe>> {
     const probe: Probe = {
       heard,
       enterAtMs: 0,
+      firstSoundAtMs: 0,
       firstNoteAtMs: 0,
+      triggersBefore: -1,
+      signatureFrameMs: 0,
       samples: [],
       seedId: null,
       plants: () => garden.state?.plants.length ?? 0,
@@ -106,6 +135,7 @@ async function probeRoom(page: Page): Promise<JSHandle<Probe>> {
       },
       plant: () => {
         const id = probe.seedId!;
+        probe.triggersBefore = engine.stats.triggers; // the plant's own first note is the next trigger
         core.bus.emit('gesture:palmUp', { type: 'gesture:palmUp', hand: 'right' });
         core.bus.emit('gesture:release', {
           type: 'gesture:release',
@@ -155,27 +185,34 @@ for (const { room, stands } of MATRIX) {
     expect(await probe.evaluate((p) => p.plants())).toBe(1);
     await page.waitForFunction((p) => p.firstNoteAtMs > 0, probe, { timeout: FIRST_SOUND_MS });
     const had = await probe.evaluate((p) => p.samples.length);
-    await page.waitForFunction(([p, had]) => p.samples.length > had, [probe, had] as const, { timeout: 5000 });
+    await page.waitForFunction(([p, had]) => p.samples.length > had, [probe, had] as const, {
+      timeout: 5000,
+    });
 
     const r = await probe.evaluate((p) => ({
       level: p.heard.find((e) => e.type === 'room:bedPlaced')!.level!,
       signature: p.heard.find((e) => e.type === 'room:signature')!,
       reach: p.reach(),
       enterToBedMs: p.heard.find((e) => e.type === 'room:bedPlaced')!.atMs - p.enterAtMs,
+      enterToFirstSoundMs: p.firstSoundAtMs - p.enterAtMs,
       enterToFirstNoteMs: p.firstNoteAtMs - p.enterAtMs,
+      signatureFrameMs: p.signatureFrameMs,
       sample: p.samples[p.samples.length - 1]!,
     }));
     console.log(
       `T-166 ${room} (emulator): level ${r.level}; bed ${r.reach.aheadM.toFixed(3)} m ahead, ` +
         `${r.reach.dropM.toFixed(2)} m under the eyes, far edge ${(r.reach.aheadM + BED_OUTER_M).toFixed(3)} m; ` +
-        `signature key ${r.signature.key} ${r.signature.mode} rt60 ${r.signature.rt60}; Enter to bed ` +
-        `${Math.round(r.enterToBedMs)} ms, to the first note ${Math.round(r.enterToFirstNoteMs)} ms; ` +
-        `draws ${r.sample.draws}, tris ${r.sample.tris}, flash ${r.sample.maxFlashPerS}`,
+        `signature key ${r.signature.key} ${r.signature.mode} rt60 ${r.signature.rt60} ` +
+        `(its frame ${r.signatureFrameMs.toFixed(1)} ms JS); Enter to bed ${Math.round(r.enterToBedMs)} ms, ` +
+        `to the first sound ${Math.round(r.enterToFirstSoundMs)} ms, to the plant's first note ` +
+        `${Math.round(r.enterToFirstNoteMs)} ms; draws ${r.sample.draws}, tris ${r.sample.tris}, ` +
+        `flash ${r.sample.maxFlashPerS}`,
     );
     expect(r.reach.aheadM).toBeGreaterThanOrEqual(BED_CENTRE_M[0] - 1e-6);
     expect(r.reach.aheadM).toBeLessThanOrEqual(BED_CENTRE_M[1] + 1e-6);
     expect(r.reach.aheadM + BED_OUTER_M).toBeLessThanOrEqual(BED_FAR_EDGE_MAX_M);
-    expect(r.enterToFirstNoteMs).toBeLessThanOrEqual(FIRST_SOUND_MS);
+    expect(r.enterToFirstSoundMs).toBeLessThanOrEqual(FIRST_SOUND_MS); // FR-SYS-03
+    expect(r.enterToFirstNoteMs).toBeGreaterThan(0); // the planted seed's own note was heard (waited for above)
     expect(r.sample.draws).toBeLessThanOrEqual(DRAWS_MAX);
     expect(r.sample.maxFlashPerS).toBeLessThanOrEqual(3);
     expect(errors).toEqual([]);
