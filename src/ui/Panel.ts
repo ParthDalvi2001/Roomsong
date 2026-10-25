@@ -122,13 +122,14 @@ const ACTION_LABEL_X = -0.09;
 const ACTION_LABEL_W = 0.28;
 // The Garden tab's height row (T-167, T-174): "Height" and a narrow stepper on the left, so the Time-lapse switch
 // fits on its right and "Place the garden again" and "New garden (erases this one)" keep whole rows.
-const HEIGHT_LABEL_W = 0.06; // "Height" is about 0.055 m
+// The read-out is the number only ("+10" is about 0.036 m): "+10 cm" ran into the plus button's ring.
+const HEIGHT_LABEL_W = 0.065; // "Height" is about 0.06 m
 const HEIGHT_MINUS_X = -0.105;
-const HEIGHT_VALUE_X = -0.08; // "+10 cm" is about 0.055 m
-const HEIGHT_VALUE_W = 0.055;
-const HEIGHT_PLUS_X = 0;
-const TIME_LAPSE_X = 0.055; // one pitch from the plus
-const TIME_LAPSE_LABEL_W = 0.105; // to 1 cm short of the panel's edge
+const HEIGHT_VALUE_X = -0.08;
+const HEIGHT_VALUE_W = 0.04; // ends 1 cm before the plus button
+const HEIGHT_PLUS_X = -0.01;
+const TIME_LAPSE_X = 0.045; // one pitch from the plus
+const TIME_LAPSE_LABEL_W = 0.115; // "Time-lapse" is about 0.1 m: it ends about 2 cm short of the panel's edge
 const TUNED_Y = ROW_Y[3] + 0.005; // the two lines of "Tuned by" sit a little above the last row's middle
 const LINE_M = 0.013; // half the distance between those two lines
 // Both lines end before the Mono switch: "Tuned by: C major," is about 0.165 m, "echo 0.9 s" 0.09 m and the longest
@@ -241,7 +242,7 @@ const heightAfter = (garden: GardenState | null, steps: number): number =>
 
 function heightText(garden: GardenState | null): string {
   const cm = Math.round((garden?.bedHeightOffset ?? 0) * 100);
-  return `${cm > 0 ? PANEL.plus : ''}${cm} ${PANEL.centimetres}`;
+  return `${cm > 0 ? PANEL.plus : ''}${cm}`;
 }
 
 /**

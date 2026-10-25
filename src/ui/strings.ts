@@ -103,7 +103,6 @@ export const PANEL = {
   key: 'Key',
   fromRoom: '(room)',
   bedHeight: 'Height',
-  centimetres: 'cm',
   replaceBed: 'Place the garden again', // "Re-place bed" read as "Replace bed"
   start: 'start',
   newGarden: 'New garden (erases this one)',

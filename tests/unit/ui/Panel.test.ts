@@ -376,17 +376,17 @@ describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () =
   it('a bed-height step asks for the next 2 cm, from the height of the garden it last saw', () => {
     const panel = opened('garden');
     const asked = calls.bedHeight;
-    expect(words(panel)).toEqual(expect.arrayContaining(['Height', '0 cm']));
+    expect(words(panel)).toEqual(expect.arrayContaining(['Height', '0']));
     press(panel, 'height:+');
     press(panel, 'height:-');
     expect(asked).toEqual([{ metres: 0.02 }, { metres: -0.02 }]); // no garden seen: from 0
     panel.setGarden(garden([], [], { bedHeightOffset: 0.06 }));
-    expect(words(panel)).toContain('+6 cm');
+    expect(words(panel)).toContain('+6');
     press(panel, 'height:+');
     press(panel, 'height:-');
     expect(asked.slice(2)).toEqual([{ metres: 0.08 }, { metres: 0.04 }]);
     panel.setGarden(garden([], [], { bedHeightOffset: -0.04 }));
-    expect(words(panel)).toContain('-4 cm');
+    expect(words(panel)).toContain('-4');
   });
 
   it('stops the bed height at 10 cm up or down', () => {
@@ -397,7 +397,7 @@ describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () =
     expect(control(panel, 'height:-')?.dim).toBe(false);
     press(panel, 'height:+');
     expect(asked).toEqual([]);
-    expect(words(panel)).toContain('+10 cm');
+    expect(words(panel)).toContain('+10');
     panel.setGarden(garden([], [], { bedHeightOffset: -0.1 }));
     expect(control(panel, 'height:-')?.dim).toBe(true);
     press(panel, 'height:-');
@@ -717,6 +717,14 @@ describe('settings panel: targets of at least 4 cm with clear gaps (T-151, Golde
         }
       }
     }
+  });
+
+  it("the height read-out ends 1 cm or more before the plus button's ring, at its widest value", () => {
+    const panel = opened('garden');
+    panel.setGarden(garden([], [], { bedHeightOffset: 0.1 })); // "+10", the widest read-out
+    const plus = control(panel, 'height:+')!;
+    const readout = panel.texts().find((t) => t.text === '+10')!;
+    expect(plus.x - plus.w / 2 - (readout.x + readout.w)).toBeGreaterThanOrEqual(0.01 - 1e-9);
   });
 
   it('no label runs into a control or off the panel', () => {
