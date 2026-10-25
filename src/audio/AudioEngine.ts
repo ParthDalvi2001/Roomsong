@@ -27,6 +27,7 @@ import {
 import {
   BAR_GLIDE_TAUS,
   FLAT_Q_DB,
+  GROOVE_SEED,
   HEIGHT_RELEASE_S_MAX,
   IR_SAMPLES_PER_TICK,
   IR_SEED,
@@ -224,6 +225,9 @@ export class Engine implements AudioEngine {
   private suspending: Promise<void> | null = null;
   private settleSuspend: ((result?: Promise<void>) => void) | null = null;
   private tickMs = 0;
+
+  /** `seed`: the session's (API_SPEC §3 `seed`, else GROOVE_SEED), for the counter-line and the variations (T-164 §1.7, §1.8). */
+  constructor(private readonly seed: number = GROOVE_SEED) {}
 
   async init(ctx?: AudioContext): Promise<void> {
     // No await before the context is created and resumed: both happen in the call stack of the Enter gesture.
@@ -516,6 +520,7 @@ export class Engine implements AudioEngine {
     const r = this.recipe;
     const bell = new Bell(ctx, pool.ref, r);
     const choir = new Choir(ctx, pool.ref, r);
+    const pluck = new Pluck(ctx, pool.ref, r);
     // master → the breathing filter → the limiter; the echo returns into master (Layers.ts).
     const layers = new Layers({
       ctx,
@@ -523,12 +528,15 @@ export class Engine implements AudioEngine {
       scheduler,
       recipe: r,
       bell,
+      pluck,
       choirPulse: choir.pulse,
       bus,
       master,
       compressor: limiter.input,
       bed: this.bed,
       key: () => this.key,
+      steps: this.steps,
+      seed: this.seed,
     });
     const g: Graph = {
       ctx,
@@ -542,7 +550,7 @@ export class Engine implements AudioEngine {
       layers,
       bell,
       pad: new Pad(ctx, pool.ref, r),
-      pluck: new Pluck(ctx, pool.ref, r),
+      pluck,
       bass: new Bass(ctx, pool.ref, r),
       choir,
     };

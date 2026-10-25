@@ -5,9 +5,10 @@
 import { createSystem, Types, type Entity } from '@iwsdk/core';
 
 import { BedAnchor } from '../core/components.js';
-import { bus, log, settings } from '../core/index.js';
+import { bus, clock, flags, log, MS_PER_DAY, settings } from '../core/index.js';
 
 import { Engine, type AudioEngine } from './AudioEngine.js';
+import { MS_PER_MINUTE } from './config.js';
 
 import type { EventMap, Settings } from '../core/index.js';
 import type { Plant } from '../garden/index.js';
@@ -16,7 +17,12 @@ const NO_PLANTS: readonly Plant[] = Object.freeze([]);
 
 /** The app's audio engine, following the user's settings and the session. Call it once; `init()` it in the Enter gesture. */
 export function createAudioEngine(): AudioEngine {
-  const engine = new Engine();
+  // The counter-line's and the variations' draws (T-164 §1.7, §1.8, FR-MUS-11): the local day's number, so each day
+  // plays its own and a day plays the same in every session (fakeDay moves it through the clock); `seed` (API_SPEC
+  // §3, dev only) fixes them for a test.
+  const now = clock.now();
+  const day = Math.floor((now - new Date(now).getTimezoneOffset() * MS_PER_MINUTE) / MS_PER_DAY); // as garden's localDay
+  const engine = new Engine(flags.seed ?? day);
 
   const applySettings = (s: Readonly<Settings>): void => {
     engine.setTempo(s.tempo);

@@ -51,18 +51,21 @@ describe('AudioEngine.chordTone (T-142b)', () => {
         time: 2.3,
         p: { hz: hzForRing(WANDERER, 0, 'pad'), ...full('pad') },
         at: [0.1, 0.74, -0.5],
+        owner: null,
       },
       {
         voice: 'Bell',
         time: 3.5,
         p: { hz: hzForRing(WANDERER, 2, 'bell'), ...full('bell') },
         at: [0, 1.25, -2.25],
+        owner: null,
       },
       {
         voice: 'Pluck',
         time: 4.7,
         p: { hz: hzForRing(WANDERER, 3, 'pluck'), ...full('pluck') },
         at: [0, 2.5, 0],
+        owner: null,
       },
     ]);
   });

@@ -17,6 +17,7 @@ import {
   LIMITER_RELEASE_S,
   LIMITER_THRESHOLD_DB,
   MIX_DB,
+  NOISE_S,
   START_DELAY_S,
   TICK_MS,
   VOICE_CAP,
@@ -24,7 +25,7 @@ import {
 import { renderKarplusStrong } from '../../../src/audio/karplus.js';
 import { dbToGain, heightToGainDb } from '../../../src/audio/mapping.js';
 import { Scheduler } from '../../../src/audio/Scheduler.js';
-import { STYLES, type SoundStyle } from '../../../src/audio/styles.js';
+import { STYLES, type Recipe, type SoundStyle } from '../../../src/audio/styles.js';
 import { degreeToMidi, midiToHz } from '../../../src/audio/theory.js';
 import { Bass, bassPartials } from '../../../src/audio/voices/Bass.js';
 import { Bell } from '../../../src/audio/voices/Bell.js';
@@ -36,6 +37,7 @@ import { Pluck } from '../../../src/audio/voices/Pluck.js';
 import { MODE_DEGREES, RINGS, STEPS, WANDERER } from '../../../src/garden/index.js';
 
 import { FakeAudioContext, FakeNode, last } from './fakeAudio.js';
+import { isOwn, watchPool, type Played } from './uiRules.js';
 
 import type { ModeId, Plant, VoiceType } from '../../../src/garden/index.js';
 
@@ -183,7 +185,10 @@ describe('groove (§1.1)', () => {
     for (const style of ['A', 'B', 'C'] as const) {
       const s = STYLES[style];
       expect(s.humanizeDb).toBeGreaterThanOrEqual(1.5);
-      const { ctx, run } = await start(style, [plant('down', 'bell', 0, 0, 0)]);
+      const { ctx, engine, run } = await start(style, [plant('down', 'bell', 0, 0, 0)]);
+      // The humanize alone: a variation's swell (§1.8) moves a level too. The counter-line (§1.7) never plays on
+      // step 0, which has the plant.
+      (engine as unknown as { recipe: Recipe }).recipe.variations = false;
       run(32 * BAR_S);
       const level = heightToGainDb(0, s.heightFloorDb) + s.mixDb.bell; // on the downbeat: no accent
       const moved = carriers(ctx)
@@ -333,18 +338,21 @@ describe('harmony that moves (§1.3)', () => {
 describe('the loop varies (P-009)', () => {
   const BARS = 30; // 1-, 2-, 3- and 5-bar cycles come round together every 30 bars
   /** The steps that sounded in each bar, one plant a step: "0,2,4" is a bar where the plants of steps 0, 2, 4 played. */
-  const barsOf = (ctx: FakeAudioContext): string[] => {
+  const barsOf = (notes: readonly Played[]): string[] => {
     const bars: number[][] = Array.from({ length: BARS }, () => []);
-    for (const c of carriers(ctx)) {
-      const i = stepOf(c.startedAt as number);
+    for (const n of notes) {
+      const i = stepOf(n.time);
       bars[Math.floor(i / STEPS)]?.push(i % STEPS);
     }
     return bars.map((steps) => steps.sort((a, b) => a - b).join(','));
   };
   const play = async (style: SoundStyle | null) => {
-    const { ctx, engine, run } = await start(style, bells(8)); // on steps 0, 2 … 14: none is swung
+    const { engine, run } = await start(style, bells(8)); // on steps 0, 2 … 14: none is swung
+    const asked = watchPool(engine);
     run(BARS * BAR_S - STEP_S);
-    return { bars: barsOf(ctx), ctx, triggers: engine.stats.triggers };
+    // The plants' own notes: a variation's echo or ghost (§1.8) is owned by its plant too, a few steps after it.
+    const notes = asked.filter((n) => isOwn(n, stepOf));
+    return { bars: barsOf(notes), notes, triggers: engine.stats.triggers };
   };
 
   it('in a style each plant rests on its seeded cycle or skip: bars in a row differ, the same each run, on the grid', async () => {
@@ -356,8 +364,8 @@ describe('the loop varies (P-009)', () => {
     expect(played / (8 * BARS)).toBeLessThan(0.95);
     expect(a.triggers).toBe(played); // a rested note is not started, and not counted
     expect((await play('A')).bars).toEqual(a.bars); // seeded by the plants' ids and the session's seed
-    for (const c of carriers(a.ctx)) {
-      const t = c.startedAt as number;
+    for (const n of a.notes) {
+      const t = n.time;
       expect(Math.abs(t - stepTime(stepOf(t)))).toBeLessThanOrEqual(STYLES.A.humanizeS + 1e-9); // on its step
     }
     // Today's sound has no rest: every plant in every bar.
@@ -447,7 +455,10 @@ describe('builds (§1.5) and soft percussion (§1.6)', () => {
 
   it('the noise is one buffer, rendered once in setStyle, for every style; seeded white noise in −1..1', async () => {
     const { ctx, engine, run } = await start(null, bells(5));
-    const noiseBuffers = (): number => ctx.buffers.filter((b) => b.numberOfChannels === 1).length;
+    // One channel and NOISE_S long: the counter-line's Pluck strings (§1.7) are one-channel buffers too.
+    const noiseLength = Math.floor(ctx.sampleRate * NOISE_S);
+    const noiseBuffers = (): number =>
+      ctx.buffers.filter((b) => b.numberOfChannels === 1 && b.length === noiseLength).length;
     expect(noiseBuffers()).toBe(0);
     for (const s of ['A', 'B', 'C', 'A'] as const) {
       engine.setStyle(s);

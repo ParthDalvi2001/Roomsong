@@ -73,7 +73,10 @@ describe('audio/ dependency direction and purity (API_SPEC §1)', () => {
   });
 
   it('no file reads a random source or the wall clock: noise is seeded, and musical time is the audio clock', () => {
-    const impure = /\bMath\.random\b|\bDate\.now\b|\bnew Date\b|\bsetTimeout\b|\brequestAnimationFrame\b/;
+    // One Date is allowed: the zone offset of a time core's clock gave (AudioSystem.ts, the local day that seeds the
+    // counter-line and the variations, FR-MUS-11): it reads no clock, and no musical time comes from it.
+    const impure =
+      /\bMath\.random\b|\bDate\.now\b|\bnew Date\b(?!\(\w+\)\.getTimezoneOffset\(\))|\bsetTimeout\b|\brequestAnimationFrame\b/;
     for (const file of files) expect(impure.test(read(file)), file).toBe(false);
   });
 });

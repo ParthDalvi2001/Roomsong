@@ -21,6 +21,9 @@ import {
   BUILD_FADE_BARS,
   BUILD_PLANTS,
   CLAVE_OCTAVES,
+  COUNTER_DB,
+  COUNTER_MAX_PER_BAR,
+  COUNTER_MOTIF_BARS,
   CLAVE_RELEASE_S,
   DRONE_TAU_DIV,
   ECHO_MAX_S,
@@ -42,6 +45,13 @@ import {
   PARAM_SMOOTH_S,
   SHAKER,
   TICK,
+  VARIATION_BARS,
+  VARIATION_ECHO_DB,
+  VARIATION_ECHO_STEPS,
+  VARIATION_GHOST_DB,
+  VARIATION_GHOST_STEPS,
+  VARIATION_SWELL_BARS,
+  VARIATION_SWELL_DB,
 } from './config.js';
 import { dbToGain, heightToGainDb } from './mapping.js';
 import { degreeToMidi, midiToHz, VOICE_OCTAVE } from './theory.js';
@@ -55,6 +65,7 @@ import type { PercHit, PercKind, Recipe } from './styles.js';
 import type { VoicePool } from './VoicePool.js';
 import type { Bell } from './voices/Bell.js';
 import type { Voice, VoiceParams } from './voices/note.js';
+import type { Pluck } from './voices/Pluck.js';
 import type { Plant, RoomSignature } from '../garden/index.js';
 
 export interface LayersOptions {
@@ -72,14 +83,25 @@ export interface LayersOptions {
   /** The engine's bed pose, column-major, kept up to date in place: layer notes sound at the bed's centre. */
   bed: readonly number[];
   key: () => Pick<RoomSignature, 'keyRoot' | 'mode'>;
+  /** The counter-line's Pluck (§1.7) is the plants' own: its strings are theirs. */
+  pluck: Pluck;
+  /** The engine's plants by step, kept up to date in place: the counter-line and the variations draw from them. */
+  steps: readonly (readonly Grooved[])[];
+  /** The session's seed (API_SPEC §3 `seed`, else GROOVE_SEED): the counter-line's and the variations' draws. */
+  seed: number;
 }
 
-/** What `groove` needs of a plant's record. */
+/** What `groove`, the counter-line and the variations need of a plant's record. */
 export interface Grooved {
   plant: Plant;
   params: VoiceParams;
   /** grooveSeed(plant.id). */
   seed: number;
+  /** Its voice and its place: a variation plays its note again from there (§1.8). */
+  voice: Voice;
+  x: number;
+  y: number;
+  z: number;
 }
 
 interface LayerVoices {
@@ -95,6 +117,12 @@ interface LayerVoices {
 const HARMONY = 0;
 const TEXTURE = 1;
 const KICK = 2;
+const COUNTER = 3;
+const VARIATION = 4;
+/** The variations (§1.8), as hash() % 3 draws them. */
+const ECHO = 0;
+const GHOSTS = 1;
+const SWELL = 2;
 
 /** A drone note is held to the next chord: its hold is its `release` (× 1), its glide out a short one. */
 const DRONE_HOLD: Partial<Recipe> = {
@@ -147,7 +175,14 @@ export class Layers {
   private readonly feedback: GainNode;
   private readonly echoLpf: BiquadFilterNode;
   /** The absolute step (bar × STEPS + step) at which each build layer came in; −1 = not yet. */
-  private readonly entered = [-1, -1, -1];
+  private readonly entered: number[] = BUILD_PLANTS.map(() => -1);
+  /** §1.7: the counter-line notes played in this bar, at most COUNTER_MAX_PER_BAR. */
+  private counterInBar = 0;
+  /** §1.8: the variation of the current VARIATION_BARS-bar block (ECHO, GHOSTS, SWELL; −1 none), its first absolute step, and the plants it is on. */
+  private variation = -1;
+  private variationAbs = 0;
+  private varA: Grooved | null = null;
+  private varB: Grooved | null = null;
   /** The bar of the first step with plants since the bed was last empty: builds count bars from it. −1 = empty. */
   private firstBar = -1;
   /** The recipe in force with a drone's hold (DRONE_HOLD): the drone's Pad and Choir play it. */
@@ -192,6 +227,7 @@ export class Layers {
   restyle(now: number): void {
     const r = this.o.recipe;
     Object.assign(this.drone, r, DRONE_HOLD);
+    this.variation = -1; // the next block draws under the new recipe (today's has none)
     const c = this.o.compressor;
     c.threshold.setTargetAtTime(r.limiterThresholdDb, now, PARAM_SMOOTH_S);
     c.knee.setTargetAtTime(r.limiterKneeDb, now, PARAM_SMOOTH_S);
@@ -244,6 +280,9 @@ export class Layers {
         ? p.cutoffMul * Math.pow(2, s.padEvolveOctaves * Math.sin((2 * Math.PI * bar) / PAD_EVOLVE_BARS))
         : p.cutoffMul;
     n.gain = p.gain * dbToGain((s.accentsDb[step] as number) + s.humanizeDb * draw(r.seed, bar, 1));
+    // §1.8 the swell: this plant's notes rise VARIATION_SWELL_DB over VARIATION_SWELL_BARS, then fall back.
+    if (this.variation === SWELL && r === this.varA)
+      n.gain *= dbToGain(VARIATION_SWELL_DB * this.swell(bar * STEPS + step));
     this.noteTime = time + this.swing(step) + s.humanizeS * draw(r.seed, bar, 2);
   }
 
@@ -261,7 +300,10 @@ export class Layers {
     return (bar + (hash(r.seed, -1, 6) % cycle)) % cycle === 0;
   }
 
-  /** After the plants of a step: the bar line's automation, then the builds, the drone and the percussion. */
+  /**
+   * After the plants of a step: the bar line's automation, then the builds, the drone, the percussion, the
+   * counter-line (§1.7) and the variations (§1.8).
+   */
   step(step: number, time: number, bar: number, plants: number): void {
     this.time = time;
     if (step === 0) this.barLine(bar);
@@ -269,21 +311,28 @@ export class Layers {
       // An empty bed is silent, and builds again from its next plant.
       this.firstBar = -1;
       for (let i = 0; i < BUILD_PLANTS.length; i++) this.entered[i] = -1;
+      this.variation = -1;
       return;
     }
     if (this.firstBar === -1) this.firstBar = bar;
     if (this.voices === null) return;
     const abs = (this.abs = bar * STEPS + step);
-    const played = bar - this.firstBar;
+    const barsPlayed = bar - this.firstBar;
     for (let i = 0; i < BUILD_PLANTS.length; i++) {
       if (
         this.entered[i] === -1 &&
-        (plants >= (BUILD_PLANTS[i] as number) || played >= (BUILD_BARS[i] as number))
+        (plants >= (BUILD_PLANTS[i] as number) || barsPlayed >= (BUILD_BARS[i] as number))
       )
         this.entered[i] = abs;
     }
-    if (step === 0) this.chord(bar);
+    if (step === 0) {
+      this.counterInBar = 0;
+      if (bar % VARIATION_BARS === 0) this.drawVariation(bar);
+      this.chord(bar);
+    }
     this.percussion(step, bar);
+    this.counterLine(step, bar);
+    this.variations(step);
   }
 
   /**
@@ -377,6 +426,105 @@ export class Layers {
     if (kind === 'tick') return v.tick;
     if (kind === 'breath') return v.breath;
     return this.o.bell;
+  }
+
+  /**
+   * §1.7 the counter-line: on an empty step (no plant on it, resting or not), with the style's probability and at
+   * most COUNTER_MAX_PER_BAR a bar, a planted pitch one octave up, COUNTER_DB under the plant it copies, on the
+   * style's voice from the bed's centre. Its draws are the motif's, one per COUNTER_MOTIF_BARS bars, so the line
+   * plays once more before it moves.
+   */
+  private counterLine(step: number, bar: number): void {
+    const r = this.o.recipe;
+    if (r.counterProbability === 0 || this.entered[COUNTER] === -1) return;
+    if ((this.o.steps[step] as readonly Grooved[]).length > 0) return;
+    if (this.counterInBar >= COUNTER_MAX_PER_BAR) return;
+    const seed = this.o.seed;
+    const motif = (bar / COUNTER_MOTIF_BARS) | 0;
+    if (hash(seed, motif, 100 + step) >= r.counterProbability * HASH_RANGE) return;
+    const src = this.plantAt(hash(seed, motif, 120 + step));
+    if (src === null) return;
+    this.counterInBar++;
+    this.copy(src, 2, COUNTER_DB, this.fade(COUNTER));
+    this.hitTime = this.time + this.swing(step) + r.humanizeS * draw(seed, bar, 140 + step);
+    // shortcut: on the Pluck the note plays the nearest string re-pitched an octave up (a shorter ring, as a high
+    // piano note has); prepare its own strings at sync if Parth hears it as thin.
+    this.atCentre(r.counterVoice === 'pluck' ? this.o.pluck : this.o.bell);
+  }
+
+  /** `hit` from a plant's params: `octave` × its pitch, `db` under it, at `level` (a build's fade). */
+  private copy(src: Grooved, octave: number, db: number, level: number): void {
+    const h = this.hit;
+    const p = src.params;
+    h.hz = p.hz * octave;
+    h.gain = level * p.gain * dbToGain(db);
+    h.release = p.release;
+    h.cutoffMul = p.cutoffMul;
+    h.detune = p.detune;
+  }
+
+  /** Plant `n` (modulo their number) of the engine's lists, step by step; null with no plant. */
+  private plantAt(n: number): Grooved | null {
+    const steps = this.o.steps;
+    let count = 0;
+    for (let s = 0; s < steps.length; s++) count += (steps[s] as readonly Grooved[]).length;
+    if (count === 0) return null;
+    let i = n % count;
+    for (let s = 0; s < steps.length; s++) {
+      const list = steps[s] as readonly Grooved[];
+      if (i < list.length) return list[i] as Grooved;
+      i -= list.length;
+    }
+    return null;
+  }
+
+  /**
+   * §1.8 the variations (FR-MUS-11): for each block of VARIATION_BARS bars, one of an octave echo, ghost notes or a
+   * swell and the plants it is on, drawn from the session's seed; none until the layer is in (§1.5).
+   */
+  private drawVariation(bar: number): void {
+    const seed = this.o.seed;
+    const block = (bar / VARIATION_BARS) | 0;
+    const on = this.o.recipe.variations && this.entered[VARIATION] !== -1;
+    this.variation = on ? hash(seed, block, 160) % 3 : -1;
+    this.variationAbs = bar * STEPS;
+    this.varA = this.plantAt(hash(seed, block, 161));
+    this.varB = this.plantAt(hash(seed, block, 162));
+  }
+
+  /** The echo and the ghosts: a plant's note again, so many steps after its own. The swell is in `groove`. */
+  private variations(step: number): void {
+    const kind = this.variation;
+    if (kind === -1 || kind === SWELL) return;
+    const later = kind === ECHO ? VARIATION_ECHO_STEPS : VARIATION_GHOST_STEPS;
+    const a = this.varA;
+    const b = this.varB;
+    if (a !== null && this.abs === this.variationAbs + a.plant.cell.step + later) this.again(a, kind, step);
+    if (
+      kind === GHOSTS &&
+      b !== null &&
+      b !== a &&
+      this.abs === this.variationAbs + b.plant.cell.step + later
+    )
+      this.again(b, kind, step);
+  }
+
+  /** `p`'s note of the block's first bar again, from its own place and voice, unless it rested there or has gone. */
+  private again(p: Grooved, kind: number, step: number): void {
+    const bar = (this.variationAbs / STEPS) | 0;
+    if (this.rests(p, bar) || (this.o.steps[p.plant.cell.step] as readonly Grooved[]).indexOf(p) < 0) return;
+    const echo = kind === ECHO;
+    this.copy(p, echo ? 2 : 1, echo ? VARIATION_ECHO_DB : VARIATION_GHOST_DB, this.fade(VARIATION));
+    const r = this.o.recipe;
+    this.hitTime = this.time + this.swing(step) + r.humanizeS * draw(this.o.seed, bar, 180 + step);
+    // Owned by the plant: removing it inside the look-ahead releases this note too (FR-MUS-12, VoicePool.release).
+    this.o.pool.play(p.voice, this.hitTime, this.hit, p.x, p.y, p.z, p, this.time - r.humanizeS);
+  }
+
+  /** §1.8: the swell at absolute step `abs`, 0..1: up over VARIATION_SWELL_BARS from the block's start, then down. */
+  private swell(abs: number): number {
+    const t = (abs - this.variationAbs) / (VARIATION_SWELL_BARS * STEPS);
+    return t < 1 ? Math.max(0, t) : Math.max(0, 2 - t);
   }
 
   /** A layer note plays `hit` at `hitTime` from the bed's centre, and belongs to no plant. */

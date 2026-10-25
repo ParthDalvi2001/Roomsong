@@ -277,6 +277,8 @@ export const ACCENTS_DB: readonly number[] = [0, -5, -3, -5, -1, -5, -3, -5, -1,
  * a garden sways the same way each time; give it a session seed if a listener hears the repeat.
  */
 export const GROOVE_SEED = 164;
+/** Date.getTimezoneOffset() is in minutes: the local day that seeds the counter-line and the variations (FR-MUS-11). */
+export const MS_PER_MINUTE = 60_000;
 /**
  * P-009, the loop that does not repeat: each plant draws one of these cycles, in bars, from its seed (grooveSeed) and
  * rests in one bar of each, at a seeded place in it; a plant of the 1-bar cycle skips this share of its bars instead,
@@ -297,12 +299,34 @@ export const BAR_GLIDE_TAUS = 3;
  */
 export const FLAT_Q_DB = -3.0103;
 /**
- * Builds (§1.5): the harmony, texture (shaker, tick, clave, breath) and kick layers each come in at this many plants
- * or this many bars played, whichever is first, then fade in over BUILD_FADE_BARS. An empty bed plays none.
+ * Builds (§1.5): the harmony, texture (shaker, tick, clave, breath), kick, counter-line and variations layers each
+ * come in at this many plants or this many bars played, whichever is first, then fade in over BUILD_FADE_BARS. An
+ * empty bed plays none.
  */
-export const BUILD_PLANTS: readonly number[] = [2, 3, 5];
-export const BUILD_BARS: readonly number[] = [4, 8, 16];
+export const BUILD_PLANTS: readonly number[] = [2, 3, 5, 3, 5];
+export const BUILD_BARS: readonly number[] = [4, 8, 16, 12, 16];
 export const BUILD_FADE_BARS = 2;
+/**
+ * Counter-line (§1.7): on a step with no plant note, with the style's probability and at most this many a bar, a
+ * planted pitch one octave up, this many dB under the plant it copies. Its draws are made for this many bars at a
+ * time, so the line plays once more before it moves: a motif, not noise.
+ */
+export const COUNTER_DB = -10;
+export const COUNTER_MAX_PER_BAR = 3;
+export const COUNTER_MOTIF_BARS = 2;
+/**
+ * Variations (§1.8, FR-MUS-11): every VARIATION_BARS bars one of three, drawn from the session's seed: an octave echo
+ * (one plant's note again an octave up, this many dB under it, this many steps later), ghost notes (two plants' notes
+ * again, this many dB under, this many steps later), a swell (one plant up by this many dB over VARIATION_SWELL_BARS,
+ * then back). At most 2 notes a block (§1 budget).
+ */
+export const VARIATION_BARS = 4;
+export const VARIATION_ECHO_DB = -9;
+export const VARIATION_ECHO_STEPS = 3;
+export const VARIATION_GHOST_DB = -12;
+export const VARIATION_GHOST_STEPS = 2;
+export const VARIATION_SWELL_DB = 2;
+export const VARIATION_SWELL_BARS = 2;
 /**
  * Harmony that moves (§1.3): the chord roots, as degrees of the room's mode, one chord after the other. The fifth
  * is HARMONY_FIFTH_DEGREES degrees up, a perfect fifth for each of these roots, so every note stays in the scale

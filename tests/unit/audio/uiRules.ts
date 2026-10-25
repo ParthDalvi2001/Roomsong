@@ -8,12 +8,12 @@ import { UI_LEVEL_DB_RE_PLANT } from '../../../src/audio/config.js';
 import { dbToGain } from '../../../src/audio/mapping.js';
 import { TODAY, type Recipe } from '../../../src/audio/styles.js';
 import { hzForRing } from '../../../src/audio/theory.js';
-import { chordDegrees } from '../../../src/garden/index.js';
+import { chordDegrees, STEPS } from '../../../src/garden/index.js';
 
 import type { Engine } from '../../../src/audio/AudioEngine.js';
 import type { VoicePool } from '../../../src/audio/VoicePool.js';
 import type { VoiceParams } from '../../../src/audio/voices/note.js';
-import type { RoomSignature, VoiceType } from '../../../src/garden/index.js';
+import type { Plant, RoomSignature, VoiceType } from '../../../src/garden/index.js';
 
 export interface Played {
   /** The class of the note's voice: 'Pad', 'Bell'… */
@@ -21,7 +21,16 @@ export interface Played {
   time: number;
   p: VoiceParams;
   at: number[];
+  /**
+   * The plant record that owns the note: a plant's own note, and a variation's echo or ghost of it (§1.8, played a
+   * few steps after the plant's step); null for a layer or UI note.
+   */
+  owner: { plant: Plant } | null;
 }
+
+/** A plant's own note: owned, and on its plant's own step (a variation of it is a few steps later). */
+export const isOwn = (n: Played, stepOf: (time: number) => number): boolean =>
+  n.owner !== null && stepOf(n.time) % STEPS === n.owner.plant.cell.step;
 
 /** Each note the engine's pool is asked for: its voice's class, its time, its params as they were then, its place. */
 export function watchPool(engine: Engine): Played[] {
@@ -29,8 +38,14 @@ export function watchPool(engine: Engine): Played[] {
   const pool = (engine as unknown as { g: { pool: VoicePool } }).g.pool;
   const play = pool.play.bind(pool);
   vi.spyOn(pool, 'play').mockImplementation((...args) => {
-    const [voice, time, p, x, y, z] = args;
-    played.push({ voice: voice.constructor.name, time, p: { ...p }, at: [x, y, z] });
+    const [voice, time, p, x, y, z, owner] = args;
+    played.push({
+      voice: voice.constructor.name,
+      time,
+      p: { ...p },
+      at: [x, y, z],
+      owner: owner as { plant: Plant } | null,
+    });
     return play(...args);
   });
   return played;

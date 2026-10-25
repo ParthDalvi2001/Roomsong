@@ -1,6 +1,6 @@
 // NFR-PERF-08 for the T-164 layers: Layers.rests (P-009), Layers.groove and Layers.step, the code the scheduler tick
-// runs for every plant note and every step, create nothing with every layer of a style on (groove, echo, breathing filter, drone, kick
-// and shaker); and Layers.listen, the Listen sweep (§6), in and out across the bars, creates nothing either. The pool
+// runs for every plant note and every step, create nothing with every layer of a style on (groove, echo, breathing filter, drone, kick,
+// shaker, counter-line and variations); and Layers.listen, the Listen sweep (§6), in and out across the bars, creates nothing either. The pool
 // here takes each note and builds nothing: a note's own nodes are the voice triggers the rule allows
 // (CODING_GUIDELINES §5). The probe of the whole tick with a style is in engine.test.ts.
 import { describe, expect, it } from 'vitest';
@@ -37,27 +37,46 @@ const isClean = (cost: Cost): boolean =>
 function make() {
   const ctx = new FakeAudioContext();
   let notes = 0;
+  // The counter-line's notes (style A: on the Pluck, §1.7) and the variations' echoes and ghosts (owned by their
+  // plant, §1.8): this loop plays no plant note itself, so an owned note is a variation's.
+  let counterNotes = 0;
+  let variationNotes = 0;
+  const pluck = {};
   const pool = {
     ref: { note: null },
-    play: (): boolean => {
+    play: (
+      voice: object,
+      _t: number,
+      _p: object,
+      _x: number,
+      _y: number,
+      _z: number,
+      owner: object | null,
+    ): boolean => {
       notes++;
+      if (voice === pluck) counterNotes++;
+      if (owner !== null) variationNotes++;
       return true;
     },
   };
   const stepS = Scheduler.stepDurationFor(84);
   const compressor = ctx.createDynamicsCompressor();
+  const steps: Grooved[][] = Array.from({ length: STEPS }, () => []);
   const layers = new Layers({
     ctx: ctx.audio,
     pool: pool as never,
     scheduler: { stepS } as never,
     recipe: { ...STYLES.A },
     bell: {} as never,
+    pluck: pluck as never,
     choirPulse: {},
     bus: ctx.createGain() as never,
     master: ctx.createGain() as never,
     compressor: compressor as never,
     bed: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1],
     key: () => WANDERER,
+    steps,
+    seed: 164,
   });
   layers.restyle(0);
   // The fake keeps each parameter event as an object: the breathing filter's glide, once a bar and at each Listen
@@ -86,7 +105,12 @@ function make() {
     },
     params: { hz: 220, gain: 0.3, release: 1, cutoffMul: 1, detune: 0 },
     seed: i * 7919,
+    voice: {} as never,
+    x: 0,
+    y: 0.74,
+    z: -0.45,
   }));
+  for (const r of records) steps[r.plant.cell.step]!.push(r); // the engine's lists: the counter-line and the variations draw from them
   // The step times exist before the loop, as numbers already on the heap (the array starts with a non-number, so
   // it keeps them boxed): a fraction worked out in the loop and handed to a call would be boxed by the test. The
   // sink is a typed array for the same reason (a fraction written to a closure's variable is boxed).
@@ -115,6 +139,8 @@ function make() {
     layers,
     run,
     notes: () => notes,
+    counterNotes: () => counterNotes,
+    variationNotes: () => variationNotes,
     sink: () => sink[0]!,
     breathGlides: () => breathGlides,
     dimGlides: () => dimGlides,
@@ -141,10 +167,20 @@ describe('the layers per step (NFR-PERF-08, T-164)', () => {
       const m = make();
       m.run(); // warm up, and every layer is in
       const before = m.notes();
-      const rounds = measure(() => m.run());
+      // The counts as the judged round (the last) began: small integers, which a closure keeps off the heap.
+      let counterAt = 0;
+      let variationAt = 0;
+      const rounds = measure(() => {
+        counterAt = m.counterNotes();
+        variationAt = m.variationNotes();
+        m.run();
+      });
       expect(isClean(rounds[rounds.length - 1]!), JSON.stringify(rounds)).toBe(true);
       // Drone, kick and shaker played: about 11 layer notes a bar.
       expect((m.notes() - before) / ((rounds.length * STEPS_RUN) / STEPS)).toBeGreaterThan(10);
+      // The counter-line (§1.7) and the variations' echoes and ghosts (§1.8) played in the judged round too.
+      expect(m.counterNotes() - counterAt).toBeGreaterThan(0);
+      expect(m.variationNotes() - variationAt).toBeGreaterThan(0);
       expect(m.breathGlides()).toBeGreaterThan(STEPS_RUN / STEPS);
       expect(Number.isFinite(m.sink())).toBe(true);
     },

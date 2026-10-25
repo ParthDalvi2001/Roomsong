@@ -121,6 +121,11 @@ export interface Recipe {
   droneFifthOnChoir: boolean;
   /** §1.6 soft percussion: the hits of one bar. */
   perc: readonly PercHit[];
+  /** §1.7 counter-line: its voice, and the probability of a note on a step with no plant note (0 = none). */
+  counterVoice: 'pluck' | 'bell';
+  counterProbability: number;
+  /** §1.8 variations (FR-MUS-11): every VARIATION_BARS bars an octave echo, ghost notes or a swell. */
+  variations: boolean;
 }
 
 const NO_ACCENTS: readonly number[] = new Array<number>(16).fill(0);
@@ -181,6 +186,9 @@ export const TODAY: Readonly<Recipe> = Object.freeze({
   droneDb: 0,
   droneFifthOnChoir: false,
   perc: [],
+  counterVoice: 'bell',
+  counterProbability: 0,
+  variations: false,
 });
 
 const hits = (kind: PercKind, db: number, steps: readonly number[], everyBars = 1): PercHit[] =>
@@ -211,6 +219,9 @@ const ALIVE: Recipe = {
   cycleBars: CYCLE_BARS,
   cycleSkip: CYCLE_SKIP,
   echoSend: 0.25,
+  counterVoice: 'bell',
+  counterProbability: 0.25,
+  variations: true,
 };
 
 /** §4, one column each. */
@@ -248,6 +259,7 @@ export const STYLES: Readonly<Record<SoundStyle, Readonly<Recipe>>> = {
     droneOctave: 0,
     droneDb: -8,
     perc: [...hits('kick', -22, [0, 8]), ...SHAKER_8THS],
+    counterVoice: 'pluck',
   },
   /** Bright and glassy: bells and chimes. */
   B: {
@@ -319,6 +331,7 @@ export const STYLES: Readonly<Record<SoundStyle, Readonly<Recipe>>> = {
     droneOctave: 0,
     droneDb: -6,
     droneFifthOnChoir: true,
+    counterProbability: 0.15,
     perc: [...hits('kick', -22, [0]), ...hits('kick', -28, [2]), ...hits('breath', -30, [0], 2)],
   },
 };
