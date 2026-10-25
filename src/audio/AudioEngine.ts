@@ -296,9 +296,10 @@ export class Engine implements AudioEngine {
   }
 
   /**
-   * T-164 (SOUND_PASS_T164.md §4): one of the three styles Parth chooses between by ear, or null for today's sound.
-   * Not in the contract yet: the winner becomes the constants and this goes. The next notes play it; the strings and
-   * the bass wave are made again (the tick renders the strings, as after a re-tune), and the plants re-tuned.
+   * T-164 (SOUND_PASS_T164.md §4): one of the three styles, or null for today's sound (the default of a bare engine:
+   * tests and the listening page). The app's engine plays APP_STYLE, Parth's pick (D-060 (5); createAudioEngine). The
+   * next notes play it; the strings and the bass wave are made again (the tick renders the strings, as after a
+   * re-tune), and the plants re-tuned.
    */
   setStyle(style: SoundStyle | null): void {
     if (style === this.style) return;

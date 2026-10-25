@@ -264,10 +264,10 @@ export interface AudioEngine {
                                                        // nothing when the tide reaches it within one step (+ humanize), on a load, an undo or a move: an exception to the
                                                        // UI-sound rule that notes come from the room's chordDegrees
   setMono(mono: boolean): void;                        // T-173, P-014: sums the mix to mono at the master; no node is connected or disconnected
-  setStyle(style: 'A' | 'B' | 'C' | null): void;    // T-164, SOUND_PASS_T164.md: null (the default) = today's sound, the same schedule; A soft and warm,
-                                                       // B bright and glassy, C deep and ambient: groove (swing, accents, seeded humanize), a tempo echo, a drone through
+  setStyle(style: 'A' | 'B' | 'C' | null): void;    // T-164: the app's engine plays 'B' (APP_STYLE, D-060 (5)), set by createAudioEngine before init(); null (today's sound) is a bare Engine's default, for tests and the listening page.
+                                                       // A soft and warm, B bright and glassy, C deep and ambient: groove (swing, accents, seeded humanize), a tempo echo, a drone through
                                                        // the room's chords, a breathing master low-pass, layers that build with plants or bars, soft percussion; all
-                                                       // within VOICE_CAP; a plant note is never stolen by a later note of its own step. The app calls it once Parth picks
+                                                       // within VOICE_CAP; a plant note is never stolen by a later note of its own step. The app plays B since 25 Oct (D-060 (5))
   setStillness(isOpen: boolean, plantId: string): void; // (T-173 2b, P-016) the reverb send glides ×STILL_SEND_MUL (1.25, +1.9 dB; τ 0.7 s) while open, never past the
                                                        // style's cap and 0 stays 0 with reverb off; the plant plantId ('' = none) plays its next notes STILL_GAZE_DB (2) louder,
                                                        // once per note, on top of the Listen focus; closing takes both back the same way

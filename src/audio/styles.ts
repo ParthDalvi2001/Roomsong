@@ -45,6 +45,8 @@ import {
 import type { VoiceType } from '../garden/index.js';
 
 export type SoundStyle = 'A' | 'B' | 'C';
+/** D-060 (5): Parth's pick by ear, the app's sound. Null (today's sound) is left for tests and the listening page. */
+export const APP_STYLE: SoundStyle = 'B';
 
 export type PercKind = 'kick' | 'shaker' | 'tick' | 'clave' | 'breath';
 /** One percussion hit of the bar: on `step`, `db` under a full-height Bell, in every `everyBars`-th bar. */

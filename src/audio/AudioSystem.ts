@@ -9,6 +9,7 @@ import { bus, clock, flags, log, MS_PER_DAY, settings } from '../core/index.js';
 
 import { Engine, type AudioEngine } from './AudioEngine.js';
 import { MS_PER_MINUTE } from './config.js';
+import { APP_STYLE } from './styles.js';
 
 import type { EventMap, Settings } from '../core/index.js';
 import type { Plant } from '../garden/index.js';
@@ -23,6 +24,7 @@ export function createAudioEngine(): AudioEngine {
   const now = clock.now();
   const day = Math.floor((now - new Date(now).getTimezoneOffset() * MS_PER_MINUTE) / MS_PER_DAY); // as garden's localDay
   const engine = new Engine(flags.seed ?? day);
+  engine.setStyle(APP_STYLE); // before init(): the graph is built in it (D-060 (5))
 
   const applySettings = (s: Readonly<Settings>): void => {
     engine.setTempo(s.tempo);

@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { START_DELAY_S, TEMPO_MAX_BPM, TEMPO_MIN_BPM } from '../../../src/audio/config.js';
 import * as audio from '../../../src/audio/index.js';
 import { Scheduler } from '../../../src/audio/Scheduler.js';
+import { APP_STYLE, STYLES } from '../../../src/audio/styles.js';
 import * as coreConfig from '../../../src/core/config.js';
 import { bus, DEFAULT_SETTINGS, log, settings } from '../../../src/core/index.js';
 
@@ -51,6 +52,18 @@ describe('settings → engine', () => {
     ctx.currentTime = START_DELAY_S + (16 * Scheduler.stepDurationFor(120)) / 2;
     expect(engine.clock.barPhase()).toBeCloseTo(0.5, 9); // half a bar at 120 BPM
     ctx.currentTime = 0;
+  });
+
+  it("a new engine plays style B, Parth's pick (D-060 (5)): its limiter and its 2-step echo from the start", () => {
+    expect(APP_STYLE).toBe('B');
+    const compressor = ctx.of('compressor')[0] as FakeNode;
+    expect(compressor.threshold.last('target')?.value).toBe(STYLES.B.limiterThresholdDb); // today's: −10 dB
+    expect(compressor.ratio.last('target')?.value).toBe(STYLES.B.limiterRatio);
+    const delay = ctx.of('delay')[0] as FakeNode;
+    expect(delay.delayTime.last('set')?.value).toBeCloseTo(
+      STYLES.B.echoSteps * Scheduler.stepDurationFor(120),
+      9,
+    );
   });
 
   it('settings:changed reaches the engine', () => {
