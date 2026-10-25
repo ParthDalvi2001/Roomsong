@@ -18,7 +18,7 @@ const isSdk = (url: string) => /@iwsdk_core|\/three\b|uikit/.test(url);
 const BOOT_BUDGET_BYTES = 52_000;
 const FOVEATION_MEDIUM = 2 / 3; // NFR-PERF-09, pinned here on purpose (render/config.ts)
 const AUDIO_START_GRACE_MS = 3000; // LLD §3.3 B, pinned here on purpose (src/app.ts)
-const NO_SOUND = 'E_AUDIO_CONTEXT'; // the caption "Sound unavailable"
+const NO_SOUND = 'E_AUDIO_CONTEXT'; // the caption "No sound. Leave and enter again."
 
 type Core = typeof import('../../src/core/index');
 type Components = typeof import('../../src/core/components');
@@ -430,7 +430,7 @@ test('a4 the Enter click starts the session and the sound: one audio context, ma
   expect(log).toContain('info app audio started');
   expect(log.filter((line) => line.includes(NO_SOUND))).toEqual([]);
   expect(await probe.evaluate((p) => p.raised)).toEqual([]);
-  // A tuning-ripple caption may be up meanwhile (the garden tunes the room, T-128d); "Sound unavailable" is not.
+  // A tuning-ripple caption may be up meanwhile (the garden tunes the room, T-128d); "No sound. Leave and enter again." is not.
   expect(await probe.evaluate((p) => p.captions.shown)).not.toBe(NO_SOUND);
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
@@ -541,7 +541,7 @@ test('a4 the session ends cleanly and a second Enter starts another, with no sec
   expect(offHost).toEqual([]);
 });
 
-test('a4 no sound, init() rejected: "Sound unavailable" is up from the session\'s start, and the session runs', async ({
+test('a4 no sound, init() rejected: "No sound. Leave and enter again." is up from the session\'s start, and the session runs', async ({
   page,
 }) => {
   const errors = watch(page);
@@ -566,7 +566,7 @@ test('a4 no sound, init() rejected: "Sound unavailable" is up from the session\'
   expect(errors[0]).toMatch(/^\[app\] E_AUDIO_CONTEXT /);
 });
 
-test('a4 no sound, a session with no click before it: "Sound unavailable" is up from its start', async ({
+test('a4 no sound, a session with no click before it: "No sound. Leave and enter again." is up from its start', async ({
   page,
 }) => {
   const errors = watch(page);
@@ -613,7 +613,7 @@ test('a4 no sound, a context that never starts: the caption comes after the grac
   expect(raised.map((each) => each.key)).toEqual([NO_SOUND]);
   const afterMs = raised[0]?.afterStartMs ?? NaN;
   console.log(
-    `T-128a no audio clock: "Sound unavailable" raised ${afterMs.toFixed(0)} ms after xr:sessionStart`,
+    `T-128a no audio clock: "No sound. Leave and enter again." raised ${afterMs.toFixed(0)} ms after xr:sessionStart`,
   );
   // 5 ms of slack below: a browser timer may fire a millisecond early. Above: a timer on a busy host is late.
   expect(afterMs).toBeGreaterThanOrEqual(AUDIO_START_GRACE_MS - 5);
@@ -650,7 +650,7 @@ test('a4 no sound, a later session whose audio context does not resume: the capt
   expect(raised.map((each) => each.key)).toEqual([NO_SOUND]);
   const afterMs = raised[0]?.afterStartMs ?? NaN;
   console.log(
-    `T-128a context not resumed: "Sound unavailable" raised ${afterMs.toFixed(0)} ms after xr:sessionStart`,
+    `T-128a context not resumed: "No sound. Leave and enter again." raised ${afterMs.toFixed(0)} ms after xr:sessionStart`,
   );
   expect(afterMs).toBeGreaterThanOrEqual(AUDIO_START_GRACE_MS - 5);
   expect(afterMs).toBeLessThan(AUDIO_START_GRACE_MS + 1500);

@@ -1,5 +1,5 @@
 // SeedSystem (T-127; API_SPEC §1.10 rule 8, LLD §3.2 priority 49): which event sends the seed where, the seed's
-// target and the "Garden is full" caption. Fake entities and queries (seedRig.ts), the real bus, renderer and
+// target and the "Garden full. Remove a plant first." caption. Fake entities and queries (seedRig.ts), the real bus, renderer and
 // guard: no ECS world, no XR. What a seed's glide looks like is SeedRenderer.test.ts; the per-frame cost is
 // SeedSystem.heap.test.ts; the whole flow on the emulator's hands is tests/e2e/16-seeds.spec.ts.
 import { Color, SRGBColorSpace } from 'three';
@@ -161,7 +161,7 @@ describe('SeedSystem: the supply and the seed that is out (API_SPEC §1.10 rule 
     },
   );
 
-  it('"Garden is full" on its own entity on full only, taken back before it is raised again (UX §7)', () => {
+  it('"Garden full. Remove a plant first." on its own entity on full only, taken back before it is raised again (UX §7)', () => {
     vi.spyOn(clock, 'now').mockReturnValue(1_790_000_000_000);
     const s = start();
     changed(SUPPLY);

@@ -34,7 +34,7 @@ export const STRINGS = {
   // A session with no sound (API_SPEC §1.10 rule 2): src/app.ts raises it. The garden still works, silent.
   E_AUDIO_CONTEXT: 'Sound unavailable',
   // T-152: back from a pause, the browser kept the context suspended (it wants a gesture): the first pinch or palm
-  // up resumes it. src/app.ts raises it after the same grace as "Sound unavailable".
+  // up resumes it. src/app.ts raises it after the same grace as "No sound. Leave and enter again.".
   soundResume: 'Pinch to resume sound',
   soundResumeClick: 'Click to resume sound', // the garden window: a click is the pinch
 } as const;

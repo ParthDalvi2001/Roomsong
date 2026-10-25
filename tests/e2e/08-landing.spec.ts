@@ -10,12 +10,13 @@ import { openApp, readRoom, SESSION_ENTRY_LIMIT_MS, xrFrames } from './support/i
 
 const WORLD_READY_MS = 15_000; // the Enter button waits for the world; software rendering takes a few seconds
 const HANDS_OFF =
-  'The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking.';
-const WINDOW = 'The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset.';
+  'The garden did not open. Say yes when the headset asks, and check that hand tracking is on: Settings, Movement tracking, Hand tracking.';
+const WINDOW =
+  'The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset.';
 const LOAD_FAILED = 'The garden could not load. Reload the page.';
 const TOGGLES = [
   ['One hand', 'oneHand'],
-  ['No hands: look and hold', 'gazeDwell'],
+  ['No hands: look to select', 'gazeDwell'],
   ['High contrast', 'highContrast'],
   ['Reduce motion', 'reducedMotion'],
 ] as const;
@@ -137,7 +138,8 @@ test('landing page: name, Enter, device support, toggles and Help, all by keyboa
   await expect(firstStep).toBeVisible();
   const steps = landing(page).getByRole('list').last().getByRole('listitem');
   expect(await steps.count()).toBeGreaterThanOrEqual(3);
-  expect(await steps.count()).toBeLessThanOrEqual(4);
+  expect(await steps.count()).toBeLessThanOrEqual(5); // the four steps and where settings are (T-167, D-060 (9))
+  await expect(steps.last()).toContainText('For settings, turn the back of your left hand');
 
   await page.screenshot({ path: '.tmp/landing.png', fullPage: true });
   expect(errors).toEqual([]);
@@ -169,7 +171,7 @@ test('landing page: each access toggle changes core settings, and follows them',
   });
   await expect(landing(page).getByLabel('One hand')).toBeChecked();
   await expect(landing(page).getByLabel('High contrast')).toBeChecked();
-  await expect(landing(page).getByLabel('No hands: look and hold')).not.toBeChecked();
+  await expect(landing(page).getByLabel('No hands: look to select')).not.toBeChecked();
   // TODO(T-128): the toggles survive a reload once persistence saves `settings:changed` and src/index.ts seeds the
   // store from the save. Core's store itself saves nothing (API_SPEC §2), so there is no reload case here yet.
   expect(errors).toEqual([]);

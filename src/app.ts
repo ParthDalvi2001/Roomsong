@@ -62,7 +62,7 @@ const NO_SOUND: StringKey = 'E_AUDIO_CONTEXT';
  *  garden window a click is the pinch (FR-SYS-07), so its caption says so. */
 const SOUND_RESUME: StringKey = 'soundResume';
 const SOUND_RESUME_CLICK: StringKey = 'soundResumeClick';
-/** The caption of writes that fail (LLD §3.3 G, §8): "Saving unavailable". */
+/** The caption of writes that fail (LLD §3.3 G, §8): "This garden cannot be saved". */
 const SAVE_FAILED: StringKey = 'E_SAVE_FAILED';
 const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[];
 
@@ -242,7 +242,7 @@ export function keepSaved(
 }
 
 /**
- * "Saving unavailable" where it can be seen (LLD §3.3 G): raised at once in a session, else at the next
+ * "This garden cannot be saved" where it can be seen (LLD §3.3 G): raised at once in a session, else at the next
  * `xr:sessionStart`, because the landing page shows no caption. Exported for its unit test.
  */
 export function inSession(raiseNow: () => void): { raise: () => void; stop: () => void } {

@@ -365,7 +365,7 @@ describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () =
     expect(words(panel)[0]).toBe('Day 1, Seeds 0, Key D major (room)');
   });
 
-  it('Re-place bed says so once and closes the panel', () => {
+  it('Place the garden again says so once and closes the panel', () => {
     const panel = opened('garden');
     const asked = calls.replaceBed;
     press(panel, 'replaceBed');
@@ -494,7 +494,7 @@ describe('settings panel: New garden needs a hold, so it cannot happen by accide
     expect(calls.newGarden).toEqual([]);
   });
 
-  it('does not count a hold that began on another control: Re-place bed held, let go on New garden', () => {
+  it('does not count a hold that began on another control: Place the garden again held, let go on New garden', () => {
     const panel = opened('garden');
     panel.down('right', 'replaceBed');
     run(panel, 2 * NEW_GARDEN_HOLD_MS);

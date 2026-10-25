@@ -659,7 +659,7 @@ describe('PanelSystem: the ring of a hold (UX §8)', () => {
 });
 
 describe('the UI sounds of the panel (T-164 §6)', () => {
-  it("every press that acts is engine.ui('tick'), Re-place bed too (its confirm is the bed's landing); with no engine, no sound and no throw", () => {
+  it("every press that acts is engine.ui('tick'), Place the garden again too (its confirm is the bed's landing); with no engine, no sound and no throw", () => {
     const { watch, frame, press, asked } = rig();
     watch();
     frame();

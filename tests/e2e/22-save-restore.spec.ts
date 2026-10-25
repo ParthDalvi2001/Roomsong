@@ -319,7 +319,7 @@ for (const unreadable of ['corrupt', 'of a newer version'] as const) {
   });
 }
 
-test('e2 with storage refused the garden still plays, and "Saving unavailable" is raised once, in the session', async ({
+test('e2 with storage refused the garden still plays, and "This garden cannot be saved" is raised once, in the session', async ({
   page,
 }) => {
   // Before the page's own scripts: IndexedDB does not open, and localStorage refuses the garden's keys (the

@@ -5,7 +5,7 @@
 // with its target, the right hand's real pinch takes it, carries it over a cell and lets go; the garden plants it,
 // BedRenderSystem draws it with its target, and GardenAudioSystem has the tide play it: its first note. After
 // three plants the tide starts at least three notes in a bar. The edges: a release off the bed sends the seed
-// home; one over a full bed (autoplant=80) says "Garden is full"; a carrying hand lost past its grace sends it
+// home; one over a full bed (autoplant=80) says "Garden full. Remove a plant first."; a carrying hand lost past its grace sends it
 // home. The test emits nothing; it moves the emulated hands and reads.
 // Emulator result (E): it says nothing of a real hand: whether a seed reads as lying on a palm, whether it can be
 // found and pinched, whether the orb is seen, how the first note sounds.
@@ -388,7 +388,7 @@ test('TC-E2E-03: palm up, a seed, a pinch, a carry, a release over a cell: a pla
   expect(offHost).toEqual([]); // Golden Rule 9
 });
 
-test('TC-E2E-03, the edges: off the bed the seed goes home; over a full bed "Garden is full"; a lost hand drops it', async ({
+test('TC-E2E-03, the edges: off the bed the seed goes home; over a full bed "Garden full. Remove a plant first."; a lost hand drops it', async ({
   page,
 }) => {
   const errors = watch(page);
@@ -408,7 +408,7 @@ test('TC-E2E-03, the edges: off the bed the seed goes home; over a full bed "Gar
   expect((await heard(probe, 'garden:seedOut', { hand: 'left', count: 2 })).id).toBe(off.id);
   expect(await probe.evaluate((p) => p.plants().length)).toBe(80); // nothing was planted
 
-  // Over the bed, but every cell holds a plant: back home, and "Garden is full" on screen.
+  // Over the bed, but every cell holds a plant: back home, and "Garden full. Remove a plant first." on screen.
   const over = await probe.evaluate((p, ring) => p.cellAt({ ring, step: 4 }), RING);
   const full = await carry(page, probe, hands, over, 2);
   expect(await heard(probe, 'garden:seedBack', { id: full.id, count: 2 })).toMatchObject({ reason: 'full' });

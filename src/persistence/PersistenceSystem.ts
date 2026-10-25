@@ -16,7 +16,7 @@ export class PersistenceSystem {
 
   /**
    * `onSaveFailed` runs when writes start to fail: once per run of failed writes, and again only after a write
-   * has succeeded (LLD §8: the "Saving unavailable" caption). A throw from it is logged and changes nothing.
+   * has succeeded (LLD §8: the "This garden cannot be saved" caption). A throw from it is logged and changes nothing.
    */
   constructor(
     private readonly store: Store,

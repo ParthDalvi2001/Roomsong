@@ -106,7 +106,7 @@ export class SeedSystem extends createSystem(
   private readonly handStates: (Entity | null)[] = [null, null];
   /** The bed (API_SPEC §1.10 rule 5: one entity, with BedAnchor while it is placed); the orb hangs over it. */
   private bed: Entity | null = null;
-  /** The seed's target while one is out, and the "Garden is full" caption: an entity each, made once. */
+  /** The seed's target while one is out, and the "Garden full. Remove a plant first." caption: an entity each, made once. */
   private target!: Entity;
   private caption!: Entity;
   private outId: string | null = null;

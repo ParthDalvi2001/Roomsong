@@ -424,7 +424,7 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
   await xrFrames(page, 2);
   const gardenWords = await probe.evaluate((p) => p.words());
   // The app's own garden after its first visit: three starter seeds, in the key the table room gives.
-  expect(gardenWords).toEqual(expect.arrayContaining(['+2 cm', 'Day 1, Seeds 3, Key C minor (room)']));
+  expect(gardenWords).toEqual(expect.arrayContaining(['+2 cm', 'Day 1, Seeds left 3, Key C minor (room)']));
   await page.screenshot({ path: '.tmp/settings-garden.png' });
 
   // New garden: a short pinch does nothing; a pinch held to the end and let go on the control asks once. The ring
@@ -453,7 +453,7 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
   await press('orb');
   expect(await probe.evaluate((p) => p.system.panel.open)).toBe(false);
 
-  // Re-place bed says so and closes the panel.
+  // Place the garden again says so and closes the panel.
   await press('orb');
   await press('replaceBed');
   expect(await events(probe, 'room.replace')).toHaveLength(1);

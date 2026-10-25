@@ -1,5 +1,5 @@
 // The wiring, src/app.ts (LLD §3.2, §3.3, §8; API_SPEC §1.10): the one way to register a system and its circuit
-// breaker, on a fake world that registers as elics does; and the session's events and its "Sound unavailable"
+// breaker, on a fake world that registers as elics does; and the session's events and its "No sound. Leave and enter again."
 // caption, on a fake session. What only a browser can show (a real session, the sound, the frames going on) is
 // tests/e2e/14-boot-session.spec.ts.
 import { readFileSync } from 'node:fs';
@@ -515,7 +515,7 @@ describe('"Pinch to resume sound" (T-152): the return from a pause', () => {
   });
 });
 
-describe('"Sound unavailable" (API_SPEC §1.10 rule 2; LLD §3.3 B)', () => {
+describe('"No sound. Leave and enter again." (API_SPEC §1.10 rule 2; LLD §3.3 B)', () => {
   it('no click before the session, or init() rejected: raised at the start, for 5 s, and once', () => {
     const rig = sessionRig(true);
     rig.begin();
@@ -776,7 +776,7 @@ describe('saving (LLD §3.3 G; API_SPEC §1.10 rule 9)', () => {
   });
 });
 
-describe('"Saving unavailable" where it can be seen (LLD §3.3 G)', () => {
+describe('"This garden cannot be saved" where it can be seen (LLD §3.3 G)', () => {
   it('raised at once in a session; raised outside one, at the next xr:sessionStart, once', () => {
     const raiseNow = vi.fn();
     const caption = inSession(raiseNow);

@@ -281,7 +281,7 @@ export class PanelSystem extends createSystem(
       setBedHeightOffset: (metres) => garden?.setBedHeightOffset(metres),
       isTimeLapse: () => garden?.timeLapse ?? false,
       setTimeLapse: (on) => garden?.setTimeLapse(on),
-      // Re-place bed is a plain press: its confirm sounds when the bed lands (room:bedPlaced, GardenAudioSystem).
+      // Place the garden again is a plain press: its confirm sounds when the bed lands (room:bedPlaced, GardenAudioSystem).
       pressed: (id) => engine?.ui(id === NEW_GARDEN_ID ? 'confirm' : 'tick'),
     });
     this.board = makeQuad('settings-panel', PANEL_WIDTH_M, PANEL_HEIGHT_M, PANEL_PX_PER_M);

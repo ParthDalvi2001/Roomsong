@@ -216,7 +216,7 @@ function roomLine(sig: RoomSignature, features: RoomFeatures | null): string {
 }
 
 /**
- * UX §3.6: "Day 4, Seeds 2, Key D major (room)". The day is the garden's age in whole days of 24 hours, plus one.
+ * UX §3.6: "Day 4, Seeds left 2, Key D major (room)". The day is the garden's age in whole days of 24 hours, plus one.
  * The seeds' day is the local calendar day (garden/growth.ts, which keeps that helper to itself and needs the time
  * zone): the two can differ by one around midnight.
  */

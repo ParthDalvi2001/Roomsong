@@ -264,7 +264,7 @@ export const SEED_HOP_MS = 100;
  *  motion halves the amplitude. */
 export const SEED_BUMP_M = 0.03;
 export const SEED_BUMP_REDUCED_M = SEED_BUMP_M / 2;
-/** UX §7: "Garden is full" when a seed is let go over a full bed. Chosen in T-127: up this long (core's clock). */
+/** UX §7: "Garden full. Remove a plant first." when a seed is let go over a full bed. Chosen in T-127: up this long (core's clock). */
 export const GARDEN_FULL_CAPTION_MS = 3000;
 
 /** FR-ROOM-04 (Could C4, D-021, T-149): the vine on the nearest wall. A wall farther than this from the bed's
