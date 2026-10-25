@@ -32,7 +32,7 @@ Every block starts with **Can be run today** or **Needs: a task**. "Today" means
 | 6B | Listen: the look and the sound | TC-DEV-04 (the halo; the sound from each plant as you turn) · the dim over real passthrough · the near plants louder · frame rate | 10 min | needs T-148 and T-128d |
 | 6C | Listen by accident | D-050: palms down over the bed, a palm up on the lap or the table edge, palm up for a seed against the wake, the Quest's own palm gesture | 15 min | needs T-148 and T-128d |
 | 6D | Ten minutes of Listen, and "Goodnight" | the 10-minute end · the Listen half of TC-DEV-07 · wakes at rest | 12 min | needs T-148 and T-128d |
-| 7 | The garden comes back | TC-DEV-05 · after a reload and after closing the Browser: the same cells, the bed at the coin within 4 s or placed again, the same key · a plant made just before closing is kept · the next day one new seed · storage blocked: "Saving unavailable" once | 20 min | needs T-128e |
+| 7 | The garden comes back | TC-DEV-05 · after a reload and after closing the Browser: the same cells, the bed at the coin within 4 s or placed again, the same key · a plant made just before closing is kept · the next day one new seed · storage blocked: "This garden cannot be saved" once | 20 min | needs T-128e |
 | 8 | Pause and resume | TC-DEV-08 · headset off 10 s (3 tries) and the menu 30 s: the garden, the bed and the sound come back, in time, without a pinch · a change made just before is kept | 15 min | needs T-128e; the fade and the phase checks need T-152 |
 | 4B | The petal's glow | is the petal found in 5 s; the 20 % lift when a fingertip or the gaze is on it, within 0.1 s, gone when the hand leaves | 8 min | needs T-128d (the cue on `develop` since 23 Oct) |
 | 8B | Pause and resume, with the caption | T-152: the fade back, the beat where it was, "Pinch to resume sound" when the Browser keeps the sound off | 10 min | needs T-152 (on `develop`) |
@@ -732,11 +732,11 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 
 **Purpose:** leave the garden the ways a player does and come back to it. Are the plants the same, in the same cells, and is the bed on the same spot? Is a plant made just before closing the Browser kept? Does the next day bring exactly one seed? And when the Browser blocks storage, does the app say so once and play on?
 
-**Answers:** TC-DEV-05 (Must; FR-ROOM-07, US-12): after a reload and after closing the Browser, the bed back at the same spot within 4 s (the drift in cm) or placed again with every plant kept, with the same key and scale · FR-PER-01 (a save within 500 ms of a change, and at once when the page is hidden) · from T-128e: a change made just before closing is kept; with storage blocked, "Saving unavailable" once, in the session, and the garden saved before is not written over · FR-MUS-08 and D-037 (a later date brings one seed). The longer runs (the chair moved, the table moved, the light, Space Setup again, a headset restart, a recentre, the count of saved places) are S1 block 16: not repeated here.
+**Answers:** TC-DEV-05 (Must; FR-ROOM-07, US-12): after a reload and after closing the Browser, the bed back at the same spot within 4 s (the drift in cm) or placed again with every plant kept, with the same key and scale · FR-PER-01 (a save within 500 ms of a change, and at once when the page is hidden) · from T-128e: a change made just before closing is kept; with storage blocked, "This garden cannot be saved" once, in the session, and the garden saved before is not written over · FR-MUS-08 and D-037 (a later date brings one seed). The longer runs (the chair moved, the table moved, the light, Space Setup again, a headset restart, a recentre, the count of saved places) are S1 block 16: not repeated here.
 
 **You need:** the "app, dev" bookmark (S1 block 0); the coin; the tape. The console is a bonus (the `room:bedPlaced` line).
 
-**Checked against:** `src/app.ts` (`keepSaved`: a save on every garden and settings change, a flush when the session is hidden or ends, and `flushNow`, a write at once, when the page is hidden or goes; `inSession`: "Saving unavailable" raised in a session, for 5 s), `src/persistence/PersistenceSystem.ts` (`SAVE_DEBOUNCE_MS` 500; the first failed write of a run is reported, the ones after it are not), `src/persistence/Store.ts` (IndexedDB, then localStorage; with neither, nothing loads and every save fails), `src/garden/growth.ts` (one seed on a later local date while fewer than `SEED_SUPPLY_MAX` 5 wait; a date the garden has seen brings none), `src/core/clock.ts` (`fakeDay` moves the date), `src/room/config.ts` (`ANCHOR_RESTORE_TIMEOUT_MS` 4000), `src/room/AnchorStore.ts` (a new saved place has every other one of the site deleted, D-040), `src/ui/Panel.ts` (the Garden tab's first line: Day, Seeds, Key), `src/core/strings.ts` (`E_SAVE_FAILED`); API_SPEC §4 and its v1.2.33 entry; TEST_PLAN TC-DEV-05.
+**Checked against:** `src/app.ts` (`keepSaved`: a save on every garden and settings change, a flush when the session is hidden or ends, and `flushNow`, a write at once, when the page is hidden or goes; `inSession`: "This garden cannot be saved" raised in a session, for 5 s), `src/persistence/PersistenceSystem.ts` (`SAVE_DEBOUNCE_MS` 500; the first failed write of a run is reported, the ones after it are not), `src/persistence/Store.ts` (IndexedDB, then localStorage; with neither, nothing loads and every save fails), `src/garden/growth.ts` (one seed on a later local date while fewer than `SEED_SUPPLY_MAX` 5 wait; a date the garden has seen brings none), `src/core/clock.ts` (`fakeDay` moves the date), `src/room/config.ts` (`ANCHOR_RESTORE_TIMEOUT_MS` 4000), `src/room/AnchorStore.ts` (a new saved place has every other one of the site deleted, D-040), `src/ui/Panel.ts` (the Garden tab's first line: Day, Seeds, Key), `src/core/strings.ts` (`E_SAVE_FAILED`); API_SPEC §4 and its v1.2.33 entry; TEST_PLAN TC-DEV-05.
 
 **Know this first:**
 
@@ -755,7 +755,7 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 7. Open the Browser and the "app, dev" bookmark, and enter. Count to the ring as in step 4. Is the third plant there, on the middle ring on your right? The ring at the coin (cm)?
 8. **The next day.** If you keep the headset until tomorrow, do this step then, at the same table, together with S1 block 16 step 19. Otherwise do it now: open the app with `?dev=1&flags=perfHud,eventLog,fakeDay=+1`. If S1 block 13 or 16 already used `fakeDay` on this address, put one more than the highest number used there: a date the garden has seen brings no seed (D-037). Enter. The Garden tab's first line: one Day more, and Seeds 1. Open your palm: one seed comes. Plant it. Open your palm again: none may come.
 9. **Storage blocked.** Leave. In Meta Quest Browser's settings, block cookies and site data for this address (unchecked: look under Settings, then Privacy or Site settings, then Cookies; write down the real path). If there is no such setting, write "no setting" and go to block 8.
-10. Open the "app, dev" bookmark and enter. The garden is new and empty (the app cannot read yours), so the guide starts. "Saving unavailable" should show once, early in the session (a caption waits its turn behind the ripple's and the guide's). Plant two seeds: it must not show again. Does the garden play?
+10. Open the "app, dev" bookmark and enter. The garden is new and empty (the app cannot read yours), so the guide starts. "This garden cannot be saved" should show once, early in the session (a caption waits its turn behind the ripple's and the guide's). Plant two seeds: it must not show again. Does the garden play?
 11. Leave. Allow cookies and site data for this address again, the same way. Reload and enter. Your garden of step 8 must be back with every plant. Back at the coin, or placed again (expected, see above)?
 
 ### Write down
@@ -768,7 +768,7 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 | Browser closed: seconds from the release to the Browser gone; what you pressed | s; words |
 | Reopened: the third plant there; seconds to the ring; back or placed again; cm | yes / no; s; which; cm |
 | The next day (real, or `fakeDay` and its number): Day and Seeds before and after; seeds that came | numbers |
-| Storage blocked: the Browser's path; "Saving unavailable" shown how many times; the garden played | words; n; yes / no |
+| Storage blocked: the Browser's path; "This garden cannot be saved" shown how many times; the garden played | words; n; yes / no |
 | Storage allowed again: your garden back, every plant; back or placed again | yes / no; which |
 | Anything you could only do with a controller | words |
 
@@ -781,7 +781,7 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 | Key and scale | the Key in the Garden tab's first line is the same after each return | TC-DEV-05 |
 | Closed right after planting | the last plant is there | FR-PER-01 (a save at once when the page is hidden), T-128e (`flushNow`) |
 | The next day | exactly one new seed | FR-MUS-08 (one seed a calendar day, up to 5 waiting), D-037 |
-| Storage blocked | "Saving unavailable" shows once in the session and not again; the garden plays on; nothing crashes | T-128e ("Saving unavailable" once, raised in a session), API_SPEC §5 (`E_SAVE_FAILED`) |
+| Storage blocked | "This garden cannot be saved" shows once in the session and not again; the garden plays on; nothing crashes | T-128e ("This garden cannot be saved" once, raised in a session), API_SPEC §5 (`E_SAVE_FAILED`) |
 | Storage allowed again | the garden saved before is back with every plant: the blocked session wrote nothing over it | T-128e (a garden is never overwritten by a failed read), API_SPEC §4 |
 | Hands only | no controller | FR-HND-01 |
 
@@ -791,7 +791,7 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 - The bed is placed again every time, never back: that is the saved place, S1 block 16's subject. Write down the seconds and go on.
 - The third plant is gone after the Browser was closed: write down the seconds of step 6. Claude files it against T-128e.
 - No new seed the next day: was Seeds already 5 (then none comes, FR-MUS-08)? Was the `fakeDay` number new for this address?
-- No "Saving unavailable" with storage blocked: the setting may not block what the app uses. (console) Look for `[persistence] IndexedDB is not available` and `[persistence] localStorage is not available`. Shown more than once: count the times; Claude files it against T-128e.
+- No "This garden cannot be saved" with storage blocked: the setting may not block what the app uses. (console) Look for `[persistence] IndexedDB is not available` and `[persistence] localStorage is not available`. Shown more than once: count the times; Claude files it against T-128e.
 - Your garden is gone once storage is allowed again: write down the Browser's path. The setting may have cleared the site's data, as S1 block 19 does on purpose; Claude decides whether it was the Browser or the app.
 
 ---
@@ -1202,7 +1202,7 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 | 7 | Reload and the Browser closed: back or placed again, seconds, cm from the coin; every plant in its cell; the Key the same | | TC-DEV-05 (Must); FR-ROOM-07 |
 | 7 | Closed right after planting: seconds; the last plant kept | | FR-PER-01; T-128e |
 | 7 | The next day (real, or which `fakeDay`): seeds that came | | FR-MUS-08; D-037 |
-| 7 | Storage blocked: the Browser's path; "Saving unavailable" how many times; your garden back once allowed | | T-128e; API_SPEC §4 and §5 |
+| 7 | Storage blocked: the Browser's path; "This garden cannot be saved" how many times; your garden back once allowed | | T-128e; API_SPEC §4 and §5 |
 | 8 | Headset off 10 s: session there, garden and ring as before, sound back without a pinch, n/3; the light close to where it was; bursts or clicks | | TC-DEV-08; FR-SYS-05; T-152 |
 | 8 | The menu 30 s: sound under it, the loop after; the change made before the pause, after a reload | | TC-DEV-08; FR-PER-01; T-128e |
 | 9 | One hand: seed off its own palm n/3; a plant came first; half-turned; palm down; the far-ring remove; the seed's light | | D-048; UX §9.1; BUG-007 |

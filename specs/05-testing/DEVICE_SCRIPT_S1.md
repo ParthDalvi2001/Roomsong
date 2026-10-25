@@ -708,7 +708,7 @@ How to read the saved-place row: `restored` false with an error text = the brows
 
 **You need:** the app's plain bookmark and the "app, dev" bookmark. No cable.
 
-**Checked against:** `index.html`, `src/index.ts`, `src/app.ts` (`enterSession`, `followSession`, the 3-second wait before "Sound unavailable", which then stays 5 seconds), `src/ui/Landing.ts`, `src/ui/strings.ts` and `src/core/strings.ts` (the words, as they are since T-128a), `iwsdk.config.json` (`offer` is `"none"`; hand tracking required; planes, mesh, anchors and hit-test optional), `src/render/RenderSystems.ts` and `src/render/config.ts` (the read-out: 16 cm wide, 10 cm to the left of your nose, 12.5 cm below it, 50 cm ahead).
+**Checked against:** `index.html`, `src/index.ts`, `src/app.ts` (`enterSession`, `followSession`, the 3-second wait before "No sound. Leave and enter again.", which then stays 5 seconds), `src/ui/Landing.ts`, `src/ui/strings.ts` and `src/core/strings.ts` (the words, as they are since T-128a), `iwsdk.config.json` (`offer` is `"none"`; hand tracking required; planes, mesh, anchors and hit-test optional), `src/render/RenderSystems.ts` and `src/render/config.ts` (the read-out: 16 cm wide, 10 cm to the left of your nose, 12.5 cm below it, 50 cm ahead).
 
 ### Steps
 
@@ -718,12 +718,12 @@ How to read the saved-place row: `restored` false with an error text = the brows
 4. Look at the browser's address bar: does the browser show a button of its own for entering? None is expected. Write yes or no. Do not use it.
 5. Sit facing the table. Pinch **Enter the garden**. Allow what the headset asks.
 6. You see your room and your real hands, and nothing else. No drawn hands and no controllers should appear.
-7. Keep looking straight ahead for 5 seconds. Do the words "Sound unavailable" appear in front of you, a little below where you look? If they do: at once, or after about 3 seconds?
+7. Keep looking straight ahead for 5 seconds. Do the words "No sound. Leave and enter again." appear in front of you, a little below where you look? If they do: at once, or after about 3 seconds?
 8. Look around for 20 seconds. Write down anything that is drawn, and any stutter of the room picture.
 9. Leave the session (see "Leaving a session with hands only"). The landing page is back.
 10. Write down the four lines under "This device" again: they now say what the session was given.
 11. Pinch **Enter the garden** once more and count the seconds from your pinch until you see the room. Write the count down as T2. The headset should ask nothing this time; if it asks again, write that down and count from your last answer.
-12. Again look straight ahead for 5 seconds: "Sound unavailable", yes or no? This is the second Enter of the same page.
+12. Again look straight ahead for 5 seconds: "No sound. Leave and enter again.", yes or no? This is the second Enter of the same page.
 13. Leave the session.
 14. Reload the app page. Before you pinch Enter, open the capability page's bookmark in the same tab. Do not start it. Then use the browser's Back arrow: the app page is back.
 15. Pinch **Enter the garden**. Does the session start? Leave it.
@@ -739,10 +739,10 @@ How to read the saved-place row: `restored` false with an error text = the brows
 | Every box, "Help" and the button work with a hand pinch | yes / which did not |
 | The browser's own enter button | yes / no |
 | Anything drawn in the session; drawn hands | words; yes / no |
-| "Sound unavailable" on the first Enter | no / at once / after about 3 s |
+| "No sound. Leave and enter again." on the first Enter | no / at once / after about 3 s |
 | "This device", after the first session | four lines |
 | T2, Enter pinch to the first sight of the room (second entry) | seconds |
-| "Sound unavailable" on the second Enter | no / at once / after about 3 s |
+| "No sound. Leave and enter again." on the second Enter | no / at once / after about 3 s |
 | Enter after Back | works / what happened |
 | The read-out: readable; in the way; where it sat | yes / no; yes / no; words |
 | Empty session: `fps` usual and lowest; `ms`; `draws`; `tris` | |
@@ -753,7 +753,7 @@ How to read the saved-place row: `restored` false with an error text = the brows
 | Check | Rule | Source |
 |---|---|---|
 | Start times | to be decided (PROGRESS item 26b). T1 (block 0) and T2 are recorded apart and not added. The limit in the documents is 5 seconds; whether it applies to T1, to T2 or to each is Parth's call. You count by ear: write the numbers as you counted them | TC-DEV-01, FR-SYS-06, T-128a |
-| One click for sound and session | the session starts, and "Sound unavailable" does not appear, on the first Enter and on the second | API_SPEC §1.10 rule 2, T-128a |
+| One click for sound and session | the session starts, and "No sound. Leave and enter again." does not appear, on the first Enter and on the second | API_SPEC §1.10 rule 2, T-128a |
 | One way in | the browser shows no enter button of its own | API_SPEC §1.10 rule 2 |
 | Before the first session | "Mixed reality: supported.", and three lines that each say "checked when you enter" | `src/ui/strings.ts` |
 | After the first session | "Hand tracking: on." If you allowed the room: "Table detection: on. The garden looks for your table." and "Saved position: on. The garden can come back to the same spot." They must agree with `features.granted` of block 1 | `src/ui/Landing.ts` |
@@ -765,7 +765,7 @@ How to read the saved-place row: `restored` false with an error text = the brows
 
 ### If it fails
 
-- "Sound unavailable" appears: the browser did not start the sound with the Enter pinch. Nothing to do in the sitting. Write down on which Enter and how soon, and tell Claude: the sound then needs a pinch of its own inside the session (T-152).
+- "No sound. Leave and enter again." appears: the browser did not start the sound with the Enter pinch. Nothing to do in the sitting. Write down on which Enter and how soon, and tell Claude: the sound then needs a pinch of its own inside the session (T-152).
 - Under the button: "The garden did not open. Check that hand tracking is on in the headset: …". Switch hand tracking on and enter again.
 - Under the button: "The garden could not load. Reload the page." Reload. If it says so again, tell Claude: it is a bug.
 - Under the button on the headset: "Roomsong is played in a mixed-reality headset. …". Tell Claude: it is a top-severity bug.
@@ -1021,7 +1021,7 @@ Whether the time to load the page (T1) is added to these counts waits for the sa
 
 - No seed comes to an open palm: hold the palm flat and still, facing up, for a full second. Still none: tell Claude.
 - The plant stands in another cell than the one you aimed at, now and then: that is aim, and block 2 measured it. Every time, the same way: that is the offset of step 7.
-- No sound at all, and "Sound unavailable" showed: see block 8.
+- No sound at all, and "No sound. Leave and enter again." showed: see block 8.
 
 ### Also, the first-minute guide (T-150; 8 min, and 12 min with a stranger)
 
@@ -1831,7 +1831,7 @@ Do this part last in this block. The flag `fakeDay=+7` makes the garden a week o
 
 - The ripple runs once each time the bed is placed: at every Enter, and after "Re-place bed". It is over in 4 s. To see it again, leave the session and enter.
 - From the moment the bed lands: at 0.3 s the table (0.6 s, out from the bed across the table), at 1.5 s the nearest wall (1.0 s, up from its foot), at 2.7 s the ceiling (0.8 s, from above the bed to its far side); `room:tuned` at 4.0 s. Each is a thin cream crest, 4 cm wide, led by a 6 cm dark band (so it shows on a light table), leaving a 1 s afterglow in the room's own tint.
-- Captions, one at a time, only for a surface the headset found: "Table: seeds." (in the session that hands out a new garden's first seeds) or "Table: colour." (every other session), "Walls: colour.", "Ceiling: scale.". Each is up from its sweep's start to the next one's: 1.2, 1.2 and 1.3 s. A caption appears where you look and stays at that spot in the room.
+- Captions, one at a time, only for a surface the headset found: "Table: seeds." (in the session that hands out a new garden's first seeds) or "Table: a note." (every other session), "Walls: a note.", "Ceiling: mood.". Each is up from its sweep's start to the next one's: 1.2, 1.2 and 1.3 s. A caption appears where you look and stays at that spot in the room.
 - A room the app could not read (level 3 or 4, "Wanderer") gets one ripple on the bed and no caption. With reduced motion each surface glows for 0.4 s in the same order, with the same captions.
 
 #### Steps
@@ -1930,7 +1930,7 @@ Do this part last in this block. The flag `fakeDay=+7` makes the garden a week o
 
 #### If it fails
 
-- No notes, but the light and the captions come: if "Sound unavailable" is up, there is no sound and so no notes. If the garden sings and the ripple is silent, the build may lack T-142b (block 0); else Claude files it against T-142b.
+- No notes, but the light and the captions come: if "No sound. Leave and enter again." is up, there is no sound and so no notes. If the garden sings and the ripple is silent, the build may lack T-142b (block 0); else Claude files it against T-142b.
 - Fewer than three: write down which instrument was missing, and which surface had no sweep.
 - A note out of tune: write down which (pad, bell or pluck), and the Key on the panel's Garden tab.
 
@@ -2202,7 +2202,7 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 1 | Headset model; lighting; route, address and build | | setup, 0 | every result below |
 | 2 | T1: page load to a usable Enter button (s) | | 0 | TC-DEV-01; PROGRESS item 26b |
 | 3 | T2: Enter pinch to the first sight of the room (s) | | 8 | TC-DEV-01; PROGRESS item 26b |
-| 4 | Does one pinch on Enter start session and sound: "Sound unavailable" on the first Enter, on the second | | 8 | T-128a (API_SPEC §1.10 rule 2); T-152 |
+| 4 | Does one pinch on Enter start session and sound: "No sound. Leave and enter again." on the first Enter, on the second | | 8 | T-128a (API_SPEC §1.10 rule 2); T-152 |
 | 5 | Room labels: is there a floor, a ceiling, a table or a desk | | 1 | the room signature, gate G1 (T-130); D-028 |
 | 6 | Is the room mesh there, and labelled `global mesh` | | 1 | T-140 |
 | 7 | Does a hand pinch send `selectstart` and `selectend`, and in which order | | 1 | T-124 (then the switch to `XRFrame.fillPoses`) |
@@ -2366,7 +2366,7 @@ Ask the owner beforehand: headset charged, hand tracking on, Space Setup done in
 5. Block 2 (10 min).
 6. Block 3 with `?beta=10` only (8 min).
 7. Block 4 with 13 plants only (5 min).
-8. Block 8, steps 5 to 12 (5 min): the Enter pinch, "Sound unavailable" yes or no on both entries, T2.
+8. Block 8, steps 5 to 12 (5 min): the Enter pinch, "No sound. Leave and enter again." yes or no on both entries, T2.
 9. Block 18, part A (8 min).
 10. Block 20, by mail (5 min).
 11. Block 5, headset steps 1 to 5 and 10 to 12, only if the Mac is there (8 min).
@@ -2426,7 +2426,7 @@ You hand them over (block 20). Claude files them:
 2. **Block 2, the grids and the two rings.** Below 18 of 20 on the 5 cm grid, or a failed outer or inner ring, changes the bed itself: fewer or larger cells, a smaller ring, or 12 steps. Garden, visuals and tests follow.
 3. **Block 6, a band that flips.** If the same room lands in another band on the second session, "same room, same key and scale" cannot be promised as written.
 
-Next in line: "Sound unavailable" in block 8; a frame rate below 72 in block 4 or below 60 in block 14; saved places that do not come back in blocks 1, 6 and 16.
+Next in line: "No sound. Leave and enter again." in block 8; a frame rate below 72 in block 4 or below 60 in block 14; saved places that do not come back in blocks 1, 6 and 16.
 
 ### Left for device script S2 and for later tasks
 

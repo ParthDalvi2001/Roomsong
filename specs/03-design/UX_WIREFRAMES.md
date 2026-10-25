@@ -68,9 +68,10 @@ As built in T-126 (`ui/Landing.ts`; the copy is `ui/strings.ts`):
 ```
 - **This device** (in place of the v1.2 line "Needs: Meta Quest, hand tracking on."): four lines, for immersive AR, hand tracking, plane detection and anchors. Each says in words whether the feature is there and what the app does without it; the coloured bar beside a line only repeats that. Before the first session only immersive AR can be known, because WebXR cannot be asked about a feature without a session: the other three read "checked when you enter" and are filled in from what the session was granted. A feature that was not granted reads "not available", not "not supported": the page cannot tell the two apart.
 - **Status line** under the button: "Getting the garden ready." while the world loads (Enter is disabled until then); "The garden could not load. Reload the page." if it cannot; empty otherwise.
-- **A refused session:** "The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking." in the status line, with Enter still usable (FR-SYS-03). The browser does not say why it refused, so the page never claims that hand tracking is off. *v1.2 "Hand tracking is off → Settings > Movement tracking > Hand tracking": replaced.*
+- **A refused session:** "The garden did not open. Say yes when the headset asks, and check that hand tracking is on: Settings, Movement tracking, Hand tracking." in the status line (T-170, 25 Oct; it also names the permission screen), with Enter still usable (FR-SYS-03). The browser does not say why it refused, so the page never claims that hand tracking is off. *v1.2 "Hand tracking is off → Settings > Movement tracking > Hand tracking": replaced.*
 - **No `immersive-ar`** (a desktop or phone browser): for now Enter is disabled and the status line reads "Roomsong needs immersive AR. Open this page in the browser of a Meta Quest 3 or 3S." Once the garden window is built (Should S6) this is not an error: the same button opens it (§3.7) and the line reads "No headset: use mouse or touch."
-- **Help** is a disclosure on the page, not a link: four steps (sit and put the controllers down, palm up for a seed, pinch and plant, palms out to listen). **Privacy** is the one sentence, not a link. The build's version is not printed on the page; it is read from `/version.json` (T-108). *v1.2 "Help · Privacy (local only) · v1.0.0": replaced.*
+- **Help** is a disclosure on the page, not a link: five items (sit and put the controllers down, palm up for a seed, pinch and plant, palms out to listen, and where settings are; the fifth added in T-170, 25 Oct). **Privacy** is the one sentence, not a link. The build's version is not printed on the page; it is read from `/version.json` (T-108). *v1.2 "Help · Privacy (local only) · v1.0.0": replaced.*
+- *As built (T-170, D-060 (9), 25 Oct; the copy is `ui/strings.ts`):* the sketch above is T-126's. Today the device lines read "Mixed reality", "Hand tracking", "Table detection" and "Saved position"; the Accessibility switches are "One hand", **"No hands: look to select"** (was "No hands: look and hold"), "High contrast" and "Reduce motion". The fifth Help item: **"For settings, turn the back of your left hand towards your face (the right hand if your main hand is the left) and pinch the small orb over it. In the one-hand and no-hands modes it waits in front of you instead."** Nothing else in the app named the settings orb (the UX re-check of 23 Oct, item 12).
 - Native controls only (mouse, touch, keyboard, visible focus ring); no animation; no image, icon or web font. While a session runs the page is hidden; when it ends the page is back with the focus on Enter. Without JavaScript the page shows one line saying that it needs it.
 
 ### 3.2 Placement states (in XR)
@@ -80,9 +81,9 @@ As built in T-126 (`ui/Landing.ts`; the copy is `ui/strings.ts`):
 | Placed (L1/L2; also a bed restored from its saved anchor, FR-ROOM-07) | Bed fades in, pulses once | Confirm chord | none |
 | Hit-test (L3) | Ghost bed follows gaze; pinch icon | Ticking soft | "Pinch to place" |
 | Floating (L4) | Bed with gentle hover | Confirm chord | none |
-| Tuning (the 4.0 s after Placed; Should S1; FR-ROOM-12, LLD §5.8) | A light ripple crosses each detected surface in turn: the table at 0.3 s (0.6 s, radial), the nearest wall at 1.5 s (1.0 s, base to top), the ceiling at 2.7 s (0.8 s); each surface flares as it "makes" its note; tuned at 4.0 s. A missing surface is skipped. L3/L4 or no surfaces: one ripple on the bed only. Reduced motion: each surface glows for 0.4 s in the same order, no sweep. | The room chord, one note per surface: the root on Pad, the middle note on Bell, the fifth on Pluck (§6). A missing surface's note rings at the bed, so the chord is always complete. The garden starts in this key | One per sweep, each naming its surface: **"Table: seeds."** in the session that hands out the starter seeds, **"Table: a note."** in every other session; **"Walls: a note."**; **"Ceiling: scale."** Each is at most 3 words and 16 characters and stays ≥ 1.2 s, from the start of its sweep to the start of the next (1.2 / 1.2 / 1.3 s). None for a missing surface; none at L3/L4. Same captions under reduced motion. *v1.1 "none (the sound is the caption)": replaced (D-021, D-028).* |
+| Tuning (the 4.0 s after Placed; Should S1; FR-ROOM-12, LLD §5.8) | A light ripple crosses each detected surface in turn: the table at 0.3 s (0.6 s, radial), the nearest wall at 1.5 s (1.0 s, base to top), the ceiling at 2.7 s (0.8 s); each surface flares as it "makes" its note; tuned at 4.0 s. A missing surface is skipped. L3/L4 or no surfaces: one ripple on the bed only. Reduced motion: each surface glows for 0.4 s in the same order, no sweep. | The room chord, one note per surface: the root on Pad, the middle note on Bell, the fifth on Pluck (§6). A missing surface's note rings at the bed, so the chord is always complete. The garden starts in this key | One per sweep, each naming its surface: **"Table: seeds."** in the session that hands out the starter seeds, **"Table: a note."** in every other session; **"Walls: a note."**; **"Ceiling: mood."** Each is at most 3 words and 16 characters and stays ≥ 1.2 s, from the start of its sweep to the start of the next (1.2 / 1.2 / 1.3 s). None for a missing surface; none at L3/L4. Same captions under reduced motion. *v1.1 "none (the sound is the caption)": replaced (D-021, D-028).* |
 
-The four ripple captions are fixed by LLD §5.8: copy them, do not reword them outside its limits. They use the caption slot of §3.3, one at a time. No caption credits a surface with the key or the echo: those come from the floor area and the room volume, and no sweep shows either. The "Tuned by" read-out in Settings says it (§3.6).
+The four ripple captions are fixed by LLD §5.8: copy them, do not reword them outside its limits. They use the caption slot of §3.3, one at a time. No caption credits a surface with the key or the echo: those come from the floor area and the room volume, and no sweep shows either. The "Tuned to" read-out in Settings says it (§3.6).
 
 ### 3.3 Onboarding sequence (captions ≤ 6 words, 1 at a time, 0.6 m, slightly below the gaze)
 Captions are drawn inside the scene (the projection layer), not in a separate WebXR quad layer (FR-UI-01); each stays at least 1.2 s (`CAPTION_MIN_MS`). A caption appears 8 degrees below the gaze (not below the eye line: a seated player looks down at the table), stays at that point of the room, and is held inside the FoV box when the head turns away (API_SPEC §1.9). *"Slightly below eye line": replaced (T-126).*
@@ -136,34 +137,37 @@ Grace 200 ms (tunable 150–250), glide 150 ms: `hands/config.ts`. Reduced motio
 
 ### 3.6 Settings panel (0.40 × 0.28 m, 0.55 m forward at eye height; as built in T-151 it is drawn on a canvas, not with UIKit, bed height sits on the Garden tab in 2 cm steps, volume reads as a per cent, and the tab is named "Access") — tabs Sound / Access / Garden (Codex cut, D-011)
 ```
-┌──────────────────────────────────────────────┐
-│ ● Sound   ● Access   ● Garden              ✕ │
-├──────────────────────────────────────────────┤
-│ Sound:   Tempo   [−]  84 BPM  [+]            │
-│          Volume  [−]  ▮▮▮▮▮▮▮▮▯▯  [+]        │
-│          Reverb  (auto) ( small ) ( off )    │
-│          Tuned by: D major · echo 0.6 s      │
-│                    room 15 m², ceiling 2.7 m │
-│ Access:  One hand  ⦿  Gaze dwell ○           │
-│          Dwell  (0.6 s) (0.9 s) (1.2 s)      │
-│          High contrast ○  Reduce motion ○    │
-│          Beat ring ⦿     Bed height [-  +]   │
-│          Dominant hand  (L) (R)              │
-│ Garden:  Day 4 · Seeds 2 · Key D major (room)│
-│          [Re-place bed] [New garden (hold)]  │
-└──────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│ ● Sound   ● Access   ● Garden                     ✕ │
+├─────────────────────────────────────────────────────┤
+│ Sound:   Speed   [−]  84 BPM  [+]                   │
+│          Volume  [−]  80 %  [+]                     │
+│          Echo    (room) (small) (off)               │
+│          Tuned to: D major, echo 0.6 s      ○ Mono  │
+│                    room 15 sq m, ceiling 2.7 m      │
+│ Access:  ○ One hand        ○ Look to select         │
+│          Look time  (0.6 s) (0.9 s) (1.2 s)         │
+│          ○ High contrast   ○ Reduce motion          │
+│          ⦿ Beat ring   Main hand  (L) (R)           │
+│ Garden:  Day 4, Seeds left 2, Key D major (room)    │
+│          Height [−] 0 cm [+]    ○ Time-lapse        │
+│          [start]  Place the garden again            │
+│          [hold]   New garden (erases this one)      │
+└─────────────────────────────────────────────────────┘
 ```
-**Tempo is the player's** (FR-MUS-03, D-021): default 84 BPM, range 60–120, in steps of 4. The room never moves it and it never reads "(room)". *v1.1 "Tempo reads (room) while it follows the room signature": Cut (D-021).* Volume: steps of 10 %.
-Tempo and Volume are steppers, not sliders (changed in v1.2): a panel control acts on a pinch released over it, or on a gaze dwell (LLD §3, FR-HND-12, FR-HND-16), and neither can drag a slider.
-**Reverb:** auto follows the room (§6), small is a fixed 0.6 s, off mutes the echo (`Settings.reverb`).
-**Tuned by** (US-22; read-only, two lines, not a target): line 1 is what the room set (key root, mode, echo length), line 2 is from what (floor area, ceiling height). It is the one place that credits the room with the key and the echo, because no ripple caption can (§3.2). Wanderer: "C major · echo 0.9 s" over "no room found". The echo part dims while Reverb is not on auto. The Garden line's "(room)" is dropped in a Wanderer session.
-**Dwell** (shown while Gaze dwell is on): 600 / 900 / 1200 ms, default 900 (`Settings.dwellMs`, FR-HND-12).
+**Speed (the tempo) is the player's** (FR-MUS-03, D-021): default 84 BPM, range 60–120, in steps of 4. The room never moves it and it never reads "(room)". *v1.1 "Tempo reads (room) while it follows the room signature": Cut (D-021).* Volume: steps of 10 %.
+Speed and Volume are steppers, not sliders (changed in v1.2): a panel control acts on a pinch released over it, or on a gaze dwell (LLD §3, FR-HND-12, FR-HND-16), and neither can drag a slider.
+**Echo** (`Settings.reverb`): room follows the room (§6; the setting's value `auto`), small is a fixed 0.6 s, off mutes the echo.
+**Tuned to** (US-22; read-only, two lines, not a target): line 1 is what the room set (key root, mode, echo length), line 2 is from what (floor area, ceiling height). It is the one place that credits the room with the key and the echo, because no ripple caption can (§3.2). Wanderer: "C major, echo 0.9 s" over "no room found". The echo part dims while Echo is not on room. The Garden line's "(room)" is dropped in a Wanderer session.
+**Look time** (shown while Look to select is on): 600 / 900 / 1200 ms, default 900 (`Settings.dwellMs`, FR-HND-12).
 No bed-radius control (single annulus bed); bed height ±10 cm stays.
 Interaction: a control lights up on hover and acts when the pinch is released over it; moving off first cancels (FR-HND-16). In gaze mode, dwell for the chosen time. Controls ≥ 3 cm tall. Panel opens via the settings orb (wrist), by pinch / dwell; closes with ✕ or looking away 5 s.
 
 *As built (T-173, 19 Oct):* the Sound tab's last row adds "[off] Mono" right of "Tuned by": the mix summed to mono for a single-sided listener (the Quest's own setting only moves the balance).
 
-*As built (T-174, D-057, 23 Oct; emulator only):* the Garden tab's Re-place bed row adds a **Time-lapse** switch (a 4 cm target; "(demo)" did not fit): a demo on a copy of the garden, one day every 4 s through the same visit real days use (leaves, more leaves and blossoms at 4, 12 and 28 s), on screen and in sound; nothing of it is saved (the save stays byte-identical over an on/off cycle); off, or a reload, restores the real garden; a bed change made during the demo reaches the real garden; no day passes while the session is hidden. For the video: `?dev=1&flags=timeLapse`.
+*As built (T-170, D-060 (9), 25 Oct; the words are `ui/strings.ts` PANEL, the layout `ui/Panel.ts`):* the labels read "Speed", "Volume", "Echo" (room / small / off), "Tuned to:", "Mono"; "One hand", "Look to select", "Look time", "High contrast", "Reduce motion", "Beat ring", "Main hand"; on the Garden tab "Day n, Seeds left n, Key … (room)", "Height", "Time-lapse", "Place the garden again" (was "Re-place bed", read as "Replace bed") and "New garden (erases this one)" (still a 1.5 s hold). The Garden tab has four rows: the garden line; "Height" with a narrow stepper and the Time-lapse switch on its right; "[start] Place the garden again" and "[hold] New garden (erases this one)" on whole rows of their own, so the longer labels fit at the panel's size.
+
+*As built (T-174, D-057, 23 Oct; emulator only):* the Garden tab's Re-place bed row (the Height row since T-170) adds a **Time-lapse** switch (a 4 cm target; "(demo)" did not fit): a demo on a copy of the garden, one day every 4 s through the same visit real days use (leaves, more leaves and blossoms at 4, 12 and 28 s), on screen and in sound; nothing of it is saved (the save stays byte-identical over an on/off cycle); off, or a reload, restores the real garden; a bed change made during the demo reaches the real garden; no day passes while the session is hidden. For the video: `?dev=1&flags=timeLapse`.
 
 ### 3.7 Garden window (non-XR; Should S6, FR-SYS-07, US-24, LLD §11)
 - The same garden in a normal browser tab, when `immersive-ar` is missing (or `?flags=window` in dev). One fixed camera at a seated eye point over a drawn table. No passthrough and no room, so the song is Wanderer and there is no tuning caption. Never the judged path: the dev bench and the demo.
@@ -217,11 +221,11 @@ No hand or controller models are drawn (D-027): these icons and the hover cue ar
 |---|---|
 | Hand out of view (tracking lost, FR-HND-15) | No hand model exists to fade (D-027). What the hand held freezes and dims; back within 200 ms → the gesture continues; otherwise it is undone (a plant glides to its cell in 150 ms, a seed returns to the supply) and the hand hint shows until the hand is seen again (at most 5 s). No caption, no sound; nothing is lost (§3.4). *v1.1 "Hands fade": replaced (D-027).* |
 | Seed released off-bed | Seed floats back to the supply orb with the `bump` sound |
-| Cell occupied on drop | The ghost already shows the nearest free cell before the release (FR-HND-16); the release plants there + bump sound; if bed full (80), no ghost, caption "Garden is full" and seed returns |
+| Cell occupied on drop | The ghost already shows the nearest free cell before the release (FR-HND-16); the release plants there + bump sound; if bed full (80), no ghost, caption "Garden full. Remove a plant first." and seed returns |
 | Plant dragged off by accident | Undo petal for 5 s over the plant's own cell (pinch or dwell; §9.3); after that the removal is final. One petal per cell: a second removal from the same cell within 5 s replaces the older petal (D-045) |
 | Different room than last time | Garden re-tunes in place (plants keep cells, pitches follow the new key and mode, the echo follows the new room, the tempo stays); tuning ripple plays with its surface captions (§3.2); no other caption |
 | Anchor restore failed, or anchors unsupported (Must with this fallback, FR-ROOM-07; was Should S4, D-021) | Not an error. The saved anchor is tried for up to 4 s, then the bed is re-placed by the placement chain, silently; garden intact; tiny icon "re-placed" for 3 s. How reliably a headset restores an anchor is unverified (T-129, A1) |
-| Save failed | Caption "Saving unavailable" once per session |
+| Save failed | Caption "This garden cannot be saved" once per session |
 | Browser lacks a feature | Degrade: no `immersive-ar` → the garden window (§3.7, Should S6); no planes → L3/L4 and the Wanderer signature (C major pentatonic, 0.9 s echo; the tempo stays the player's); no anchors → re-place each session. *"No HRTF → stereo panning": Cut (D-021); equal-power panning is the default everywhere.* |
 
 ## 8. Accessibility specifics

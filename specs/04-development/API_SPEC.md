@@ -73,9 +73,9 @@ export class Pool<T extends object> {                       // pre-allocated; ac
 }
 export const STRINGS: Readonly<Record<StringKey, string>>;  // the caption table (below). The message of a failure has its ErrorCode as its key
 export type StringKey = keyof typeof STRINGS;               // hands-first twins (2026-10-23): settingsHintLook, undoHintGaze, undoHintClick, soundResumeClick · 'rippleTableSeeds' | 'rippleTableNote' | 'rippleWalls' | 'rippleCeiling'
-                                                            // | 'onboardPalm' | 'onboardPlant' | 'onboardPlantClick' | 'onboardListen' | 'onboardListenClick' (the first-minute captions, T-150) | 'gardenFull' ("Garden is full", UX §7; render's SeedSystem raises it, T-127) | 'goodnight' ("Goodnight", the 10-minute end of Listen, T-148) | 'E_SAVE_FAILED' so far.
+                                                            // | 'onboardPalm' | 'onboardPlant' | 'onboardPlantClick' | 'onboardListen' | 'onboardListenClick' (the first-minute captions, T-150) | 'gardenFull' ("Garden full. Remove a plant first.", UX §7; render's SeedSystem raises it, T-127) | 'goodnight' ("Goodnight", the 10-minute end of Listen, T-148) | 'E_SAVE_FAILED' so far.
                                                             // T-128 adds three: placeLook "Look at your table, and pinch" · placeLookGaze "Look at your
-                                                            // table, and wait" (UX §9.2, the level-3 hint) · E_AUDIO_CONTEXT "Sound unavailable" (a session
+                                                            // table, and wait" (UX §9.2, the level-3 hint) · E_AUDIO_CONTEXT "No sound. Leave and enter again." (a session
                                                             // with no sound, §1.10 rule 2; the wording is UX's to confirm)
 export const BedAnchor, Interactable, Caption;              // the shared ECS components (above); fields: LLD §3.1. Exported from core/components.ts
                                                             // and NOT from core/index.ts: that file is the one that loads @iwsdk/core, and the landing
