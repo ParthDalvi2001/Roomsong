@@ -545,7 +545,7 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 
 **You need:** as block 6A; read the panel for frame rate.
 
-**Checked against (T-148 branch, 088ea07):** `src/render/config.ts` (`DOME_DIM` 0.6, `DOME_RADIUS_M` 2, `HALO_LIFT_M` 0.02, `HALO_HEIGHT_M` 0.22, `HALO_LOW` 0.75, `HALO_BEATS_PER_BREATH` 2, `HALO_DRIFT_MS` 60 000, `LISTEN_ENTER_MS` 1200, `LISTEN_EXIT_MS` 800), `src/render/HaloRenderer.ts`, `src/audio/config.ts` (`LISTEN_FOCUS_REF_M` 0.62), `src/audio/Spatializer.ts` (`place`), `tests/e2e/18-listen.spec.ts` (the draw calls Listen adds); UX §3.5, §5; PRD §3.4.
+**Checked against (T-148 branch, 088ea07):** `src/render/config.ts` (`DOME_DIM` 0.6, `DOME_RADIUS_M` 2, `HALO_LIFT_M` 0.02, `HALO_HEIGHT_M` 0.22, `HALO_LOW` 0.75, `HALO_BEATS_PER_BREATH` 2, `HALO_DRIFT_MS` 60 000, `LISTEN_ENTER_MS` 1200, `LISTEN_EXIT_MS` 800), `src/render/HaloRenderer.ts`, `src/audio/config.ts` (`LISTEN_FOCUS_REF_M` 0.62), `src/audio/Spatializer.ts` (`place`), `tests/e2e/18-listen.spec.ts` (the draw calls Listen adds); UX §3.5, §5; PRD §3.4. The sound going in and out (T-164 §6, API_SPEC v1.2.44, on `develop` since 23 Oct): `src/audio/config.ts` (`LISTEN_DIM_DB` −3, `LISTEN_BREATH_LOW_HZ` 800, `LISTEN_BREATH_HIGH_HZ` 4000, `LISTEN_BREATH_BARS` 16, `LISTEN_SEND_ADD` 0.07, `LISTEN_SEND_MAX` 0.35, `LISTEN_GLIDE_IN_S` 1.2, `LISTEN_GLIDE_OUT_S` 0.8), `src/audio/Layers.ts` (`listen`).
 
 **Know this first:**
 
@@ -553,14 +553,15 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 - **The halo:** a curtain of light on the bed's rim, from 2 cm above the glass to 22 cm high, brightest at its foot: green and blue at the foot, violet towards the top. It rises as the room dims; its folds drift round the bed once a minute. It breathes from full to three quarters and back once every two beats (UX §5's "every beat" is not built: on every beat the flash cap held it still in 39 to 63 % of frames, measured in T-148). With reduced motion it does not rise or drift; the dim and the breath stay.
 - **The orb** shines at full brightness while Listen lasts.
 - **The near plants:** while Listen lasts, a plant farther from your head than 62 cm sounds at (0.62 ÷ its distance)² of its level, at most full: the near half of the bed keeps its level, the far rim (about 86 cm) is about 6 dB quieter, on top of the usual fall-off with distance. The change lands on each plant's next note, not at once, and it follows your head: lean in and the far plants come up.
-- **Not built** (write down only if you see or hear them): the bed glowing brighter and the light turning into "a soft comet" (UX §3.5), vines to the wall (Could, D-021), the pad's filter sweep and a wider echo (UX §5: not in the contract), a second orb by the wrist in one-hand mode (UX §9.1).
+- **The sound going in (the Listen sweep, built):** over the same 1.2 s as the dim, the whole mix darkens (a low-pass that then breathes slowly between 0.8 and 4 kHz over 16 bars), goes wetter (more of the room's reverb) and about 3 dB quieter. It glides: no pump, no dip and rise on the beat, no click. Waking, it is back as it was within 0.8 s.
+- **Not built** (write down only if you see or hear them): the bed glowing brighter and the light turning into "a soft comet" (UX §3.5), vines to the wall in Listen (the vine of T-149 grows with the garden, in and out of Listen: block 9D), a wider echo (UX §5: not in the contract), a second orb by the wrist in one-hand mode (UX §9.1).
 
 ### Steps
 
 1. Enter Listen by palms out. For 30 seconds look round the room: the table, your hands, the door, a window, the wall behind the bed. Is the room plainly darker? Can you still see each of them?
 2. Look at the halo for four breaths. Did it rise as the room dimmed? Is it there all round the bed, also on the near side by your chest? Does it breathe in time with the song? Any flicker?
 3. Wake with a palm and watch the room come back: smooth or a jump?
-4. **Near plants.** Out of Listen, close your eyes and listen for 20 seconds. Open them, go into Listen by the orb, close them again for 20 seconds. Do the plants nearest you stand out more in Listen? Rate 1 (no difference) to 5 (clearly). Wake.
+4. **Near plants, and the sweep.** Out of Listen, close your eyes and listen for 20 seconds. Open them, go into Listen by the orb, close them again for 20 seconds. Do the plants nearest you stand out more in Listen? Rate 1 (no difference) to 5 (clearly). As it went in: did the sound darken and go wetter and a little quieter over about a second, smoothly, with no pump or click? Wake, eyes closed again: is it back as it was within a second?
 5. **Turn your head.** In Listen, look at one plant you can pick out by ear (a Bell or a Bass), then turn your head slowly 45° to the left and to the right. Does its sound stay where the plant is?
 6. **Lean.** In Listen, lean towards the far rim for 10 seconds, then sit back. Did the far plants come up as you leaned?
 7. Read the panel in Listen and out of it: the lowest `fps`, the highest `draws`, `tris` and `flash`.
@@ -576,6 +577,7 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 | The halo: rose; all round, the near side too; breath in time; flicker | yes / no, each |
 | The way out (0.8 s) | smooth / a jump |
 | Near plants forward | rating 1 to 5, words |
+| The sweep going in: darker, wetter, quieter; smooth; pump or click; back within 0.8 s on waking | yes / no, each; words |
 | Turning the head: the sound stayed at the plant | yes / no |
 | Leaning in: the far plants came up | yes / no / not sure |
 | Panel in Listen and out of it | lowest `fps`; highest `draws`, `tris`, `flash` |
@@ -594,6 +596,7 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 | Drawing budget | `draws` at most 60, `tris` at most 150,000. Listen adds 2 draw calls per eye, the dome (80 triangles) and the halo (96): 4 more in a session with both eyes | Golden Rule 5; measured in `tests/e2e/18-listen.spec.ts` |
 | Flashing | `flash` at most 3 (the dome and the halo are one flash-guard element each) | FR-UI-11 |
 | Reduced motion | no rise, no drift; the dim and the breath stay | FR-UI-06, UX §5 |
+| The sweep (T-164 §6) | heard going in over about a second and back within 0.8 s; no pump, no click | API_SPEC v1.2.44 |
 | The near plants, the breath, the fades, the look | write down. The near-plants law is T-148's own choice (`LISTEN_FOCUS_REF_M` 0.62); Parth's rating keeps or changes it, and the look goes to the art pass (T-163) | from T-148 |
 
 ### If it fails

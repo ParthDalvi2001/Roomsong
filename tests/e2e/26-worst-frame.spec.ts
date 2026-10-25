@@ -24,6 +24,9 @@ const DRAW_BUDGET = 60; // NFR-PERF-03, counted in the emulator (both views)
 const TRIANGLE_BUDGET = 150_000; // NFR-PERF-04
 const VOICE_CAP = 24; // audio/config.ts (NFR-PERF-10). Not imported: that file loads core/, which runs under Vite only
 const FLASH_CAP_PER_S = 3; // FR-UI-11
+// NFR-PERF-05, CLAUDE.md's emulator budget: the median of the window's frames, not the sample's mean, so one frame
+// slowed by a loaded machine does not fail it. A frame's script time is PerfSystem's: its update to the render's end.
+const JS_BUDGET_MS = 6;
 // Measured 2026-10-19 on develop 3726e50 (before T-165 part A): 60 draws and 99 760 triangles in the worst frame,
 // 60 and 98 012 in Listen. At the budget exactly: one more mesh in sight fails here.
 
@@ -31,6 +34,7 @@ type Core = typeof import('../../src/core/index');
 type Components = typeof import('../../src/core/components');
 type Garden = typeof import('../../src/garden/index');
 type Persistence = typeof import('../../src/persistence/index');
+type Render = typeof import('../../src/render/index');
 type Ui = typeof import('../../src/ui/index');
 type PerfSample = import('../../src/core/index').EventMap['perf:sample'];
 type Release = import('../../src/core/index').EventMap['gesture:release'];
@@ -55,6 +59,8 @@ interface Up {
 interface Sample extends PerfSample {
   atMs: number;
   up: Up;
+  /** The script time of each frame the sample covers, ms (PerfSampler.frame's `jsMs`; the sample's own is their mean). */
+  frameJsMs: number[];
 }
 interface Probe {
   samples: Sample[];
@@ -144,8 +150,21 @@ function probe(page: Page): Promise<JSHandle<Probe>> {
         hints: isShown('hint-icon') || isShown('hint-ring') || isShown('hint-remove'),
       };
     };
+    // Each frame's script time, as the app's PerfSampler is handed it: its sample emits inside the frame that ends
+    // the window, so the frames recorded up to the emit are that sample's. The prototype is patched, so the sampler
+    // PerfSystem already made is watched too; it is passed through unchanged.
+    const render = await load<Render>('/src/render/index.ts');
+    const frameJs: number[] = [];
+    const sampler = render.PerfSampler.prototype;
+    const frame = Reflect.get<typeof sampler, 'frame'>(sampler, 'frame'); // called with the instance's `this`
+    sampler.frame = function (nowMs, jsMs, voices) {
+      frameJs.push(jsMs);
+      frame.call(this, nowMs, jsMs, voices);
+    };
     const samples: Sample[] = [];
-    core.bus.on('perf:sample', (sample) => samples.push({ ...sample, atMs: performance.now(), up: up() }));
+    core.bus.on('perf:sample', (sample) =>
+      samples.push({ ...sample, atMs: performance.now(), up: up(), frameJsMs: frameJs.splice(0) }),
+    );
 
     const plants = () => [...targets].filter((entity) => entity.getValue(Interactable, 'kind') === 'plant');
     const plantRef = (entity: Entity | undefined) => {
@@ -259,8 +278,18 @@ async function sampleWith(
   return found!;
 }
 
+/** The middle value of a window's frame times (the mean of the two middle ones for an even count); NaN for none. */
+function median(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  if (sorted.length === 0) return Number.NaN;
+  return sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
 const report = (s: Sample) =>
-  `${s.draws} draws, ${s.tris} triangles, ${s.voices} voices, ${s.jsMs.toFixed(2)} ms script, ${s.fps.toFixed(0)} fps, hints ${s.up.hints ? 'up' : 'down'}`;
+  `${s.draws} draws, ${s.tris} triangles, ${s.voices} voices, ${s.jsMs.toFixed(2)} ms script (mean), ` +
+  `median ${median(s.frameJsMs).toFixed(2)} ms over ${s.frameJsMs.length} frames, ${s.fps.toFixed(0)} fps, ` +
+  `hints ${s.up.hints ? 'up' : 'down'}`;
 
 test('TC-E2E-09 the worst frame, full bed in bloom: draws, triangles, voices and the scene rules, then in Listen', async ({
   page,
@@ -330,6 +359,8 @@ test('TC-E2E-09 the worst frame, full bed in bloom: draws, triangles, voices and
     expect(sample.tris).toBeLessThanOrEqual(TRIANGLE_BUDGET);
     expect(sample.voices).toBeLessThanOrEqual(VOICE_CAP);
     expect(sample.maxFlashPerS).toBeLessThanOrEqual(FLASH_CAP_PER_S);
+    expect(sample.frameJsMs.length, 'the frames of the window were recorded').toBeGreaterThan(0);
+    expect(median(sample.frameJsMs)).toBeLessThanOrEqual(JS_BUDGET_MS); // NFR-PERF-05
   }
   expect(scene.lights).toBeLessThanOrEqual(1); // NFR-PERF-09
   expect(scene.shadowMap).toBe(false);

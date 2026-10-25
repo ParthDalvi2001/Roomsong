@@ -62,7 +62,7 @@ function stage(page: Page): Promise<JSHandle<Probe>> {
   });
 }
 
-test('TC-E2E-05b stillness: 8 s still on the bed opens it and lifts the halo; a turn closes it at once', async ({
+test('TC-E2E-17 stillness: 8 s still on the bed opens it and lifts the halo; a turn closes it at once', async ({
   page,
 }) => {
   const errors = watch(page);
@@ -97,7 +97,9 @@ test('TC-E2E-05b stillness: 8 s still on the bed opens it and lifts the halo; a 
     timeout: 2000,
   });
   await page.waitForFunction((p) => p.lit() === 0, probe, { timeout: STILL_RAMP_MS + 2000 });
-  console.log(`P-016 stillness: opened ${Math.round(opened.atMs - lookedAt)} ms after the look; halo lit ${lit.toFixed(3)} (emulator)`);
+  console.log(
+    `P-016 stillness: opened ${Math.round(opened.atMs - lookedAt)} ms after the look; halo lit ${lit.toFixed(3)} (emulator)`,
+  );
 
   expect(offHost).toEqual([]);
   expect(errors).toEqual([]);
