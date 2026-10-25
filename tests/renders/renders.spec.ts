@@ -2,13 +2,16 @@
 // renders the app's audio engine in an OfflineAudioContext, as tests/e2e/09-audio.spec.ts does (the engine ticks
 // on the offline clock at every 25 ms of audio time), and writes 48 kHz WAVs and the numbers to .tmp/renders/
 // (git-ignored). Desktop Chromium: the numbers say what the mix is, not how it sounds on a headset.
+import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { expect, test, type Page } from '@playwright/test';
 
-import { CEILING_DBFS, LATE_DROP_S, TICK_MS, VOICE_CAP } from '../../src/audio/config';
+import { CEILING_DBFS, GROOVE_SEED, LATE_DROP_S, TICK_MS, VOICE_CAP } from '../../src/audio/config';
+import { DEFAULT_VOLUME } from '../../src/core/config';
+import { NEW_PLANT_HEIGHT } from '../../src/garden/config';
 import { roomSignature, WANDERER } from '../../src/garden/signature';
 
 import type { Measures } from './measure';
@@ -34,6 +37,13 @@ interface Scene {
   /** Named [from, to) windows, each measured as a Band. */
   windows?: Record<string, [number, number]>;
   volume?: number;
+  /** Every plant's height, 0..1; default 1 (full height). */
+  height?: number;
+  /**
+   * P-029, as the app plays: resume() after init() (the 2.5 s start fade), the bed's chord (ui('confirm')) at
+   * chordAtS, and plant i synced at plantAtS[i] with its placed note (ui('placed')), as GardenAudioSystem does.
+   */
+  app?: { chordAtS: number; plantAtS: number[] };
   /** No tick from atS for ms: a stalled main thread. */
   stall?: { atS: number; ms: number };
   /** No scheduler: every step but stealStep in one burst at atS, then stealStep at stealAtS (a 25th note). */
@@ -63,6 +73,10 @@ interface Numbers extends Measures {
   bands?: Record<string, Band>;
   /** With `listen`: the deepest 50 ms window in the 2 s after enterListen against the deepest in the 2 s before, in dB. */
   entryMinDb?: number;
+  /** With `app`: the master gain at the chord and 2 s later, read off the engine: the start fade's check. */
+  fadeGain?: { atChord: number; later: number };
+  /** With `app`: the placed notes the engine played, of one call per plant planted. */
+  placedNotes?: number;
 }
 
 interface Band {
@@ -75,7 +89,14 @@ interface Band {
   peakMonoDbfs: number;
 }
 
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const OUT = fileURLToPath(new URL('../../.tmp/renders/', import.meta.url));
+/** SEED: the session seed of every render (the counter-line and the variations); default the engine's own, GROOVE_SEED. */
+const SEED = Number(process.env.SEED ?? GROOVE_SEED);
+if (!Number.isInteger(SEED) || SEED < 0) throw new Error(`SEED=${process.env.SEED}: a whole number ≥ 0`);
+/** SECONDS: the length of the P-023 and P-029 renders; default 60. */
+const SECONDS = Number(process.env.SECONDS ?? 60);
+if (!(SECONDS >= 5 && SECONDS <= 600)) throw new Error(`SECONDS=${process.env.SECONDS}: 5 to 600`);
 const STYLES_MD = join(OUT, 'STYLES.md');
 /** STYLE=A|B|C|null narrows P-023 to one style; the other groups take it, else today's sound. */
 const STYLE_ENV = process.env.STYLE;
@@ -126,10 +147,50 @@ const ROOMS: Record<string, RoomSignature> = {
   medium: roomSignature({ level: 1, floorArea: 12, ceilingHeight: 2.7, roomVolume: 32, tableHeight: 0.74 }),
   large: roomSignature({ level: 1, floorArea: 40, ceilingHeight: 3.2, roomVolume: 128, tableHeight: 0.74 }),
 };
+/** ROOMS=wanderer,small,…: the rooms of P-023 and P-029; default all four. */
+const ROOM_FILTER = process.env.ROOMS?.split(',').map((name) => name.trim()) ?? Object.keys(ROOMS);
+for (const name of ROOM_FILTER) {
+  if (!(name in ROOMS)) throw new Error(`ROOMS: ${name} is not one of ${Object.keys(ROOMS).join(', ')}`);
+}
+
+/**
+ * P-029: a plant every 2 s from 1 s, after the bed's chord at UI_AT_S (in the app the bed lands before any seed
+ * can be planted), the ten in by 19 s: the full bed then plays for more than half of a 45 s clip. The app's own
+ * first minute is slower (the video take: the first plant 14 s after the bed, then one every 7 to 8 s), which
+ * would leave a 45 s clip with four plants. Each time is 0.01 s past a whole second, off a tick's render quantum.
+ */
+const APP_FIRST_PLANT_S = 1.01;
+const APP_PLANT_EVERY_S = 2;
+const LISTEN_OUT = join(OUT, 'listen');
+/**
+ * The app's planting order: a new garden's first seeds are the room's three starter voices (garden/growth.ts), so
+ * those go in first, then one plant of each other voice, then the second of each in the same order.
+ */
+function plantingOrder(signature: RoomSignature): Scene['plants'] {
+  const others: Voice[] = ['bass', 'pad', 'choir', 'pluck', 'bell'];
+  const rank = (voice: Voice) => {
+    const starter = signature.starterVoices.indexOf(voice);
+    return starter >= 0 ? starter : others.length + others.indexOf(voice);
+  };
+  const round = (i: number) =>
+    FIVE_VOICES.slice(0, i).filter((p) => p.voice === FIVE_VOICES[i]?.voice).length;
+  return FIVE_VOICES.map((plant, i) => ({ plant, key: round(i) * 100 + rank(plant.voice) }))
+    .sort((a, b) => a.key - b.key)
+    .map(({ plant }) => plant);
+}
+
+/** The commit the render ran from, `-dirty` with local changes; 'unknown' without git. */
+function commitOfTree(): string {
+  try {
+    return execSync('git describe --always --dirty --abbrev=12', { cwd: ROOT, encoding: 'utf8' }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
 
 function render(page: Page, scene: Scene): Promise<Numbers & { wav: string }> {
   return page.evaluate(
-    async ({ scene, sampleRate, tickS, lateDropS, uiAtS, bed, head }) => {
+    async ({ scene, sampleRate, tickS, lateDropS, uiAtS, bed, head, seed }) => {
       // The dev server serves and transforms both; a variable keeps eslint's resolver off the page-side paths.
       const engineUrl = '/src/audio/AudioEngine.ts';
       const measureUrl = '/tests/renders/measure.ts';
@@ -143,25 +204,46 @@ function render(page: Page, scene: Scene): Promise<Numbers & { wav: string }> {
         const createPanner = ctx.createPanner.bind(ctx);
         ctx.createPanner = () => Object.assign(createPanner(), { connect: (to: AudioNode) => to });
       }
-      const engine = new Engine();
+      const engine = new Engine(seed);
       engine.setTempo(scene.signature.tempo);
       engine.setVolume(scene.volume ?? 1);
       engine.setReverb('auto');
       engine.setSignature(scene.signature); // before init(): the response renders whole
       if (scene.style !== undefined) engine.setStyle(scene.style);
-      engine.syncPlants(
-        scene.plants.map((p, i) => ({
-          id: `p${i}`,
-          voice: p.voice,
-          cell: { ring: p.ring, step: p.step },
-          height: 1,
-          hue: 0.5,
-          plantedAt: 0,
-        })),
-        bed,
-      );
+      const plants = scene.plants.map((p, i) => ({
+        id: `p${i}`,
+        voice: p.voice,
+        cell: { ring: p.ring, step: p.step },
+        height: scene.height ?? 1,
+        hue: 0.5,
+        plantedAt: 0,
+      }));
+      const app = scene.app;
+      engine.syncPlants(app === undefined ? plants : [], bed);
       await engine.init(ctx as unknown as AudioContext);
+      if (app !== undefined) {
+        // As AudioSystem: resume() after init() sets the start fade on the master. Offline, the engine's 25 ms
+        // interval must not start (the render ticks it on the audio clock, below), and the context's own resume()
+        // rejects before the render starts: by then the fade is set.
+        const setIntervalOfPage = globalThis.setInterval; // not `window`: a local of that name follows
+        globalThis.setInterval = (() => 0) as unknown as typeof globalThis.setInterval;
+        const resumed = engine.resume();
+        globalThis.setInterval = setIntervalOfPage;
+        await resumed.catch((err: unknown) => {
+          if (!(err instanceof DOMException && err.name === 'InvalidStateError')) throw err;
+        });
+      }
       engine.setListenerPose(head);
+      // The engine plays a UI sound or a placed note only on a 'running' context (a real one with autoplay blocked
+      // would stack them up); an offline context reads 'suspended' in a suspend, so the instance says 'running'.
+      const asRunning = (call: () => void) => {
+        Object.defineProperty(ctx, 'state', { value: 'running', configurable: true });
+        call();
+        delete (ctx as { state?: unknown }).state;
+      };
+      let fadeGain: { atChord: number; later: number } | undefined;
+      let placedNotes = 0;
+      let isPlacing = false;
 
       let late = 0;
       let maxLateMs = 0;
@@ -193,12 +275,44 @@ function render(page: Page, scene: Scene): Promise<Numbers & { wav: string }> {
         const ui = scene.ui;
         if (ui !== undefined) {
           void ctx.suspend(uiAtS).then(() => {
-            // Engine.uiNotes plays nothing unless the context is 'running' (a real one with autoplay blocked would
-            // stack sounds up); an offline context reads 'suspended' here, so the instance says 'running' for the call.
-            Object.defineProperty(ctx, 'state', { value: 'running', configurable: true });
-            engine.ui(ui);
-            delete (ctx as { state?: unknown }).state;
+            asRunning(() => engine.ui(ui));
             void ctx.resume();
+          });
+        }
+        if (app !== undefined) {
+          // Test-only reads of the engine's insides, to check the render: the master's gain (the start fade) and
+          // the notes a placed call starts (the engine skips one whose own step is due within a step anyway).
+          const g = (
+            engine as unknown as { g?: { master?: GainNode; pool?: { play: (...a: never[]) => boolean } } }
+          ).g;
+          const masterGain = () => g?.master?.gain.value ?? Number.NaN;
+          const pool = g?.pool;
+          if (pool !== undefined) {
+            const play = pool.play.bind(pool);
+            pool.play = (...a) => {
+              if (isPlacing) placedNotes++;
+              return play(...a);
+            };
+          }
+          void ctx.suspend(app.chordAtS).then(() => {
+            fadeGain = { atChord: masterGain(), later: Number.NaN };
+            asRunning(() => engine.ui('confirm')); // the bed landed: its chord, after the signature (GardenAudioSystem)
+            void ctx.resume();
+          });
+          void ctx.suspend(app.chordAtS + 2).then(() => {
+            if (fadeGain !== undefined) fadeGain.later = masterGain();
+            void ctx.resume();
+          });
+          app.plantAtS.forEach((atS, i) => {
+            if (atS >= scene.seconds) return;
+            void ctx.suspend(atS).then(() => {
+              // garden:changed with the seed on the hand planted: the sync, then its placed note (P-012).
+              engine.syncPlants(plants.slice(0, i + 1), bed);
+              isPlacing = true;
+              asRunning(() => engine.ui('placed', `p${i}`));
+              isPlacing = false;
+              void ctx.resume();
+            });
           });
         }
         const listen = scene.listen;
@@ -274,6 +388,7 @@ function render(page: Page, scene: Scene): Promise<Numbers & { wav: string }> {
       return {
         ...(scene.windows === undefined ? {} : { bands }),
         ...(entryMinDb === undefined ? {} : { entryMinDb }),
+        ...(fadeGain === undefined ? {} : { fadeGain, placedNotes }),
         peakMonoDbfs: monoPeakDb(0, scene.seconds),
         ...M.measure(ch, sampleRate),
         triggers: engine.stats.triggers,
@@ -301,6 +416,7 @@ function render(page: Page, scene: Scene): Promise<Numbers & { wav: string }> {
       uiAtS: UI_AT_S,
       bed: BED,
       head: HEAD,
+      seed: SEED,
     },
   );
 }
@@ -350,9 +466,15 @@ test('P-023 five-voice reference renders: each style in the Wanderer and three r
   const results: Record<string, { signature: RoomSignature; bassMinusBellLu: number } & Numbers> = {};
   const rows: string[] = [];
   for (const style of STYLES) {
-    for (const [room, signature] of Object.entries(ROOMS)) {
+    for (const room of ROOM_FILTER) {
+      const signature = ROOMS[room] as RoomSignature;
       const name = `${styleName(style)}-${room}`;
-      const r = await renderTo(page, `p023-${name}`, { plants: FIVE_VOICES, seconds: 60, signature, style });
+      const r = await renderTo(page, `p023-${name}`, {
+        plants: FIVE_VOICES,
+        seconds: SECONDS,
+        signature,
+        style,
+      });
       expectBounded(r);
       // The two voices solo in their own cells, 10 s each: P-023 says the Bass is about 5 dB above the Bell.
       const solo = async (voice: Voice): Promise<number> =>
@@ -375,7 +497,7 @@ test('P-023 five-voice reference renders: each style in the Wanderer and three r
   }
   writeJson('p023.json', results);
   writeSection('Styles × rooms', [
-    `${new Date().toISOString().slice(0, 10)}; the five-voice bed, 60 s; Bass − Bell from each voice solo, 10 s.`,
+    `${new Date().toISOString().slice(0, 10)}; the five-voice bed, ${SECONDS} s; Bass − Bell from each voice solo, 10 s.`,
     '',
     '| Style | Room | LUFS | Peak dBFS | R−L dB | Bass − Bell LU (solos) |',
     '|---|---|---|---|---|---|',
@@ -500,6 +622,64 @@ test('Listen sweep: enterListen at 5 s, exitListen at 15 s, 20 s; its reach over
     '|---|---|---|---|',
     ...reachRows,
   ]);
+});
+
+test('P-029 listening-test clips, as the app plays (APP_LIKE=1): its volume, a fixed seed, the start fade, the bed chord, new plants one by one', async ({
+  page,
+}) => {
+  test.skip(process.env.APP_LIKE !== '1', 'APP_LIKE=1 renders the listening-test clips');
+  mkdirSync(LISTEN_OUT, { recursive: true });
+  const commit = commitOfTree();
+  // One entry per clip, kept across runs: a run with other STYLE or ROOMS adds to it. Never normalised here.
+  const jsonPath = join(LISTEN_OUT, 'listen.json');
+  const clips = (existsSync(jsonPath) ? JSON.parse(readFileSync(jsonPath, 'utf8')) : {}) as Record<
+    string,
+    unknown
+  >;
+  for (const style of STYLES) {
+    for (const room of ROOM_FILTER) {
+      const signature = ROOMS[room] as RoomSignature;
+      const plants = plantingOrder(signature);
+      const plantAtS = plants.map((_, i) => APP_FIRST_PLANT_S + i * APP_PLANT_EVERY_S);
+      const name = `${styleName(style)}-${room}`;
+      const r = await renderTo(page, `listen/${name}`, {
+        plants,
+        seconds: SECONDS,
+        signature,
+        style,
+        volume: DEFAULT_VOLUME, // the settings' default: the master sits before the limiter, so not a plain gain
+        height: NEW_PLANT_HEIGHT, // a planted seed's height, unpulled
+        app: { chordAtS: UI_AT_S, plantAtS },
+      });
+      expectBounded(r);
+      console.log(
+        `  fade: master ${r.fadeGain?.atChord.toFixed(3)} at the chord (${UI_AT_S} s), ${r.fadeGain?.later.toFixed(3)} 2 s later; ` +
+          `${r.placedNotes} placed notes of ${plantAtS.filter((t) => t < SECONDS).length} plants`,
+      );
+      clips[name] = {
+        file: `${name}.wav`,
+        commit,
+        seed: SEED,
+        style,
+        room,
+        signature,
+        seconds: SECONDS,
+        volume: DEFAULT_VOLUME,
+        height: NEW_PLANT_HEIGHT,
+        chordAtS: UI_AT_S,
+        stagger: { firstS: APP_FIRST_PLANT_S, everyS: APP_PLANT_EVERY_S, plants, plantAtS },
+        lufs: r.lufs,
+        peakDbfs: r.peakDbfs,
+        rightMinusLeftDb: r.rightMinusLeftDb,
+        rmsDbfs: r.rmsDbfs,
+        notes: r.triggers,
+        maxVoices: r.maxVoices,
+        fadeGain: r.fadeGain,
+        placedNotes: r.placedNotes,
+      };
+    }
+  }
+  writeFileSync(jsonPath, JSON.stringify(clips, null, 2));
 });
 
 test('P-026 same key and seed, only the reverb changing: blind ABX pairs 1.2 vs 1.6 s and 1.6 vs 2.0 s, 30 s', async ({

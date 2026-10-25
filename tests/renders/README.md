@@ -52,4 +52,21 @@ The other groups, the same way with `-g`: `"UI sounds"`, `"Listen sweep"`, `P-02
 
 ## 6. P-029 listening-test clips (APP_LIKE=1)
 
-Commands added when the change lands.
+Six clips of 45 s that sound like the shipping app: the app's volume (0.8), its 2.5 s start fade, the bed's chord at 0.5 s, ten plants planted one every 2 s with their placed notes, one fixed seed (164) so every listener hears the same counter-line. Not normalised: match them yourself (e.g. to −23 LUFS by gain).
+
+In PowerShell, from the repo folder (use `npx`: PowerShell's npm drops the `--`):
+
+```powershell
+$env:APP_LIKE = '1'; $env:SECONDS = '45'
+$env:STYLE = 'B'; $env:ROOMS = 'wanderer,small,large'
+npx playwright test -c tests/renders/playwright.config.ts -g "P-029"
+Remove-Item Env:STYLE; $env:ROOMS = 'wanderer'
+npx playwright test -c tests/renders/playwright.config.ts -g "P-029"
+Remove-Item Env:APP_LIKE, Env:SECONDS, Env:ROOMS
+```
+
+The second run renders today's sound, A, B and C in the Wanderer room (B-wanderer again, the same within 1 bit).
+
+Files in `.tmp/renders/listen/`: `B-wanderer.wav`, `B-small.wav`, `B-large.wav`, `A-wanderer.wav`, `C-wanderer.wav`, `today-wanderer.wav`, and `listen.json` (commit, seed, room, LUFS, peak, R−L for each). Chromium's offline render is not bit-exact between runs (about 0.02 % of samples differ by 1 bit, far below hearing): compare clips by the numbers in `listen.json`, not by file hashes.
+
+Not in the clips: the app's daily seed (the clips use 164), a moving head, the tuning ripple's chord tones, the UI and Listen sounds, Quest Browser and the headset's speakers.
