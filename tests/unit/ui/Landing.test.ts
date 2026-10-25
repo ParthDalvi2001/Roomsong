@@ -71,7 +71,7 @@ describe('the wording of UX §9.7', () => {
       expect(text).not.toMatch(/immersive AR|plane detection|anchors|eyes only|gaze|tune/i);
     }
     expect(LANDING.accessHeading).toBe('Accessibility');
-    expect(LANDING.access.gazeDwell).toBe('No hands: look and hold');
+    expect(LANDING.access.gazeDwell).toBe('No hands: look to select');
     expect(LANDING.E_XR_UNSUPPORTED).toBe(
       'Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S.',
     );
@@ -100,8 +100,9 @@ describe('landing strings', () => {
     }
   });
 
-  it('give a first-time user three or four things in Help (not a manual)', () => {
+  it('give a first-time user a few things in Help (not a manual): the four steps and where settings are (T-167)', () => {
     expect(LANDING.help.length).toBeGreaterThanOrEqual(3);
-    expect(LANDING.help.length).toBeLessThanOrEqual(4);
+    expect(LANDING.help.length).toBeLessThanOrEqual(5);
+    expect(LANDING.help[4]).toMatch(/^For settings, turn the back of your left hand towards your face/);
   });
 });

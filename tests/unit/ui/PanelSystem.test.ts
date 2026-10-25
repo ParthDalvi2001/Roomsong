@@ -113,8 +113,8 @@ describe('settings panel drawing: where things go (UX §3.6)', () => {
 
   it('writes labels and read-outs from their left end, squeezed into their room and never cut', () => {
     const { text } = drawn('sound');
-    expect(text('Tempo')).toMatchObject({
-      args: ['Tempo', 25, 212.5, 250],
+    expect(text('Speed')).toMatchObject({
+      args: ['Speed', 25, 212.5, 250],
       font: PANEL_FONT,
       textAlign: 'left',
     });
@@ -137,7 +137,7 @@ describe('settings panel drawing: state is not carried by colour alone (NFR-ACC-
     expect(fills[2]).not.toBe(CAPTION_TEXT_COLOUR); // the Access tab
     expect(text('Sound')?.fillStyle).toBe(PANEL_INK);
     expect(text('Access')?.fillStyle).toBe(CAPTION_TEXT_COLOUR);
-    expect(text('auto')?.fillStyle).toBe(PANEL_INK);
+    expect(text('room')?.fillStyle).toBe(PANEL_INK); // Echo: room, the chosen option
     expect(text('small')?.fillStyle).toBe(CAPTION_TEXT_COLOUR);
   });
 
@@ -157,7 +157,7 @@ describe('settings panel drawing: state is not carried by colour alone (NFR-ACC-
     expect(normal.text('+')?.globalAlpha).toBe(PANEL_DIM_ALPHA); // the first +: the tempo's
     expect(normal.text('-')?.globalAlpha).toBe(1);
     expect(normal.text('echo 0.9 s')?.globalAlpha).toBe(PANEL_DIM_ALPHA);
-    expect(normal.text('Tuned by: C major,')?.globalAlpha).toBe(1);
+    expect(normal.text('Tuned to: C major,')?.globalAlpha).toBe(1);
     expect(drawn('sound', true).text('echo 0.9 s')?.globalAlpha).toBe(PANEL_DIM_ALPHA_HIGH_CONTRAST);
   });
 });
@@ -218,7 +218,7 @@ describe('settings panel drawing: a redraw (UX §3.6)', () => {
       args: ['R', 925, 625, 75],
       fillStyle: PANEL_INK,
     });
-    const labels = ['One hand', 'Look and hold', 'High contrast', 'Reduce motion', 'Beat ring', 'Main hand'];
+    const labels = ['One hand', 'Look to select', 'High contrast', 'Reduce motion', 'Beat ring', 'Main hand'];
     for (const label of labels)
       expect(text(label), label).toMatchObject({ fillStyle: CAPTION_TEXT_COLOUR, globalAlpha: 1 });
   });

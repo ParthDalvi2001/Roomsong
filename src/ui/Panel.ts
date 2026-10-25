@@ -120,10 +120,15 @@ const HAND_X = [0.11, 0.17] as const;
 const ACTION_X = -0.15;
 const ACTION_LABEL_X = -0.09;
 const ACTION_LABEL_W = 0.28;
-// The Time-lapse switch (T-174) on the right of the Re-place bed row: its label ends at the panel's edge.
-const REPLACE_LABEL_W = 0.11; // "Re-place bed" is about 0.11 m
-const TIME_LAPSE_X = 0.06;
-const TIME_LAPSE_LABEL_W = 0.105;
+// The Garden tab's height row (T-167, T-174): "Height" and a narrow stepper on the left, so the Time-lapse switch
+// fits on its right and "Place the garden again" and "New garden (erases this one)" keep whole rows.
+const HEIGHT_LABEL_W = 0.06; // "Height" is about 0.055 m
+const HEIGHT_MINUS_X = -0.105;
+const HEIGHT_VALUE_X = -0.08; // "+10 cm" is about 0.055 m
+const HEIGHT_VALUE_W = 0.055;
+const HEIGHT_PLUS_X = 0;
+const TIME_LAPSE_X = 0.055; // one pitch from the plus
+const TIME_LAPSE_LABEL_W = 0.105; // to 1 cm short of the panel's edge
 const TUNED_Y = ROW_Y[3] + 0.005; // the two lines of "Tuned by" sit a little above the last row's middle
 const LINE_M = 0.013; // half the distance between those two lines
 // Both lines end before the Mono switch: "Tuned by: C major," is about 0.165 m, "echo 0.9 s" 0.09 m and the longest
@@ -306,10 +311,10 @@ export class Panel {
     if (this.shownTab === 'access') return this.accessTexts(s);
     return [
       label(LEFT_X, ROW_Y[0], FULL_W, gardenLine(this.garden, this.signature)),
-      label(LEFT_X, ROW_Y[1], LABEL_W, PANEL.bedHeight),
-      label(VALUE_X, ROW_Y[1], VALUE_W, heightText(this.garden)),
-      label(ACTION_LABEL_X, ROW_Y[2], REPLACE_LABEL_W, PANEL.replaceBed),
-      label(TIME_LAPSE_X + TOGGLE_LABEL_M, ROW_Y[2], TIME_LAPSE_LABEL_W, PANEL.timeLapse),
+      label(LEFT_X, ROW_Y[1], HEIGHT_LABEL_W, PANEL.bedHeight),
+      label(HEIGHT_VALUE_X, ROW_Y[1], HEIGHT_VALUE_W, heightText(this.garden)),
+      label(TIME_LAPSE_X + TOGGLE_LABEL_M, ROW_Y[1], TIME_LAPSE_LABEL_W, PANEL.timeLapse),
+      label(ACTION_LABEL_X, ROW_Y[2], ACTION_LABEL_W, PANEL.replaceBed),
       label(ACTION_LABEL_X, ROW_Y[3], ACTION_LABEL_W, PANEL.newGarden),
     ];
   }
@@ -518,11 +523,11 @@ export class Panel {
     const atEnd = (steps: number): boolean =>
       garden !== null && setBedHeightOffset(garden, heightAfter(garden, steps)) === garden;
     return [
-      { ...round('height:-', MINUS_X, ROW_Y[1], PANEL.minus), dim: atEnd(-1) },
-      { ...round('height:+', PLUS_X, ROW_Y[1], PANEL.plus), dim: atEnd(1) },
+      { ...round('height:-', HEIGHT_MINUS_X, ROW_Y[1], PANEL.minus), dim: atEnd(-1) },
+      { ...round('height:+', HEIGHT_PLUS_X, ROW_Y[1], PANEL.plus), dim: atEnd(1) },
       wide('replaceBed', ACTION_X, ROW_Y[2], PANEL.start),
       wide(NEW_GARDEN_ID, ACTION_X, ROW_Y[3], PANEL.hold),
-      { ...toggle(TIME_LAPSE_ID, 1, ROW_Y[2], this.actions.isTimeLapse()), x: TIME_LAPSE_X },
+      { ...toggle(TIME_LAPSE_ID, 1, ROW_Y[1], this.actions.isTimeLapse()), x: TIME_LAPSE_X },
     ];
   }
 }

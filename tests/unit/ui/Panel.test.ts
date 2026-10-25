@@ -149,10 +149,10 @@ describe('settings panel: opening, closing and the tabs (UX §3.6)', () => {
   it('shows the hold times only while the gaze mode is on', () => {
     const panel = opened('access');
     expect(ids(panel)).not.toContain('dwell:900');
-    expect(words(panel)).not.toContain('Hold time');
+    expect(words(panel)).not.toContain('Look time');
     settings.set({ gazeDwell: true });
     expect(ids(panel)).toEqual(expect.arrayContaining(['dwell:600', 'dwell:900', 'dwell:1200']));
-    expect(words(panel)).toContain('Hold time');
+    expect(words(panel)).toContain('Look time');
     expect(control(panel, 'dwell:900')).toMatchObject({ on: true, text: '0.9 s' });
   });
 
@@ -230,9 +230,9 @@ describe('settings panel: every control writes core settings and shows the value
   it('shows the current values: read-outs, the chosen option and each switch in words', () => {
     const panel = opened('sound');
     expect(words(panel)).toEqual(
-      expect.arrayContaining(['Tempo', '84 BPM', 'Volume', '80 %', 'Reverb', 'Mono']),
+      expect.arrayContaining(['Speed', '84 BPM', 'Volume', '80 %', 'Echo', 'Mono']),
     );
-    expect(control(panel, 'reverb:auto')).toMatchObject({ on: true, text: 'auto' });
+    expect(control(panel, 'reverb:auto')).toMatchObject({ on: true, text: 'room' });
     expect(control(panel, 'mono')).toMatchObject({ on: false, text: 'off' }); // P-014
     press(panel, 'tempo:+');
     press(panel, 'volume:-');
@@ -252,7 +252,7 @@ describe('settings panel: every control writes core settings and shows the value
     expect(control(panel, 'hand:right')?.on).toBe(false);
     expect(words(panel)).toEqual([
       'One hand',
-      'Look and hold',
+      'Look to select',
       'High contrast',
       'Reduce motion',
       'Beat ring',
@@ -307,7 +307,7 @@ describe('settings panel: the Sound tab says what tuned the song (UX §3.6, US-2
 
   it('shows the Wanderer tuning until a room has set one', () => {
     expect(tuned(opened('sound')).map((t) => t.text)).toEqual([
-      'Tuned by: C major,',
+      'Tuned to: C major,',
       'echo 0.9 s',
       'no room found',
     ]);
@@ -318,7 +318,7 @@ describe('settings panel: the Sound tab says what tuned the song (UX §3.6, US-2
     panel.setSignature(D_MAJOR_ROOM);
     panel.setFeatures({ level: 1, floorArea: 15.2, ceilingHeight: 2.71 });
     expect(tuned(panel).map((t) => t.text)).toEqual([
-      'Tuned by: D major,',
+      'Tuned to: D major,',
       'echo 0.6 s',
       'room 15 sq m, ceiling 2.7 m',
     ]);
@@ -328,7 +328,7 @@ describe('settings panel: the Sound tab says what tuned the song (UX §3.6, US-2
     panel.stale = false;
     panel.setFeatures({ level: 2, floorArea: 30 });
     expect(panel.stale).toBe(true);
-    expect(tuned(panel).map((t) => t.text)).toEqual(['Tuned by: A minor,', 'echo 2.0 s', 'room 30 sq m']);
+    expect(tuned(panel).map((t) => t.text)).toEqual(['Tuned to: A minor,', 'echo 2.0 s', 'room 30 sq m']);
   });
 
   it('takes the Wanderer tuning by its marker, a palette seed of 0, not by being the same object', () => {
@@ -358,11 +358,11 @@ describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () =
     expect(words(panel)[0]).toBe('Key C major'); // no garden seen yet
     const visited = { createdAt: 1000, lastVisitAt: 1000 + 3.5 * DAY_MS };
     panel.setGarden(garden([], [seed('a'), seed('b')], visited));
-    expect(words(panel)[0]).toBe('Day 4, Seeds 2, Key C major');
+    expect(words(panel)[0]).toBe('Day 4, Seeds left 2, Key C major');
     panel.setSignature(D_MAJOR_ROOM);
-    expect(words(panel)[0]).toBe('Day 4, Seeds 2, Key D major (room)');
+    expect(words(panel)[0]).toBe('Day 4, Seeds left 2, Key D major (room)');
     panel.setGarden(garden());
-    expect(words(panel)[0]).toBe('Day 1, Seeds 0, Key D major (room)');
+    expect(words(panel)[0]).toBe('Day 1, Seeds left 0, Key D major (room)');
   });
 
   it('Place the garden again says so once and closes the panel', () => {
@@ -376,7 +376,7 @@ describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () =
   it('a bed-height step asks for the next 2 cm, from the height of the garden it last saw', () => {
     const panel = opened('garden');
     const asked = calls.bedHeight;
-    expect(words(panel)).toEqual(expect.arrayContaining(['Bed height', '0 cm']));
+    expect(words(panel)).toEqual(expect.arrayContaining(['Height', '0 cm']));
     press(panel, 'height:+');
     press(panel, 'height:-');
     expect(asked).toEqual([{ metres: 0.02 }, { metres: -0.02 }]); // no garden seen: from 0
@@ -1078,7 +1078,7 @@ describe('panel strings', () => {
   });
 
   it('do not promise eye control: the gaze mode is named for what it asks (UX §9.7)', () => {
-    expect(PANEL.gazeDwell).toBe('Look and hold');
+    expect(PANEL.gazeDwell).toBe('Look to select');
     expect(all.join(' ')).not.toMatch(/eye|gaze|dwell/i);
   });
 });

@@ -20,7 +20,7 @@ describe('core/strings', () => {
       'Table: seeds.',
       'Table: a note.',
       'Walls: a note.',
-      'Ceiling: scale.',
+      'Ceiling: mood.',
     ]);
     for (const [key, text] of ripple) {
       expect(text.length, key).toBeLessThanOrEqual(RIPPLE_CAPTION_MAX_CHARS);
@@ -41,7 +41,8 @@ describe('core/strings', () => {
   });
 
   it('holds the full-bed caption of UX §7 under the key render/ raises it by (T-127)', () => {
-    expect(STRINGS.gardenFull).toBe('Garden is full');
+    expect(STRINGS.gardenFull).toBe('Garden full. Remove a plant first.');
+    expect(STRINGS.gardenFull.split(' ').length).toBeLessThanOrEqual(6); // FR-UI-01
   });
 
   it('holds the onboarding captions of UX §3.3, one instruction each, at most six words (FR-UI-01, T-150)', () => {
@@ -66,8 +67,8 @@ describe('core/strings', () => {
   });
 
   it('keys the message of a failure by its error code', () => {
-    expect(STRINGS.E_SAVE_FAILED).toBe('Saving unavailable');
-    expect(STRINGS.E_AUDIO_CONTEXT).toBe('Sound unavailable'); // a session with no sound (API_SPEC §1.10 rule 2)
+    expect(STRINGS.E_SAVE_FAILED).toBe('This garden cannot be saved');
+    expect(STRINGS.E_AUDIO_CONTEXT).toBe('No sound. Leave and enter again.'); // a session with no sound (API_SPEC §1.10 rule 2)
     const notices = [
       'gardenFull',
       'goodnight',

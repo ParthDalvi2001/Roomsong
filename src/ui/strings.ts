@@ -16,7 +16,7 @@ export const LANDING = {
   window: 'The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset.',
   close: 'Close the garden',
   E_HANDS_UNAVAILABLE:
-    'The garden did not open. Check that hand tracking is on in the headset: Settings, Movement tracking, Hand tracking.',
+    'The garden did not open. Say yes when the headset asks, and check that hand tracking is on: Settings, Movement tracking, Hand tracking.',
   deviceHeading: 'This device',
   features: {
     immersiveAr: {
@@ -45,7 +45,7 @@ export const LANDING = {
   accessHeading: 'Accessibility',
   access: {
     oneHand: 'One hand',
-    gazeDwell: 'No hands: look and hold',
+    gazeDwell: 'No hands: look to select',
     highContrast: 'High contrast',
     reducedMotion: 'Reduce motion',
   },
@@ -55,6 +55,8 @@ export const LANDING = {
     'Open a hand, palm up, and a seed comes to it.',
     'Pinch the seed, carry it over the glowing ring and let go. Where you plant it sets when it sounds and which note it sings.',
     'Hold your palms out, facing away from you, to sit back and listen. Pinch to come back.',
+    // T-167: nothing else tells the player the settings orb exists. The orb rides the hand that is not the main hand.
+    'For settings, turn the back of your left hand towards your face (the right hand if your main hand is the left) and pinch the small orb over it. In the one-hand and no-hands modes it waits in front of you instead.',
   ],
   privacy:
     'Your garden is saved in this browser, on this device only. What the headset shares about your room and your hands stays on the device: nothing is sent anywhere.',
@@ -62,7 +64,8 @@ export const LANDING = {
 
 // The words of the settings panel (UX §3.6; T-151). The same character set, so no middle dot, no superscript and
 // no multiplication sign: the panel writes "sq m" and joins with commas. The numbers are put in by ui/Panel.ts.
-// "Look and hold", not "Gaze dwell": the reticle follows the head, not the eyes (UX §9.7).
+// "Look to select", not "Gaze dwell": the reticle follows the head, not the eyes (UX §9.7); not "Look and hold":
+// "hold" also means New garden's hold (T-167).
 export const PANEL = {
   tabs: { sound: 'Sound', access: 'Access', garden: 'Garden' },
   close: 'x',
@@ -70,14 +73,14 @@ export const PANEL = {
   plus: '+',
   on: 'on',
   off: 'off',
-  tempo: 'Tempo',
+  tempo: 'Speed',
   bpm: 'BPM',
   volume: 'Volume',
   percent: '%',
-  reverb: 'Reverb',
-  reverbs: { auto: 'auto', small: 'small', off: 'off' },
+  reverb: 'Echo',
+  reverbs: { auto: 'room', small: 'small', off: 'off' }, // one word for one thing: the echo
   mono: 'Mono',
-  tunedBy: 'Tuned by:',
+  tunedBy: 'Tuned to:',
   echo: 'echo',
   seconds: 's',
   room: 'room',
@@ -88,22 +91,22 @@ export const PANEL = {
   keys: { '-3': 'A', '0': 'C', '2': 'D', '4': 'E' },
   modes: { majorPent: 'major', minorPent: 'minor', susPent: 'sus' },
   oneHand: 'One hand',
-  gazeDwell: 'Look and hold',
-  holdTime: 'Hold time',
+  gazeDwell: 'Look to select',
+  holdTime: 'Look time',
   highContrast: 'High contrast',
   reducedMotion: 'Reduce motion',
   beatRing: 'Beat ring',
   mainHand: 'Main hand',
   hands: { left: 'L', right: 'R' },
   day: 'Day',
-  seeds: 'Seeds',
+  seeds: 'Seeds left',
   key: 'Key',
   fromRoom: '(room)',
-  bedHeight: 'Bed height',
+  bedHeight: 'Height',
   centimetres: 'cm',
-  replaceBed: 'Re-place bed',
+  replaceBed: 'Place the garden again', // "Re-place bed" read as "Replace bed"
   start: 'start',
-  newGarden: 'New garden',
+  newGarden: 'New garden (erases this one)',
   hold: 'hold',
   timeLapse: 'Time-lapse', // T-174: the demo switch; "(demo)" does not fit the row at a readable size
 } as const;
