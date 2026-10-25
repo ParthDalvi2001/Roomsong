@@ -106,6 +106,7 @@ export const PANEL = {
   replaceBed: 'Place the garden again', // "Re-place bed" read as "Replace bed"
   start: 'start',
   newGarden: 'New garden (erases this one)',
+  bringBack: 'Bring back the old garden', // D-060 item 13: the same row, for RESTORE_WINDOW_MS after a New garden
   hold: 'hold',
   timeLapse: 'Time-lapse', // T-174: the demo switch; "(demo)" does not fit the row at a readable size
 } as const;

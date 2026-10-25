@@ -204,6 +204,8 @@ const panelId = (target: TargetRef | null): string =>
 /** What the panel needs of the app's GardenSystem (API_SPEC §1.10). */
 export interface PanelGarden {
   newGarden(): void;
+  readonly canRestore: boolean;
+  restoreReplaced(): void;
   setBedHeightOffset(metres: number): void;
   readonly timeLapse: boolean;
   setTimeLapse(on: boolean): void;
@@ -277,6 +279,8 @@ export class PanelSystem extends createSystem(
       log.error('ui', 'the settings panel has no garden or no room: its Garden tab will do nothing');
     this.panel = new Panel({
       newGarden: () => garden?.newGarden(),
+      canRestore: () => garden?.canRestore ?? false,
+      restoreGarden: () => garden?.restoreReplaced(),
       replaceBed: () => room?.replace(),
       setBedHeightOffset: (metres) => garden?.setBedHeightOffset(metres),
       isTimeLapse: () => garden?.timeLapse ?? false,

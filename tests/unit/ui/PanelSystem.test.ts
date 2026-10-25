@@ -57,6 +57,8 @@ function recorder() {
 function drawn(tab: PanelTab, highContrast = false) {
   const panel = new Panel({
     newGarden: () => {},
+    canRestore: () => false,
+    restoreGarden: () => {},
     replaceBed: () => {},
     setBedHeightOffset: () => {},
     isTimeLapse: () => false,
@@ -337,6 +339,8 @@ function rig(given: { garden?: object | null; room?: object | null; engine?: obj
   const asked: string[] = [];
   const garden = {
     newGarden: () => asked.push('newGarden'),
+    canRestore: false,
+    restoreReplaced: () => asked.push('restoreReplaced'),
     setBedHeightOffset: (metres: number) => asked.push(`setBedHeightOffset ${metres}`),
     timeLapse: false,
     setTimeLapse: (on: boolean) => asked.push(`setTimeLapse ${on}`),

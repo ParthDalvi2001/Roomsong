@@ -8,6 +8,7 @@ import {
   DAILY_VOICES,
   LISTEN_MAX_MS,
   MS_PER_DAY,
+  RESTORE_WINDOW_MS,
   RINGS,
   STEPS,
   TIME_LAPSE_DAY_MS,
@@ -73,6 +74,9 @@ export class GardenSystem {
   private lapse: ReturnType<typeof setInterval> | null = null;
   /** The session is hidden (xr:visibility): the demo passes no day meanwhile. */
   private isHidden = false;
+  /** D-060 item 13: the garden the last New garden replaced, and until when (core's clock) it can come back. */
+  private replaced: GardenState | null = null;
+  private replacedUntil = 0;
 
   /** Subscribes to the bus, for the life of the page: made before any system, so its handlers run first. */
   constructor(
@@ -192,6 +196,8 @@ export class GardenSystem {
   newGarden(): void {
     const old = this.current;
     if (old === null) return;
+    this.replaced = old;
+    this.replacedUntil = this.appClock.now() + RESTORE_WINDOW_MS;
     this.generation++;
     this.undos.clear(); // no petal may bring a plant of the old garden into the new one
     this.takeBack('reset');
@@ -207,6 +213,31 @@ export class GardenSystem {
       old.plants.map((p) => p.id),
     );
     this.visit();
+  }
+
+  /** D-060 item 13: the garden the last New garden replaced can come back: within RESTORE_WINDOW_MS, no plant yet. */
+  get canRestore(): boolean {
+    const s = this.current;
+    return this.replaced !== null && s !== null && s.plants.length === 0 && this.appClock.now() < this.replacedUntil;
+  }
+
+  /**
+   * D-060 item 13: the garden the last New garden replaced, back as it was (its plants, seeds, bed height and
+   * anchor pair); the caller has done the hold. Saved by the next garden:changed like any change.
+   */
+  restoreReplaced(): void {
+    const old = this.replaced;
+    const s = this.current;
+    if (old === null || s === null || !this.canRestore) return;
+    this.replaced = null;
+    this.generation++;
+    this.undos.clear();
+    this.takeBack('reset'); // a seed of the new garden's supply on a hand
+    this.commit(
+      old,
+      old.plants.map((p) => p.id),
+      s.plants.map((p) => p.id),
+    );
   }
 
   /** FR-UI-10: raises or lowers the bed, in metres, clamped by the reducer. */

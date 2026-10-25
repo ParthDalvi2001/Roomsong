@@ -52,15 +52,19 @@ const D_MAJOR_ROOM: RoomSignature = { ...WANDERER, keyRoot: 2, reverbRt60: 0.6, 
 /** What the panel has asked of the garden and of the room since the test began. */
 const calls = {
   newGarden: [] as object[],
+  restore: [] as object[],
   replaceBed: [] as object[],
   bedHeight: [] as { metres: number }[],
   timeLapse: [] as boolean[],
   pressed: [] as string[],
 };
-/** The garden's time-lapse demo, as the stand-in garden has it. */
+/** The garden's time-lapse demo, as the stand-in garden has it; and whether its old garden can come back. */
 let isTimeLapse = false;
+let canRestore = false;
 const actions: PanelActions = {
   newGarden: () => calls.newGarden.push({}),
+  canRestore: () => canRestore,
+  restoreGarden: () => calls.restore.push({}),
   replaceBed: () => calls.replaceBed.push({}),
   setBedHeightOffset: (metres) => calls.bedHeight.push({ metres }),
   isTimeLapse: () => isTimeLapse,
@@ -105,6 +109,7 @@ beforeEach(() => {
   while (off.length > 0) off.pop()?.();
   for (const list of Object.values(calls)) list.length = 0;
   isTimeLapse = false;
+  canRestore = false;
   settings.set({ ...DEFAULT_SETTINGS });
 });
 
@@ -452,6 +457,34 @@ describe('settings panel: New garden needs a hold, so it cannot happen by accide
     panel.up('left', 'newGarden');
     expect(asked).toHaveLength(1);
     expect(panel.open).toBe(true);
+  });
+
+  it('while the old garden can come back, the same row and hold bring it back: by a pinch, and by the gaze (D-060 item 13)', () => {
+    const panel = opened('garden');
+    canRestore = true;
+    panel.stale = false;
+    panel.frame(16, '', false);
+    expect(panel.stale).toBe(true); // redrawn as the row turns
+    expect(words(panel)).toContain(PANEL.bringBack);
+    expect(words(panel)).not.toContain(PANEL.newGarden);
+    press(panel, 'newGarden'); // a short press does nothing, as for New garden
+    expect(calls.restore).toEqual([]);
+    panel.down('right', 'newGarden');
+    run(panel, NEW_GARDEN_HOLD_MS);
+    panel.up('right', 'newGarden');
+    expect([calls.restore.length, calls.newGarden.length]).toEqual([1, 0]);
+    // The gaze: the dwell, then the hold, on the same row.
+    settings.set({ gazeDwell: true, dwellMs: 600 });
+    const looked = opened('garden');
+    lookAt(looked, 'newGarden');
+    run(looked, 600 + NEW_GARDEN_HOLD_MS, 'newGarden');
+    expect([calls.restore.length, calls.newGarden.length]).toEqual([2, 0]);
+    // The window over: the row is New garden again.
+    canRestore = false;
+    panel.stale = false;
+    panel.frame(16, '', false);
+    expect(panel.stale).toBe(true);
+    expect(words(panel)).toContain(PANEL.newGarden);
   });
 
   it('does nothing when the hand moved off it before letting go, however long the hold', () => {

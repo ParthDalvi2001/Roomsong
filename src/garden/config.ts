@@ -117,3 +117,5 @@ export const LISTEN_MAX_MS = 600_000;
 export const AUTOPLANT_CELL_STRIDE = 7;
 /** T-174, D-057: the time-lapse demo's simulated day, in real ms: stages 1, 2 and 3 show 4, 12 and 28 s after it starts. */
 export const TIME_LAPSE_DAY_MS = 4000;
+/** D-060 item 13: for this long after a New garden, and until the new one has a plant, the old one can come back. */
+export const RESTORE_WINDOW_MS = 10_000;

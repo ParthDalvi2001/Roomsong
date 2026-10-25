@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as core from '../../../src/core/index.js';
-import { TIME_LAPSE_DAY_MS } from '../../../src/garden/config.js';
+import { RESTORE_WINDOW_MS, TIME_LAPSE_DAY_MS } from '../../../src/garden/config.js';
 import * as lib from '../../../src/garden/index.js';
 import { validateState } from '../../../src/persistence/schema.js';
 
@@ -965,6 +965,53 @@ describe('garden/GardenSystem: newGarden and setBedHeightOffset (FR-PER-03, FR-U
     s.palmUp('right'); // the gaze asks for the next seed and lets it go over a cell, with no pinchStart between
     s.release('right', 'carry', seedRef(id), 'bed', cell(1, 1));
     expect(s.state().plants.map((p) => [p.id, p.cell])).toEqual([[id, { ring: 1, step: 1 }]]);
+  });
+
+  it('D-060 item 13: for RESTORE_WINDOW_MS after New garden the old garden comes back, plants, bed and anchor pair; a plant or the time ends it', () => {
+    const s = setup();
+    const old = saved([plant('a', 0, 0), plant('b', 1, 1)], [seed('s1')], {
+      anchorHandle: 'h1',
+      anchorLevel: 2,
+      bedHeightOffset: 0.05,
+    });
+    s.system.load(old);
+    s.features(ROOM);
+    expect(s.system.canRestore).toBe(false); // no New garden yet
+    const before = s.state(); // the loaded garden after this session's visit
+    s.system.newGarden();
+    const made = s.state();
+    expect(s.system.canRestore).toBe(true);
+    s.clear();
+    s.time.now += RESTORE_WINDOW_MS - 1;
+    s.system.restoreReplaced();
+    expect(s.seen).toEqual([
+      ['garden:changed', { state: before, diff: { added: ['a', 'b'], removed: [], changed: [] } }],
+    ]);
+    expect(s.state()).toBe(before); // the plants, the seeds, the bed height and the anchor pair, as they were
+    expect(before).toMatchObject({ anchorHandle: 'h1', anchorLevel: 2, bedHeightOffset: 0.05 });
+    expect(before.plants.map((p) => p.id)).toEqual(old.plants.map((p) => p.id));
+    expect(s.system.canRestore).toBe(false); // once
+    s.clear();
+    s.system.restoreReplaced();
+    expect(s.seen).toEqual([]);
+    expect(made.plants).toEqual([]);
+
+    // The window: RESTORE_WINDOW_MS on core's clock.
+    s.system.newGarden();
+    s.time.now += RESTORE_WINDOW_MS;
+    expect(s.system.canRestore).toBe(false);
+    s.system.restoreReplaced();
+    expect(s.state().plants).toEqual([]);
+
+    // A plant in the new garden ends it at once.
+    s.system.newGarden();
+    expect(s.system.canRestore).toBe(true);
+    const id = s.state().seeds[0]!.id;
+    s.palmUp('right');
+    s.pinch('right', seedRef(id));
+    s.release('right', 'carry', seedRef(id), 'bed', cell(2, 2));
+    expect(s.state().plants).toHaveLength(1);
+    expect(s.system.canRestore).toBe(false);
   });
 
   it('New garden before the session has its signature stops after garden:changed; the seeds come with that visit', () => {

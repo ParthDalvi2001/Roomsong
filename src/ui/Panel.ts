@@ -69,6 +69,10 @@ export interface PanelText {
 export interface PanelActions {
   /** FR-PER-03: a new garden in place of this one. The hold was the confirm. */
   newGarden(): void;
+  /** D-060 item 13: whether the garden a New garden replaced can come back now, read each time the row is drawn;
+   *  and the ask, on the same row and hold. */
+  canRestore(): boolean;
+  restoreGarden(): void;
   /** FR-ROOM-05: the bed is placed again. The panel has closed by then. */
   replaceBed(): void;
   /** FR-UI-10: the bed's height offset that is asked for, in metres. */
@@ -252,6 +256,8 @@ function heightText(garden: GardenState | null): string {
  */
 export class Panel {
   /** Something it shows has changed. Whoever draws it clears this. */
+  /** The New garden row was last drawn as "Bring back the old garden" (D-060 item 13). */
+  private couldRestore = false;
   stale = true;
   /**
    * `fill[0]`: how far the hold on New garden or the dwell has come, 0..1. A level, never a blink (FR-UI-11).
@@ -316,7 +322,7 @@ export class Panel {
       label(HEIGHT_VALUE_X, ROW_Y[1], HEIGHT_VALUE_W, heightText(this.garden)),
       label(TIME_LAPSE_X + TOGGLE_LABEL_M, ROW_Y[1], TIME_LAPSE_LABEL_W, PANEL.timeLapse),
       label(ACTION_LABEL_X, ROW_Y[2], ACTION_LABEL_W, PANEL.replaceBed),
-      label(ACTION_LABEL_X, ROW_Y[3], ACTION_LABEL_W, PANEL.newGarden),
+      label(ACTION_LABEL_X, ROW_Y[3], ACTION_LABEL_W, this.actions.canRestore() ? PANEL.bringBack : PANEL.newGarden),
     ];
   }
 
@@ -378,6 +384,12 @@ export class Panel {
     const gazing = s.gazeDwell && !this.pinching.left && !this.pinching.right && gazeId !== GAZE_TOGGLE_ID;
     this.dwell(dt, gazing ? gazeId : '', s, isTurning);
     this.refill();
+    // D-060 item 13: the New garden row reads "Bring back the old garden" while that can be done: redraw at the turn.
+    const canRestore = this.isOpen && this.shownTab === 'garden' && this.actions.canRestore();
+    if (canRestore !== this.couldRestore) {
+      this.couldRestore = canRestore;
+      this.stale = true;
+    }
   }
 
   /** The control or orb to ring: the one a pinch is held on, else the one under the gaze, else a hovered one. */
@@ -454,6 +466,7 @@ export class Panel {
     if (id === 'close') this.setOpen(false);
     else if (id === 'height:-') this.actions.setBedHeightOffset(heightAfter(this.garden, -1));
     else if (id === 'height:+') this.actions.setBedHeightOffset(heightAfter(this.garden, 1));
+    else if (id === NEW_GARDEN_ID && this.actions.canRestore()) this.actions.restoreGarden();
     else if (id === NEW_GARDEN_ID) this.actions.newGarden();
     else if (id === TIME_LAPSE_ID) this.actions.setTimeLapse(!this.actions.isTimeLapse());
     else if (id === 'replaceBed') {

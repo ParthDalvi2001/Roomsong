@@ -162,6 +162,8 @@ Speed and Volume are steppers, not sliders (changed in v1.2): a panel control ac
 **Look time** (shown while Look to select is on): 600 / 900 / 1200 ms, default 900 (`Settings.dwellMs`, FR-HND-12).
 No bed-radius control (single annulus bed); bed height ±10 cm stays.
 Interaction: a control lights up on hover and acts when the pinch is released over it; moving off first cancels (FR-HND-16). In gaze mode, dwell for the chosen time. Controls ≥ 3 cm tall. Panel opens via the settings orb (wrist), by pinch / dwell; closes with ✕ or looking away 5 s.
+*As built 25 Oct (D-060 item 13):* for 10 s after New garden, and until the new garden has a plant, the New garden row reads "Bring back the old garden": the same hold, by pinch or by gaze, brings the replaced garden back as it was. Then the row is "New garden (erases this one)" again.
+
 
 *As built (T-173, 19 Oct):* the Sound tab's last row adds "[off] Mono" right of "Tuned by": the mix summed to mono for a single-sided listener (the Quest's own setting only moves the balance).
 
