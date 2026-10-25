@@ -48,8 +48,15 @@ interface Probe {
   triggers(): number;
   /** The height of the bed pose the audio engine last synced its plants to (a private field of the engine). */
   audioBedY(): number;
-  /** Resolves with `engine.stats.triggers` the next time the tide reaches `step`. */
+  /** Resolves with `engine.stats.triggers` the next time the tide reaches `step`; `atBar` is that step's bar then. */
   atStep(step: number): Promise<number>;
+  atBar: number;
+  /**
+   * The notes the tide starts from step `at` of `bar` to step `at` of the next bar: a plant after step `at` plays
+   * in `bar`, one at or before it in the next, unless style B rests it there (P-009, FR-MUS-13: a bar of each of
+   * its cycles, by its id; the engine's own rule, read from the app's engine).
+   */
+  due(bar: number, at: number): number;
 }
 
 const device = (page: Page) =>
@@ -78,6 +85,12 @@ async function probeLoop(page: Page): Promise<JSHandle<Probe>> {
     const render = await load<Render>('/src/render/index.ts');
     const room = await load<RoomModule>('/src/room/index.ts');
     const { world, engine } = window.__roomsong!;
+    // The engine's own records, scheduler and rest rule (private fields of the dev handle's engine).
+    type Rec = { plant: { cell: { step: number } } };
+    const inside = engine as unknown as {
+      records: Map<string, Rec>;
+      g: { scheduler: { nextIndex: number }; layers: { rests(r: Rec, bar: number): boolean } };
+    };
     const bed = world.getSystem(room.RoomSystem)!.bed.object3D!;
     // Two private fields of BedRenderSystem: its plant and tide renderers.
     const drawing = world.getSystem(render.BedRenderSystem) as unknown as {
@@ -124,6 +137,15 @@ async function probeLoop(page: Page): Promise<JSHandle<Probe>> {
       maxFlashPerS: 0,
       samples: [],
       triggers: () => engine.stats.triggers,
+      atBar: -1,
+      due: (bar, at) => {
+        let n = 0;
+        for (const r of inside.records.values()) {
+          const playsIn = r.plant.cell.step > at ? bar : bar + 1;
+          if (!inside.g.layers.rests(r, playsIn)) n++;
+        }
+        return n;
+      },
       audioBedY: () => (engine as unknown as { bed: number[] }).bed[13]!,
       // Polled on a page timer, not by frame: the audio clock runs on whether a frame comes or not.
       atStep: (step) =>
@@ -133,6 +155,7 @@ async function probeLoop(page: Page): Promise<JSHandle<Probe>> {
             const isThere = engine.clock.stepIndex() === step;
             if (isThere && !wasThere) {
               clearInterval(timer);
+              probe.atBar = Math.floor((inside.g.scheduler.nextIndex - 1) / 16); // the last step scheduled is this one
               done(engine.stats.triggers);
             }
             wasThere = isThere;
@@ -228,7 +251,7 @@ test('d1: a garden is drawn on the bed: three plants, three plant targets at the
   expect(offHost).toEqual([]);
 });
 
-test('d2: the tide plays it: no note and no tide before room:signature; then three notes in every bar', async ({
+test('d2: the tide plays it: no note and no tide before room:signature; then each bar the plants style B does not rest', async ({
   page,
 }) => {
   const errors = watch(page);
@@ -245,11 +268,21 @@ test('d2: the tide plays it: no note and no tide before room:signature; then thr
   );
   expect(tideBefore).toBe(false);
   // The plants stand on steps 0, 7 and 14 (autoplant: cell 7n). Read at step 4, half-way between two of their
-  // notes (a note is started up to LOOK_AHEAD_S, 0.12 s, before its step), a bar always holds all three.
+  // notes (a note is started up to LOOK_AHEAD_S, 0.12 s, before its step): from there to step 4 of the next bar
+  // the tide starts exactly the plants style B does not rest in their bar, each one bar of its cycle (P-009,
+  // FR-MUS-13; style null played all three every bar), read over six bars.
   const counts: number[] = [];
-  for (let bar = 0; bar < 3; bar++) counts.push(await probe.evaluate((p) => p.atStep(4)));
-  expect(counts[1]! - counts[0]!).toBe(3);
-  expect(counts[2]! - counts[1]!).toBe(3);
+  const due: number[] = [];
+  const BARS = 6;
+  for (let bar = 0; bar <= BARS; bar++) {
+    counts.push(await probe.evaluate((p) => p.atStep(4)));
+    if (bar < BARS) due.push(await probe.evaluate((p) => p.due(p.atBar, 4)));
+  }
+  const played = due.map((_, i) => counts[i + 1]! - counts[i]!);
+  expect(played).toEqual(due);
+  for (const n of due) expect(n).toBeLessThanOrEqual(3);
+  // A plant rests at most every second bar (its 2-bar cycle): three plants start 9 notes or more in six bars.
+  expect(due.reduce((sum, n) => sum + n, 0)).toBeGreaterThanOrEqual(9);
   expect(await probe.evaluate((p) => p.tideByFrame[p.frame()])).toBe(true);
   const timing = await probe.evaluate((p) => ({
     enterToSignatureMs: p.heard.find((e) => e.type === 'room:signature')!.atMs - p.enterAtMs,
@@ -258,7 +291,8 @@ test('d2: the tide plays it: no note and no tide before room:signature; then thr
   }));
   expect(timing.maxFlashPerS).toBeLessThanOrEqual(3); // FR-UI-11, every perf:sample of the run
   console.log(
-    `T-128d d2 (emulator, table room, autoplant=3): triggers at bars ${JSON.stringify(counts)}; Enter to ` +
+    `T-128d d2 (emulator, table room, autoplant=3, style B): notes a bar ${JSON.stringify(played)} ` +
+      `(due ${JSON.stringify(due)}); Enter to ` +
       `room:signature ${Math.round(timing.enterToSignatureMs)} ms, Enter to the first note started ` +
       `${Math.round(timing.enterToFirstNoteMs)} ms; maxFlashPerS ${timing.maxFlashPerS}`,
   );

@@ -4,7 +4,7 @@
 // the left palm turned up is given a seed (the re-arm asks again while it stays up), SeedSystem draws it there
 // with its target, the right hand's real pinch takes it, carries it over a cell and lets go; the garden plants it,
 // BedRenderSystem draws it with its target, and GardenAudioSystem has the tide play it: its first note. After
-// three plants the tide starts at least three notes in a bar. The edges: a release off the bed sends the seed
+// three plants the tide starts, in a bar, each one that style B does not rest there. The edges: a release off the bed sends the seed
 // home; one over a full bed (autoplant=80) says "Garden full. Remove a plant first."; a carrying hand lost past its grace sends it
 // home. The test emits nothing; it moves the emulated hands and reads.
 // Emulator result (E): it says nothing of a real hand: whether a seed reads as lying on a palm, whether it can be
@@ -52,8 +52,15 @@ interface Probe {
   plants(): { id: string; cell: Cell }[];
   seeds(): string[];
   triggers(): number;
-  /** Resolves with `engine.stats.triggers` the next time the tide reaches `step`. */
+  /** Resolves with `engine.stats.triggers` the next time the tide reaches `step`; `atBar` is that step's bar then. */
   atStep(step: number): Promise<number>;
+  atBar: number;
+  /**
+   * The notes the tide starts from step `at` of `bar` to step `at` of the next bar: a plant after step `at` plays
+   * in `bar`, one at or before it in the next, unless style B rests it there (P-009, FR-MUS-13: a bar of each of
+   * its cycles, by its id; the engine's own rule, read from the app's engine).
+   */
+  due(bar: number, at: number): number;
   /** Resolves when the right hand's pinch point has stopped moving (it is filtered, FR-HND-03). */
   atRest(): Promise<Vec3>;
 }
@@ -89,6 +96,12 @@ async function probeLoop(page: Page): Promise<JSHandle<Probe>> {
     const room = await load<RoomModule>('/src/room/index.ts');
     const ui = await load<Ui>('/src/ui/index.ts');
     const { world, engine, garden } = window.__roomsong!;
+    // The engine's own records, scheduler and rest rule (private fields of the dev handle's engine).
+    type Rec = { plant: { cell: { step: number } } };
+    const inside = engine as unknown as {
+      records: Map<string, Rec>;
+      g: { scheduler: { nextIndex: number }; layers: { rests(r: Rec, bar: number): boolean } };
+    };
     const bed = world.getSystem(room.RoomSystem)!.bed.object3D!;
     const captions = world.getSystem(ui.CaptionSystem)!;
 
@@ -179,6 +192,15 @@ async function probeLoop(page: Page): Promise<JSHandle<Probe>> {
       plants: () => garden.state!.plants.map((p) => ({ id: p.id, cell: { ...p.cell } })),
       seeds: () => garden.state!.seeds.map((s) => s.id),
       triggers: () => engine.stats.triggers,
+      atBar: -1,
+      due: (bar, at) => {
+        let n = 0;
+        for (const r of inside.records.values()) {
+          const playsIn = r.plant.cell.step > at ? bar : bar + 1;
+          if (!inside.g.layers.rests(r, playsIn)) n++;
+        }
+        return n;
+      },
       atStep: (step) =>
         new Promise((done) => {
           let wasThere = engine.clock.stepIndex() === step;
@@ -186,6 +208,7 @@ async function probeLoop(page: Page): Promise<JSHandle<Probe>> {
             const isThere = engine.clock.stepIndex() === step;
             if (isThere && !wasThere) {
               clearInterval(timer);
+              probe.atBar = Math.floor((inside.g.scheduler.nextIndex - 1) / 16); // the last step scheduled is this one
               done(engine.stats.triggers);
             }
             wasThere = isThere;
@@ -364,25 +387,34 @@ test('TC-E2E-03: palm up, a seed, a pinch, a carry, a release over a cell: a pla
   expect(distance(target.at, await probe.evaluate((p, c) => p.cellAt(c), cellA!))).toBeLessThan(1e-4);
   await page.screenshot({ path: test.info().outputPath('first-plant.png') });
 
-  // Its first note: when the tide next reaches its step, at most a bar later.
+  // Its first note: when the tide next reaches its step in a bar style B does not rest it (P-009, FR-MUS-13: one
+  // bar of each cycle, so a new plant may rest its first), within its longest cycle, 5 bars (audio/config.ts
+  // CYCLE_BARS). Its placed note (P-012) sounded at once; the tide's notes are what `triggers` counts.
   const before = await probe.evaluate((p) => p.triggers());
-  await probe.evaluate((p, step) => p.atStep((step + 2) % 16), cellA!.step);
-  expect(await probe.evaluate((p) => p.triggers())).toBeGreaterThan(before);
+  let isHeard = false;
+  for (let bar = 0; bar < 5 && !isHeard; bar++) {
+    await probe.evaluate((p, step) => p.atStep((step + 2) % 16), cellA!.step);
+    isHeard = (await probe.evaluate((p) => p.triggers())) > before;
+  }
+  expect(isHeard).toBe(true);
   const firstSound = await probe.evaluate((p) => p.firstNoteAtMs - p.enterAtMs);
 
-  // Two more, from the palm still held up: then the tide starts at least three notes in every bar.
+  // Two more, from the palm still held up: then the tide starts, in the next bar, every plant style B does not rest
+  // there (P-009, FR-MUS-13: one bar of each plant's cycle; style null played all three every bar).
   const b = await carry(page, probe, hands, await probe.evaluate((p, c) => p.cellAt(c), cellB!), 2);
   await heard(probe, 'planted', { id: b.id });
   const c = await carry(page, probe, hands, await probe.evaluate((p, c) => p.cellAt(c), cellC!), 3);
   await heard(probe, 'planted', { id: c.id });
   expect((await probe.evaluate((p) => p.plants())).map((plant) => plant.cell)).toEqual([cellA, cellB, cellC]);
   const atBar = await probe.evaluate((p) => p.atStep(0));
+  const due = await probe.evaluate((p) => p.due(p.atBar, 0));
   const nextBar = await probe.evaluate((p) => p.atStep(0));
-  expect(nextBar - atBar).toBeGreaterThanOrEqual(3);
+  expect(nextBar - atBar).toBe(due);
+  expect(due).toBeLessThanOrEqual(3);
   console.log(
     `T-128d d3 TC-E2E-03 (emulator, table room, emulated hands at test speed): Enter to the first note of the ` +
       `first planted seed ${Math.round(firstSound)} ms; cells ${JSON.stringify([cellA, cellB, cellC])}; ` +
-      `${nextBar - atBar} notes in a bar of three plants`,
+      `${nextBar - atBar} notes in a bar of three plants (style B: ${due} due)`,
   );
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]); // Golden Rule 9
