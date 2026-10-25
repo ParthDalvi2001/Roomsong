@@ -236,14 +236,15 @@ test('T-119 the tide shows on a dark table and on a white one: crest to shade at
   const errors = recordErrors(page);
   await openApp(page, readRoom('table'), '/proto/bed/');
   await page.locator('#garden').selectOption('empty'); // nothing stands between the eye and the glass
-  // The crest held on step 4, the side nearest the eye. Half a step ahead of it the shade is darkest (UX §9.4).
+  // The crest held on step 4, the side nearest the eye. Where the light begins, TIDE_LEAD_STEPS ahead (one step
+  // since D-060; it was half a step), the shade is darkest (UX §9.4).
   await page.evaluate(() => (window as unknown as PageWindow).__bed.holdTide(4 / 16));
   const BETWEEN_RINGS = 2.5; // no marker and no ring line there
   for (const table of ['dark', 'white'] as const) {
     await page.locator('#bright').setChecked(table === 'white');
     await nextSample(page, false, await page.evaluate(() => performance.now())); // the wedge has faded in
     const crest = await luminanceAt(page, BETWEEN_RINGS, 4);
-    const shade = await luminanceAt(page, BETWEEN_RINGS, 4.5);
+    const shade = await luminanceAt(page, BETWEEN_RINGS, 5);
     const bedAway = await luminanceAt(page, BETWEEN_RINGS, 12);
     const ratio = (lighter: number, darker: number): number => (lighter + 0.05) / (darker + 0.05);
     console.log(

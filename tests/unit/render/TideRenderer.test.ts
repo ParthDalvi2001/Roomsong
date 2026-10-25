@@ -181,18 +181,20 @@ describe('TideRenderer (FR-MUS-03)', () => {
     }
   });
 
-  it('a charcoal shade leads the crest: none a step ahead, 0.6 half a step ahead, none on the crest (UX §9.4)', () => {
+  it('a charcoal shade leads the crest: none 1.5 steps ahead, 0.6 where the light begins a step ahead, none on the crest (UX §9.4)', () => {
     const { tide } = make();
     const onTheBed = vertices(tide).filter(
       ({ radius }) => radius > BED_INNER - 1e-6 && radius < BED_OUTER + 1e-6,
     );
     const coverAt = (ahead: number): number[] =>
       onTheBed.filter(({ stepsAhead }) => Math.abs(stepsAhead - ahead) < 1e-4).map(({ cover }) => cover);
+    // D-060 (8): the light leads by one step (TIDE_LEAD_STEPS), the shade half a step beyond it.
+    expect([TIDE_LEAD_STEPS, TIDE_SHADE_STEPS]).toEqual([1, 1.5]);
     for (const [ahead, cover] of [
-      [TIDE_SHADE_STEPS, 0],
-      [0.75, TIDE_SHADE_COVER / 2],
-      [0.5, TIDE_SHADE_COVER],
-      [0.25, TIDE_SHADE_COVER / 2],
+      [1.5, 0],
+      [1.25, TIDE_SHADE_COVER / 2],
+      [1, TIDE_SHADE_COVER],
+      [0.5, TIDE_SHADE_COVER / 2],
       [0, 0],
       [-1, 0],
     ] as const) {
@@ -207,7 +209,7 @@ describe('TideRenderer (FR-MUS-03)', () => {
     for (const { cover, light } of onTheBed) {
       if (cover > TIDE_SHADE_COVER - 1e-6) expect(light).toBeCloseTo(0);
     }
-    expect(tide.mesh.geometry.index!.count / 3).toBe(96); // 4 steps of arc, still one mesh
+    expect(tide.mesh.geometry.index!.count / 3).toBe(108); // 4.5 steps of arc (was 4, 96), still one mesh
   });
 
   it('light and shade are one draw: the light adds, the shade covers what lies under it (UX §9.4)', () => {

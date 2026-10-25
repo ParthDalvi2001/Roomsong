@@ -1,7 +1,7 @@
 // The seeds (T-127, UX §3.3, §7): the supply orb over the bed, the glide to a hand and back, the brightness
 // through the guard. A plain Group for the scene and the page's kind of FlashGuard; no WebGL: what would be drawn
 // is read from the instances. The per-frame heap cost is in SeedSystem.heap.test.ts.
-import { Color, DoubleSide, Group, Matrix4, SRGBColorSpace, Vector3 } from 'three';
+import { Color, DoubleSide, Group, Matrix4, Vector3 } from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
@@ -11,7 +11,6 @@ import {
   PLANT_HOVER_LIFT,
   PLANT_LIGHTNESS,
   PLANT_REST_BRIGHTNESS,
-  PLANT_SATURATION,
   SEED_BUMP_M,
   SEED_BUMP_REDUCED_M,
   SEED_DIAMETER_M,
@@ -22,6 +21,7 @@ import {
   SUPPLY_ORB_RADIUS_M,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
+import { newPalette, plantColour, setPalette } from '../../../src/render/palette.js';
 import { SeedRenderer } from '../../../src/render/SeedRenderer.js';
 
 import { mostInAnyClip, type Drawn } from './changes.js';
@@ -67,7 +67,7 @@ function sizes(seeds: SeedRenderer): number[] {
 
 /** The brightness instance `slot` is drawn at, read back from its colour against its hue's full colour. */
 function brightnessOf(seeds: SeedRenderer, slot: number, hue = 0.4): number {
-  const full = new Color().setHSL(hue, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace);
+  const full = plantColour(new Color(), hue, PLANT_LIGHTNESS, newPalette());
   return seeds.mesh.instanceColor!.getX(slot) / full.r;
 }
 
@@ -291,5 +291,31 @@ describe('SeedRenderer: the hover glow (FR-HND-16, BUG-007)', () => {
     seeds.setHover(null);
     seeds.update(BED, t); // placed again, one frame later
     expect(brightnessOf(seeds, 0)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
+  });
+});
+
+describe('SeedRenderer.setPalette (D-060)', () => {
+  const ROOM = 31 + 25; // +10° (render/palette.ts)
+  /** The red-to-green share of a slot's colour: its hue, whatever its brightness. */
+  const ratio = (seeds: SeedRenderer, slot: number): number =>
+    seeds.mesh.instanceColor!.getX(slot) / seeds.mesh.instanceColor!.getY(slot);
+  const ratioIn = (paletteSeed: number, hue: number): number => {
+    const c = plantColour(new Color(), hue, PLANT_LIGHTNESS, setPalette(newPalette(), paletteSeed));
+    return c.r / c.g;
+  };
+
+  it('a seed not drawn takes the room at once; one out on a palm through a Re-place keeps its colour until it is not drawn', () => {
+    const { seeds } = make();
+    seeds.setSupply([seed('a', 0.4), seed('b', 0.6)]);
+    seeds.follow('b', new Vector3(0.1, 1, -0.3), T0, 'jump'); // out on a palm
+    seeds.update(null, T0); // no bed (a Re-place): 'a' in the orb is not drawn, 'b' rides the palm
+    seeds.setPalette(ROOM); // the placement's signature
+    expect(ratio(seeds, 0)).toBeCloseTo(ratioIn(ROOM, 0.4), 5);
+    expect(ratio(seeds, 1)).toBeCloseTo(ratioIn(0, 0.6), 5); // still the last room's
+    seeds.setSupply([seed('a', 0.4), seed('b', 0.6)]); // a garden change keeps it so
+    expect(ratio(seeds, 1)).toBeCloseTo(ratioIn(0, 0.6), 5);
+    seeds.follow('b', null, T0 + FRAME_MS, 'jump'); // home to an orb not drawn: out of sight
+    seeds.update(null, T0 + 2 * FRAME_MS);
+    expect(ratio(seeds, 1)).toBeCloseTo(ratioIn(ROOM, 0.6), 5);
   });
 });

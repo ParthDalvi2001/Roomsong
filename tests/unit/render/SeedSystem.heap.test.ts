@@ -5,12 +5,13 @@
 // and remove a target) and are sent between the measurements. Fake entities (seedRig.ts), not the ECS. BUG-007 and
 // BUG-008: in high contrast, with a hand's hover on the seed coming and going every HOVER_FRAMES all along.
 // Hovering a seed that is carried or home is not what the hands send; here it runs the glow on every path.
-import { Color, SRGBColorSpace } from 'three';
+import { Color } from 'three';
 import { describe, expect, it } from 'vitest';
 
 import { bus, settings } from '../../../src/core/index.js';
 import { HandState } from '../../../src/hands/HandState.js';
-import { PLANT_LIGHTNESS, PLANT_SATURATION, SEED_OUT_BRIGHTNESS } from '../../../src/render/config.js';
+import { PLANT_LIGHTNESS, SEED_OUT_BRIGHTNESS } from '../../../src/render/config.js';
+import { newPalette, plantColour } from '../../../src/render/palette.js';
 import { garden, seed } from '../garden/fixtures.js';
 import { heapCost, PROBE_BYTES } from '../hands/heapCost.js';
 
@@ -114,7 +115,7 @@ describe('SeedSystem.update per frame (NFR-PERF-08)', () => {
     expect((r.mesh.children[0] as typeof r.mesh).count).toBe(5); // outlined all along
     // And the hover's glow ran in the measured frames: out on the palm and carried, the seed was drawn above
     // SEED_OUT_BRIGHTNESS, which only the glow reaches (at home its glow starts below where it was).
-    const full = new Color().setHSL(0.4, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace).g; // the fixtures' hue
+    const full = plantColour(new Color(), 0.4, PLANT_LIGHTNESS, newPalette()).g; // the fixtures' hue
     expect(peak[0]! / full).toBeGreaterThan(SEED_OUT_BRIGHTNESS + 0.1);
     expect(peak[1]! / full).toBeGreaterThan(SEED_OUT_BRIGHTNESS + 0.1);
     settings.set({ highContrast: false });

@@ -7,14 +7,7 @@
 // events and update once per frame (API_SPEC §1.8). High contrast: a cream outline (FR-UI-05). A fingertip or the
 // gaze on a petal lifts it 20 % brighter through the guard, as a hovered seed (FR-HND-16): an accidental removal
 // shows its way back. update allocates nothing.
-import {
-  CircleGeometry,
-  Color,
-  InstancedBufferAttribute,
-  InstancedMesh,
-  ShaderMaterial,
-  SRGBColorSpace,
-} from 'three';
+import { CircleGeometry, Color, InstancedBufferAttribute, InstancedMesh, ShaderMaterial } from 'three';
 
 import { settings } from '../core/index.js';
 import { cellCentre, RINGS, STEPS, UNDO_LIFE_MS } from '../garden/index.js';
@@ -39,9 +32,9 @@ import {
   PLANT_LIGHTNESS,
   PLANT_OUTLINE_M,
   PLANT_REST_BRIGHTNESS,
-  PLANT_SATURATION,
 } from './config.js';
 import { CREAM_RGB, glsl } from './outline.js';
+import { newPalette, plantColour, setPalette } from './palette.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { Hand, Vec3 } from '../core/index.js';
@@ -150,6 +143,8 @@ export class PetalRenderer {
   private readonly lift = new Float32Array(PLANT_CAPACITY).fill(1);
   private readonly lit = new Uint8Array(PLANT_CAPACITY);
   private readonly lastMs = new Float64Array([Number.NaN, 0]); // and the ease's step this frame
+  /** The room's palette (render/palette.ts, D-060): a petal is the colour its plant was drawn in. */
+  private readonly palette = newPalette();
 
   constructor(
     parent: Object3D,
@@ -232,7 +227,7 @@ export class PetalRenderer {
     this.widthM[slot] = PETAL_START_DIAMETER_M;
     this.resize(slot);
     // The plant's own colour at a plant's rest brightness (the palette is written in sRGB, UX §5), fully there.
-    colour.setHSL(plant.hue, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace).toArray(this.unit, slot * 3);
+    plantColour(colour, plant.hue, PLANT_LIGHTNESS, this.palette).toArray(this.unit, slot * 3);
     colour.multiplyScalar(PLANT_REST_BRIGHTNESS).toArray(this.colours.array, slot * 4);
     this.colours.array[slot * 4 + 3] = 1;
     this.colours.needsUpdate = true;
@@ -286,6 +281,11 @@ export class PetalRenderer {
   /** Whether that plant's petal is up. Its pinch target lives exactly as long (API_SPEC §1.10 rule 7). */
   has(plantId: string): boolean {
     return this.slotOf.has(plantId);
+  }
+
+  /** On `room:signature`: the palette of the petals shown from now on (D-060); one already up keeps its colour. */
+  setPalette(paletteSeed: number): void {
+    setPalette(this.palette, paletteSeed);
   }
 
   /**

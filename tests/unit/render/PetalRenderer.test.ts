@@ -1,7 +1,7 @@
 // The undo petal (UX §9.3, FR-MUS-12, T-146): where it waits, how it shrinks and fades, and who can take it away.
 // A plain Object3D for the bed and the page's kind of FlashGuard; no WebGL: what would be drawn is read from the
 // instances. The per-frame heap cost is in PetalRenderer.heap.test.ts.
-import { Color, Group, Matrix4, Quaternion, SRGBColorSpace, Vector3 } from 'three';
+import { Color, Group, Matrix4, Quaternion, Vector3 } from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { settings } from '../../../src/core/index.js';
@@ -24,9 +24,9 @@ import {
   PLANT_HOVER_LIFT,
   PLANT_LIGHTNESS,
   PLANT_REST_BRIGHTNESS,
-  PLANT_SATURATION,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
+import { newPalette, plantColour } from '../../../src/render/palette.js';
 import { PetalRenderer } from '../../../src/render/PetalRenderer.js';
 
 import { changeTimes, type Drawn } from './changes.js';
@@ -183,7 +183,7 @@ describe('PetalRenderer (UX §9.3)', () => {
     const { petals } = make();
     petals.show('p', removed(1, 1, 0.6), T0 + 5000);
     petals.update(T0);
-    const tint = new Color().setHSL(0.6, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace);
+    const tint = plantColour(new Color(), 0.6, PLANT_LIGHTNESS, newPalette());
     const { rgb, brightness } = only(petals);
     [tint.r, tint.g, tint.b].forEach((channel, i) => expect(rgb[i]).toBeCloseTo(channel * 0.7, 5));
     expect(brightness).toBeCloseTo(0.7);
@@ -249,7 +249,7 @@ describe('PetalRenderer (UX §9.3)', () => {
     const { widthM, brightness, rgb } = only(petals);
     expect(widthM).toBeCloseTo(0.025, 4);
     expect(brightness).toBeCloseTo(0.7); // at rest, whatever the older one had faded to
-    const tint = new Color().setHSL(0.9, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace);
+    const tint = plantColour(new Color(), 0.9, PLANT_LIGHTNESS, newPalette());
     expect(rgb[0]).toBeCloseTo(tint.r * 0.7, 5);
   });
 
@@ -450,7 +450,7 @@ describe('PetalRenderer: high contrast (FR-UI-05, BUG-008)', () => {
 
 describe('PetalRenderer: the hover cue (FR-HND-16, UX §9.3)', () => {
   const SLOT = 4 * STEPS + 9;
-  const unitG = new Color().setHSL(0.25, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace).g;
+  const unitG = plantColour(new Color(), 0.25, PLANT_LIGHTNESS, newPalette()).g;
   /** What reaches the eye of the petal at cell (4, 9): its green over the plant's own, times its opacity. */
   const seen = (petals: PetalRenderer): number => {
     const colour = petals.mesh.geometry.getAttribute('aColour');
@@ -467,7 +467,12 @@ describe('PetalRenderer: the hover cue (FR-HND-16, UX §9.3)', () => {
         series.push({ t: t - T0, value: seen(made.petals) });
       }
     };
-    return { ...made, series, run, alpha: () => made.petals.mesh.geometry.getAttribute('aColour').getW(SLOT) };
+    return {
+      ...made,
+      series,
+      run,
+      alpha: () => made.petals.mesh.geometry.getAttribute('aColour').getW(SLOT),
+    };
   }
 
   it('a hovered petal lifts 20 % over HOVER_CUE_MS, through the guard, and eases back when the hover leaves', () => {
@@ -488,7 +493,9 @@ describe('PetalRenderer: the hover cue (FR-HND-16, UX §9.3)', () => {
     expect(seen(petals)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 4);
     // A level, never a blink: no step larger than a frame's share of the ease; in and out are two changes.
     const steps = series.slice(1).map((each, i) => Math.abs(each.value - series[i]!.value));
-    expect(Math.max(...steps)).toBeLessThan((1.01 * PLANT_REST_BRIGHTNESS * PLANT_HOVER_LIFT * FRAME_MS) / HOVER_CUE_MS);
+    expect(Math.max(...steps)).toBeLessThan(
+      (1.01 * PLANT_REST_BRIGHTNESS * PLANT_HOVER_LIFT * FRAME_MS) / HOVER_CUE_MS,
+    );
     expect(changeTimes(series)).toHaveLength(2);
     expect(guard.takePeak()).toBe(2);
   });
@@ -503,7 +510,9 @@ describe('PetalRenderer: the hover cue (FR-HND-16, UX §9.3)', () => {
       run(200);
     }
     // The 4th swing is refused: the petal holds within FLASH_MIN_DELTA of its lit pivot (the guard's drift).
-    expect(seen(petals)).toBeGreaterThan(PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT) - FLASH_MIN_DELTA - 1e-6);
+    expect(seen(petals)).toBeGreaterThan(
+      PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT) - FLASH_MIN_DELTA - 1e-6,
+    );
     expect(seen(petals)).toBeLessThan(PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT) + 1e-6);
     run(1000);
     expect(seen(petals)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 4); // asked on until it is back

@@ -1,4 +1,4 @@
-import { Group, Light, Matrix4, Vector3 } from 'three';
+import { Color, Group, Light, Matrix4, SRGBColorSpace, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 
 import { BED_INNER, BED_OUTER, cellCentre, RINGS, STEPS } from '../../../src/garden/index.js';
@@ -7,6 +7,7 @@ import {
   BED_RIM_M,
   FLASH_CAP_PER_S,
   HOVER_CUE_MS,
+  ICE,
   MARKER_ALPHA,
   MARKER_HOVER_ALPHA,
 } from '../../../src/render/config.js';
@@ -316,5 +317,22 @@ describe('BedRenderer.setGhost (UX §9.2, T-128c)', () => {
     expect(changeTimes(turns).length).toBeGreaterThan(FLASH_CAP_PER_S); // it did keep changing
     expect(mostInOneSecond(turns)).toBeLessThanOrEqual(FLASH_CAP_PER_S);
     expect(guard.takePeak()).toBe(FLASH_CAP_PER_S);
+  });
+});
+
+describe('BedRenderer.setPalette (ART_PASS_T163 §0, D-060)', () => {
+  it("the ring lines turn with the room's arc, once, and are ICE again in a Wanderer room", () => {
+    const bed = new BedRenderer(new Group());
+    const uLine = (): Color => bed.base.material.uniforms.uLine!.value as Color;
+    const hsl = { h: 0, s: 0, l: 0 };
+    const ice = new Color(ICE).getHSL({ h: 0, s: 0, l: 0 }, SRGBColorSpace);
+    expect(uLine().equals(new Color(ICE))).toBe(true);
+    bed.setPalette(31 + 25); // +10° (render/palette.ts)
+    uLine().getHSL(hsl, SRGBColorSpace);
+    expect(hsl.h).toBeCloseTo(ice.h + 10 / 360, 4);
+    expect(hsl.s).toBeCloseTo(ice.s, 4);
+    expect(hsl.l).toBeCloseTo(ice.l, 4);
+    bed.setPalette(0);
+    expect(uLine().equals(new Color(ICE))).toBe(true);
   });
 });

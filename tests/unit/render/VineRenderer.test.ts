@@ -1,11 +1,12 @@
 // VineRenderer (FR-ROOM-04, Could C4; T-149): the vine's length follows the garden's plant count, it grows over
 // VINE_GROW_MS and shrinks the same way, it is hidden (count 0) with no plants, no wall or a wall too far, it
 // lies on the wall from the bed's height up, and under reduced motion it fades instead of growing (FR-UI-06).
-import { Group } from 'three';
+import { Color, Group } from 'three';
 import { describe, expect, it } from 'vitest';
 
 import {
   PLANT_CAPACITY,
+  PLANT_LIGHTNESS,
   PLANT_REST_BRIGHTNESS,
   VINE_FADE_MS,
   VINE_GROW_MS,
@@ -14,6 +15,7 @@ import {
   VINE_SWAY_M,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
+import { newPalette, plantColour, setPalette } from '../../../src/render/palette.js';
 import { VineRenderer } from '../../../src/render/VineRenderer.js';
 
 import type { Plant } from '../../../src/garden/index.js';
@@ -139,5 +141,29 @@ describe('VineRenderer (T-149)', () => {
     runFor(VINE_FADE_MS);
     expect(mesh.count).toBe(0);
     expect(guard.takePeak()).toBeLessThanOrEqual(2); // in and out: two changes (FR-UI-11)
+  });
+
+  it("a new room's palette (D-060) waits until no piece is drawn: never a recolour while the vine shows", () => {
+    const { vine, mesh, runFor } = rig();
+    const ROOM = 31 + 25; // +10° (render/palette.ts)
+    const piece0 = (): number => mesh.instanceColor!.getX(0) / mesh.instanceColor!.getY(0);
+    const piece0In = (paletteSeed: number): number => {
+      const c = plantColour(new Color(), 0, PLANT_LIGHTNESS, setPalette(newPalette(), paletteSeed)); // plant p0's hue
+      return c.r / c.g;
+    };
+    vine.setWall(NEAR, BED);
+    vine.setPlants(plants(PLANT_CAPACITY));
+    runFor(2 * VINE_GROW_MS);
+    vine.setWall(undefined, BED); // a Re-place: it shrinks away
+    runFor(VINE_GROW_MS / 2);
+    expect(mesh.count).toBeGreaterThan(0);
+    vine.setPalette(ROOM); // the next placement's signature, the vine still showing
+    expect(piece0()).toBeCloseTo(piece0In(0), 5);
+    runFor(2 * VINE_GROW_MS);
+    expect(mesh.count).toBe(0);
+    expect(piece0()).toBeCloseTo(piece0In(ROOM), 5);
+    // With none drawn it is at once.
+    vine.setPalette(0);
+    expect(piece0()).toBeCloseTo(piece0In(0), 5);
   });
 });

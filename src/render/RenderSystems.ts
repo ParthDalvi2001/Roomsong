@@ -141,6 +141,7 @@ export class SeedSystem extends createSystem(
         // Planted (its id is in diff.added, and a plant takes its seed's id) or gone with its garden.
         if (this.outId !== null && !this.seeds.has(this.outId)) this.end();
       }),
+      bus.on('room:signature', ({ signature }) => this.seeds.setPalette(signature.paletteSeed)), // D-060
       bus.on('garden:seedOut', ({ seed, hand }) => this.send(seed.id, hand)),
       bus.on('target:hover', ({ hand, target }) => {
         this.hovers[handIndex(hand)] = target?.kind === 'seed' ? target.id : null;
@@ -299,7 +300,13 @@ export class BedRenderSystem extends createSystem(
       bus.on('garden:removed', ({ plantId, undoToken, expiresAt }) =>
         this.showPetal(plantId, undoToken.plant, expiresAt),
       ),
-      bus.on('room:signature', () => void (this.isTuned = true)),
+      bus.on('room:signature', ({ signature }) => {
+        this.isTuned = true;
+        // D-060: the room's palette for the plants, their petals and the ring lines (ART_PASS_T163 §0)
+        this.plants.setPalette(signature.paletteSeed);
+        this.petals.setPalette(signature.paletteSeed);
+        this.bedRenderer.setPalette(signature.paletteSeed);
+      }),
       bus.on('xr:sessionEnd', () => {
         this.isTuned = false;
         for (const hand of HANDS) this.onHover(hand, null, null);
@@ -369,6 +376,7 @@ export class BedRenderSystem extends createSystem(
       this.isPlaced = isPlaced;
       this.bedRenderer.setGhost(!isPlaced);
       if (!isPlaced) this.petals.clear(); // nothing stands on a bed that is not placed; the token runs out alone
+      if (!isPlaced) this.bedRenderer.setPalette(0); // the ghost's lines are no room's; the next signature tints them
       this.draw();
     } catch (error) {
       log.error('render', 'the bed could not be drawn as placed or as a ghost', error);
@@ -616,6 +624,7 @@ export class VineSystem extends createSystem(
     this.cleanupFuncs.push(
       bus.on('room:features', ({ surfaces }) => void (this.surfaces = surfaces)),
       bus.on('garden:changed', ({ state }) => this.vine.setPlants(state.plants)),
+      bus.on('room:signature', ({ signature }) => this.vine.setPalette(signature.paletteSeed)), // D-060
       bus.on('settings:changed', ({ settings: s }) => this.vine.setReducedMotion(s.reducedMotion)),
       bus.on('xr:sessionEnd', () => this.unlay()),
       // Runs inside RoomSystem's removeComponent, where no circuit breaker reaches: it catches its own.

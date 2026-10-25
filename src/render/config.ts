@@ -55,11 +55,12 @@ export const BED_LAYER_M = 0.001;
 export const BED_SEGMENTS = 64;
 export const MARKER_SEGMENTS = 20;
 
-/** FR-MUS-03: the tide's light. Chosen in T-125: it ramps up over half a step ahead of the crest and trails
- *  three steps behind it (UX §8: the glow ramps, never strobes); TIDE_PEAK is its additive strength. */
-export const TIDE_LEAD_STEPS = 0.5;
+/** FR-MUS-03, UX §9.4: the tide's light ramps up over one full step ahead of the crest and trails three steps behind
+ *  it (UX §8: the glow ramps, never strobes); TIDE_PEAK is its additive strength. D-060 (8): the softer wedge, peak
+ *  0.45 over a one-step lead (T-125 had 0.7 over half a step). A plant's own glow ramps over the same lead. */
+export const TIDE_LEAD_STEPS = 1;
 export const TIDE_TRAIL_STEPS = 3;
-export const TIDE_PEAK = 0.7;
+export const TIDE_PEAK = 0.45;
 /** Chosen in T-125: the wedge has this many rows of vertices per step, and its light falls off as this power
  *  of the straight ramp (2 = a soft tail). */
 export const TIDE_SEGMENTS_PER_STEP = 4;
@@ -68,8 +69,8 @@ export const TIDE_FALLOFF_POWER = 2;
 export const TIDE_FADE_MS = 300;
 /** UX §9.4: a shade of the bed's charcoal leads the crest, so the sweep shows on a bright table. It begins this
  *  many steps ahead of the crest, covers this much where the light begins (TIDE_LEAD_STEPS ahead), and is gone
- *  on the crest. */
-export const TIDE_SHADE_STEPS = 1;
+ *  on the crest. Half a step beyond the light, as before D-060: at the light's own lead its ramp would be empty. */
+export const TIDE_SHADE_STEPS = TIDE_LEAD_STEPS + 0.5;
 export const TIDE_SHADE_COVER = 0.6;
 
 /** FR-MUS-01: one plant per cell at most, so 80 instances per silhouette is the worst case. */
@@ -84,6 +85,14 @@ export const PLANT_LOBE_DEPTH = 0.3;
 /** Chosen in T-125: a plant's colour is its hue at the palette's saturation and lightness, in sRGB (UX §5). */
 export const PLANT_SATURATION = 0.72;
 export const PLANT_LIGHTNESS = 0.63;
+/** UX §5, ART_PASS_T163 §0 option A (D-060): a plant's hue 0..1 is a place on the arc from gold (47°) through moss
+ *  and ice to violet (267°); a room turns the arc by up to ±PALETTE_SHIFT_MAX_DEG and nudges the saturation by
+ *  ±PALETTE_SAT_STEP, both from its signature's paletteSeed (render/palette.ts). ±15°, not §0's ±30°: every room
+ *  stays on 32°–282°, short of coral (17°) and magenta (297°), the promise of no pinks or reds (D-060 review). */
+export const PALETTE_ARC_START_DEG = 47;
+export const PALETTE_ARC_SPAN_DEG = 220;
+export const PALETTE_SHIFT_MAX_DEG = 15;
+export const PALETTE_SAT_STEP = 0.06;
 /** Chosen in T-125 (UX §5: glass-like, soft glow): a plant is this dark at its foot, full at its head, and
  *  this much brighter where its surface turns away from the eye. No light is involved (NFR-PERF-09). */
 export const PLANT_FOOT_SHADE = 0.45;

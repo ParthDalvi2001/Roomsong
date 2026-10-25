@@ -2,7 +2,7 @@
 // target and the "Garden full. Remove a plant first." caption. Fake entities and queries (seedRig.ts), the real bus, renderer and
 // guard: no ECS world, no XR. What a seed's glide looks like is SeedRenderer.test.ts; the per-frame cost is
 // SeedSystem.heap.test.ts; the whole flow on the emulator's hands is tests/e2e/16-seeds.spec.ts.
-import { Color, SRGBColorSpace } from 'three';
+import { Color } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Caption, Interactable } from '../../../src/core/components.js';
@@ -14,13 +14,13 @@ import {
   HOVER_CUE_MS,
   PLANT_HOVER_LIFT,
   PLANT_LIGHTNESS,
-  PLANT_SATURATION,
   SEED_GLIDE_MS,
   SEED_HOP_MS,
   SEED_OUT_BRIGHTNESS,
   SUPPLY_ORB_LIFT_M,
   SUPPLY_ORB_RADIUS_M,
 } from '../../../src/render/config.js';
+import { newPalette, plantColour } from '../../../src/render/palette.js';
 import { SeedRenderer } from '../../../src/render/SeedRenderer.js';
 import { garden, seed } from '../garden/fixtures.js';
 
@@ -231,7 +231,7 @@ describe('SeedSystem: the supply and the seed that is out (API_SPEC §1.10 rule 
 });
 
 describe('SeedSystem: the hover cue on the seed that is out (FR-HND-16, UX §9.1, BUG-007)', () => {
-  const FULL = new Color().setHSL(0.4, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace); // the fixtures' hue
+  const FULL = plantColour(new Color(), 0.4, PLANT_LIGHTNESS, newPalette()); // the fixtures' hue
   /** The brightness slot 0 (the first seed) is drawn at, from its colour. */
   const brightness = (s: ReturnType<typeof rig>): number => s.mesh.instanceColor!.getX(0) / FULL.r;
   const hover = (hand: Hand, kind: 'seed' | 'plant' | null, id = 's1'): void =>

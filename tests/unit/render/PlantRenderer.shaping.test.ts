@@ -1,7 +1,7 @@
 // T-147, the shaping feedback (UX §3.4): what PlantRenderer draws while a hand holds a plant, from the events the
 // hands emit (API_SPEC §1.4, "Shaping as built"). The parent is a plain Group with the bed's pose; no WebGL: what
 // would be drawn is read back from the instances. The per-frame heap cost is in PlantRenderer.heap.test.ts.
-import { Color, Group, Matrix4, SRGBColorSpace, Vector3 } from 'three';
+import { Color, Group, Matrix4, Vector3 } from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { settings } from '../../../src/core/index.js';
@@ -19,12 +19,12 @@ import {
   PLANT_OFF_BED_BRIGHTNESS,
   PLANT_PINCH_LIFT_M,
   PLANT_REST_BRIGHTNESS,
-  PLANT_SATURATION,
   PLANT_STEM_MAX_M,
   PLANT_STEM_MIN_M,
   RIM_WARN_ALPHA,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
+import { newPalette, plantColour } from '../../../src/render/palette.js';
 import { PlantRenderer } from '../../../src/render/PlantRenderer.js';
 import { mulberry32 } from '../audio/prng.js';
 import { plant } from '../garden/fixtures.js';
@@ -42,7 +42,7 @@ const HUE = 0.25; // the fixture's
 const HELD: readonly [number, number] = [2, 4];
 const GLOWING = PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT);
 const stemOf = (height: number): number => PLANT_STEM_MIN_M + (PLANT_STEM_MAX_M - PLANT_STEM_MIN_M) * height;
-const full = new Color().setHSL(HUE, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace).r;
+const full = plantColour(new Color(), HUE, PLANT_LIGHTNESS, newPalette()).r;
 
 interface Bed {
   renderer: PlantRenderer;

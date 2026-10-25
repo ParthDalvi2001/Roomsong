@@ -12,7 +12,6 @@ import {
   InstancedMesh,
   LatheGeometry,
   ShaderMaterial,
-  SRGBColorSpace,
   Vector2,
   Vector3,
 } from 'three';
@@ -42,7 +41,6 @@ import {
   PLANT_REFERENCE_STEM_M,
   PLANT_REST_BRIGHTNESS,
   PLANT_RIM_GLOW,
-  PLANT_SATURATION,
   PLANT_STEM_GLOW,
   PLANT_STEM_MAX_M,
   PLANT_STEM_MIN_M,
@@ -56,6 +54,7 @@ import {
   PLANT_WHORL_LOBE_DEPTH,
   PLANT_WHORL_TURN_RAD,
 } from './config.js';
+import { newPalette, plantColour, setPalette } from './palette.js';
 import { ShapingGuides } from './ShapingGuides.js';
 import { stepGlow } from './TideRenderer.js';
 
@@ -365,6 +364,9 @@ export class PlantRenderer {
   private readonly waitFrom = new Float64Array(PLANT_CAPACITY);
   private readonly bloomFrom = new Float64Array(PLANT_CAPACITY).fill(Number.NEGATIVE_INFINITY);
   private readonly pale = new Float32Array(PLANT_CAPACITY * 3);
+  /** The room's palette (render/palette.ts, D-060), and each slot's plant hue, for a recolour. */
+  private readonly palette = newPalette();
+  private readonly hueOf = new Float32Array(PLANT_CAPACITY);
   /** The instance index of each slot's first whorl. */
   private readonly whorlOf = new Uint8Array(PLANT_CAPACITY).fill(NO_WHORL);
   private isWhorlPaintDue = false;
@@ -471,12 +473,8 @@ export class PlantRenderer {
       if (slot === undefined) continue; // more plants than cells: the garden rules never produce that
       this.step[slot] = plant.cell.step;
       this.age(slot, stageFor(lastVisitAt - plant.plantedAt));
-      // The palette is written in sRGB (UX §5), so the hue is read in sRGB too. A blossom's colour is lighter.
-      colour
-        .setHSL(plant.hue, PLANT_SATURATION, PLANT_BLOSSOM_LIGHTNESS, SRGBColorSpace)
-        .toArray(this.pale, slot * 3);
-      if (!this.lit[slot]) colour.setHSL(plant.hue, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace);
-      colour.toArray(this.tint, slot * 3);
+      this.hueOf[slot] = plant.hue;
+      this.colourFor(slot);
 
       const mesh = this.meshes[shape]!;
       const index = mesh.count++;
@@ -502,6 +500,26 @@ export class PlantRenderer {
     this.aim();
     this.plants = plants; // last: a throw above leaves it unset, and the next call starts over
     this.lastVisitAt = lastVisitAt;
+  }
+
+  /**
+   * On `room:signature`: the room's palette (UX §5, D-060), at once, for every plant drawn. Set-up, not per frame.
+   * At once is no flash (FR-UI-11): the signature always arrives with no plant on screen, in the placement frame
+   * before its render (API_SPEC §1.10 rule 4), and the bed's loss draws an empty garden first (BedRenderSystem).
+   */
+  setPalette(paletteSeed: number): void {
+    setPalette(this.palette, paletteSeed);
+    for (let shape = 0; shape < this.meshes.length; shape++) {
+      const mesh = this.meshes[shape]!;
+      for (let index = 0; index < mesh.count; index++) {
+        const slot = this.slotAt[shape * PLANT_CAPACITY + index]!;
+        this.colourFor(slot);
+        this.paint(mesh, index, slot);
+      }
+      mesh.instanceColor!.needsUpdate = true;
+    }
+    this.whorls.instanceColor!.needsUpdate = true;
+    this.isWhorlPaintDue = false;
   }
 
   /**
@@ -965,6 +983,17 @@ export class PlantRenderer {
     const h = this.holder[slot]! - 1;
     if (h >= 0) for (let i = 0; i < POSE; i++) this.handPose[h * POSE + i] = this.pose[p + i]!;
     else if (k === 0) this.moving[slot] = 0;
+  }
+
+  /**
+   * The slot's colours in the palette in force: a blossom's lighter one, and its own, which a plant with a
+   * blossom's colours (`lit`) takes from the lighter one (UX §5, §9.6). Set-up.
+   */
+  private colourFor(slot: number): void {
+    const hue = this.hueOf[slot]!;
+    plantColour(colour, hue, PLANT_BLOSSOM_LIGHTNESS, this.palette).toArray(this.pale, slot * 3);
+    if (!this.lit[slot]) plantColour(colour, hue, PLANT_LIGHTNESS, this.palette);
+    colour.toArray(this.tint, slot * 3);
   }
 
   /**

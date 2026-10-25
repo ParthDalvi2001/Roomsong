@@ -10,7 +10,6 @@ import {
   InstancedBufferAttribute,
   InstancedMesh,
   MeshBasicMaterial,
-  SRGBColorSpace,
   Vector3,
 } from 'three';
 
@@ -22,7 +21,6 @@ import {
   PLANT_HOVER_LIFT,
   PLANT_LIGHTNESS,
   PLANT_REST_BRIGHTNESS,
-  PLANT_SATURATION,
   SEED_BUMP_M,
   SEED_BUMP_REDUCED_M,
   SEED_DETAIL,
@@ -34,6 +32,7 @@ import {
   SUPPLY_ORB_RADIUS_M,
 } from './config.js';
 import { outlineShell } from './outline.js';
+import { newPalette, plantColour, setPalette } from './palette.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { Seed } from '../garden/index.js';
@@ -83,6 +82,11 @@ export class SeedRenderer {
   private hoverSlot = -1;
   private readonly lastMs = new Float64Array(1).fill(Number.NaN);
   private readonly rgb = new Float32Array(CAPACITY * 3);
+  /** The room's palette (render/palette.ts, D-060), each slot's seed hue, and whether it is still drawn in the last
+   *  room's palette (`stale`: it was drawn when the signature came). */
+  private readonly palette = newPalette();
+  private readonly hues = new Float32Array(CAPACITY);
+  private readonly stale = new Uint8Array(CAPACITY);
 
   constructor(
     parent: Object3D,
@@ -116,10 +120,33 @@ export class SeedRenderer {
         if (slot < 0) continue; // more than the supply holds: not drawn
         this.take(slot, seed.id);
       }
-      // A seed's hue tints it (UX §5), in the plants' palette, written in sRGB.
-      colour.setHSL(seed.hue, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace).toArray(this.rgb, slot * 3);
-      this.paint(slot);
+      // A seed's hue tints it (UX §5), in the plants' palette, written in sRGB; one still drawn in the last
+      // room's palette keeps it (setPalette).
+      this.hues[slot] = seed.hue;
+      if (!this.stale[slot]) this.recolour(slot);
     }
+  }
+
+  /**
+   * On `room:signature`: the room's palette (D-060), the plants' own, so a seed is the colour of the plant it
+   * becomes. A seed not drawn takes it at once (the orb is not shown while there is no bed, and the signature comes
+   * in the frame the bed is placed, API_SPEC §1.10 rule 4); one drawn, out on a palm through a Re-place, keeps its
+   * colour until it is next not drawn. Set-up.
+   */
+  setPalette(paletteSeed: number): void {
+    setPalette(this.palette, paletteSeed);
+    for (let slot = 0; slot < CAPACITY; slot++) {
+      if (typeof this.ids[slot] !== 'string') continue;
+      if (this.isDrawn[slot]) this.stale[slot] = 1;
+      else this.recolour(slot);
+    }
+  }
+
+  /** The slot's seed in the palette in force. */
+  private recolour(slot: number): void {
+    this.stale[slot] = 0;
+    plantColour(colour, this.hues[slot]!, PLANT_LIGHTNESS, this.palette).toArray(this.rgb, slot * 3);
+    this.paint(slot);
   }
 
   /**
@@ -275,6 +302,7 @@ export class SeedRenderer {
 
   private hide(slot: number): void {
     this.isDrawn[slot] = 0;
+    if (this.stale[slot]) this.recolour(slot); // out of sight: the room's palette now
     const matrix = this.mesh.instanceMatrix.array;
     if (matrix[slot * 16] === 0) return;
     matrix[slot * 16] = matrix[slot * 16 + 5] = matrix[slot * 16 + 10] = 0;
@@ -288,7 +316,7 @@ export class SeedRenderer {
     this.follows[slot] = null;
     this.glideMs[slot] = 0;
     this.bumpM[slot] = 0;
-    this.isDrawn[slot] = 0;
+    this.isDrawn[slot] = this.stale[slot] = 0;
     this.base[slot] = this.brightness[slot] = PLANT_REST_BRIGHTNESS;
     this.glow[slot] = 0;
     this.guard.reset(this.firstElement + slot, PLANT_REST_BRIGHTNESS);

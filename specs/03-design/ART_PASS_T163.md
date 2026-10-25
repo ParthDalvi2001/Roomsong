@@ -6,6 +6,8 @@ Baseline, read from the perf display in the `t147-*` shots (one view, 13 plants)
 
 ## 0. Decision for Parth first: the plants' colours
 
+**Decided: A** (Parth, D-060, 25 Oct), built on `develop` in `render/palette.ts` with two changes from this text, both from the review: the room turns the arc by ±15°, not ±30° (`((paletteSeed % 31) − 15)°`), because ±30° reaches coral (17°) and magenta (297°), and A was chosen on the promise of no pinks or reds; every room now stays on 32°–282°. And Wanderer gets no saturation nudge either (the formula below would give seed 0 −0.06). Seeds, the undo petal, the vine and the ripple's afterglow use the same arc and turn.
+
 **What is built differs from UX §5.** UX §5 asks for one bioluminescent palette (moss #7DD181, gold #F4D35E, violet #9B5DE5, ice #48CAE4, cream #FFF8E7), tinted per room by `paletteSeed`. What is built is different. A plant's hue is a step of the golden ratio round the *whole* colour wheel (`HUE_STEP` 0.618, `setHSL(hue, 0.72, 0.63)`), so pinks and reds appear (`t119-five-shapes.png`, `t119-growth-stages.png`). Nothing in `src/render` reads `paletteSeed`. The captions "Table: colour." and "Walls: colour." (FR-ROOM-12, `strings.ts`) therefore promise a change the screen never shows, which breaks the honesty rule (CLAUDE.md §4.11).
 
 | Option | Hue on screen | Room tint | Cost | Verdict |
@@ -17,7 +19,7 @@ Baseline, read from the perf display in the `t147-*` shots (one view, 13 plants)
 - Sound is not affected in any option. `plant.hue` (0..1) still sets brightness and detune (FR-MUS-05). Only the mapping from hue to on-screen colour changes, and only in render.
 - The named hexes become the arc's anchor *hues*. Saturation and lightness stay at 0.72 / 0.63, so moss draws greener than #7DD181 (whose S is 0.48).
 - **What else the room tints:** the five ring lines (ICE #48CAE4, 190°) shift by the same angle. In a first session the bed has no plants when "Table: colour." shows, so the lines are the only thing that can make that caption true. Cream (tide, markers, blossoms, ladder, high-contrast outline) and the charcoal bed do not change.
-- **Flash cap:** a colour change bypasses FlashGuard (the T-119 blossom lesson). So the tint is applied before a plant is first drawn. A plant already on screen when `room:signature` arrives takes the tint at its next counted rise (its note), the same rule as a blossom's colours. Ring lines change once, never eased.
+- **Flash cap:** a colour change bypasses FlashGuard (the T-119 blossom lesson). So the tint is applied before a plant is first drawn. As built, no plant is ever on screen when `room:signature` arrives: it comes in the placement frame before its render (API_SPEC §1.10 rule 4), and the bed's loss draws an empty garden first, so the plants take the tint at once (the waiting for a note was built, then removed in review as code for a case that does not occur). A seed out on a palm through a Re-place keeps its colour until it is next not drawn; the vine takes a new tint only once it has shrunk away. Ring lines change once, never eased, and go back to ICE while the bed is not placed.
 
 ## 1. Critique of today's pictures (ranked, worst first)
 
@@ -41,7 +43,7 @@ All files are under `src/render/`. "0" means no extra draws, triangles or fill.
 
 | # | What | File / constant | Now | Proposed | Why | Cost |
 |---|---|---|---|---|---|---|
-| 2.1 | Palette arc and room tint (after Parth picks A) | `config.ts` new `PALETTE_ARC_START_DEG` 47, `PALETTE_ARC_SPAN_DEG` 220, `PALETTE_SHIFT_MAX_DEG` 30, `PALETTE_SAT_STEP` 0.06. `PlantRenderer` `setHSL` (l. ~403, 405). `BedRenderer` `uLine`. `BedRenderSystem` passes `room:signature` | `setHSL(hue, 0.72, 0.63)`, whole wheel; lines ICE | §0 option A | UX §5, honest captions | 0 |
+| 2.1 | Palette arc and room tint (**built, D-060**: A, with the turn narrowed to ±15°) | `config.ts` new `PALETTE_ARC_START_DEG` 47, `PALETTE_ARC_SPAN_DEG` 220, `PALETTE_SHIFT_MAX_DEG` 15 (planned 30), `PALETTE_SAT_STEP` 0.06. `PlantRenderer` `setHSL` (l. ~403, 405). `BedRenderer` `uLine`. `BedRenderSystem` passes `room:signature` | `setHSL(hue, 0.72, 0.63)`, whole wheel; lines ICE | §0 option A | UX §5, honest captions | 0 |
 | 2.2 | Glow balance: the head is the light | `PlantRenderer` VERTEX `vUp`; `config.ts` new `PLANT_STEM_GLOW` | `vUp` = height share of stem + tallest head (head 0.68–1.0 by plant height) | `vUp = mix(position.y × PLANT_STEM_GLOW, 1.0, aHead)`, `PLANT_STEM_GLOW` 0.65. Shade is then 0.45 at the foot, 0.81 at the stem top and 1.0 on every head and whorl. Delete `TALLEST_HEAD_M` | Every head equally bright whatever its height. The heads read as lamps on glass stems. Whorls (head rows) brighten too | 0 |
 | 2.3 | Stem normals follow the stretch (the jug on a short stem, every foot) | `PlantRenderer` VERTEX, 2 lines | Normals of the 10 cm reference lathe | `n = vec3(normal.x, normal.y × mix(PLANT_REFERENCE_STEM_M / stem, 1.0, aHead), normal.z)`, then turn `n` as now (the fragment already normalises) | The rim glow sits on the true edge. Needed before 2.8 | 0 |
 | 2.4 | Upper whorl turned 45° | `PlantRenderer.placeWhorls`, k = 1 | Both whorls aligned | Rotate the upper whorl's x and z columns by π/4 about y | From above the two whorls make one 8-leaf rosette, not a stacked star | 0 |
@@ -105,8 +107,8 @@ Fold in when built:
 
 | Where | Now | Becomes |
 |---|---|---|
-| UX §5 Palette | Five named colours, tint by `seed % 360` | The arc 47°→267° (gold, moss, ice, violet) at S 0.72 L 0.63. The room shifts it ±30° and nudges S by ±0.06. Ring lines shift too |
-| LLD §5.8 (l. 655) | Hue rotation `(h % 360)°` | `((h % 61) − 30)°`; saturation step 0.06 |
+| UX §5 Palette | Five named colours, tint by `seed % 360` | The arc 47°→267° (gold, moss, ice, violet) at S 0.72 L 0.63. The room shifts it ±15° (planned ±30°, narrowed in review: every room on 32°–282°) and nudges S by ±0.06. Ring lines shift too |
+| LLD §5.8 (l. 655) | Hue rotation `(h % 360)°` | `((h % 31) − 15)°` (planned `((h % 61) − 30)°`); saturation step 0.06; Wanderer neither (done, D-060) |
 | UX §5 Motion | "idle sway 0.2 Hz, 1–2 cm" | "idle sway 0.2 Hz, a 3.4° lean about the foot (0.4–1.1 cm at the head)". 2 cm on a 3 cm stem is a 34° lean, and two heads 4.4 cm wide on rings 4.5 cm apart would touch |
 | FR-ROOM-12 captions, `strings.ts` | "Table: colour.", "Walls: colour." with no colour drawn | True once 2.1 is built. If 2.1 is cut, the captions must change |
 | UX §9.5 choir table | `[0.004, 0.010, 1]` | `[0, 0.010, 1]` |

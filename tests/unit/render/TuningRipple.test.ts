@@ -211,7 +211,7 @@ describe('TuningRipple: where each crest runs (UX §5)', () => {
     expect(end.z).toBeCloseTo(-2.25, 6); // the edge over the front wall
   });
 
-  it('the afterglow is the room tint: ICE turned by paletteSeed % 360 degrees; untinted in a Wanderer room', () => {
+  it("the afterglow is the room tint: ICE turned by the room's shift of the plants' arc (±15°); untinted in a Wanderer room", () => {
     const hsl = { h: 0, s: 0, l: 0 };
     const trail = (seed: number) => {
       const r = rig(plan({ paletteSeed: seed }));
@@ -222,9 +222,12 @@ describe('TuningRipple: where each crest runs (UX §5)', () => {
     trail(0).getHSL(hsl, SRGBColorSpace);
     expect(hsl.h).toBeCloseTo(ice.h, 4);
     expect(hsl.s).toBeCloseTo(ice.s, 4);
-    trail(360 + 120).getHSL(hsl, SRGBColorSpace);
-    expect(hsl.h).toBeCloseTo((ice.h + 1 / 3) % 1, 4);
+    // ((paletteSeed % 31) − 15)° (render/palette.ts): seed 31 + 25 turns it 10° on, seed 31 × 9 + 3 turns it 12° back.
+    trail(31 + 25).getHSL(hsl, SRGBColorSpace);
+    expect(hsl.h).toBeCloseTo(ice.h + 10 / 360, 4);
     expect(hsl.l).toBeCloseTo(ice.l, 4);
+    trail(31 * 9 + 3).getHSL(hsl, SRGBColorSpace);
+    expect(hsl.h).toBeCloseTo(ice.h - 12 / 360, 4);
   });
 });
 

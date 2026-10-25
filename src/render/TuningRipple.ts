@@ -37,6 +37,7 @@ import {
   RIPPLE_SWEEP_MS,
   TIDE_SHADE_COVER,
 } from './config.js';
+import { newPalette, setPalette } from './palette.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { Mat4 } from '../core/index.js';
@@ -51,8 +52,8 @@ export interface RipplePlan {
   bedPose: Mat4;
   /** The signature is Wanderer: one ripple on the bed, none on the surfaces, whatever `surfaces` names. */
   isWanderer: boolean;
-  /** room:signature's paletteSeed: the afterglow is ICE turned by `paletteSeed % 360` degrees (LLD §5.8, Signature
-   *  v1: the palette; UX §5). The saturation nudge `((h >>> 9) % 3) − 1` is left out: no document gives its step. */
+  /** room:signature's paletteSeed: the afterglow is ICE turned by the room's shift of the plants' arc, at most ±15°
+   *  (render/palette.ts; ART_PASS_T163 §0, D-060), as the bed's ring lines are; Wanderer (0) is not turned. */
   paletteSeed: number;
   isReducedMotion: boolean;
 }
@@ -60,6 +61,7 @@ export interface RipplePlan {
 const SLOTS = RIPPLE_SWEEP_AT_MS.length; // table (or bed), wall, ceiling
 const BED_RADIUS_M = BED_OUTER + BED_RIM_M;
 const ICE_HSL = new Color(ICE).getHSL({ h: 0, s: 0, l: 0 }, SRGBColorSpace);
+const palette = newPalette();
 // The canvas's own encoded values, as the tide's: no colour-space step in the shader.
 const CREST_COLOUR = new Color(CREAM).convertLinearToSRGB();
 const SHADE_COLOUR = new Color(BED_BASE_COLOUR).convertLinearToSRGB();
@@ -164,9 +166,8 @@ export class TuningRipple {
     const { table, nearestWall, ceiling } = plan.surfaces;
     const bed = plan.bedPose;
     this.isGlow = plan.isReducedMotion;
-    this.trail
-      .setHSL(ICE_HSL.h + (plan.paletteSeed % 360) / 360, ICE_HSL.s, ICE_HSL.l, SRGBColorSpace)
-      .convertLinearToSRGB();
+    const { shiftDeg } = setPalette(palette, plan.paletteSeed);
+    this.trail.setHSL(ICE_HSL.h + shiftDeg / 360, ICE_HSL.s, ICE_HSL.l, SRGBColorSpace).convertLinearToSRGB();
     this.startMs.fill(Number.NaN);
     this.isBusy = true;
     if (!plan.isWanderer) {

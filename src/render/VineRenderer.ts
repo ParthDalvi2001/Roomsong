@@ -9,7 +9,6 @@ import {
   InstancedBufferAttribute,
   InstancedMesh,
   MeshBasicMaterial,
-  SRGBColorSpace,
   type Object3D,
 } from 'three';
 
@@ -17,7 +16,6 @@ import {
   PLANT_CAPACITY,
   PLANT_LIGHTNESS,
   PLANT_REST_BRIGHTNESS,
-  PLANT_SATURATION,
   VINE_FADE_MS,
   VINE_GROW_MS,
   VINE_RADIUS_M,
@@ -26,6 +24,7 @@ import {
   VINE_SWAY_M,
   VINE_WALL_MAX_M,
 } from './config.js';
+import { newPalette, plantColour, setPalette } from './palette.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { Mat4 } from '../core/index.js';
@@ -46,6 +45,12 @@ export class VineRenderer {
    *  is the fade instead, FR-UI-06); the pieces drawn. */
   private share = 0;
   private level = 0;
+  /** The room's palette the pieces are drawn in (render/palette.ts, D-060), one waiting for the vine to be gone
+   *  (`isStale`), and the plants the pieces were last coloured from. */
+  private readonly palette = newPalette();
+  private readonly next = newPalette();
+  private isStale = false;
+  private plants: readonly Plant[] = [];
   private pieces = 0;
   private hasWall = false;
   private isReducedMotion = false;
@@ -133,13 +138,32 @@ export class VineRenderer {
   /** The garden: its plant count sets the vine's length, and its plants' hues colour the pieces in turn. */
   setPlants(plants: readonly Plant[]): void {
     this.share = Math.min(1, plants.length / PLANT_CAPACITY);
+    this.plants = plants;
     if (plants.length === 0) return;
     const colours = this.mesh.instanceColor!;
     for (let i = 0; i < VINE_SEGMENTS; i++) {
-      colour.setHSL(plants[i % plants.length]!.hue, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace);
+      plantColour(colour, plants[i % plants.length]!.hue, PLANT_LIGHTNESS, this.palette);
       colours.setXYZ(i, colour.r, colour.g, colour.b);
     }
     colours.needsUpdate = true;
+  }
+
+  /**
+   * On `room:signature`: the plants' palette (D-060). It waits until no piece is drawn: a Re-place lets the vine
+   * shrink away, and the next placement's signature may come while it still shows. Set-up.
+   */
+  setPalette(paletteSeed: number): void {
+    setPalette(this.next, paletteSeed);
+    this.isStale = true;
+    if (this.mesh.count === 0) this.takePalette();
+  }
+
+  /** The waiting palette, and the pieces coloured in it. */
+  private takePalette(): void {
+    this.isStale = false;
+    this.palette.shiftDeg = this.next.shiftDeg;
+    this.palette.saturation = this.next.saturation;
+    this.setPlants(this.plants);
   }
 
   setReducedMotion(isReduced: boolean): void {
@@ -169,6 +193,9 @@ export class VineRenderer {
       this.mesh.count = count;
       this.mesh.visible = count > 0;
     }
+    // shortcut: a vine that grows back before it is gone keeps the last room's colours until it next is; recolour
+    // it inside a guarded fade if a headset shows the two palettes side by side.
+    if (this.isStale && count === 0) this.takePalette();
   }
 
   dispose(): void {

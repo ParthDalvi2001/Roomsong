@@ -1,4 +1,4 @@
-import { Color, DoubleSide, Group, Matrix4, SRGBColorSpace, Vector3 } from 'three';
+import { Color, DoubleSide, Group, Matrix4, Vector3 } from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { MS_PER_DAY, settings } from '../../../src/core/index.js';
@@ -20,7 +20,6 @@ import {
   PLANT_OUTLINE_M,
   PLANT_REFERENCE_STEM_M,
   PLANT_REST_BRIGHTNESS,
-  PLANT_SATURATION,
   PLANT_STEM_GLOW,
   PLANT_STEM_MAX_M,
   PLANT_STEM_MIN_M,
@@ -31,6 +30,7 @@ import {
   PLANT_WHORL_LOBE_DEPTH,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
+import { newPalette, plantColour, setPalette } from '../../../src/render/palette.js';
 import { PlantRenderer } from '../../../src/render/PlantRenderer.js';
 import { mulberry32 } from '../audio/prng.js';
 import { fullBedExcept, plant } from '../garden/fixtures.js';
@@ -136,10 +136,7 @@ function at(renderer: PlantRenderer, ring: number, step: number): Drawn | undefi
 
 /** A plant's colour at a brightness, as the renderer should write it: the hue read in sRGB, like the palette. */
 function tint(hue: number, brightness = PLANT_REST_BRIGHTNESS): number[] {
-  return new Color()
-    .setHSL(hue, PLANT_SATURATION, PLANT_LIGHTNESS, SRGBColorSpace)
-    .multiplyScalar(brightness)
-    .toArray();
+  return plantColour(new Color(), hue, PLANT_LIGHTNESS, newPalette()).multiplyScalar(brightness).toArray();
 }
 
 function expectRgb(actual: number[] | undefined, expected: number[]): void {
@@ -206,23 +203,25 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
     expect(at(renderer, 0, 4)!.stemM).toBeCloseTo(PLANT_STEM_MIN_M);
   });
 
-  it("the colour is the plant's hue at the palette's saturation and lightness, at rest brightness", () => {
-    const { renderer } = make([plant('gold', 0, 0, { hue: 0.13 }), plant('violet', 0, 8, { hue: 0.74 })]);
-    expectRgb(at(renderer, 0, 0)?.rgb, tint(0.13));
-    expectRgb(at(renderer, 0, 8)?.rgb, tint(0.74));
+  it("the colour is the plant's hue on the palette's arc, at its saturation and lightness, at rest brightness", () => {
+    const { renderer } = make([plant('gold', 0, 0, { hue: 0 }), plant('violet', 0, 8, { hue: 1 })]);
+    expectRgb(at(renderer, 0, 0)?.rgb, tint(0));
+    expectRgb(at(renderer, 0, 8)?.rgb, tint(1));
     expect(at(renderer, 0, 0)!.rgb).not.toEqual(at(renderer, 0, 8)!.rgb);
-    // On screen, at full brightness, that is close to the palette's own gold and violet (UX §5): #e5c75d and
-    // #985de5, within 16 of 255 a channel. Read as linear, the hue came out pale (#f3e4a2 and #cba2f3: up to 69 off).
+    // On screen, at full brightness, the arc's ends and its ice are close to the palette's own gold, ice and violet
+    // (UX §5, ART_PASS_T163 §0 option A): #f4d35e, #48cae4, #9b5de5, within 16 of 255 a channel. Moss (#7dd181,
+    // S 0.48) is drawn greener at the plants' S 0.72, as ART_PASS says, so it is not compared here.
     const onScreen = (hue: number): number[] =>
       new Color()
         .fromArray(tint(hue, 1))
         .getHexString()
         .match(/../g)!
         .map((pair) => parseInt(pair, 16));
-    const near = (actual: number[], palette: number[]): void =>
-      palette.forEach((channel, i) => expect(Math.abs(actual[i]! - channel)).toBeLessThanOrEqual(16));
-    near(onScreen(0.13), [0xf4, 0xd3, 0x5e]);
-    near(onScreen(0.74), [0x9b, 0x5d, 0xe5]);
+    const near = (actual: number[], palette: number[], within = 16): void =>
+      palette.forEach((channel, i) => expect(Math.abs(actual[i]! - channel)).toBeLessThanOrEqual(within));
+    near(onScreen(0), [0xf4, 0xd3, 0x5e]);
+    near(onScreen((190 - 47) / 220), [0x48, 0xca, 0xe4], 24); // ice is L 0.59: drawn at 0.63, a little lighter
+    near(onScreen(1), [0x9b, 0x5d, 0xe5]);
   });
 
   it('one mesh per silhouette; the five Must voices each have their own, shimmer borrows the pluck', () => {
@@ -819,7 +818,7 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
     plant(id, 2, step, { plantedAt: 0, hue: HUE, ...over });
   const STEM_M = (PLANT_STEM_MIN_M + PLANT_STEM_MAX_M) / 2; // the fixture's height is 0.5
   const colourAt = (lightness: number, brightness: number, hue = HUE): number[] =>
-    new Color().setHSL(hue, PLANT_SATURATION, lightness, SRGBColorSpace).multiplyScalar(brightness).toArray();
+    plantColour(new Color(), hue, lightness, newPalette()).multiplyScalar(brightness).toArray();
   const cream = (brightness: number): number[] => new Color(CREAM).multiplyScalar(brightness).toArray();
   const luminance = (rgb: ArrayLike<number>, from = 0): number =>
     0.2126 * rgb[from]! + 0.7152 * rgb[from + 1]! + 0.0722 * rgb[from + 2]!;
@@ -1258,9 +1257,7 @@ describe('the flash cap, counted second by second from what is drawn (FR-UI-11, 
       show(renderer, plants, 3.5 * DAY);
       renderer.update(Number.NaN, 0);
       // The eye's share of the plant's lightest colour: a blossom's colours are part of what is counted.
-      const full = luminance(
-        new Color().setHSL(hue, PLANT_SATURATION, PLANT_BLOSSOM_LIGHTNESS, SRGBColorSpace).toArray(),
-      );
+      const full = luminance(plantColour(new Color(), hue, PLANT_BLOSSOM_LIGHTNESS, newPalette()).toArray());
       const drawn: Sample[] = [{ t: 0, value: luminance(at(renderer, 2, plants[0]!.cell.step)!.rgb) / full }];
       const visitMs = random() * 8000;
       const tideFromMs = random() * 4000;
@@ -1283,6 +1280,30 @@ describe('the flash cap, counted second by second from what is drawn (FR-UI-11, 
     expect(changes).toBeGreaterThan(48 * 8); // the runs were busy: more than a change a second
     expect(worst.filter((count) => count > FLASH_CAP_PER_S)).toEqual([]); // no run over the cap
     expect(Math.max(...worst)).toBe(FLASH_CAP_PER_S); // and the cap was reached: the runs press on it
+  });
+});
+
+describe('PlantRenderer.setPalette (UX §5, ART_PASS_T163 §0, D-060)', () => {
+  const ROOM = 31 + 25; // a room whose signature turns the arc 10° on (render/palette.ts)
+  const colourIn = (seed: number, hue: number, lightness: number, brightness: number): number[] =>
+    plantColour(new Color(), hue, lightness, setPalette(newPalette(), seed))
+      .multiplyScalar(brightness)
+      .toArray();
+
+  it("every plant drawn takes the room's colours at once, a blossom's lighter one and its whorls too; so does a new one", () => {
+    const { renderer } = make();
+    // Two plants a week old: a blossom's colours (and cream whorls) from their first frame.
+    const week = [plant('a', 2, 5, { hue: 0.4, plantedAt: 0 }), plant('b', 1, 3, { hue: 0.9, plantedAt: 0 })];
+    show(renderer, week, 7.5 * MS_PER_DAY);
+    renderer.update(Number.NaN, 0);
+    renderer.setPalette(ROOM);
+    expectRgb(at(renderer, 2, 5)!.rgb, colourIn(ROOM, 0.4, PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    expectRgb(at(renderer, 1, 3)!.rgb, colourIn(ROOM, 0.9, PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    show(renderer, [plant('young', 0, 0, { hue: 0.2 })]);
+    expectRgb(at(renderer, 0, 0)!.rgb, colourIn(ROOM, 0.2, PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    // Wanderer again: the plain arc.
+    renderer.setPalette(0);
+    expectRgb(at(renderer, 0, 0)!.rgb, colourIn(0, 0.2, PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
   });
 });
 

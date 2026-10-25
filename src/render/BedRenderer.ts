@@ -10,6 +10,7 @@ import {
   Mesh,
   RingGeometry,
   ShaderMaterial,
+  SRGBColorSpace,
 } from 'three';
 
 import { BED_INNER, BED_OUTER, cellCentre, RINGS, STEPS } from '../garden/index.js';
@@ -32,6 +33,7 @@ import {
   MARKER_SEGMENTS,
 } from './config.js';
 import { FlashGuard } from './FlashGuard.js';
+import { newPalette, setPalette } from './palette.js';
 
 import type { Hand } from '../core/index.js';
 import type { Cell } from '../garden/index.js';
@@ -90,6 +92,10 @@ void main() {
 }`;
 
 const NO_CELL = -1;
+/** The ring lines' ice, turned by the room as the plants' arc is (ART_PASS_T163 §0: the lines are what a first
+ *  session's empty bed shows of the room's tint). */
+const ICE_HSL = new Color(ICE).getHSL({ h: 0, s: 0, l: 0 }, SRGBColorSpace);
+const palette = newPalette();
 
 export class BedRenderer {
   readonly base: Mesh<RingGeometry, ShaderMaterial>;
@@ -159,6 +165,18 @@ export class BedRenderer {
       mesh.matrixAutoUpdate = false;
       parent.add(mesh);
     }
+  }
+
+  /**
+   * On `room:signature` (D-060): the ring lines turn by the room's shift of the plants' arc, once, never eased:
+   * the signature comes in the frame the bed is placed (API_SPEC §1.10 rule 4); 0 when the bed leaves, so the
+   * level-3 ghost's lines are ICE. Wanderer: ICE. Set-up.
+   */
+  setPalette(paletteSeed: number): void {
+    const line = this.base.material.uniforms.uLine!.value as Color;
+    const { shiftDeg } = setPalette(palette, paletteSeed);
+    if (shiftDeg === 0) line.set(ICE);
+    else line.setHSL(ICE_HSL.h + shiftDeg / 360, ICE_HSL.s, ICE_HSL.l, SRGBColorSpace);
   }
 
   /**
