@@ -94,6 +94,12 @@ export function plan(beats: readonly Beat[], endS: number): Cut {
     toS: durationS,
     place: 'bottom',
   });
+  // Takes differ by a second or so: a caption that would run into the next one in its place ends where that one
+  // begins (check() still holds it to MIN_CAPTION_S).
+  for (const place of ['bottom', 'bottomLeft', 'topRight'] as const) {
+    const here = captions.filter((c) => c.place === place).sort((a, b) => a.fromS - b.fromS);
+    for (let i = 1; i < here.length; i++) here[i - 1]!.toS = Math.min(here[i - 1]!.toS, here[i]!.fromS);
+  }
   check(captions, durationS);
   return { startS, durationS, captions };
 }
@@ -123,7 +129,25 @@ const LOOK: Record<Place, string> = {
 };
 
 /** ffmpeg's arguments for a cut, run in the folder of the take; caption i's text is in captions/<i>.txt. */
-export function ffmpegArgs(cut: Cut, font: string): string[] {
+export function ffmpegArgs(cut: Cut, font: string, burn = true): string[] {
+  const inputs = [
+    ['-ss', `${cut.startS}`, '-i', 'first-loop.webm'],
+    ['-ss', `${cut.startS}`, '-i', 'first-loop-audio.wav'],
+  ];
+  const out = [
+    ['-r', '30', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18'],
+    ['-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', 'rough-cut-v0.mp4'],
+  ];
+  // An ffmpeg without drawtext (Homebrew's has no freetype): the captions as a subtitle track, from captions.srt.
+  if (!burn) {
+    return [
+      '-y',
+      ...inputs,
+      ['-i', 'captions.srt'],
+      ['-t', `${cut.durationS}`, '-map', '0:v', '-map', '1:a', '-map', '2:s', '-c:s', 'mov_text'],
+      ...out,
+    ].flat();
+  }
   const drawtext = cut.captions.map(
     (c, i) =>
       `drawtext=fontfile=${font}:textfile=captions/${i}.txt:fontcolor=white:box=1:boxcolor=black@0.55:` +
@@ -132,12 +156,21 @@ export function ffmpegArgs(cut: Cut, font: string): string[] {
   );
   return [
     '-y',
-    ['-ss', `${cut.startS}`, '-i', 'first-loop.webm'],
-    ['-ss', `${cut.startS}`, '-i', 'first-loop-audio.wav'],
+    ...inputs,
     ['-t', `${cut.durationS}`, '-map', '0:v', '-map', '1:a', '-vf', drawtext.join(',')],
-    ['-r', '30', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18'],
-    ['-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', 'rough-cut-v0.mp4'],
+    ...out,
   ].flat();
+}
+
+/** The captions as SubRip, in the cut's own time: the soft track when ffmpeg cannot burn them, and YouTube's file. */
+export function srt(cut: Cut): string {
+  const time = (s: number) => {
+    const ms = Math.round(s * 1000);
+    const pad = (n: number, w = 2) => String(n).padStart(w, '0');
+    return `${pad(Math.floor(ms / 3_600_000))}:${pad(Math.floor(ms / 60_000) % 60)}:${pad(Math.floor(ms / 1000) % 60)},${pad(ms % 1000, 3)}`;
+  };
+  const byTime = [...cut.captions].sort((a, b) => a.fromS - b.fromS);
+  return byTime.map((c, i) => `${i + 1}\n${time(c.fromS)} --> ${time(c.toS)}\n${c.text}\n`).join('\n');
 }
 
 function main(): void {
@@ -150,9 +183,16 @@ function main(): void {
     console.warn(`rough cut: ${cut.durationS} s, outside the script's ${CUT_MIN_S} to ${CUT_MAX_S} s`);
   mkdirSync(`${dir}captions`, { recursive: true });
   cut.captions.forEach((c, i) => writeFileSync(`${dir}captions/${i}.txt`, c.text));
+  writeFileSync(`${dir}captions.srt`, srt(cut));
   const font = process.env.FONT ?? '/System/Library/Fonts/Helvetica.ttc';
   if (!existsSync(font)) console.warn(`rough cut: no font at ${font}; set FONT=<a .ttf or .ttc>`);
-  const args = ffmpegArgs(cut, font);
+  const filters = spawnSync('ffmpeg', ['-hide_banner', '-filters']);
+  const burn = filters.error !== undefined || String(filters.stdout).includes(' drawtext ');
+  if (!burn)
+    console.warn(
+      'rough cut: this ffmpeg has no drawtext: the captions go in as a subtitle track, not burned in',
+    );
+  const args = ffmpegArgs(cut, font, burn);
   const quoted = args.map((a) => (/^[\w./:+@=-]+$/.test(a) ? a : `"${a}"`)).join(' ');
   const command = `cd "${dir}" && ffmpeg ${quoted}`;
   writeFileSync(

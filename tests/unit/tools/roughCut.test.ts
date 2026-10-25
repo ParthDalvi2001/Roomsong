@@ -2,7 +2,7 @@
 // and the ffmpeg command cuts the WebM and the WAV at the same point.
 import { describe, expect, it } from 'vitest';
 
-import { ffmpegArgs, MIN_CAPTION_S, plan } from '../../tools/rough-cut';
+import { ffmpegArgs, MIN_CAPTION_S, plan, srt } from '../../tools/rough-cut';
 
 /** The beats of take 2 (25 Oct, .tmp/video/beats.json), seconds on the recording. */
 const TAKE_2 = [
@@ -47,6 +47,16 @@ describe('rough cut v0 (T-153)', () => {
       expect(bottom[i]!.fromS).toBeGreaterThanOrEqual(bottom[i - 1]!.toS);
   });
 
+  it('ends a caption where the next in its place begins, when a take brings that one sooner (take 3)', () => {
+    const take3 = TAKE_2.map((b) =>
+      b.beat === 'placed' ? { ...b, atS: 15.1 } : b.beat === 'pinch' ? { ...b, atS: 21.1 } : b,
+    );
+    const cut = plan(take3, 92.6);
+    const floor = cut.captions.find((c) => c.text.startsWith('Floor size'))!;
+    const pinch = cut.captions.find((c) => c.text === 'Pinch. Plant. It sings.')!;
+    expect(floor.toS).toBe(pinch.fromS);
+  });
+
   it('leaves out a caption whose beat the take lacks, and seeks the video and the track to the same second', () => {
     const cut = plan(
       TAKE_2.filter((b) => b.beat !== 'listen'),
@@ -56,5 +66,15 @@ describe('rough cut v0 (T-153)', () => {
     const args = ffmpegArgs(cut, 'font.ttf');
     expect(args.filter((a, i) => args[i - 1] === '-ss')).toEqual(['10.5', '10.5']);
     expect(args[args.indexOf('-t') + 1]).toBe('82.1');
+  });
+
+  it('without drawtext: the same cut with the captions as a subtitle track, its SubRip in the cut own time', () => {
+    const cut = plan(TAKE_2, 92.6);
+    const args = ffmpegArgs(cut, 'font.ttf', false);
+    expect(args).not.toContain('-vf');
+    expect(args.join(' ')).toContain('-i captions.srt -t 82.1 -map 0:v -map 1:a -map 2:s -c:s mov_text');
+    const text = srt(cut);
+    expect(text.startsWith('1\n00:00:00,000 --> 00:01:22,100\nEmulator\n')).toBe(true);
+    expect(text).toContain('00:00:13,200 --> 00:00:23,500\nPinch. Plant. It sings.\n');
   });
 });
