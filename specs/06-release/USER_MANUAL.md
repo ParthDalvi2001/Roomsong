@@ -72,7 +72,7 @@ When the garden finds your table by itself, it reads the room from what the head
 - **The room's volume, the space it holds, sets the echo.** A large room rings longer. The echo is worked out from the room's size: nothing listens to your room or measures how it really sounds.
 - **Table and walls choose** your three starting seeds.
 
-The speed is yours; the room never changes it. Another room makes the same plants play a different song. The labels "Table: colour." and "Walls: colour." name a tint the plants do not show yet `[planned T-163]`.
+The speed is yours; the room never changes it. Another room makes the same plants play a different song. The labels "Table: a note." and "Walls: a note." name a tint the plants do not show yet `[planned T-163]`.
 
 **A wall near the bed grows a vine** `[app]`: when the headset knows a wall within 1.5 m of the bed, a thin vine in your plants' colours climbs it from the bed's height, over 6 seconds, higher as the bed fills (1.2 m with a full bed). No wall, no vine. With Reduce motion it fades in instead of growing.
 
@@ -151,7 +151,7 @@ What laptop mode does not have: your real room and table (no passthrough); your 
 | A palm in a dashed ring (an icon) | The headset lost the hand that held something | Bring the hand back in front of you. What you held goes back to where it was. Nothing is lost | `[app]` |
 | "Sound unavailable" (5 seconds) | The browser did not start the sound. The garden still works, silent | Check the volume. Leave the garden and press Enter again: sound starts only in that press | `[app]` |
 | "Look at your table, and pinch" (Look and hold: "and wait") | No table was found | Look where the garden should go and pinch, or wait | `[app]` |
-| "Table: seeds." "Table: colour." "Walls: colour." "Ceiling: scale." | Labels of the opening ripple, one for each surface found: what it gives the garden. The room does not change the colours yet | Nothing | ripple and labels `[app]`; colour tint `[planned T-163]` |
+| "Table: seeds." "Table: a note." "Walls: a note." "Ceiling: scale." | Labels of the opening ripple, one for each surface found: what it gives the garden. The room does not change the colours yet | Nothing | ripple and labels `[app]`; colour tint `[planned T-163]` |
 | "Saving unavailable" | The browser cannot store the garden: private browsing, or storage full or blocked. It shows once, during a visit | Keep playing; this visit will not be kept. Leave private browsing or free some space, then reload | `[app]` |
 | "Open your hand, palm up" · "Pinch the seed, drop it here" (look and hold: "Look at a cell to plant"; laptop mode: "Click or tap to plant") · "Show your palms to listen" (laptop mode: "Click the orb to listen") · "Turn a hand over for settings" | The first-minute guide | Do what it says, or wait: each step moves on after a minute | `[app]` |
 | "More seeds tomorrow" | You held a palm up and no seed is left | Shape what you have; a new seed comes each day you visit | `[app]` |

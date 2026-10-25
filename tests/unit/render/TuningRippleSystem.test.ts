@@ -244,7 +244,7 @@ describe('TuningRippleSystem: when the ripple starts (API_SPEC §1.10 rule 4)', 
     expect(s.meshes.some((mesh) => mesh.visible)).toBe(false);
   });
 
-  it('Re-place: room:signature with starterSeeds false, then room:features: "Table: colour."', () => {
+  it('Re-place: room:signature with starterSeeds false, then room:features: "Table: a note."', () => {
     const r = rig();
     r.signature();
     r.features();
@@ -256,7 +256,7 @@ describe('TuningRippleSystem: when the ripple starts (API_SPEC §1.10 rule 4)', 
       'rippleTableSeeds',
       'rippleWalls',
       'rippleCeiling',
-      'rippleTableColour',
+      'rippleTableNote',
       'rippleWalls',
       'rippleCeiling',
     ]);
@@ -274,7 +274,7 @@ describe('TuningRippleSystem: when the ripple starts (API_SPEC §1.10 rule 4)', 
     expect(r.raised.map((c) => c.key)).toEqual([
       'rippleTableSeeds',
       'rippleWalls',
-      'rippleTableColour',
+      'rippleTableNote',
       'rippleWalls',
       'rippleCeiling',
     ]);

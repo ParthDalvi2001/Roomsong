@@ -73,13 +73,13 @@ describe('CaptionQueue', () => {
     const seen: (string | null)[] = [];
     for (let ms = 0; ms <= 4100; ms += 100) {
       // TuningRipple raises each caption at the start of its sweep, to last until the next sweep starts
-      if (ms === 300) queue.raise('table', 'rippleTableColour', 1500);
+      if (ms === 300) queue.raise('table', 'rippleTableNote', 1500);
       if (ms === 1500) queue.raise('wall', 'rippleWalls', 2700);
       if (ms === 2700) queue.raise('ceiling', 'rippleCeiling', 4000);
       seen.push(at(queue, ms));
     }
     const shownFor = (key: string) => seen.filter((k) => k === key).length * 100;
-    expect(shownFor('rippleTableColour')).toBe(1200);
+    expect(shownFor('rippleTableNote')).toBe(1200);
     expect(shownFor('rippleWalls')).toBe(1200);
     expect(shownFor('rippleCeiling')).toBe(1300);
     expect(seen.slice(0, 3)).toEqual([null, null, null]);

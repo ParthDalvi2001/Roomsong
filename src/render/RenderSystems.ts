@@ -538,7 +538,7 @@ export class TuningRippleSystem extends createSystem(
   private begin(surfaces: RoomSurfaces, signature: RoomSignature, nowMs: number): void {
     this.surfaces = this.signature = null;
     const isWanderer = signature.paletteSeed === 0; // LLD §5.8: no room tuple hashes to 0
-    const table = this.starterSeeds ? 'rippleTableSeeds' : 'rippleTableColour';
+    const table = this.starterSeeds ? 'rippleTableSeeds' : 'rippleTableNote';
     this.keys[0] = !isWanderer && surfaces.table !== undefined ? table : null;
     this.keys[1] = !isWanderer && surfaces.nearestWall !== undefined ? 'rippleWalls' : null;
     this.keys[2] = !isWanderer && surfaces.ceiling !== undefined ? 'rippleCeiling' : null;

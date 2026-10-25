@@ -18,8 +18,8 @@ describe('core/strings', () => {
     const ripple = entries.filter(([key]) => key.startsWith('ripple'));
     expect(ripple.map(([, text]) => text)).toEqual([
       'Table: seeds.',
-      'Table: colour.',
-      'Walls: colour.',
+      'Table: a note.',
+      'Walls: a note.',
       'Ceiling: scale.',
     ]);
     for (const [key, text] of ripple) {

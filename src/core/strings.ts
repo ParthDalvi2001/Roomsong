@@ -2,9 +2,9 @@
 export const STRINGS = {
   // Tuning-ripple captions (LLD §5.8). Limits: RIPPLE_CAPTION_MAX_WORDS, RIPPLE_CAPTION_MAX_CHARS; each names its surface.
   rippleTableSeeds: 'Table: seeds.',
-  rippleTableColour: 'Table: colour.',
-  rippleWalls: 'Walls: colour.',
-  rippleCeiling: 'Ceiling: scale.',
+  rippleTableNote: 'Table: a note.', // a later session: the table rings the chord's root (LLD §5.8); no room tint is drawn
+  rippleWalls: 'Walls: a note.', // the wall rings the chord's middle note
+  rippleCeiling: 'Ceiling: scale.', // the ceiling's height sets the scale (and it rings the fifth)
   // The level-3 placement hint (UX §9.2): room/ raises one of the two while the ghost of the bed shows.
   placeLook: 'Look at your table, and pinch',
   placeLookGaze: 'Look at your table, and wait', // gaze mode (Settings.gazeDwell)
