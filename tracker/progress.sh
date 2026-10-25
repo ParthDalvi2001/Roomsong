@@ -363,9 +363,8 @@ def code():
 
 
 def waiting():
-    text = (ROOT / 'specs/08-status/PROGRESS.md').read_text(encoding='utf-8')
-    block = text.split('## Blocked on human', 1)[1].split('\n## ', 1)[0] if '## Blocked on human' in text else ''
-    items = [l for l in block.split('\n') if re.match(r'^\d+\. ', l) and not re.match(r'^\d+\. ~~', l)]
+    text = (ROOT / 'specs/08-status/DECISIONS_PENDING.md').read_text(encoding='utf-8')
+    items = [f'{n}. **{t}**' for n, t in re.findall(r'^## (\d+)\. (.+)$', text, re.M)]
     print(f'WAITING ON YOU ({len(items)})')
     for item in items:
         number, rest = item.split('. ', 1)

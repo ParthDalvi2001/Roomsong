@@ -42,4 +42,4 @@ On demand: commands `.claude/QUICK_START.md` · where things live `.claude/ARCHI
 - Bugs → `specs/05-testing/BUG_LOG.md`. Decisions → `specs/08-status/DECISIONS_LOG.md`.
 
 ## 6. Stop and ask Parth only for
-headset tests, accounts, pushing `main` or prod deploys, listening and visual ratings, dropping a Must, spending money, submitting (AUTOPILOT §5). List them under PROGRESS → **Blocked on human**, then keep working on unblocked tasks.
+headset tests, accounts, pushing `main` or prod deploys, listening and visual ratings, dropping a Must, spending money, submitting (AUTOPILOT §5). List them in `specs/08-status/DECISIONS_PENDING.md` (one file: question, options, ★ recommendation), then keep working on unblocked tasks.

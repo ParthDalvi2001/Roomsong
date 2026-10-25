@@ -52,7 +52,7 @@ REPORT BACK (≤25 lines): what changed (files), tests added, verify output summ
     anything needing the human (device test steps), open questions, suggested follow-ups (as T-xxx proposals).
 ```
 
-## 5. Hard stops → ask the human (write it under PROGRESS §Blocked on human, then keep working on unblocked tasks)
+## 5. Hard stops → ask the human (write it in specs/08-status/DECISIONS_PENDING.md, then keep working on unblocked tasks)
 1. On-headset verification (any `done-pending-device` task). Provide a **numbered script**; ask for pass/fail per step + fps.
 2. Accounts: GitHub repo creation, Meta Start membership, Devpost registration, YouTube upload.
 3. `git push` to `main`, merge to `main`, **prod deploy**, tag creation for `v1.0.0*`.

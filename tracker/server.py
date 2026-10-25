@@ -112,15 +112,8 @@ def load_plan():
 def load_status():
     text = read('specs/08-status/PROGRESS.md')
     needs, resolved = [], []
-    for line in section(text, '## Blocked on human').split('\n'):
-        m = re.match(r'^(\d+)\. (.*)', line)
-        if not m:
-            continue
-        number, body = int(m.group(1)), m.group(2)
-        title = re.search(r'\*\*(.+?)\*\*', body) or re.search(r'~~(.+?)~~', body)
-        item = {'n': number, 'title': plain(title.group(1)).rstrip(':') if title else ' '.join(plain(body).split()[:5]),
-                'text': plain(body)}
-        (resolved if body.startswith('~~') else needs).append(item)
+    for m in re.finditer(r'^## (\d+)\. (.+?)\n(.*?)(?=^## |\Z)', read('specs/08-status/DECISIONS_PENDING.md'), re.M | re.S):
+        needs.append({'n': int(m.group(1)), 'title': plain(m.group(2)), 'text': plain(m.group(3))[:600]})
     gates = {}
     for line in section(text, '## Gates').split('\n'):
         cells = row_cells(line)

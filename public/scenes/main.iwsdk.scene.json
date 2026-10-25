@@ -1,7 +1,7 @@
 {
-  "version": "iwsdk.scene.v1",
-  "units": "meters",
   "components": {},
+  "nodes": [],
   "resources": {},
-  "nodes": []
+  "units": "meters",
+  "version": "iwsdk.scene.v1"
 }
