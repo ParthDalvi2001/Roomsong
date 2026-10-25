@@ -27,6 +27,7 @@ import {
   FlashGuard,
   FOVEATION_MEDIUM,
   HaloSystem,
+  loadHandCue,
   PerfSystem,
   SeedSystem,
   TuningRippleSystem,
@@ -498,6 +499,8 @@ export async function start(landing: Landing): Promise<void> {
   register(world, CaptionSystem, 60);
   register(world, HintSystem, 61, { bed: room.bed.object3D }); // T-150: its icons stand on the bed
   register(world, PanelSystem, 62, { garden, room, engine }); // engine: its tick and confirm (T-164 §6)
+  // T-175: the capture rig's hand cue, for the judge video only. Under DEV, so a production build holds none of it.
+  if (import.meta.env.DEV && flags.handCue) register(world, (await loadHandCue()).HandCueSystem, 63);
   breakOtherSystems(world);
   if (flags.dev) window.__roomsong = { world, engine, garden };
   // A7: every system hears the first garden:changed, and before Enter is usable. A restored garden is drawn when

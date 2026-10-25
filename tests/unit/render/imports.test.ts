@@ -102,6 +102,7 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
         'TuningRippleSystem',
         'VineSystem', // T-149
         'createPerfHud',
+        'loadHandCue', // T-175: the hand cue's file, loaded in dev builds only
         'stepGlow', // T-160
       ].sort(),
     );

@@ -54,6 +54,13 @@ const SCRIPT: {
   { text: 'Shape every voice with your hands.', beat: 'pull', until: 'move' },
   { text: 'No controllers.', beat: 'move', holdS: 3 },
   { text: 'Then lean back and listen.', beat: 'listen', afterS: 0.5, holdS: 4 },
+  // §4 item 3: the first shot with the hand cue (the `handCue` flag, T-175) says it is drawn for the recording
+  {
+    text: 'Hand drawn for this recording. On a headset you see your own hands.',
+    beat: 'palm',
+    holdS: 4,
+    place: 'bottomLeft',
+  },
 ];
 const EMULATOR_LINE = 'Recorded in the Immersive Web Emulator. No headset yet.'; // §4 item 1, the first 4 s
 const EMULATOR_LINE_S = 4;
@@ -93,16 +100,18 @@ export function plan(beats: readonly Beat[], endS: number): Cut {
 
 const round = (s: number) => Math.round(s * 10) / 10;
 
-/** The ground rules a caption plan keeps: inside the cut, on long enough, and one bottom caption at a time. */
+/** The ground rules a caption plan keeps: inside the cut, on long enough, and one caption at a time in each place. */
 function check(captions: readonly Caption[], durationS: number): void {
   for (const c of captions) {
     if (c.fromS < 0 || c.toS > durationS) throw new Error(`"${c.text}" runs outside the cut`);
     if (c.toS - c.fromS < MIN_CAPTION_S) throw new Error(`"${c.text}" is on for under ${MIN_CAPTION_S} s`);
   }
-  const bottom = captions.filter((c) => c.place === 'bottom').sort((a, b) => a.fromS - b.fromS);
-  for (let i = 1; i < bottom.length; i++) {
-    if (bottom[i]!.fromS < bottom[i - 1]!.toS)
-      throw new Error(`"${bottom[i]!.text}" comes on over "${bottom[i - 1]!.text}"`);
+  for (const place of ['bottom', 'bottomLeft', 'topRight'] as const) {
+    const here = captions.filter((c) => c.place === place).sort((a, b) => a.fromS - b.fromS);
+    for (let i = 1; i < here.length; i++) {
+      if (here[i]!.fromS < here[i - 1]!.toS)
+        throw new Error(`"${here[i]!.text}" comes on over "${here[i - 1]!.text}"`);
+    }
   }
 }
 

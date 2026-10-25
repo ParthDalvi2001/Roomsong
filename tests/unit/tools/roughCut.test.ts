@@ -35,6 +35,12 @@ describe('rough cut v0 (T-153)', () => {
       fromS: 13.2,
       toS: 23.5,
     });
+    // VIDEO_SCRIPT_V0 §4 item 3 (T-175): the corner says the hand is drawn, from the first beat that shows it.
+    expect(cut.captions.find((c) => c.text.startsWith('Hand drawn for this recording.'))).toMatchObject({
+      fromS: 10.3,
+      toS: 14.3,
+      place: 'bottomLeft',
+    });
     for (const c of cut.captions) expect(c.toS - c.fromS).toBeGreaterThanOrEqual(MIN_CAPTION_S);
     const bottom = cut.captions.filter((c) => c.place === 'bottom');
     for (let i = 1; i < bottom.length; i++)

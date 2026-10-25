@@ -48,6 +48,9 @@ for (const file of files) {
   }
   for (const marker of UNLICENSED_CODE)
     if (text.includes(marker)) failures.push(`${file}: code of @drawcall/uikitml (no licence): "${marker}"`);
+  // T-175 (API_SPEC §3): the capture rig's hand cue is for dev builds only; its mesh name marks its code.
+  if (!LICENSE_TEXT.test(file) && text.includes('hand-cue'))
+    failures.push(`${file}: the hand cue (render/HandCue.ts) is in a production build`);
   if (!file.endsWith('.html')) continue;
   pages += 1;
   const policy = CSP_META.exec(text)?.[1].replaceAll('&#39;', "'"); // Vite writes ' as &#39;

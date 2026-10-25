@@ -8,8 +8,9 @@
 // hides it. Each beat's time from the start of the recording goes to the console and to beats.json beside the
 // video, for the editor's cut.
 //
-// Emulator footage (Golden Rule 11): IWER's software rendering at its own frame rate, no hand is drawn (D-027),
-// the room is the fixture's planes. Playwright's recorder takes no sound: the audio runs in the page (the Enter
+// Emulator footage (Golden Rule 11): IWER's software rendering at its own frame rate; the app draws no hand (D-027),
+// so the take sets the dev-only `handCue` flag (T-175), which draws the hands' joints for the recording; the room is
+// the fixture's planes. Playwright's recorder takes no sound: the audio runs in the page (the Enter
 // click starts it), and every call the app makes on its engine during the take is logged, with its audio-clock and
 // recording times, to engine-calls.json. `npm run video:audio` replays them offline into the take's track
 // (tests/renders/video-track.spec.ts), and `npm run video:cut` makes the rough cut (scripts/rough-cut.ts).
@@ -385,7 +386,7 @@ test('the first loop, one take: enter, place, plant, grow, move, listen, wake', 
   await prelude.evaluate((p, more) => p.saveSeeds(more), MORE_SEEDS);
 
   // The take: the second visit, the tutorial on. The emulator restores its anchor, so the bed is placed at once.
-  await openApp(page, readRoom(ROOM), '/', { onboarding: true });
+  await openApp(page, readRoom(ROOM), '/?flags=handCue', { onboarding: true }); // the hand drawn (T-175)
   await page.waitForFunction(() => window.__roomsong !== undefined, null, { timeout: 15_000 });
   const probe = await watch(page);
   await probe.evaluate((p) => p.recordEngine()); // before Enter: the click calls init()
@@ -520,7 +521,7 @@ test('the first loop, one take: enter, place, plant, grow, move, listen, wake', 
     file: 'first-loop.webm',
     recordedAt: new Date(t0).toISOString(),
     room: ROOM,
-    flags: 'none on the take (the tutorial on); skipOnboarding on the prelude',
+    flags: 'handCue on the take (the tutorial on); skipOnboarding on the prelude',
     size: '1920x1080',
     audio: 'none: Playwright records no sound; npm run video:audio renders the track from engine-calls.json',
     endS,

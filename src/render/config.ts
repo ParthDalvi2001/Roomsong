@@ -262,6 +262,13 @@ export const SEED_DETAIL = 2;
  *  whenever the bed is (NFR-FOV-01); not a target, so it takes no reach and no pinch from the Listen orb below. */
 export const SUPPLY_ORB_LIFT_M = 0.1;
 export const SUPPLY_ORB_RADIUS_M = 0.03;
+
+/** T-175 (VIDEO_SCRIPT_V0 §3.2 item 1), chosen in T-175: the hand cue of the video's capture rig draws at most this
+ *  many hands, each joint a cream dot this wide and this round, the bones between them cream lines this opaque. */
+export const HAND_CUE_HANDS = 2;
+export const HAND_CUE_DOT_RADIUS_M = 0.005;
+export const HAND_CUE_DOT_DETAIL = 1;
+export const HAND_CUE_BONE_OPACITY = 0.75;
 /** Chosen in T-127: a seed waits at a plant's rest brightness and is lit while it is out on a hand. BUG-007: lit
  *  so that a hover's PLANT_HOVER_LIFT takes it to full (UX §9.1), not full already, where the glow could not show. */
 export const SEED_OUT_BRIGHTNESS = 1 / (1 + PLANT_HOVER_LIFT);

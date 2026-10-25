@@ -14,6 +14,7 @@ const BOOLEAN_FLAGS = [
   'capSpike',
   'window',
   'timeLapse',
+  'handCue', // T-175: read only by dev-build code (render's loadHandCue), so a production build draws nothing
 ] as const;
 type BooleanFlag = (typeof BOOLEAN_FLAGS)[number];
 
@@ -44,6 +45,7 @@ export const DEFAULT_FLAGS: Flags = Object.freeze({
   capSpike: false,
   window: false,
   timeLapse: false,
+  handCue: false,
   forceLevel: null,
   fakeDay: 0,
   seed: null,

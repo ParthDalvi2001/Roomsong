@@ -15,6 +15,8 @@ export { PlantRenderer } from './PlantRenderer.js';
 export { stepGlow, TideRenderer } from './TideRenderer.js';
 export { PetalRenderer } from './PetalRenderer.js';
 export { createPerfHud, PerfSampler } from './PerfHud.js';
+/** T-175, dev builds only: call it under import.meta.env.DEV, so a production build holds none of the hand cue. */
+export const loadHandCue = () => import('./HandCue.js');
 export type { PerfHud } from './PerfHud.js';
 // The module's ECS systems (LLD §3.2): the one file of render/ that imports @iwsdk/core.
 export { BedRenderSystem, PerfSystem, SeedSystem, TuningRippleSystem, VineSystem } from './RenderSystems.js';
