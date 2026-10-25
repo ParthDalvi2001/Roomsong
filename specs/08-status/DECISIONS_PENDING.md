@@ -2,10 +2,7 @@
 
 **The one file for every open decision.** All 21 questions of 25 Oct are answered (DECISIONS_LOG D-060). What is left are things only you can do; tick them off by replying with the number and "done".
 
-## 1. Restart the Mac
-The swap is full, so tests fail at random. Restart, then reply **"mac done"**; I resume every agent and run the checks.
-
-## 2. Put the game online (about 10 minutes, after the restart)
+## 1. Put the game online (about 10 minutes)
 1. On github.com/ParthDalvi2001/Roomsong: **Settings → Pages → Source: GitHub Actions**.
 2. In Terminal, in the Roomsong folder: `git checkout main && git merge --ff-only develop && git push origin main && git checkout develop` (I never push `main` myself).
 3. Actions tab: wait for `ci` and `deploy` to go green, then open https://parthdalvi2001.github.io/Roomsong/
@@ -13,16 +10,16 @@ The swap is full, so tests fail at random. Restart, then reply **"mac done"**; I
 5. Netlify mirror: log in to netlify.com with GitHub, "Add new site → Import from GitHub → Roomsong", branch `main`, build command `npm run build`, publish folder `dist`. Send me the address it gives.
 Reply **"2 done"** with the Netlify address.
 
-## 3. Register for Playtest & React, 29 Oct 22:30 IST
+## 2. Register for Playtest & React, 29 Oct 22:30 IST
 Chinmay registers with his Meta Start account (Devpost → the competition → Webinars & Office Hours tab) and joins with the live link. Reply **"3 done"**.
 
-## 4. Install ffmpeg
+## 3. Install ffmpeg
 In Terminal: `brew install ffmpeg` (about 2 minutes). Reply **"ffmpeg done"**.
 
-## 5. Chinmay's Start Member screenshot, by 31 Oct
+## 4. Chinmay's Start Member screenshot, by 31 Oct
 Ask him for a screenshot of the "Start Member" label next to his name on the Meta Developer Forum. Reply **"5 done"**.
 
-## 6. Listen to style B once (after the restart)
+## 5. Listen to style B once
 https://localhost:8093/proto/styles/ in Chrome (Advanced → Proceed), tick "full garden", play B for a few minutes. Reply "B good" or what to change.
 
 ## Later
