@@ -10,7 +10,9 @@
 //
 // Emulator footage (Golden Rule 11): IWER's software rendering at its own frame rate, no hand is drawn (D-027),
 // the room is the fixture's planes. Playwright's recorder takes no sound: the audio runs in the page (the Enter
-// click starts it) but is dubbed later from `npm run audio:renders`.
+// click starts it), and every call the app makes on its engine during the take is logged, with its audio-clock and
+// recording times, to engine-calls.json. `npm run video:audio` replays them offline into the take's track
+// (tests/renders/video-track.spec.ts), and `npm run video:cut` makes the rough cut (scripts/rough-cut.ts).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -82,6 +84,16 @@ interface Probe {
   saveSeeds(more: { voice: string; hue: number }[]): void;
   /** The right pinch point once it has stopped moving (two frames the same). */
   atRest(): Promise<Vec3>;
+  /** From now on, logs every call the app makes on its audio engine (the settings in force first). */
+  recordEngine(): void;
+  engineCalls(): EngineCall[];
+}
+/** One call on the engine: its method, its arguments (typed arrays as arrays), the audio clock and the wall clock. */
+interface EngineCall {
+  m: string;
+  args: unknown[];
+  audioS: number;
+  wallMs: number;
 }
 interface DevPage {
   IWER_DEVICE: { remote: { dispatch(method: string, params: object): Promise<unknown> } };
@@ -98,6 +110,7 @@ function watch(page: Page): Promise<JSHandle<Probe>> {
     const room = await load<RoomModule>('/src/room/index.ts');
     const { world, engine, garden } = window.__roomsong!;
     const bed = world.getSystem(room.RoomSystem)!.bed.object3D!;
+    const calls: EngineCall[] = [];
     const heard: Heard[] = [];
     const note = (name: string, more: Partial<Heard> = {}) =>
       heard.push({ name, id: null, step: null, gesture: null, ...more, atMs: performance.now() });
@@ -170,6 +183,55 @@ function watch(page: Page): Promise<JSHandle<Probe>> {
           const distance = (a: Vec3, b: Vec3) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
           look();
         }),
+      recordEngine() {
+        const log = (m: string, args: unknown[]) =>
+          calls.push({
+            m,
+            args: JSON.parse(
+              JSON.stringify(args, (_, v: unknown) =>
+                ArrayBuffer.isView(v) ? Array.from(v as unknown as ArrayLike<number>) : v,
+              ),
+            ) as unknown[],
+            audioS: engine.clock.now(),
+            wallMs: Date.now(),
+          });
+        // AudioSystem applied these at boot, before this probe: the replay starts from them.
+        const s = core.settings.get();
+        log('setTempo', [s.tempo]);
+        log('setVolume', [s.volume]);
+        log('setReverb', [s.reverb]);
+        log('setMono', [s.mono]);
+        const methods = engine as unknown as Record<string, (...args: unknown[]) => unknown>;
+        let lastPose = '';
+        for (const m of [
+          'init',
+          'resume',
+          'suspend',
+          'setTempo',
+          'setVolume',
+          'setMono',
+          'setReverb',
+          'setSignature',
+          'setStyle',
+          'setListenerPose',
+          'syncPlants',
+          'chordTone',
+          'ui',
+          'enterListen',
+          'exitListen',
+          'setStillness',
+        ]) {
+          const original = methods[m]!.bind(engine);
+          methods[m] = (...args: unknown[]) => {
+            // The head's pose comes every frame: logged only when it changed.
+            const pose = m === 'setListenerPose' ? Array.from(args[0] as ArrayLike<number>).join() : '';
+            if (pose === '' || pose !== lastPose) log(m, args);
+            if (pose !== '') lastPose = pose;
+            return original(...args);
+          };
+        }
+      },
+      engineCalls: () => calls,
     };
     return probe;
   });
@@ -326,6 +388,7 @@ test('the first loop, one take: enter, place, plant, grow, move, listen, wake', 
   await openApp(page, readRoom(ROOM), '/', { onboarding: true });
   await page.waitForFunction(() => window.__roomsong !== undefined, null, { timeout: 15_000 });
   const probe = await watch(page);
+  await probe.evaluate((p) => p.recordEngine()); // before Enter: the click calls init()
   mark('landing', 'the take begins: the page up, the world loading');
   await enterXR(page);
   mark('enter', 'Enter pressed: the session is up, the sound started');
@@ -426,8 +489,32 @@ test('the first loop, one take: enter, place, plant, grow, move, listen, wake', 
   mark('end');
 
   // The recording ends with the page; saveAs waits for the file to be whole.
+  const calls = await probe.evaluate((p) => p.engineCalls());
+  const endS = (Date.now() - t0) / 1000;
   const video = page.video()!;
   await page.close();
+  // Where the audio clock's 0 falls on the recording: the wall time less the audio time of each call made while the
+  // context ran, their median (the spread says how steady the two clocks kept together).
+  const zeros = calls
+    .filter((c) => c.audioS > 0.5)
+    .map((c) => (c.wallMs - t0) / 1000 - c.audioS)
+    .sort((a, b) => a - b);
+  const preRollS = zeros[Math.floor(zeros.length / 2)] ?? Number.NaN;
+  const spreadS = (zeros[zeros.length - 1] ?? 0) - (zeros[0] ?? 0);
+  writeFileSync(
+    `${OUT}engine-calls.json`,
+    JSON.stringify({
+      timeBase: 'atS: seconds on the recording, as beats.json; audioS: the engine audio clock',
+      preRollS,
+      spreadS,
+      endS,
+      calls: calls.map(({ m, args, audioS, wallMs }) => ({ m, args, audioS, atS: (wallMs - t0) / 1000 })),
+    }),
+  );
+  console.log(
+    `engine: ${calls.length} calls; the audio clock's 0 at ${preRollS.toFixed(3)} s on the recording ` +
+      `(spread ${spreadS.toFixed(3)} s)`,
+  );
   await video.saveAs(`${OUT}first-loop.webm`);
   const sheet = {
     file: 'first-loop.webm',
@@ -435,7 +522,8 @@ test('the first loop, one take: enter, place, plant, grow, move, listen, wake', 
     room: ROOM,
     flags: 'none on the take (the tutorial on); skipOnboarding on the prelude',
     size: '1920x1080',
-    audio: 'none: Playwright records no sound; dub from npm run audio:renders',
+    audio: 'none: Playwright records no sound; npm run video:audio renders the track from engine-calls.json',
+    endS,
     timeBase: 'seconds from the recording start (the page opened within 0.2 s before "landing")',
     source: 'Immersive Web Emulator (IWER), software rendering, no headset',
     beats,
