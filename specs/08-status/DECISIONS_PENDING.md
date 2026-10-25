@@ -13,13 +13,10 @@ Reply **"2 done"** with the Netlify address.
 ## 2. Register for Playtest & React, 29 Oct 22:30 IST
 Chinmay registers with his Meta Start account (Devpost → the competition → Webinars & Office Hours tab) and joins with the live link. Reply **"3 done"**.
 
-## 3. Install ffmpeg
-In Terminal: `brew install ffmpeg` (about 2 minutes). Reply **"ffmpeg done"**.
-
-## 4. Chinmay's Start Member screenshot, by 31 Oct
+## 3. Chinmay's Start Member screenshot, by 31 Oct
 Ask him for a screenshot of the "Start Member" label next to his name on the Meta Developer Forum. Reply **"5 done"**.
 
-## 5. Listen to style B once
+## 4. Listen to style B once
 https://localhost:8093/proto/styles/ in Chrome (Advanced → Proceed), tick "full garden", play B for a few minutes. Reply "B good" or what to change.
 
 ## Later
