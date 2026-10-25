@@ -582,11 +582,12 @@ describe('what the extractor reads, and what it refuses', () => {
       }
     });
 
-    it('is not measured for a bed placed by hit-test or floating (levels 3 and 4)', () => {
+    it('a bed placed by hit-test or floating (levels 3 and 4) has no table, and keeps the room signature of the walls (D-060 item 14)', () => {
       for (const level of [3, 4] as const) {
         const features = extract(ROOM, { ...BED, level });
         expectFeatures(features, { ...without(DESK, 'tableHeight', 'tableArea'), level });
-        expect(roomSignature(features)).toBe(WANDERER);
+        expect(roomSignature(features)).not.toBe(WANDERER);
+        expect(roomSignature(features)).toEqual(roomSignature({ ...features, level: 1 }));
       }
     });
   });

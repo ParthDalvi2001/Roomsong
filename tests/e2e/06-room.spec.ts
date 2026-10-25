@@ -252,7 +252,7 @@ const FLOATING_M = EYE_HEIGHT_M - 0.25; // FR-ROOM-01 level 4
 const TABLE_CENTRE = { x: 0, y: 0.74, z: -0.5 }; // of the table room
 // The requirement's numbers, spelled out on purpose (room/config.ts holds the module's constants).
 const PLANE_WAIT_MS = 3000;
-const HIT_WAIT_MS = 10_000;
+const HIT_WAIT_MS = 6000; // D-060 item 12, was 10 s
 /** LLD §3.3 D: the one frame of a placement may take this much script time. */
 const PLACED_FRAME_BUDGET_MS = 50;
 
@@ -434,7 +434,7 @@ test('T-128c c2 level 3: the ghost and its caption, a dwell that floats nothing,
   });
   await enterXR(page);
   await heardOf(page, probe, 'room:placementLevel');
-  // Few frames from here to the pinch: under software rendering 10 s of level 3 is not many, and a wait that runs
+  // Few frames from here to the pinch: under software rendering 6 s of level 3 are not many, and a wait that runs
   // out over the table also gives level 3, which would make the pinch a no-op the test could not tell apart.
   await xrFrames(page, 5);
 
@@ -478,7 +478,7 @@ test('T-128c c2 level 3: the ghost and its caption, a dwell that floats nothing,
   const events = await heard(probe);
   expect(typesOf(events).slice(0, 3)).toEqual(['room:placementLevel', 'room:bedPlaced', 'room:features']);
   const placed = only(events, 'room:bedPlaced');
-  // Placed by the pinch: after it, and before the 10 s of level 3 could have run out.
+  // Placed by the pinch: after it, and before the 6 s of level 3 could have run out.
   expect(placed.frame - pinchedAt).toBeGreaterThanOrEqual(1);
   expect(placed.frame - pinchedAt).toBeLessThanOrEqual(2); // the solver's frame, then the placed step
   expect(placed.atMs - start.atMs).toBeLessThan(HIT_WAIT_MS);
@@ -534,7 +534,7 @@ test('T-128c c2 level 3: a pinch with the gaze on nothing usable floats the bed 
   expectPose(placedOf(placed).placement.pose, aheadAt(FLOATING_M), 1e-6, 'the floating bed');
   expect(placed.bed).toMatchObject({ isPlaced: true, source: 'floating', hasMarkers: true });
   expect(placed.frame - pinchedAt.frame).toBeLessThanOrEqual(2);
-  expect(placed.atMs - pinchedAt.atMs).toBeLessThan(1000); // at once, not when the 10 s are over
+  expect(placed.atMs - pinchedAt.atMs).toBeLessThan(1000); // at once, not when the 6 s are over
   // The user chose it: no wait ran out, so nothing is logged as a time-out.
   expect(await probe.evaluate((p) => p.log())).not.toContain('warn room E_PLACEMENT_TIMEOUT');
   expect(errors).toEqual([]);
@@ -564,7 +564,7 @@ test('T-128c c2 level 3: a hide and a show start the wait again, and with no pin
   expect(restarted.captions.map((entry) => entry.key)).toEqual(['placeLook', null, 'placeLook']);
   expect(restarted.bed).toMatchObject({ isPlaced: false, isShown: true, hasMarkers: false });
 
-  // No pinch: the wait runs its full 10 s from the show, and the bed lands on the table the gaze is on.
+  // No pinch: the wait runs its full 6 s from the show, and the bed lands on the table the gaze is on.
   await heardOf(page, probe, 'room:features', 1, HIT_WAIT_MS + 8000);
   const events = await heard(probe);
   const shownAgain = events.filter((event) => event.type === 'xr:visibility')[1]!;
@@ -628,7 +628,7 @@ test('T-128c the none room: the ghost after the 3 s for a plane, then an emulate
   expect(offHost).toEqual([]);
 });
 
-test('T-128c the none room with no pinch: the bed floats when the 3 s and the 10 s are over', async ({
+test('T-128c the none room with no pinch: the bed floats when the 3 s and the 6 s are over', async ({
   page,
 }) => {
   const errors = watch(page);

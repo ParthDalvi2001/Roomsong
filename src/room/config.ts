@@ -34,8 +34,9 @@ export const FLOATING_DROP_M = 0.25;
 
 /** FR-ROOM-01, LLD §5.5: levels 1 and 2 together wait this long for a plane. The caller passes it to `run()`. */
 export const PLANE_LEVELS_TIMEOUT_MS = 3000;
-/** FR-ROOM-01: level 3 waits this long for the pinch that confirms. */
-export const HIT_TEST_TIMEOUT_MS = 10_000;
+/** FR-ROOM-01: level 3 waits this long for the pinch that confirms. 6 s, was 10 s (D-060 item 12): the first-sound
+ *  budget is then 5 + 3 + 6 + the planting, under FR-UI-02's 20 s. */
+export const HIT_TEST_TIMEOUT_MS = 6000;
 /** UX §9.2: the level-3 ghost follows the preview with this ease, so hit-test jitter does not shake it. */
 export const GHOST_EASE_MS = 100;
 

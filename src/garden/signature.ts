@@ -90,8 +90,9 @@ function fnv1a32(bytes: readonly number[]): number {
 
 /**
  * The signature of a room (FR-ROOM-11): pure, total, deterministic and quantised; the result is frozen.
- * No argument, a placement level other than 1 or 2, or no measured field known gives WANDERER itself. At level
- * 1 or 2 an unknown field takes its default bucket on its own. Lengths in metres, areas in m², the volume in m³.
+ * No argument, no measured field known, or a bed at level 3 or 4 in a room with no wall known gives WANDERER itself.
+ * A bed at level 3 or 4 whose room has walls keeps the room's signature (D-060 item 14). An unknown field takes its
+ * default bucket on its own. Lengths in metres, areas in m², the volume in m³.
  */
 export function roomSignature(features: RoomFeatures): RoomSignature {
   if (features == null) return WANDERER; // total: a caller outside TypeScript can pass nothing at all
@@ -103,8 +104,10 @@ export function roomSignature(features: RoomFeatures): RoomSignature {
   const wallCount = known(features.wallCount);
   const wallWidth = known(features.largestWallWidth);
   const measured = [floorArea, ceilingHeight, roomVolume, tableHeight, tableArea, wallCount, wallWidth];
-  const placed = features.level === 1 || features.level === 2;
-  if (!placed || measured.every((value) => value === undefined)) return WANDERER;
+  // D-060 item 14: a floating bed (level 3 or 4) in a scanned room still reads the room, from its walls.
+  const isFloating = features.level === 3 || features.level === 4;
+  const isRead = features.level === 1 || features.level === 2 || (isFloating && wallCount !== undefined);
+  if (!isRead || measured.every((value) => value === undefined)) return WANDERER;
 
   const root = bucket(floorArea, ROOT_AREA_BOUNDS_M2, ROOT_DEFAULT_BUCKET);
   const mode = bucket(ceilingHeight, MODE_CEILING_BOUNDS_M, MODE_DEFAULT_BUCKET);

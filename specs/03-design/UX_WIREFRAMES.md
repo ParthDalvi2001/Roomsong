@@ -282,7 +282,7 @@ Seven questions the builders and reviewers raised, settled so the next tasks do 
   It follows with a 100 ms ease, so hit-test jitter does not shake it, and keeps one brightness: a level, never a pulse.
 - Confirm, hands: a pinch of either hand, anywhere, acting on its release (`gesture:release` with `target: null`; there is nothing else to pinch yet). The bed is placed where the ghost is: on the surface (level 3), or floating (level 4) when the gaze is on nothing usable.
 - Confirm, gaze mode: the ghost is the dwell target. It confirms after resting on a usable spot for `Settings.dwellMs` (600 / 900 / 1200 ms) with the head moving less than 8°/s (the §8 rule), the reticle's ring filling as for any target. A dwell never places a floating bed; that comes from the time-out only, so a moment of sitting still does not cost the table. A pinch works in gaze mode too.
-- Time-out: 10 s after level 3 began (`HIT_TEST_TIMEOUT_MS`) the bed is placed where the ghost is at that moment: on the surface when the gaze is on a usable spot (level 3), floating otherwise (level 4).
+- Time-out: 6 s after level 3 began (D-060; was 10 s) (`HIT_TEST_TIMEOUT_MS`) the bed is placed where the ghost is at that moment: on the surface when the gaze is on a usable spot (level 3), floating otherwise (level 4).
 - Placed, in all three endings: the ghost stops following, the cell markers fade in, one pulse and the confirm chord (the Placed row of §3.2), and the caption is withdrawn. No error text and no "no" sound: a floating bed is a complete garden (FR-ROOM-02).
 - Cost: 0 new draw calls and 0 new geometry. The ghost is the bed's first mesh (1 draw call), shown before the bed is placed instead of after.
 

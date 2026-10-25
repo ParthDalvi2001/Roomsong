@@ -2,7 +2,7 @@
 // fallback, both behind the four-call Backend below. Nothing here leaves the device (FR-PER-04).
 import { clock, log } from '../core/index.js';
 
-import { BACKUP_KEY_PREFIX, BACKUPS_KEPT, STATE_KEY, WEB_STORAGE_PREFIX } from './config.js';
+import { BACKUP_KEY_PREFIX, BACKUPS_KEPT, REPLACED_BACKUP_KEY, STATE_KEY, WEB_STORAGE_PREFIX } from './config.js';
 import { openIndexedDb } from './idb.js';
 import { migrate } from './migrations.js';
 import { validateState } from './schema.js';
@@ -63,6 +63,24 @@ export function createStore(backends: readonly Backend[]): Store {
   // next storage, and the next load's two-garden rule keeps the older garden.
   const readOnly = new Set<Backend>();
   let nowWrites = 0; // saveNow calls so far: a save begun before one must not remove the copy it wrote
+  /** The garden (its createdAt) last loaded or saved; null before either. Another one is a New garden. */
+  let gardenCreatedAt: number | null = null;
+
+  /**
+   * D-060 item 13: before a New garden is first written, the garden it replaces is copied to REPLACED_BACKUP_KEY
+   * in each storage that holds it. A copy that fails is logged and the save goes on: the user asked for the new one.
+   */
+  async function backUpReplaced(): Promise<void> {
+    for (const backend of backends) {
+      if (readOnly.has(backend)) continue;
+      try {
+        const raw = await backend.get(STATE_KEY);
+        if (raw !== undefined) await backend.set(REPLACED_BACKUP_KEY, raw);
+      } catch (err) {
+        log.warn('persistence', 'the replaced garden could not be backed up', err);
+      }
+    }
+  }
 
   /** Moves a stored value to `state.backup.<now>` in its own storage and keeps the latest 2 there (FR-PER-02). */
   async function backUp(backend: Backend, raw: unknown, why: string): Promise<void> {
@@ -110,6 +128,7 @@ export function createStore(backends: readonly Backend[]): Store {
         log.warn('persistence', 'a storage could not be read or backed up: it is not written', err);
       }
     }
+    if (found !== null) gardenCreatedAt = found.state.createdAt;
     return found?.state ?? null;
   }
 
@@ -117,6 +136,7 @@ export function createStore(backends: readonly Backend[]): Store {
     // Never write what load would refuse: that would cost the whole garden at the next start, not one save.
     const valid = validateState(state);
     if (valid === null) throw new Error('the garden state is not valid; not saved');
+    if (gardenCreatedAt !== null && valid.createdAt !== gardenCreatedAt) await backUpReplaced();
     const nowWritesAtStart = nowWrites;
     let isSaved = false;
     for (const backend of backends) {
@@ -133,6 +153,7 @@ export function createStore(backends: readonly Backend[]): Store {
       }
     }
     if (!isSaved) throw new Error('no storage took the garden state');
+    gardenCreatedAt = valid.createdAt;
   }
 
   function saveNow(state: GardenState): boolean {

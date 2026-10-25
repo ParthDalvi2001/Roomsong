@@ -592,7 +592,7 @@ describe('RoomSystem: placing, the decision of the first update (LLD §3.2, §5.
     await betweenFrames();
     without.frame();
     expect(without.types()).toEqual(['room:placementLevel', 'room:bedPlaced', 'room:features']);
-    // A bed saved at level 3 or 4 is Wanderer whatever the room gives: it lands at once, with no wait.
+    // A bed saved at level 3 or 4 waits for the planes too: its room's walls still tune it (D-060 item 14).
     for (const anchorLevel of [3, 4] as const) {
       const off = rig();
       off.room.planes = [];
@@ -602,12 +602,14 @@ describe('RoomSystem: placing, the decision of the first update (LLD §3.2, §5.
       off.restores[0]!.resolve(ON_TABLE.pose);
       await betweenFrames();
       off.frame();
+      expect(off.types(), `level ${anchorLevel}`).toEqual([]);
+      off.room.planes = [A_PLANE];
+      off.frame();
       expect(off.types(), `level ${anchorLevel}`).toEqual([
         'room:placementLevel',
         'room:bedPlaced',
         'room:features',
       ]);
-      expect(off.readPlanes, `level ${anchorLevel}`).not.toHaveBeenCalled();
     }
     const chain = rig();
     chain.room.planes = [];
@@ -1042,7 +1044,7 @@ function pinch(hand: 'left' | 'right', release: Partial<EventMap['gesture:releas
 describe('RoomSystem: level 3, the ghost and the confirm (UX §9.2; LLD §3.5 c2)', () => {
   const ON_SPOT: BedPlacement = { pose: at(0, 0.7, -0.4), level: 3 };
 
-  it('while the solver has a preview the bed shows there as a ghost: visible, no BedAnchor, one hint for the 10 s', () => {
+  it('while the solver has a preview the bed shows there as a ghost: visible, no BedAnchor, one hint for the level-3 wait', () => {
     const r = rig();
     startSession();
     r.frame();

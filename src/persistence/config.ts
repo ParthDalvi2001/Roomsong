@@ -11,6 +11,9 @@ export const WEB_STORAGE_PREFIX = 'roomsong.garden.';
 /** API_SPEC §4, FR-PER-02: a corrupt state is kept at `state.backup.<timestamp>`; the latest 2 stay. */
 export const BACKUP_KEY_PREFIX = 'state.backup.';
 export const BACKUPS_KEPT = 2;
+/** FR-PER-03, D-060 item 13: the garden a New garden replaced, one only (the newest replaces it), in its own storage.
+ *  Not all digits after the prefix, so the corrupt-state backups above never trim it. */
+export const REPLACED_BACKUP_KEY = `${BACKUP_KEY_PREFIX}replaced`;
 
 /** FR-PER-01, HLD §4.3: a change is handed to the store at most this long after it happened. */
 export const SAVE_DEBOUNCE_MS = 500;

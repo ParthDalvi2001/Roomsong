@@ -563,9 +563,9 @@ describe('PlacementSolver: waits, the level-3 pinch and the level events (FR-ROO
     vi.restoreAllMocks(); // a spy records every call, which allocates
     void solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
     const head = headAt(0.013, 1.587, 0.021, 7.3, -31.7);
-    // The times exist before the loops (see tests/unit/hands/HandSystem.test.ts): all inside the 10 s wait.
+    // The times exist before the loops (see tests/unit/hands/HandSystem.test.ts): all inside the level-3 wait.
     const TIMES: unknown[] = [null];
-    for (let i = 1; i <= ROUNDS; i++) TIMES.push(i * 0.4689);
+    for (let i = 1; i <= ROUNDS; i++) TIMES.push(i * ((HIT_TEST_TIMEOUT_MS - 700) / ROUNDS));
     let seen: unknown = null;
     const round = (): void => {
       for (let i = 1; i <= ROUNDS; i++) {
@@ -605,7 +605,7 @@ describe('PlacementSolver: waits, the level-3 pinch and the level events (FR-ROO
     expectClose(centreOf(lowTable.pose), [0, 0.5, -0.4]);
   });
 
-  it('a level-3 wait that runs out 10 s after it began uses the spot the gaze is on then: level 3, no warning', async () => {
+  it('a level-3 wait that runs out HIT_TEST_TIMEOUT_MS after it began uses the spot the gaze is on then: level 3, no warning', async () => {
     const { solver, room } = rig({ hit: null });
     const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
     solver.update(HEAD, 500);

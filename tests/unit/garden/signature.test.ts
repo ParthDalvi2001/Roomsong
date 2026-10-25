@@ -574,10 +574,16 @@ describe('the Wanderer fallback and the default buckets (TC-SIG-04)', () => {
     expect(WANDERER.reverbRt60).toBe(REVERB_RT60_DEFAULT_S);
   });
 
-  it('placement level 3 or 4 is the Wanderer itself, also with every other field set', () => {
+  it('placement level 3 or 4: the Wanderer with no wall known; with walls, the room signature (D-060 item 14)', () => {
     for (const level of [3, 4] as const) {
       expect(roomSignature({ level })).toBe(WANDERER);
-      for (const { features } of ROOMS) expect(roomSignature({ ...features, level })).toBe(WANDERER);
+      for (const { features } of ROOMS) {
+        expect(roomSignature({ ...without(features, 'wallCount'), level })).toBe(WANDERER);
+        // A floating bed has no table under it: the room is read from what is left, the walls among it.
+        const floating = without(features, 'tableHeight', 'tableArea');
+        expect(roomSignature({ ...floating, level })).toEqual(roomSignature({ ...floating, level: 1 }));
+        expect(roomSignature({ ...floating, level })).not.toBe(WANDERER);
+      }
     }
   });
 

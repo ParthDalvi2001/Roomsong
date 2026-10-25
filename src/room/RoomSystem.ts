@@ -294,11 +294,10 @@ export class RoomSystem extends createSystem() {
     const isRestored = this.stage === 'restoring';
     // choice: LLD §5.8 has a restored bed wait for planes, at most 3 s, before the room is read (the extractor
     // cannot tell "no planes yet" from "no planes"), and API_SPEC §1.10 rule 4 has bed and features in one
-    // frame. So the whole placed step waits. `read()` allocates, as in the chain's own 3 s (D-034). Only at a saved
-    // level of 1 or 2: a bed placed at 3 or 4 is Wanderer whatever the room gives, and a wait would only delay it.
+    // frame. So the whole placed step waits. `read()` allocates, as in the chain's own 3 s (D-034). At every saved
+    // level: a bed saved at 3 or 4 keeps the signature of a room whose walls are scanned (D-060 item 14).
     const waits =
       isRestored &&
-      this.placement!.level <= 2 &&
       this.planes.supported() &&
       nowMs - this.waitFromMs < PLANE_LEVELS_TIMEOUT_MS &&
       this.planes.read().length === 0;

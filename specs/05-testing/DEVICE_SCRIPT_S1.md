@@ -873,7 +873,7 @@ The four ways, which the app calls levels: **1** a surface the headset labels as
 15. Are the words easy to read? Turn until a bright wall or a window is behind them: still easy?
 16. Look at the desk: the pale ring moves onto it. Pinch once and let go. The bed lands where the pale ring was. Write down your count.
 17. Only once T-128d is in: plant your first seed as in block 11 and write down your count when it first sings.
-18. Leave. Enter again, look at the desk and do not pinch. After 10 seconds the bed lands by itself. On the desk, or floating?
+18. Leave. Enter again, look at the desk and do not pinch. After 6 seconds the bed lands by itself. On the desk, or floating?
 
 ### Write down
 

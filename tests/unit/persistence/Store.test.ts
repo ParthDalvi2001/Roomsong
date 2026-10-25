@@ -72,6 +72,31 @@ describe('persistence/Store save and load (TC-PER-01)', () => {
     expect((await store.load())?.plants).toEqual([plant('only', 3, 7)]);
   });
 
+  it('New garden keeps one backup of the garden it replaced, the newest only; a save of the same garden backs up nothing (D-060 item 13)', async () => {
+    const backend = memoryBackend();
+    const store = createStore([backend]);
+    const first = savedGarden();
+    await store.save(first);
+    await store.save(savedGarden({ visits: 4 })); // the same garden again
+    expect(backend.data.has('state.backup.replaced')).toBe(false);
+    const second = newGarden(NOW, DEFAULT_SETTINGS);
+    await store.save(second);
+    expect(backend.data.get('state.backup.replaced')).toEqual({ ...first, visits: 4 });
+    const third = newGarden(NOW + 1000, DEFAULT_SETTINGS);
+    await store.save(third);
+    expect(backend.data.get('state.backup.replaced')).toEqual(second); // newest replaces older
+    expect(await store.load()).toEqual(third);
+    // A loaded garden counts too, and a backup that fails does not stop the new garden's save.
+    const reopened = createStore([backend]);
+    await reopened.load();
+    backend.failing.add('get');
+    await reopened.save(newGarden(NOW + 2000, DEFAULT_SETTINGS));
+    backend.failing.clear();
+    expect(backend.data.get('state.backup.replaced')).toEqual(second);
+    expect((await reopened.load())?.createdAt).toBe(NOW + 2000);
+    expect(log.warn).toHaveBeenCalledWith('persistence', 'the replaced garden could not be backed up', expect.any(Error));
+  });
+
   it('refuses to write a state load would reject, and the last good save stays', async () => {
     const backend = memoryBackend();
     const store = createStore([backend]);
