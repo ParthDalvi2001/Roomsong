@@ -1,7 +1,7 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
 **Last updated:** 2026-10-19 02:00 IST (plan v2.1; one driving session with role agents in worktrees, D-038)
-**Phase:** 1 Build (Oct 18–24) · **Next gate:** G1 Oct 24 (D-023; G0 was not held, item 37) · **Headset gate H1:** Oct 20 · **Plan:** v2.1
+**Phase:** 1 Build (Oct 18–24) · **Next gate:** G1 Oct 24 (D-023; G0 was not held, item 37) · **Headset gate H1:** Oct 20, missed: no headset for now, Emergency mode from 27 Oct (D-060 (4), D-013) · **Plan:** v2.1
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 30 on 2026-10-19
 
 > **Read first this session:** `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions), `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) and `specs/07-workflow/SPRINT_PLAN.md` v2.1.
@@ -15,7 +15,7 @@
 ## Now (what is being worked on / next up)
 | Task | Owner | Status | Note |
 |---|---|---|---|
-| **T-000 Get a Quest 3/3S by Oct 20** | Parth + Chinmay | **todo (critical)** | no headset on the team; everything device-side waits on this |
+| **T-000 Get a Quest 3/3S by Oct 20** | Parth + Chinmay | **todo (critical)** | no headset on the team; everything device-side waits on this. **25 Oct (D-060 (4)): no headset for now**; Parth says when he borrows one; Emergency mode (D-013) from 27 Oct: device rows stay unverified and the Devpost says so. **Playtest & React, 29 Oct 22:30 IST, Chinmay attends (D-060 (3))**: other developers play the entry on their own Quests, the only outside play before the freeze; it needs the public link live (T-108) |
 | T-100 Local git init + GitHub remote | devops-engineer | **done** | pushed by Parth 2026-10-10 18:05 IST: `main` (115b9c1) and `develop` (41d5438) on github.com/ParthDalvi2001/Roomsong (D-018) |
 | T-101 Scaffold IWSDK + tooling | devops-engineer | **done** | merged to `develop` (541235b); verify green ≈19 s; follow-up T-111 (strip starter content) |
 | T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
@@ -74,7 +74,7 @@ Every open decision for Parth is in one file: **`specs/08-status/DECISIONS_PENDI
 | Gate | Date | Result | Notes |
 |---|---|---|---|
 | G0 | Oct 17 (was Oct 15, D-023) | **not held** (Parth did not answer item 32); suggested verdict: conditional pass | 5 of 8 met: verify, emulated XR (T-107), core (T-106), spike and pinch pages (T-104/T-105, device runs pending), T-113. The sound criterion failed once: Parth rated it "bad" (D-051); the T-164 styles are the change of direction. Carried to G1: the T-103/T-164 style pick plus ratings from Chinmay and 2 outsiders, T-108 Pages and mirror, the T-000 headset date. |
-| H1 headset | Oct 20 | — | |
+| H1 headset | Oct 20 | **missed: no headset for now (Parth, 25 Oct, D-060 (4))** | Emergency mode (D-013) from 27 Oct: the TC-DEV rows stay unverified and are listed as such in the Devpost; Parth says when he borrows one. Playtest & React on 29 Oct 22:30 IST with Chinmay (D-060 (3)) is the one outside Quest play before the freeze. |
 | G1 | Oct 24 (was Oct 22, D-023) | **conditional pass (Parth, 25 Oct, D-060)**; review: G1_REVIEW_2026-10-24.md | Emulator criteria 10 of 10 at 6411b99 (placement at every level and in six rooms, seed → plant → snap, 3 voices, save → reload, no errors, TC-E2E-01/02/03 green, the window; the one-path scene draws 6–12 per view against the plan's "≤ 15" with no view count, the worst frame 46 for both views against 60); device criteria 0 of 3, not run: no headset (TC-DEV-0A, TC-DEV-00, ≥ 72 fps, D-020 → G2). Conditions: one clean full suite at the G1 commit; T-000 answered or Emergency mode on 27 Oct; T-108 live before Playtest & React; the sound style picked. Room signature: GO by default ("build with the Wanderer fallback, planes optional"), final at G2 (3 Nov) on T-129 evidence. |
 | G2 | Nov 3 (was Nov 1, D-023) | — | |
 | G3 freeze | Nov 12 | — | |

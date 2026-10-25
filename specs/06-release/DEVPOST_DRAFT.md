@@ -33,27 +33,28 @@ Where each heading comes from:
 
 | Heading | Source of the heading | Words (headings and placeholders counted, markers not) |
 |---|---|---|
-| How to test | SUBMISSION_CHECKLIST §2.1 (a required section; it comes first) | 102 |
+| How to test | SUBMISSION_CHECKLIST §2.1 (a required section; it comes first) | 104 |
 | What it is | HACKATHON_RULES §5.3 "inspiration"; SUBMISSION_CHECKLIST §2.1 "Inspiration" and "What it does", merged to save words | 69 |
 | Your first minute | the brief for this draft; PRD §3.1 (the First Five Minutes flow); its steps are the judge's path, so "How to test" points to it | 62 |
 | After that | SUBMISSION_CHECKLIST §2.1 "What it does" (shaping, Listen, coming back) | 56 |
-| How this meets the brief | SUBMISSION_CHECKLIST §2.1 (required); HACKATHON_RULES §3 (the theme and the design tests); the weekly rule check of 23 Oct (IWSDK named) | 57 |
-| How we built it | HACKATHON_RULES §5.3 "how we built it"; SUBMISSION_CHECKLIST §2.1 | 70 |
+| How this meets the brief | SUBMISSION_CHECKLIST §2.1 (required); HACKATHON_RULES §3 (the theme and the design tests); the weekly rule check of 23 Oct (IWSDK named) | 56 |
+| How we built it | HACKATHON_RULES §5.3 "how we built it"; SUBMISSION_CHECKLIST §2.1 | 68 |
 | Known limitations | SUBMISSION_CHECKLIST §2.1 (required); CLAUDE.md Golden Rule 11; HACKATHON_RULES §10 C1, C5, C7 | 65 (both alternatives) |
 | What's next | HACKATHON_RULES §5.3 "future plans"; SUBMISSION_CHECKLIST §2.1 (required) | 19 |
 
-Total: **500 words with both "Known limitations" alternatives, 492 with the one that is true today** (counted on 23 Oct by script with the markers removed and list markers not counted; the rows above are by that count; recounted on 25 Oct the same way). On 25 Oct the claims check (`DEVPOST_CLAIMS_CHECK_2026-10-25.md`) changed seven sentences: the speakers line ("the headset's own speakers (Bluetooth adds delay)", +3), "stereo sound placed round the ring" for "in spatial audio" (+3), the measured "48 draw calls in the worst frame (emulator, both eyes)" and "0.75 MB", the "first" sentence without the three names (−4 together), "A room where no table is found gets the default tuning." (0), and in the hands field "pinch and pull for louder"; "it" (After that) and "a" (Entertainment) went to stay at 500. On 23 Oct the stillness and Time-lapse sentences (16 words) went into "How to test" and 16 were cut across five sections ("ring-shaped", "to make it", "drag it", "it is", "in which the room's", "explored the idea", "maps … musically; it does", "no table", "palm", "one", two "and" commas). The same day the weekly rule check (an open Devpost question: may plain WebXR apps submit by URL) put "Built with the Immersive Web SDK (IWSDK)." into "How this meets the brief" (7 words); "How we built it" opens "IWSDK (WebXR), …" (4 fewer) and three words went ("path", "sits", "a"). Laptop mode added 21 words to "How to test"; 12 were cut elsewhere (the fallback list, "built and", two short rewrites). The speakers note (D-057, 19 Oct) added 4 more, "built-in speakers (Bluetooth lags)", and "a click is the pinch" became "a click pinches" (2 fewer). About 8 words of slack: every placeholder filled with a real number or name must replace words, not add them. If the form has no separate hands field (T-115), the hands text of §1.3 (166 words) cannot fit and must shrink to about 20 words inside these 500.
+Total: **499 words with both "Known limitations" alternatives, 491 with the one that is true today** (counted on 23 Oct by script with the markers removed and list markers not counted; the rows above are by that count; recounted on 25 Oct the same way). Later on 25 Oct (D-060 (11): laptop mode offered to judges as a labelled preview) the laptop sentence became its own line, "**Laptop preview:** in a desktop browser, a click pinches; no passthrough, room tuning, poses or pull. The headset is the real experience." (+4), paid for by "Quest 3/3S" (−2), "only" (Hands-first, −1) and "earlier" for "before this" with "room geometry" for "the room's geometry" (How we built it, −2): 499 and 491. On 25 Oct the claims check (`DEVPOST_CLAIMS_CHECK_2026-10-25.md`) changed seven sentences: the speakers line ("the headset's own speakers (Bluetooth adds delay)", +3), "stereo sound placed round the ring" for "in spatial audio" (+3), the measured "48 draw calls in the worst frame (emulator, both eyes)" and "0.75 MB", the "first" sentence without the three names (−4 together), "A room where no table is found gets the default tuning." (0), and in the hands field "pinch and pull for louder"; "it" (After that) and "a" (Entertainment) went to stay at 500. On 23 Oct the stillness and Time-lapse sentences (16 words) went into "How to test" and 16 were cut across five sections ("ring-shaped", "to make it", "drag it", "it is", "in which the room's", "explored the idea", "maps … musically; it does", "no table", "palm", "one", two "and" commas). The same day the weekly rule check (an open Devpost question: may plain WebXR apps submit by URL) put "Built with the Immersive Web SDK (IWSDK)." into "How this meets the brief" (7 words); "How we built it" opens "IWSDK (WebXR), …" (4 fewer) and three words went ("path", "sits", "a"). Laptop mode added 21 words to "How to test"; 12 were cut elsewhere (the fallback list, "built and", two short rewrites). The speakers note (D-057, 19 Oct) added 4 more, "built-in speakers (Bluetooth lags)", and "a click is the pinch" became "a click pinches" (2 fewer). About 8 words of slack: every placeholder filled with a real number or name must replace words, not add them. If the form has no separate hands field (T-115), the hands text of §1.3 (166 words) cannot fit and must shrink to about 20 words inside these 500.
 
 **The no-headset path.** The rules ask for a build that launches in Quest Browser (HACKATHON_RULES §5.1) and allow emulator video (§5.2); the FAQ says judges play on a Quest 3 or 3S (§11). Since T-114b anyone without a headset can try the garden: on a browser with no mixed reality the landing page says "The garden opens in this tab: a click or a tap is a pinch." and Enter opens laptop mode. What it is: the same garden, sound, guide and save, seen from a fixed seat over a drawn table; the seed follows the pointer and a click on a free cell plants it; a press and drag moves a plant, or removes it off the ring; a click on the petal undoes; a click on the centre orb starts Listen and a click ends it. What it is not: mixed reality (no passthrough, no real table), the room signature (always the default "Wanderer" tuning), hand poses (no palm up, no palms out), pull (a plant cannot be made taller or shorter), the settings panel (the landing page's switches stand in) or look-and-hold. It is tested only in desktop Chromium by the browser tests (TC-E2E-14 and the laptop timing of T-150). PRD §6 calls S6 "never the judged path", so the copy offers it as a preview after the headset steps, beside the video. The weekly rule check of 15 Oct (T-186) found the rules unchanged; they were not re-read for this draft.
 
 ```markdown
 ## How to test
-Quest 3 or 3S, hand tracking on, controllers down, seated at a table, the headset's own speakers (Bluetooth adds delay). Space Setup lets your room tune the song [not yet: T-155].
+Quest 3/3S, hand tracking on, controllers down, seated at a table, the headset's own speakers (Bluetooth adds delay). Space Setup lets your room tune the song [not yet: T-155].
 1. In Meta Quest Browser open <GitHub Pages URL> [not yet: T-108]. Mirror: <mirror URL>. Build <hash> (/version.json) [not yet: T-183].
 2. Press Enter the garden; allow hands and room.
 3. Follow "Your first minute", then hold both palms out.
 4. Sit still eight seconds: the garden opens. Time-lapse (Garden tab): a week in 30 seconds, unsaved.
-No headset? Watch the video [not yet: T-181], or open the link on a computer, where a click pinches: no passthrough, room tuning, poses or pull.
+No headset? Watch the video [not yet: T-181].
+**Laptop preview:** in a desktop browser, a click pinches; no passthrough, room tuning, poses or pull. The headset is the real experience.
 
 ## What it is
 Instruments ask for skill before they give joy. We wanted a song you grow. Roomsong turns your real table into a glowing ring garden where every plant sings. Where you plant sets when it plays and how high. A sweep of light plays each plant, always in scale. Your room tunes it: floor size sets the key, ceiling height the scale, room volume the echo [not yet: T-155].
@@ -66,14 +67,14 @@ Pull a plant up for louder, drag to move it, off the ring to remove; 5 seconds t
 
 ## How this meets the brief
 - Entertainment: lean-back Listen mode.
-- Hands-first: bare hands only; no controllers.
+- Hands-first: bare hands, no controllers.
 - Seated: the bed 0.45 m ahead, within reach; first sound in <N> s; ten-minute visits.
 - Purposeful MR: the table is the stage, the room the tuning [not yet: T-155].
 - Original: synthesized sound, procedural visuals, offline after loading.
 - Built with the Immersive Web SDK (IWSDK).
 
 ## How we built it
-IWSDK (WebXR), Three.js, TypeScript and Web Audio. Plane detection finds the table; a four-step fallback ends in a floating bed. A fixed mapping turns room measurements into key, scale and echo [not yet: T-155]. 48 draw calls in the worst frame (emulator, both eyes), 24 pooled voices, 0.75 MB download. As far as we know, no consumer MR instrument before this lets the room's geometry tune the music [not yet: T-155].
+IWSDK (WebXR), Three.js, TypeScript and Web Audio. Plane detection finds the table; a four-step fallback ends in a floating bed. A fixed mapping turns room measurements into key, scale and echo [not yet: T-155]. 48 draw calls in the worst frame (emulator, both eyes), 24 pooled voices, 0.75 MB download. As far as we know, no earlier consumer MR instrument lets room geometry tune the music [not yet: T-155].
 
 ## Known limitations
 <"Tested on Quest <3/3S> in <N> rooms." | "No headset: tested only in the Immersive Web Emulator, video included.">
@@ -94,7 +95,7 @@ Claims that hang on a human decision, not a task (resolve before T-180):
 | Any "same room, same song" line | T-129 two-session check | not written anywhere above, on purpose |
 | "bare hands only; no controllers" | HACKATHON_RULES §10 C1, UAT-01 on device or, in Emergency mode, in the emulator | true by design; the whole loop runs hands-only in the emulator (TC-E2E-03, and TC-E2E-07 for one hand and look-and-hold); proven only at T-184 |
 | "the headset's own speakers (Bluetooth adds delay)" (was "built-in speakers (Bluetooth lags)") | D-057; DEVICE_SCRIPT_S1 block 14, "speakers against headphones" (is the Bass there on the speakers) | the lag of Bluetooth headphones on Quest 3 is widely reported, not measured by the team; the app is tested on no speaker yet |
-| "or open the link on a computer" (laptop mode) | PRD §6: S6 is "never the judged path"; Parth and Chinmay say whether judges are offered it at all | true in the build (TC-E2E-14); the sentence says what it lacks |
+| "Laptop preview" (laptop mode) | decided: offered to judges as a labelled preview (D-060 (11), 25 Oct); PRD §6 keeps it "never the judged path", so the line says the headset is the real experience | true in the build (TC-E2E-14); the line says what it lacks; to check on the hosted build (T-183) |
 
 ### 1.3 Hand interactions and the future of VR (HACKATHON_RULES §5.3, optional field we fill; SUBMISSION_CHECKLIST §2.1)
 
@@ -167,7 +168,7 @@ State: **done** · **not done** (on track) · **at risk** (a date, a human or a 
 | ≤500 words | at risk: draft v1 is 492 with the one limitations line true today, about 8 words of slack after laptop mode and the speakers note joined "How to test"; the hands text does not fit if the form has no field for it | T-180, T-115 |
 | Numbers measured on the final build (first sound, draw calls, fps only if measured on a headset) | not done; emulator figures at test speed exist (first sound 15.1 s, first loop 34.4 s, T-150), not the final build's | T-165, T-183 |
 | What was device-tested and what was emulator-only | drafted, both alternatives | T-184 |
-| The one qualified sentence on the room signature | "As far as we know, no consumer MR instrument before this lets the room's geometry tune the music" (25 Oct, no names, no "first"); true only if S1 ships | T-155, T-180 |
+| The one qualified sentence on the room signature | "As far as we know, no earlier consumer MR instrument lets room geometry tune the music" (25 Oct, no names, no "first"); true only if S1 ships | T-155, T-180 |
 | Room wording v1 (size, ceiling, volume; no tempo; no "your table set the key"; no measured acoustics) | done in the draft; the echo stays a mapping of room size (P-017, which would have measured it, was skipped by D-056) | T-180 |
 | Should-haves not green by 10 Nov moved to "What's next"; unbuilt Could-haves never named | not done; the draft names no Could. S3 (daily seed, growth) and S6 (laptop mode) are built now | T-169 |
 | "Music visualization" in the Listen sentence; "spatial audio" | "music visualization" kept; "spatial audio" became "stereo sound placed round the ring" on 25 Oct, since the app pans each voice equal-power with no HRTF (`audio/Spatializer.ts`); if the checklist needs the term, it can return only with that caveat | T-180 |
