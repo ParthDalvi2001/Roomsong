@@ -311,6 +311,25 @@ describe('RoomSystem: idle, and what every frame does', () => {
 });
 
 describe('RoomSystem: placing, the decision of the first update (LLD §3.2, §5.5)', () => {
+  it('a bed placed in the garden window says so on room:bedPlaced (inWindow); in a session the key is absent', async () => {
+    for (const isPresenting of [false, true]) {
+      const r = rig();
+      r.xr.isPresenting = isPresenting;
+      startSession();
+      r.frame();
+      r.runs[0]!.resolve(ON_TABLE);
+      await betweenFrames();
+      r.frame();
+      const payload = r.events.find((event) => event.type === 'room:bedPlaced')?.payload;
+      expect(payload, `presenting ${isPresenting}`).toEqual(
+        isPresenting
+          ? { placement: ON_TABLE, restored: false }
+          : { placement: ON_TABLE, restored: false, inWindow: true },
+      );
+      endSession();
+    }
+  });
+
   it('xr:sessionStart only hides the bed: neither the store nor the chain is asked before a frame has come', () => {
     const r = rig();
     startSession();

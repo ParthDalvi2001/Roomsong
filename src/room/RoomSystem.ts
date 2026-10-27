@@ -366,7 +366,10 @@ export class RoomSystem extends createSystem() {
     const restored = this.isRestored;
     // The chain emitted the levels it tried. A bed that came back tried none, so its level is said here.
     if (restored) bus.emit('room:placementLevel', { level: placement.level });
-    bus.emit('room:bedPlaced', { placement, restored });
+    bus.emit(
+      'room:bedPlaced',
+      this.xrManager.isPresenting ? { placement, restored } : { placement, restored, inWindow: true },
+    );
     bus.emit('room:features', this.readRoom(placement));
     if (restored) return;
     // The new anchor is made in the background and holds nothing up (FR-ROOM-07); null is "no anchor".

@@ -172,7 +172,7 @@ describe('the systems start() registers (API_SPEC §1.10, the priorities table)'
     // garden just loaded is not written back, and before Enter is usable.
     expect(source).toMatch(/Promise\.all\(\[\s*World\.create\(.*\),\s*opening,\s*opening\.then\(/);
     expect(
-      at('keepSaved(garden, saver, window, saved?.settings ?? DEFAULT_SETTINGS, tabs);'),
+      at('keepSaved(garden, saver, window, saved?.settings ?? DEFAULT_SETTINGS, tabs, failed.raise);'),
     ).toBeGreaterThan(at('garden.load('));
     expect(at('keepSaved(')).toBeLessThan(at('landing.ready('));
     expect(at('window.__roomsong = { world, engine, garden };')).toBeGreaterThan(0); // rule 14, dev only
@@ -637,13 +637,15 @@ function saveRig(
   };
   const page = { ...listeners, document: { ...listeners, visibilityState: 'visible' } };
   const tabs = { postMessage: vi.fn(), addEventListener: listeners.addEventListener };
-  const stop = keepSaved(garden, saver, page as never, stored, tabs as never);
+  const raiseFailed = vi.fn();
+  const stop = keepSaved(garden, saver, page as never, stored, tabs as never, raiseFailed);
   stops.push(stop);
   return {
     garden,
     saved,
     calls,
     tabs,
+    raiseFailed,
     stop,
     show(state: DocumentVisibilityState) {
       page.document.visibilityState = state;
@@ -710,11 +712,13 @@ describe('saving (LLD §3.3 G; API_SPEC §1.10 rule 9)', () => {
     expect(rig.saved).toEqual([]);
   });
 
-  it('says "opened" to the other tabs, and stops saving once a newer tab says it', () => {
+  it('says "opened" to the other tabs, and stops saving once a newer tab says it, saying so: Saving unavailable (27 Oct)', () => {
     const rig = saveRig();
     expect(rig.tabs.postMessage).toHaveBeenCalledExactlyOnceWith('opened');
     vi.spyOn(log, 'warn').mockImplementation(() => {});
+    expect(rig.raiseFailed).not.toHaveBeenCalled();
     rig.opened();
+    expect(rig.raiseFailed).toHaveBeenCalledOnce();
     settings.set({ tempo: 100 });
     bus.emit('garden:changed', { state: savedGarden(), diff: { added: [], removed: [], changed: [] } });
     rig.leave();
@@ -740,6 +744,7 @@ describe('saving (LLD §3.3 G; API_SPEC §1.10 rule 9)', () => {
         { ...page, document: { ...page, visibilityState: 'visible' } },
         settings.get(),
         null,
+        () => {},
       );
       bus.emit('room:features', { features: { level: 4 }, surfaces: {} }); // the session's visit, saved
       await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS);
@@ -761,9 +766,10 @@ describe('saving (LLD §3.3 G; API_SPEC §1.10 rule 9)', () => {
       expect(writes).toHaveBeenCalledTimes(2);
       expect(backend.data.get(STATE_KEY)).toEqual({ ...real, settings: { ...real!.settings, tempo: 96 } });
       const withTempo = JSON.stringify(backend.data.get(STATE_KEY));
-      garden.newGarden(); // New garden inside the demo: the demo's garden goes, the real one does not
+      const demo = garden.state;
+      garden.newGarden(); // refused inside the demo (bug bash 27 Oct): neither the demo's garden nor the real one goes
       await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS);
-      expect(garden.state!.plants).toEqual([]);
+      expect(garden.state).toBe(demo);
       garden.setTimeLapse(false);
       await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS);
       expect(writes).toHaveBeenCalledTimes(2);

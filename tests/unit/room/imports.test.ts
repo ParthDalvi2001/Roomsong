@@ -141,6 +141,7 @@ describe('room/events (API_SPEC §2)', () => {
     expectTypeOf<EventMap['room:bedPlaced']>().toEqualTypeOf<{
       placement: BedPlacement;
       restored: boolean;
+      inWindow?: true;
     }>();
     expectTypeOf<EventMap['room:anchored']>().toEqualTypeOf<{ handle: string; level: PlacementLevel }>();
     expectTypeOf<EventMap['room:features']>().toEqualTypeOf<{

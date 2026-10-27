@@ -197,6 +197,16 @@ describe('garden/GardenSystem: load (API_SPEC §1.10)', () => {
     expect(last(s.core.log.recent())).toMatchObject({ level: 'warn', scope: 'garden' });
   });
 
+  it('a bed placed in the garden window keeps the headset anchor pair; one placed in a session drops it (bug bash 27 Oct)', () => {
+    const s = setup();
+    s.system.load(saved([], [], { anchorHandle: 'h1', anchorLevel: 2 }));
+    s.bus.emit('room:bedPlaced', { placement: { pose: IDENTITY, level: 4 }, restored: false, inWindow: true });
+    expect(s.state()).toMatchObject({ anchorHandle: 'h1', anchorLevel: 2 });
+    s.bedPlaced(false);
+    expect(s.state().anchorHandle).toBeUndefined();
+    expect(s.state().anchorLevel).toBeUndefined();
+  });
+
   it('does nothing before load: no call and no event changes or emits anything, and no handler throws', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const s = setup();
@@ -996,12 +1006,14 @@ describe('garden/GardenSystem: newGarden and setBedHeightOffset (FR-PER-03, FR-U
     expect(s.seen).toEqual([]);
     expect(made.plants).toEqual([]);
 
-    // The window: RESTORE_WINDOW_MS on core's clock.
+    // The window: RESTORE_WINDOW_MS on core's clock, for the label. A hold begun inside it may end after it, and
+    // still restores (bug bash 27 Oct, S1): restoreReplaced itself has no clock.
+    const replaced = s.state();
     s.system.newGarden();
     s.time.now += RESTORE_WINDOW_MS;
     expect(s.system.canRestore).toBe(false);
     s.system.restoreReplaced();
-    expect(s.state().plants).toEqual([]);
+    expect(s.state()).toBe(replaced);
 
     // A plant in the new garden ends it at once.
     s.system.newGarden();
@@ -1230,6 +1242,23 @@ describe('garden/GardenSystem: the time-lapse demo (T-174, D-057)', () => {
     expect(s.state().lastVisitAt).toBe(T0 + DAY_MS);
     vi.advanceTimersByTime(TIME_LAPSE_DAY_MS);
     expect(s.state().lastVisitAt).toBe(T0 + 2 * DAY_MS);
+  });
+
+  it('no New garden while the demo runs, and a demo switch ends the window of the old garden (bug bash 27 Oct)', () => {
+    const s = lapsing({ timeLapse: true });
+    const demo = s.state();
+    s.clear();
+    s.system.newGarden(); // refused: it would erase the demo's copy
+    expect(s.seen).toEqual([]);
+    expect(s.state()).toBe(demo);
+    s.system.setTimeLapse(false);
+    s.system.newGarden(); // the real garden replaced, outside the demo
+    expect(s.system.canRestore).toBe(true);
+    s.system.setTimeLapse(true); // the demo on within the 10 s: that garden no longer comes back
+    expect(s.system.canRestore).toBe(false);
+    const inDemo = s.state();
+    s.system.restoreReplaced();
+    expect(s.state()).toBe(inDemo);
   });
 
   it('starts with the garden under the timeLapse flag; a second on or off changes nothing', () => {

@@ -107,7 +107,8 @@ export class GardenSystem {
       this.takeBack('reset');
     });
     on('room:bedPlaced', (_s, e) => {
-      if (!e.restored) this.changeBed((s) => setAnchor(s, null)); // a saved pair is stale
+      // A saved pair is stale after a new placement; not after one in the garden window, which has no anchors.
+      if (!e.restored && e.inWindow !== true) this.changeBed((s) => setAnchor(s, null));
     });
     on('room:anchored', (_s, e) => this.changeBed((s) => setAnchor(s, { handle: e.handle, level: e.level })));
     on('gesture:palmUp', (s, e) => this.handOut(s, e.hand));
@@ -156,6 +157,7 @@ export class GardenSystem {
   setTimeLapse(on: boolean): void {
     const s = this.current;
     if (s === null || on === this.timeLapse) return;
+    this.replaced = null; // a garden of either side of the demo must not come back on the other (bug bash 27 Oct)
     if (on) {
       this.real = s; // a state is never mutated (API_SPEC §1.1): the reference is the copy
       this.lapse = setInterval(() => {
@@ -195,7 +197,8 @@ export class GardenSystem {
    */
   newGarden(): void {
     const old = this.current;
-    if (old === null) return;
+    // Not during the time-lapse demo: it would erase the demo's copy, and the demo's end brings the real one back.
+    if (old === null || this.timeLapse) return;
     this.replaced = old;
     this.replacedUntil = this.appClock.now() + RESTORE_WINDOW_MS;
     this.generation++;
@@ -223,12 +226,13 @@ export class GardenSystem {
 
   /**
    * D-060 item 13: the garden the last New garden replaced, back as it was (its plants, seeds, bed height and
-   * anchor pair); the caller has done the hold. Saved by the next garden:changed like any change.
+   * anchor pair); the caller has done the hold. Saved by the next garden:changed like any change. The window is
+   * the panel's to judge, when the hold began (`canRestore`): a hold that ends after it still restores.
    */
   restoreReplaced(): void {
     const old = this.replaced;
     const s = this.current;
-    if (old === null || s === null || !this.canRestore) return;
+    if (old === null || s === null || s.plants.length > 0) return;
     this.replaced = null;
     this.generation++;
     this.undos.clear();

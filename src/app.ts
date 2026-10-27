@@ -190,8 +190,9 @@ type SavePage = Pick<Window, 'addEventListener' | 'removeEventListener'> & {
  * (`flushNow`). Called right after `garden.load()`, so the garden just loaded is not written back; live settings
  * that differ from `stored` (the saved ones, or the defaults when nothing loaded) are saved at once, so a box
  * ticked while the save loaded, or with no session after it, is kept. `tabs`: a newer tab of the garden says
- * "opened", and this one stops saving, or it would write its older garden over the one that tab loaded.
- * Exported for its unit test; returns what stops it.
+ * "opened", and this one stops saving, or it would write its older garden over the one that tab loaded; it then
+ * calls `raiseFailed` ("Saving unavailable", in this tab's next session if none is on), so it does not stop
+ * silently. Exported for its unit test; returns what stops it.
  */
 export function keepSaved(
   garden: Pick<GardenSystem, 'saved'>,
@@ -199,6 +200,7 @@ export function keepSaved(
   page: SavePage,
   stored: Readonly<Settings>,
   tabs: Pick<BroadcastChannel, 'postMessage' | 'addEventListener'> | null,
+  raiseFailed: () => void,
 ): () => void {
   let last = garden.saved;
   const save = (): void => {
@@ -234,6 +236,7 @@ export function keepSaved(
   const onOpened = (): void => {
     log.warn('app', 'the garden was opened in another tab: this one saves no more');
     stop();
+    raiseFailed();
   };
   tabs?.addEventListener('message', onOpened, { once: true });
   tabs?.postMessage('opened');
@@ -511,7 +514,7 @@ export async function start(landing: Landing): Promise<void> {
   const failed = inSession(() => raise(saveFailed, SAVE_FAILED));
   const tabs = 'BroadcastChannel' in window ? new BroadcastChannel('roomsong') : null;
   const saver = new PersistenceSystem(store, failed.raise);
-  keepSaved(garden, saver, window, saved?.settings ?? DEFAULT_SETTINGS, tabs);
+  keepSaved(garden, saver, window, saved?.settings ?? DEFAULT_SETTINGS, tabs, failed.raise);
 
   const sound: SoundState = { failed: true };
   followSession(world, engine, landing, sound);

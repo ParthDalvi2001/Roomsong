@@ -428,6 +428,13 @@ describe('settings panel: the Time-lapse (demo) switch (T-174, D-057)', () => {
     expect(calls.timeLapse).toEqual([true, false]);
     isTimeLapse = true; // the flag, or a garden that changed it: the switch reads it when drawn
     expect(control(panel, 'timeLapse')?.on).toBe(true);
+    // New garden is faint and not selected while the demo runs (bug bash 27 Oct).
+    expect(control(panel, 'newGarden')?.dim).toBe(true);
+    settings.set({ gazeDwell: false });
+    panel.down('right', 'newGarden');
+    run(panel, NEW_GARDEN_HOLD_MS);
+    panel.up('right', 'newGarden');
+    expect(calls.newGarden).toEqual([]);
   });
 });
 
@@ -457,6 +464,32 @@ describe('settings panel: New garden needs a hold, so it cannot happen by accide
     panel.up('left', 'newGarden');
     expect(asked).toHaveLength(1);
     expect(panel.open).toBe(true);
+  });
+
+  it('a hold begun inside the window and let go after it brings the old garden back, and never erases (S1, 27 Oct)', () => {
+    const panel = opened('garden');
+    canRestore = true; // the hold starts 9 s after New garden
+    panel.down('right', 'newGarden');
+    run(panel, NEW_GARDEN_HOLD_MS / 2);
+    canRestore = false; // the window closes during the hold
+    run(panel, NEW_GARDEN_HOLD_MS / 2 + 500); // released at 10.5 s
+    panel.up('right', 'newGarden');
+    expect([calls.restore.length, calls.newGarden.length]).toEqual([1, 0]);
+    // By the gaze: the dwell began inside the window.
+    settings.set({ gazeDwell: true, dwellMs: 600 });
+    const looked = opened('garden');
+    canRestore = true;
+    lookAt(looked, 'newGarden');
+    run(looked, 600, 'newGarden');
+    canRestore = false;
+    run(looked, NEW_GARDEN_HOLD_MS, 'newGarden');
+    expect([calls.restore.length, calls.newGarden.length]).toEqual([2, 0]);
+    // A hold begun after the window is New garden.
+    settings.set({ gazeDwell: false });
+    panel.down('right', 'newGarden');
+    run(panel, NEW_GARDEN_HOLD_MS);
+    panel.up('right', 'newGarden');
+    expect([calls.restore.length, calls.newGarden.length]).toEqual([2, 1]);
   });
 
   it('while the old garden can come back, the same row and hold bring it back: by a pinch, and by the gaze (D-060 item 13)', () => {

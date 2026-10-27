@@ -258,6 +258,9 @@ export class Panel {
   /** Something it shows has changed. Whoever draws it clears this. */
   /** The New garden row was last drawn as "Bring back the old garden" (D-060 item 13). */
   private couldRestore = false;
+  /** The hold on the New garden row began while the old garden could come back: its release restores, never
+   *  erases, though the window closed during the hold (bug bash 27 Oct, S1). */
+  private restoreHeld = false;
   stale = true;
   /**
    * `fill[0]`: how far the hold on New garden or the dwell has come, 0..1. A level, never a blink (FR-UI-11).
@@ -322,7 +325,12 @@ export class Panel {
       label(HEIGHT_VALUE_X, ROW_Y[1], HEIGHT_VALUE_W, heightText(this.garden)),
       label(TIME_LAPSE_X + TOGGLE_LABEL_M, ROW_Y[1], TIME_LAPSE_LABEL_W, PANEL.timeLapse),
       label(ACTION_LABEL_X, ROW_Y[2], ACTION_LABEL_W, PANEL.replaceBed),
-      label(ACTION_LABEL_X, ROW_Y[3], ACTION_LABEL_W, this.actions.canRestore() ? PANEL.bringBack : PANEL.newGarden),
+      label(
+        ACTION_LABEL_X,
+        ROW_Y[3],
+        ACTION_LABEL_W,
+        this.actions.canRestore() ? PANEL.bringBack : PANEL.newGarden,
+      ),
     ];
   }
 
@@ -355,6 +363,7 @@ export class Panel {
     this.heldId = id;
     this.heldHand = hand;
     this.ms[HELD] = 0;
+    if (id === NEW_GARDEN_ID) this.restoreHeld = this.actions.canRestore();
     this.refill();
   }
 
@@ -413,6 +422,8 @@ export class Panel {
       this.gazeId = id;
       ms[GAZE] = 0;
       this.gazeDone = afterSelection;
+      if (id === NEW_GARDEN_ID && !this.pinching.left && !this.pinching.right)
+        this.restoreHeld = this.actions.canRestore();
       return;
     }
     if (id === '' || this.gazeDone || isTurning) return; // UX §9.8: a fast turn holds the dwell, leaving resets it
@@ -466,8 +477,9 @@ export class Panel {
     if (id === 'close') this.setOpen(false);
     else if (id === 'height:-') this.actions.setBedHeightOffset(heightAfter(this.garden, -1));
     else if (id === 'height:+') this.actions.setBedHeightOffset(heightAfter(this.garden, 1));
-    else if (id === NEW_GARDEN_ID && this.actions.canRestore()) this.actions.restoreGarden();
+    else if (id === NEW_GARDEN_ID && this.restoreHeld) this.actions.restoreGarden();
     else if (id === NEW_GARDEN_ID) this.actions.newGarden();
+    if (id === NEW_GARDEN_ID) this.restoreHeld = false;
     else if (id === TIME_LAPSE_ID) this.actions.setTimeLapse(!this.actions.isTimeLapse());
     else if (id === 'replaceBed') {
       // The placement needs the view, and its confirming pinch must not land on a control.
@@ -540,7 +552,8 @@ export class Panel {
       { ...round('height:-', HEIGHT_MINUS_X, ROW_Y[1], PANEL.minus), dim: atEnd(-1) },
       { ...round('height:+', HEIGHT_PLUS_X, ROW_Y[1], PANEL.plus), dim: atEnd(1) },
       wide('replaceBed', ACTION_X, ROW_Y[2], PANEL.start),
-      wide(NEW_GARDEN_ID, ACTION_X, ROW_Y[3], PANEL.hold),
+      // Not during the time-lapse demo (the garden refuses it then): drawn faint, and not selected.
+      { ...wide(NEW_GARDEN_ID, ACTION_X, ROW_Y[3], PANEL.hold), dim: this.actions.isTimeLapse() },
       { ...toggle(TIME_LAPSE_ID, 1, ROW_Y[1], this.actions.isTimeLapse()), x: TIME_LAPSE_X },
     ];
   }
