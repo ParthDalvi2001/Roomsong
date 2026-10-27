@@ -298,11 +298,12 @@ describe('RoomSystem: idle, and what every frame does', () => {
     const r = rig();
     r.xr.frame = null;
     r.xr.isPresenting = false;
+    r.system.camera.matrixWorld.makeTranslation(0, 1.2, 0); // WindowStage's eye point
     startSession();
     r.frame();
     r.frame();
     expect(r.take()).toEqual(['solver.cancel', 'solver.run', 'solver.update', 'solver.update']);
-    expect(r.solverUpdates[0]!.head).toEqual(at(0, 0, 0)); // the camera's matrixWorld, not the XR head's
+    expect(r.solverUpdates[0]!.head).toEqual(at(0, 1.2, 0)); // the camera's matrixWorld, not the XR head's
     r.xr.frame = {} as XRFrame;
     r.xr.space = null; // a frame with no reference space yet is no frame to read
     r.frame();
@@ -568,6 +569,61 @@ describe('RoomSystem: placing, the decision of the first update (LLD §3.2, §5.
     r.head.matrixWorld.makeTranslation(0, EYE_M, 0);
     r.frame();
     expect(r.types()).toEqual(['room:placementLevel', 'room:bedPlaced', 'room:features']);
+  });
+
+  it('a head on the floor (the identity before the first viewer pose) is no pose: a restore keeps the saved anchor', async () => {
+    const r = rig();
+    r.gardenChanged({ anchorHandle: HANDLE, anchorLevel: 1 });
+    r.head.matrixWorld.identity();
+    startSession();
+    r.frame();
+    r.restores[0]!.resolve(ON_TABLE.pose);
+    await betweenFrames();
+    r.frame();
+    r.head.matrixWorld.makeTranslation(0, 0.3, 0); // eyes under 0.5 m: no seated head
+    r.frame();
+    expect(r.runs).toEqual([]);
+    expect(r.types()).toEqual([]);
+    r.head.matrixWorld.makeTranslation(0, EYE_M, 0);
+    r.frame();
+    expect(r.types()).toEqual(['room:placementLevel', 'room:bedPlaced', 'room:features']);
+    expect(r.runs).toEqual([]);
+  });
+
+  it('BUG-011: a head under 0.5 m is taken after the 3 s from the session’s first frame, logged once; the identity never', () => {
+    // IWSDK falls back from local-floor to a 'local' space, where y = 0 is the starting head: no dead end there.
+    const warns = vi.spyOn(log, 'warn').mockImplementation(() => {});
+    const r = rig();
+    r.head.matrixWorld.makeTranslation(0, 0.1, 0);
+    startSession();
+    r.frame();
+    r.frame(PLANE_LEVELS_TIMEOUT_MS - 100);
+    expect(r.runs).toHaveLength(1); // the chain is asked at once; its clock starts at its first update
+    expect(r.solverUpdates).toEqual([]);
+    r.head.matrixWorld.identity();
+    r.frame(200);
+    r.frame();
+    expect(r.solverUpdates).toEqual([]);
+    r.head.matrixWorld.makeTranslation(0, 0.1, 0);
+    r.frame();
+    r.frame();
+    expect(r.solverUpdates.map((update) => update.head)).toEqual([at(0, 0.1, 0), at(0, 0.1, 0)]);
+    expect(warns.mock.calls.filter(([scope]) => scope === 'room')).toHaveLength(1);
+  });
+
+  it('BUG-011: a restore with the head under 0.5 m is judged after the same wait: the chain runs, no dead end', async () => {
+    vi.spyOn(log, 'warn').mockImplementation(() => {});
+    const r = rig();
+    r.gardenChanged({ anchorHandle: HANDLE, anchorLevel: 1 });
+    r.head.matrixWorld.makeTranslation(0, 0.1, 0);
+    startSession();
+    r.frame();
+    r.restores[0]!.resolve(ON_TABLE.pose);
+    await betweenFrames();
+    r.frame(PLANE_LEVELS_TIMEOUT_MS - 100);
+    expect(r.runs).toEqual([]);
+    r.frame(200);
+    expect(r.runs).toHaveLength(1); // a table 0.64 m above these eyes is no bed in reach (D-041)
   });
 
   it('a restored bed waits for planes before the room is read, for at most the 3 s since the session began', async () => {

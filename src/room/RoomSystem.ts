@@ -69,6 +69,12 @@ function reachM(pose: Mat4, head: Mat4): number {
   return ahead > 0 && isAtHeight ? Math.sqrt(dx * dx + dz * dz) : Infinity;
 }
 
+/** IWSDK's head before the session's first viewer pose (ui/Panel.ts `hasPose` has the same test). */
+function isIdentity(m: Mat4): boolean {
+  for (let i = 0; i < 16; i++) if (m[i] !== (i % 5 === 0 ? 1 : 0)) return false;
+  return true;
+}
+
 export class RoomSystem extends createSystem() {
   readonly planes = new PlaneAdapter();
   readonly meshes = new MeshAdapter();
@@ -91,6 +97,10 @@ export class RoomSystem extends createSystem() {
   private turn = 0;
   /** Placing: the frame time of its first frame, for the wait of a restored bed; Infinity until that frame. */
   private waitFromMs = Infinity;
+  /** BUG-011: the frame time of the session's first placing frame, for the head's wait; Infinity until then. */
+  private headFromMs = Infinity;
+  /** BUG-011: this session takes eyes lower than any surface as a head (no floor in its reference space). */
+  private isLowHeadTaken = false;
   // What a promise's continuation kept for the next `update`.
   /** The store's answer to `restore`; undefined when none waits. */
   private answer: Mat4 | null | undefined;
@@ -118,7 +128,11 @@ export class RoomSystem extends createSystem() {
   override init(): void {
     this.bedObject.visible = false;
     this.cleanupFuncs.push(
-      bus.on('xr:sessionStart', () => this.clear('starting')),
+      bus.on('xr:sessionStart', () => {
+        this.headFromMs = Infinity;
+        this.isLowHeadTaken = false;
+        this.clear('starting');
+      }),
       // The solver's pending promise never settles, so no bed arrives late (LLD §3.2).
       bus.on('xr:sessionEnd', () => this.clear('idle')),
       bus.on('xr:visibility', ({ visible }) => {
@@ -266,11 +280,33 @@ export class RoomSystem extends createSystem() {
     } else if (this.stage === 'starting' || this.stage === 'replacing') {
       this.runChain();
     }
-    if (this.stage === 'restoring' && this.placement === null) this.judge(head);
+    const isHead = this.isHead(head, nowMs);
+    if (this.stage === 'restoring' && this.placement === null && isHead) this.judge(head);
     if (this.placement !== null) return this.land(nowMs);
-    if (this.stage !== 'solving') return;
+    if (this.stage !== 'solving' || !isHead) return;
     this.solver.update(head, nowMs);
     this.showGhost(delta);
+  }
+
+  /**
+   * BUG-011: whether the solver and the judge may read `head`. IWSDK keeps the head as it was on a frame with no
+   * viewer pose, the identity before the first: in the local-floor space a head on the floor, which would float the
+   * bed at y = −0.25 m or give up a saved anchor. So eyes lower than any surface wait for a real pose. IWSDK falls
+   * back to a 'local' space, where y = 0 is the starting head: after the 3 s of levels 1 and 2 from the session's
+   * first frame such eyes are taken, for the rest of the session. The identity itself never is.
+   */
+  private isHead(head: Mat4, nowMs: number): boolean {
+    if (this.headFromMs === Infinity) this.headFromMs = nowMs;
+    if (isIdentity(head)) return false;
+    if (this.isLowHeadTaken || head[13]! >= SURFACE_MIN_HEIGHT_M) return true;
+    if (nowMs - this.headFromMs < PLANE_LEVELS_TIMEOUT_MS) return false;
+    this.isLowHeadTaken = true;
+    log.warn(
+      'room',
+      'eyes under 0.5 m for 3 s: taken as they are (no floor in this reference space?)',
+      head[13],
+    );
+    return true;
   }
 
   /** Restoring: the store's answer. A bed in reach comes back where it was; anything else is the chain's (D-041). */
