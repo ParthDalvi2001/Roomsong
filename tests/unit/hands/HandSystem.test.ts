@@ -7,7 +7,7 @@ import manifest from '../../../src/components.js';
 import { BedAnchor, Caption, Interactable } from '../../../src/core/components.js';
 import { bus, clock, DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
 import { cellCentre } from '../../../src/garden/index.js';
-import { HAND_HINT_MAX_MS, HIT_RADIUS_M } from '../../../src/hands/config.js';
+import { CONTROLLER_HINT_AFTER_MS, HAND_HINT_MAX_MS, HIT_RADIUS_M } from '../../../src/hands/config.js';
 import { GestureMachine } from '../../../src/hands/GestureMachine.js';
 import { HandState } from '../../../src/hands/HandState.js';
 import { HandSystem } from '../../../src/hands/HandSystem.js';
@@ -224,6 +224,7 @@ function rig() {
     frame,
     carry,
     entityOf,
+    created,
     context: () => context!,
     stop: () => {
       off.forEach((each) => each());
@@ -437,6 +438,59 @@ describe('HandSystem: the session', () => {
     r.hands.right.pinch = false;
     r.frame(1000);
     expect(r.heard).toEqual(['gesture:trackingLost right']);
+    r.stop();
+  });
+});
+
+describe('HandSystem: controllers held and no hand tracked: "Put the controllers down"', () => {
+  const shown = (r: ReturnType<typeof rig>) =>
+    r.created.filter((entity) => entity.getValue(Caption, 'key') === 'putControllersDown');
+  /** In a session, holding controllers: no hand tracked, a gamepad among the input sources. */
+  function holding() {
+    const r = rig();
+    const controller = vi.spyOn(r.system.sampler, 'hasController').mockReturnValue(true);
+    r.hands.left.tracked = r.hands.right.tracked = false;
+    r.frame();
+    return { r, controller };
+  }
+
+  it('raises it once, after 2 s with no hand, for as long as no hand comes; a hand takes it back', () => {
+    const { r } = holding();
+    r.frame(CONTROLLER_HINT_AFTER_MS - 14);
+    expect(shown(r)).toEqual([]);
+    r.frame(14);
+    expect(shown(r)).toHaveLength(1);
+    expect(shown(r)[0]!.getValue(Caption, 'expiresAt')).toBe(Number.POSITIVE_INFINITY);
+    shown(r)[0]!.removeComponent(Caption); // taken down by someone else: not raised again in this occurrence
+    r.frame(10_000);
+    expect(shown(r)).toEqual([]);
+    r.hands.right.tracked = true; // controllers down: a hand
+    r.frame();
+    r.hands.right.tracked = false; // picked up again: a new occurrence
+    r.frame();
+    r.frame(CONTROLLER_HINT_AFTER_MS);
+    expect(shown(r)).toHaveLength(1);
+    r.hands.left.tracked = true;
+    r.frame();
+    expect(shown(r)).toEqual([]);
+    r.stop();
+  });
+
+  it('never for hands out of view with no controller, in the look-to-select mode, or after the session ends', () => {
+    const { r, controller } = holding();
+    controller.mockReturnValue(false); // hands that left the view: hands/ own hint covers them
+    r.frame(10_000);
+    expect(shown(r)).toEqual([]);
+    controller.mockReturnValue(true);
+    settings.set({ gazeDwell: true }); // the head selects: controllers in the hands harm nothing
+    r.frame(10_000);
+    expect(shown(r)).toEqual([]);
+    settings.set({ gazeDwell: false });
+    r.frame(CONTROLLER_HINT_AFTER_MS);
+    expect(shown(r)).toHaveLength(1);
+    bus.emit('xr:sessionEnd', { visible: false });
+    expect(shown(r)).toEqual([]);
+    settings.set(DEFAULT_SETTINGS);
     r.stop();
   });
 });

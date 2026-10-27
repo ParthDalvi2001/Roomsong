@@ -5,6 +5,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { enterXR, openApp, readRoom, SESSION_ENTRY_LIMIT_MS, xrFrames } from './support/iwer';
 
+type Components = typeof import('../../src/core/components');
+
 /** FR-SYS-06: load to session within 5 s, held here against the app's share of it (appShareMs). */
 const APP_ENTRY_LIMIT_MS = 5000;
 
@@ -109,5 +111,21 @@ for (const [roomName, input] of [
     expect(run.consoleErrors).toEqual([]);
     expect(run.pageErrors).toEqual([]);
     expect(run.offHost).toEqual([]); // Golden Rule 9: HTTP(S) and WebSocket, from page load on
+    if (input !== 'controller') return;
+    // Controllers in the hands and no hand tracked: the app says to put them down, about 2 s into the session.
+    await page.evaluate(async () => {
+      const url = '/src/core/components.ts';
+      const { Caption } = (await import(/* @vite-ignore */ url)) as Components;
+      const keys: string[] = [];
+      (window as unknown as { captionKeys: string[] }).captionKeys = keys;
+      window
+        .__roomsong!.world.queryManager.registerQuery({ required: [Caption] })
+        .subscribe('qualify', (entity) => keys.push(entity.getValue(Caption, 'key') ?? ''), true);
+    });
+    await page.waitForFunction(
+      () => (window as unknown as { captionKeys: string[] }).captionKeys.includes('putControllersDown'),
+      null,
+      { timeout: 10_000 },
+    );
   });
 }

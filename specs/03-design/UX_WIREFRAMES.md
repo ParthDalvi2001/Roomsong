@@ -514,3 +514,5 @@ Choir  segments 18, lobes 3, 252 triangles, 4.2 cm across
 **Rejected.** A repeat that starts after the dwell and steps every 400 ms: the overshoot above. A reticle drawn by the panel: two owners of one dot, the double selection API_SPEC §1.6 already avoids. No pause on the panel: an exception to §8 that a gaze user cannot see.
 
 **Replaces.** §8, first bullet: "dwell pauses when the head moves > 8°/s" becomes "the dwell time holds (it does not reset) while the head turns faster than 8°/s, on the panel too (§9.8)". §3.6, after "In gaze mode, dwell for the chosen time.", add: "New garden needs one unbroken look of the dwell time plus its 1.5 s hold. A stepper moves one step per pinch or per look; nothing repeats (§9.8)."
+
+*As built 27 Oct (bug bash):* controllers in the hands and no hand tracked for 2 s: "Put the controllers down", until a hand is seen (not in look-to-select mode).

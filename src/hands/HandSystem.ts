@@ -5,11 +5,11 @@
 // hands and the head, so they are read here, after the machines: palms out outside Listen, the wake inside it.
 import { createSystem, Vector3, type Entity } from '@iwsdk/core';
 
-import { BedAnchor, Interactable } from '../core/components.js';
+import { BedAnchor, Caption, Interactable } from '../core/components.js';
 import { bus, settings } from '../core/index.js';
 import { nearestFreeCell } from '../garden/index.js';
 
-import { HIT_RADIUS_M, PALMS_OUT_HOLD_MS, WAKE_HOLD_MS } from './config.js';
+import { CONTROLLER_HINT_AFTER_MS, HIT_RADIUS_M, PALMS_OUT_HOLD_MS, WAKE_HOLD_MS } from './config.js';
 import { GestureMachine } from './GestureMachine.js';
 import { HandSampler } from './HandSampler.js';
 import { HandState } from './HandState.js';
@@ -63,6 +63,13 @@ export class HandSystem extends createSystem({
   private bed: Entity | null = null;
   /** Between `listen:enter` and `listen:exit`: the wake is looked for, palms out is not (LLD §4). */
   private isListening = false;
+  /**
+   * "Put the controllers down": the frame time a hand was last tracked in this session (-1 before its first frame),
+   * the caption's own entity, and whether this run of controller frames has raised it (once each).
+   */
+  private handSeenMs = -1;
+  private controllersHint!: Entity;
+  private isControllersHinted = false;
   private readonly palmsOut = new PoseHold(PALMS_OUT_HOLD_MS);
   private readonly wake = new PoseHold(WAKE_HOLD_MS);
   /** The head's position and forward this frame. Vector3s for the reason `addTarget` gives. */
@@ -84,6 +91,7 @@ export class HandSystem extends createSystem({
       machine: new GestureMachine(hand),
       entity: this.createEntity().addComponent(HandState, { hand }),
     }));
+    this.controllersHint = this.createEntity();
     const { targets, beds } = this.queries;
     this.cleanupFuncs.push(
       // `true`: what was attached before this system was registered counts too
@@ -131,7 +139,37 @@ export class HandSystem extends createSystem({
       this.write(slot);
     }
     // A pointer has no palm: the window's Listen is the orb, and a click's pinchStart is its wake (LLD §11).
-    if (this.source === this.sampler) this.listenPoses(timeMs);
+    if (this.source === this.sampler) {
+      this.listenPoses(timeMs);
+      this.hintControllers(timeMs);
+    }
+  }
+
+  /**
+   * A player who entered holding controllers sees nothing respond, since only hands are read: after
+   * CONTROLLER_HINT_AFTER_MS with a controller among the input sources and no hand tracked, one caption, up until
+   * a hand is tracked. Not in the look-to-select mode, where the head selects. Creates nothing.
+   */
+  private hintControllers(timeMs: number): void {
+    let isTracked = false;
+    for (let i = 0; i < this.slots.length; i++) if (this.slots[i]!.frame.tracked) isTracked = true;
+    if (isTracked || this.handSeenMs < 0) {
+      this.handSeenMs = timeMs;
+      if (isTracked) this.takeControllersHint();
+      return;
+    }
+    if (this.isControllersHinted || timeMs - this.handSeenMs < CONTROLLER_HINT_AFTER_MS) return;
+    if (settings.get().gazeDwell || !this.sampler.hasController()) return;
+    this.isControllersHinted = true;
+    this.controllersHint.addComponent(Caption, {
+      key: 'putControllersDown',
+      expiresAt: Number.POSITIVE_INFINITY,
+    });
+  }
+
+  private takeControllersHint(): void {
+    this.isControllersHinted = false;
+    if (this.controllersHint.hasComponent(Caption)) this.controllersHint.removeComponent(Caption);
   }
 
   /** The garden window (API_SPEC §1.7): `source` gives the samples from the next frame on, with or without XR. */
@@ -225,6 +263,8 @@ export class HandSystem extends createSystem({
   /** Nothing of one session reaches the next: the sampler, a held gesture (reverted), the hand's state. */
   private endSession(): void {
     this.sampler.detach();
+    this.handSeenMs = -1;
+    this.takeControllersHint();
     this.palmsOut.reset();
     this.wake.reset();
     for (const slot of this.slots) {

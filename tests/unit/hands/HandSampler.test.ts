@@ -370,6 +370,22 @@ describe('HandSampler: a hand that is lost and found', () => {
   });
 });
 
+describe('HandSampler.hasController: a controller among the input sources (put the controllers down)', () => {
+  it('is true for a source with a gamepad and no hand joints, false for hands, for none and with no session', () => {
+    const sampler = new HandSampler();
+    expect(sampler.hasController()).toBe(false); // no session
+    const xr = fakeXR();
+    sampler.attach(xr.session);
+    expect(sampler.hasController()).toBe(false); // two hands
+    xr.inputSources.push({ handedness: 'right', gamepad: {} }); // a controller picked up
+    expect(sampler.hasController()).toBe(true);
+    xr.inputSources.length = 0;
+    expect(sampler.hasController()).toBe(false);
+    sampler.detach();
+    expect(sampler.hasController()).toBe(false);
+  });
+});
+
 describe('HandSampler: the session', () => {
   it('reports nothing before it has a session and a frame, and does not throw', () => {
     const sampler = new HandSampler();

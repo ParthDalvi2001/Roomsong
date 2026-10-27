@@ -24,6 +24,8 @@ export const TRACKING_GRACE_MS = 200;
 export const REVERT_LERP_MS = 150;
 /** FR-HND-15, D-030: the hand hint and the tint last until `hands:found`, and at most this long after `hands:lost`. */
 export const HAND_HINT_MAX_MS = 5000;
+/** A session with a controller among its input sources and no hand tracked this long: "Put the controllers down". */
+export const CONTROLLER_HINT_AFTER_MS = 2000;
 /** FR-HND-08/10: a pinched plant does not react inside this; then the dominant axis decides pull or drag. */
 export const DRAG_DEAD_ZONE_M = 0.02;
 

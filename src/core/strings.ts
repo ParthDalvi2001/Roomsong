@@ -37,6 +37,9 @@ export const STRINGS = {
   // up resumes it. src/app.ts raises it after the same grace as "No sound. Leave and enter again.".
   soundResume: 'Pinch to resume sound',
   soundResumeClick: 'Click to resume sound', // the garden window: a click is the pinch
+  // A session with controllers in the hands and no hand tracked for 2 s: hands/ HandSystem raises it until a hand is
+  // seen. The landing page's Help says the same ("put the controllers down").
+  putControllersDown: 'Put the controllers down',
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

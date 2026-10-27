@@ -80,6 +80,7 @@ describe('core/strings', () => {
       'settingsHintLook',
       'soundResume',
       'soundResumeClick',
+      'putControllersDown',
     ]; // T-152 and the 23 Oct audit: instructions, each with its gaze or window twin
     const failures = entries.filter(([k]) => !/^(ripple|place|onboard)/.test(k) && !notices.includes(k));
     for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);

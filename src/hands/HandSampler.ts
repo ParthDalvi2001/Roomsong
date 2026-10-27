@@ -176,6 +176,17 @@ export class HandSampler implements InputSource {
     out.select = tracked ? this.selectOf(track, timeMs) : track.select;
   }
 
+  /** A controller is among the session's input sources: a source with a gamepad and no hand joints. Creates nothing. */
+  hasController(): boolean {
+    const sources = this.session?.inputSources;
+    if (sources === undefined) return false;
+    for (let i = 0; i < sources.length; i++) {
+      const source = sources[i]!;
+      if (!source.hand && source.gamepad) return true;
+    }
+    return false;
+  }
+
   private jointsOf(hand: Hand): XRHand | null {
     const sources = this.session?.inputSources;
     if (sources === undefined || this.frame === null || this.space === null) return null;

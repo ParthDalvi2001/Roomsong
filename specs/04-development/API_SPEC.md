@@ -407,6 +407,9 @@ export function createHandFrame(hand: Hand): HandFrame;      // untracked and ze
 // HandSampler (v1.2.3): the WebXR InputSource, on raw joints; it reads the five joints with one XRFrame.fillPoses per hand (T-165; getJointPose
 // is the fallback for a browser without it, a shortcut to drop after the device run), positions float32. Precondition: the caller (HandSystem) calls setFrame() in every XR frame
 // before it samples, and detach() on xr:sessionEnd.
+// HandSampler.hasController(): boolean — a session input source with a gamepad and no hand (bug bash 27 Oct). HandSystem raises the caption
+// `putControllersDown` ("Put the controllers down") after CONTROLLER_HINT_AFTER_MS (2000) with a controller and no tracked hand, once per
+// occurrence, until a hand is tracked or the session ends; not in look-to-select mode.
 export class HandSampler implements InputSource {
   readonly hands: readonly Hand[];                            // ['left', 'right']
   attach(session: XRSession): void;                           // on xr:sessionStart: listens for the session's selectstart / selectend
