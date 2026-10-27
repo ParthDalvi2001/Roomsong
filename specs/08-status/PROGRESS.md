@@ -225,6 +225,7 @@ emulator, 25 Oct: worst frame **48 draws** (both eyes, the counter room with the
 - 2026-10-09 — Overview/Rules/Judging/Special Awards/Resources read; digest written. No changes since.
 - 2026-10-15 and 2026-10-19 — all pages re-read; no changes (day log).
 - 2026-10-23 — all pages plus the Webinars & Office Hours tab; no rule changes; participants 3,724; Playtest & React 27/29 Oct found (item 42). From now on the Webinars tab is part of the check (Updates lag it).
+- 2026-10-27 — all pages, the Webinars tab and the 3 Discussions threads re-read (curl); no rule changes; participants 4,142 (3,724 on 23 Oct). New Update "Week 5" (events only). Webinars: the 27 Oct Playtest & React lost its North America session; 27 Oct EMEA and both 29 Oct sessions stay (Chinmay's 29 Oct 22:30 IST unchanged). Discussions: the Devpost manager sent "plain Three.js by URL?" to the Developer Forum with no ruling (we are IWSDK, named in the copy); the Rule 19 reply quotes the FAQ.
 
 ## Open questions
 Q1 anchors + Q2 planes/labels on 3S (T-104, needs headset) · Q4 name (resolved: Roomsong) · Q5 headset (T-000) · Q6 hosting (T-108) · Q7 room-signature go/no-go (G1/G2)

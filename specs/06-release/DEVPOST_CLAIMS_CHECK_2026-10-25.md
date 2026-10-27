@@ -112,3 +112,27 @@ Everything else below is backed or emulator-only. The stale paragraph "Where the
 - Two things judges will read that are not in the copy: the ripple captions `Table: colour.` / `Walls: colour.` (row 17) and the Pages 404 (row 5).
 - The `timeLapse` URL flag is dev-only (`core/flags.ts`): on the hosted build it is `?dev=1&flags=timeLapse`; the panel switch needs no flag.
 - Not checked here: the word count after these fixes (T-180), SUBMISSION_CHECKLIST §2.1's required terms (row 25 depends on it), and anything the form itself asks (T-115).
+
+## 6. Re-check, 27 Oct (T-180 final pass, develop 0c5de87; product-owner)
+
+Every row above re-read against the build after D-060 (style B, colours A, the T-170 words, D-060 (12)–(14)). All fixes of §0 that are words are applied in `DEVPOST_DRAFT.md` v2; the links, the hash, the video and the gallery stay unbuilt. Changed or new verdicts:
+
+| # | Claim (draft v2) | Where it is | Verdict |
+|---|---|---|---|
+| 46 | "A room with no Space Setup gets the default tuning." (was "where no table is found") | D-060 (14): `roomSignature` gives the Wanderer for no measured field, or level 3/4 with no wall known (API_SPEC v1.2.50) | the old line became **wrong** on 25 Oct; the new one backed (emulator) |
+| 25 | "music visualization, spatial audio panned from each plant" | `Spatializer.ts` equal-power PannerNode per voice, listener on the head pose (T-145) | backed: says panning, claims no HRTF; restores the checklist's track words |
+| 59 | "A sweep of light plays each plant, always in scale, never quite repeating." | `CYCLE_BARS` [1, 2, 3, 5] with one seeded rest per cycle, `CYCLE_SKIP` 0.125 (`audio/config.ts:282-289`); variations every 4 bars; all pentatonic | backed (desktop renders); not rated by ear yet (T-164) |
+| 60 | "each day brings a seed, plants grow and the melody varies" | the counter-line (bell, p 0.25) and variations seeded by the local day (`AudioSystem.ts:25`, style B via `ALIVE`) | backed (desktop) |
+| 8 | "Sit still eight seconds, facing the garden: it opens." | `STILL_OPEN_MS` 8000, bed centre in the view box; halo, echo, the looked-at plant louder (`StillnessSystem.ts` header) | emulator-only (as before) |
+| 30 | "the bed about 0.45 m ahead" | `BED_CENTRE_DEFAULT_M` 0.45; a restore up to 0.55 m (D-041) | backed with "about" |
+| 31 | "first sound in 15–18 s (emulator)" | G1 review row 3: 15.0–17.8 s from Enter at test speed, with a table | emulator figure, labelled; the no-table case not re-measured after D-060 (12) |
+| 2 | "headset speakers, not Bluetooth" | §0 fix: an instruction, no reason | backed as an instruction |
+| 43, 44 | "No headset: tested only in the Immersive Web Emulator." · "… room readings and saved places are unverified on Quest." | Emergency mode from 27 Oct (D-060 (4)); anchors never restored on a Quest (row 26) | backed |
+| 11 | laptop line: "in a Chromium desktop browser … poses, pull or settings" | TC-E2E-14 runs in desktop Chromium only; no panel in the window (`ui/strings.ts` LANDING.window "Height and settings need a headset") | backed |
+| 52, 56 | hands field: hover cue and high contrast (markers dropped); "Look to select" (the panel label since T-170) also works the settings | BUG-007, BUG-008 fixed 17 Oct; `PANEL.gazeDwell` | backed (emulator) |
+| 61 | hands field: "A removal can be undone for 5 seconds; New garden needs a 1.5-second hold and can be brought back for 10." | `UNDO_LIFE_MS` 5000, `NEW_GARDEN_HOLD_MS` 1500, `RESTORE_WINDOW_MS` 10 000, `PANEL.bringBack` (D-060 (13)) | backed (emulator) |
+| 62 | "A sixth voice." (What's next) | T-164: the Shimmer voice cut; the build has five | backed (it is a plan, not a claim of the build) |
+| — | "Store launch: early 2027." | SUBMISSION_CHECKLIST §2 draft | a human decision, not agreed |
+| 39, 41 | "48 draw calls", "0.75 MB" | measured 25 Oct and 23 Oct; colours A and the dev-only hand cue add no draw in production | backed as of those dates; re-measure on the final build (T-183) |
+
+Not in the copy: the stale code comment on `rippleTableNote` (`core/strings.ts:5`, "no room tint is drawn") is wrong since colours A; a comment only, nothing a player reads.

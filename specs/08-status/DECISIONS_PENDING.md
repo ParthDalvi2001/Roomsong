@@ -22,6 +22,10 @@ https://localhost:8093/proto/styles/ in Chrome (Advanced → Proceed), tick "ful
 ## 5. G2 review, 15 minutes (by 3 Nov)
 Read `specs/08-status/G2_REVIEW_2026-11-03.md` §6: six questions with ★ recommendations; reply with numbers or "all recommended". Suggested verdict: conditional pass.
 
+## 6. Two lines of the Devpost form (with Chinmay)
+- **Target launch:** proposed "Store launch: early 2027" (copy) and "Early 2027 on the Quest store, as a web app" (form). Reply "6 ok" or your words.
+- **"What excites us about VR":** must be in your and Chinmay's own words; a few sentences. Write it in the reply.
+
 ## Later
 - **The headset:** tell me when you borrow one; the 1-hour script (`specs/05-testing/DEVICE_SCRIPT_S1.md`) is ready.
 - **Headset day:** which room and table (at least 75 cm deep), results by mail or USB, keep it overnight?

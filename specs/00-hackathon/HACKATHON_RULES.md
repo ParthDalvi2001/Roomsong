@@ -19,7 +19,7 @@ rule text unchanged, see §11) · **Owner:** product-owner
 | Entry period | **2026-09-24 10:00 PT → 2026-11-18 12:00 PT** (= 20:00 UTC = **2026-11-19 01:30 IST**) |
 | Judging | ~2026-11-18 → ~2026-12-09 (Rules). Devpost schedule: **2026-11-23 09:00 PST → 2026-12-09 19:00 PST** ([dates](https://start-developer-competition-26.devpost.com/details/dates), read 2026-10-15) |
 | Winners announced | ~2026-12-11 (Devpost schedule: 10:00 PST) |
-| Participants | **3,100** registered (Overview, read 2026-10-15; 2,600+ in early Oct). Last year: 2,900 developers, 650+ submissions |
+| Participants | **4,142** registered (Overview, read 2026-10-27; 3,724 on 23 Oct, 3,390 on 19 Oct, 3,100 on 15 Oct, 2,600+ in early Oct). Last year: 2,900 developers, 650+ submissions |
 | Build for | Meta VR devices: **Meta Quest** and **Meta VR Glasses** |
 | Theme | **Hands-first** Entertainment, Gaming, or Productivity experiences |
 
