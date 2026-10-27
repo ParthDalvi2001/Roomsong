@@ -19,6 +19,10 @@ Ask him for a screenshot of the "Start Member" label next to his name on the Met
 ## 4. Listen to style B once
 https://localhost:8093/proto/styles/ in Chrome (Advanced → Proceed), tick "full garden", play B for a few minutes. Reply "B good" or what to change.
 
+## 5. G2 review, 15 minutes (by 3 Nov)
+Read `specs/08-status/G2_REVIEW_2026-11-03.md` §6: six questions with ★ recommendations; reply with numbers or "all recommended". Suggested verdict: conditional pass.
+
 ## Later
 - **The headset:** tell me when you borrow one; the 1-hour script (`specs/05-testing/DEVICE_SCRIPT_S1.md`) is ready.
 - **Headset day:** which room and table (at least 75 cm deep), results by mail or USB, keep it overnight?
+- **12 Nov, the feature freeze:** v0.5.0 by A (you merge main and tag, the freeze build goes public) ★ or B (say "go", I tag develop, no deploy); and the self-score decision (≥ 8 is out of reach without a headset). `FEATURE_FREEZE_PREP_2026-11-12.md` §5–§6.
