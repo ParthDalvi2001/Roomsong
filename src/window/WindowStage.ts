@@ -41,6 +41,7 @@ export class WindowStage {
   private readonly plane = new Plane();
   private readonly up = new Vector3();
   private readonly point = new Vector3();
+  private readonly target = new Vector3();
   private isOpen = false;
   /** What the last xr:* event said of the page: seen or hidden. */
   private isSeen = true;
@@ -95,6 +96,19 @@ export class WindowStage {
     out.y = this.point.y;
     out.z = this.point.z;
     return true;
+  }
+
+  /**
+   * BUG-011: on the ray of the last `project`, the point nearest `at`, written into `out`; returns how far it is from
+   * `at`, metres. For a target drawn above the bed (the Listen orb, the undo petal). Creates nothing (hot path).
+   */
+  closestOnRay(at: Vec3, out: Vec3): number {
+    this.target.set(at.x, at.y, at.z);
+    this.raycaster.ray.closestPointToPoint(this.target, this.point);
+    out.x = this.point.x;
+    out.y = this.point.y;
+    out.z = this.point.z;
+    return this.point.distanceTo(this.target);
   }
 
   /** The fixed spot beside the bed where the pointer's seed waits (LLD §11), world, written into `out`. */

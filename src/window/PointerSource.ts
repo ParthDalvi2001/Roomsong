@@ -5,7 +5,7 @@ import { Vector3 } from 'three';
 
 import { bus, settings } from '../core/index.js';
 
-import { POINTER_QUEUE_SIZE } from './config.js';
+import { LIFTED_DRAWN_RADIUS_M, POINTER_QUEUE_SIZE } from './config.js';
 
 import type { WindowStage } from './WindowStage.js';
 import type { Hand, Vec3 } from '../core/index.js';
@@ -35,6 +35,7 @@ export class PointerSource implements InputSource {
   private inSession = false;
   private isSeen = false;
   private readonly pos = new Vector3();
+  private readonly onRay = new Vector3();
   private readonly lastPos = new Vector3();
   /** The previous sample's time, ms; -1 before the first one. */
   private lastMs = -1;
@@ -81,7 +82,7 @@ export class PointerSource implements InputSource {
     const pos = this.pos;
     // Sticky: a pointer that has left the bed plane (above the horizon) is reported where it last was on it.
     if (!this.hasPointer) this.stage.restPoint(pos);
-    else this.stage.project(this.ndcX, this.ndcY, pos);
+    else if (this.stage.project(this.ndcX, this.ndcY, pos)) this.liftOnto(pos);
     copy(out.pinchPos, pos);
     if (this.isNearTarget(pos)) this.stage.restPoint(out.palmPos);
     else copy(out.palmPos, pos);
@@ -137,6 +138,23 @@ export class PointerSource implements InputSource {
       this.ndcY = y;
       this.hasPointer = true;
       return;
+    }
+  }
+
+  /**
+   * BUG-011: the Listen orb and the undo petal are drawn above the bed, so the bed point behind one is past its hit
+   * radius. A ray that passes within LIFTED_DRAWN_RADIUS_M of one moves `pos` to the ray's point nearest it (the
+   * nearest such target), held or not, so hover, press and release agree. Creates nothing (hot path).
+   */
+  private liftOnto(pos: Vector3): void {
+    let bestM = LIFTED_DRAWN_RADIUS_M;
+    for (let i = 0; i < this.targets.length; i++) {
+      const { target, pos: at } = this.targets[i]!;
+      if (target.kind !== 'orb' && target.kind !== 'undo') continue;
+      const offM = this.stage.closestOnRay(at, this.onRay);
+      if (offM > bestM) continue;
+      bestM = offM;
+      pos.copy(this.onRay);
     }
   }
 

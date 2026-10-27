@@ -32,6 +32,12 @@ describe('PointerSource: no object per frame', () => {
     const targets: PickCandidate[] = [
       { target: { kind: 'seed', id: 's' }, radius: HIT_RADIUS_M, pos: { x: 0.31, y: 0.95, z: -0.42 } },
       { target: { kind: 'plant', id: 'p' }, radius: HIT_RADIUS_M, pos: plant },
+      // BUG-011: a lifted target, the orb 2 cm over the bed centre: the ray is tested against it every frame.
+      {
+        target: { kind: 'orb', id: 'listen' },
+        radius: HIT_RADIUS_M,
+        pos: { x: 0.0013, y: 0.9712, z: -0.4487 },
+      },
     ];
     const canvas = fakeCanvas();
     const source = new PointerSource(canvas.element, stage, targets);

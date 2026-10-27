@@ -13,14 +13,22 @@ import type { Vec3 } from '../../../src/core/index.js';
 import type { PickCandidate } from '../../../src/hands/index.js';
 import type { WindowStage } from '../../../src/window/index.js';
 
-/** Screen x, y (NDC) lands on the plane y = 1 at (x, 1, -y); above y = 0.9 the ray misses (the sky). */
+/** Screen x, y (NDC) lands on the plane y = 1 at (x, 1, -y); above y = 0.9 the ray misses (the sky). The ray is
+ *  straight down through that point. The real stage's ray: PointerSource.lifted.test.ts. */
+const ray = { x: 0, z: 0 };
 const stage = {
   project(ndcX: number, ndcY: number, out: Vec3): boolean {
     if (ndcY > 0.9) return false;
-    out.x = ndcX;
+    out.x = ray.x = ndcX;
     out.y = 1;
-    out.z = -ndcY;
+    out.z = ray.z = -ndcY;
     return true;
+  },
+  closestOnRay(at: Vec3, out: Vec3): number {
+    out.x = ray.x;
+    out.y = at.y;
+    out.z = ray.z;
+    return Math.hypot(at.x - ray.x, at.z - ray.z);
   },
   restPoint(out: Vec3): Vec3 {
     out.x = 9;

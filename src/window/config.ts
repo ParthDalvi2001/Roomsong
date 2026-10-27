@@ -1,5 +1,6 @@
 // Named constants of window/ (CODING_GUIDELINES §4): the garden window, FR-SYS-07 (LLD §11). None is a device
 // number: the window is the headset-free bench and never the judged path.
+import { TARGET_VISIBLE_DIAMETER_M } from '../hands/index.js';
 
 /**
  * FR-SYS-07: the fixed camera stands at a seated eye point, in metres above the floor (y = 0). The floating bed
@@ -28,6 +29,13 @@ export const WINDOW_MIN_HFOV_DEG = 76;
  * target): bed-local +x (the user's right) this far from the centre, 6 cm beyond the bed's outer ring.
  */
 export const REST_SPOT_X_M = 0.36;
+/**
+ * BUG-011 (FR-HND-04): the Listen orb and the undo petal are drawn above the bed (2 and 3 cm), so the bed point behind
+ * one lies past its hit radius. A pointer ray that passes within this of one's centre picks it where it is drawn: its
+ * drawn radius (both are at most a target's 2.5 cm across), not the 4 cm hit radius, which the ray to a far ring-0
+ * cell passes within (3 cm from the orb).
+ */
+export const LIFTED_DRAWN_RADIUS_M = TARGET_VISIBLE_DIAMETER_M / 2;
 /** FR-SYS-07: the virtual table under the bed, in metres. Wide enough for the rest spot. */
 export const TABLE_WIDTH_M = 0.9;
 export const TABLE_DEPTH_M = 0.8;
