@@ -5,7 +5,7 @@
 // (`xr.offer` is "none", API_SPEC §1.10 rule 2). That click also starts the audio context, under the policy.
 // The same run covers the pinch-test page (T-105), which is built into dist/ beside the app.
 // Emulator result: says nothing about a headset.
-import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 import { expect, test, type Page } from '@playwright/test';
 
@@ -13,7 +13,8 @@ import { BUILT_PAGE_URL } from '../../playwright.config';
 
 import { WORLD_READY_MS, xrFrames } from './support/iwer';
 
-const IWER_BUILD = fileURLToPath(new URL('../../node_modules/iwer/build/iwer.min.js', import.meta.url));
+// Resolved like any import, up the tree: an agent worktree has no node_modules of its own (BUG-012).
+const IWER_BUILD = createRequire(import.meta.url).resolve('iwer/build/iwer.min.js');
 const SESSION_FRAMES = 30; // input sources join and the app's systems run within the session's first frames
 
 /** The part of IWER's XRDevice this spec uses (iwer 2.5.0). */

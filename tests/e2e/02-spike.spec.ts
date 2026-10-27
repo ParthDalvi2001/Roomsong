@@ -1,7 +1,7 @@
 // TC-DEV-0A in the emulator (T-104): the device capability spike page (proto/spike/) fills every result field,
 // and no failure of the browser can hold it: a promise that never settles, a declined room, no pinch, a silent
 // audio context, a person who leaves. Emulator values: they show that the page works, nothing about a headset.
-import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 import { expect, test, type Page } from '@playwright/test';
 
@@ -13,7 +13,8 @@ import { openApp, readRoom, xrFrames } from './support/iwer';
 import type { Results } from '../../proto/spike/src/probe';
 
 const SPIKE = 'proto/spike/';
-const IWER_BUILD = fileURLToPath(new URL('../../node_modules/iwer/build/iwer.min.js', import.meta.url));
+// Resolved like any import, up the tree: an agent worktree has no node_modules of its own (BUG-012).
+const IWER_BUILD = createRequire(import.meta.url).resolve('iwer/build/iwer.min.js');
 // What the emulator grants of FEATURES (tests/e2e/README.md, E0): everything but `layers`.
 const GRANTED = [
   'anchors',
