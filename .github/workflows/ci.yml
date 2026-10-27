@@ -19,7 +19,8 @@ env:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The e2e suite alone outgrew 20 (25 Oct: every run stopped at 20 min inside test:e2e); 45 leaves room for retries.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

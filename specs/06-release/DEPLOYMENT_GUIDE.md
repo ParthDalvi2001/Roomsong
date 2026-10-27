@@ -29,7 +29,7 @@ Do the first push days before the link is needed. Not proven until that first ru
 ### 1.2 Mirror (Vercel or Netlify; was "Option B — Vercel"; not set up yet)
 1. Parth creates the account and names the host (T-108). No Git link and no build on the host: a mirror that rebuilds has another `builtAt` and is not the same build.
 2. The mirror gets the `dist/` that Pages got: the `github-pages` artifact of the `deploy` run (Actions → the run → Artifacts). The upload action keeps it **1 day** by default and `deploy.yml` does not raise that, so download it the same day.
-3. Unpack it and upload the folder as a static site, with no build step. Nothing in the repository does this yet; the exact commands are written here once the host is chosen.
+3. Unpack it and upload the folder as a static site, with no build step. The host is Netlify (D-060), by hand: the clicks are in `FREEZE_AND_SUBMIT_RUNBOOK.md` §1.4.
 4. Check: `<mirror>/version.json` equals `https://parthdalvi2001.github.io/Roomsong/version.json`, field by field.
 5. After submission nothing is uploaded again (§5).
 

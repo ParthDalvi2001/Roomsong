@@ -5,9 +5,9 @@
 ## 1. Put the game online (about 10 minutes)
 1. On github.com/ParthDalvi2001/Roomsong: **Settings → Pages → Source: GitHub Actions**.
 2. In Terminal, in the Roomsong folder: `git checkout main && git merge --ff-only develop && git push origin main && git checkout develop` (I never push `main` myself).
-3. Actions tab: wait for `ci` and `deploy` to go green, then open https://parthdalvi2001.github.io/Roomsong/
+3. Actions tab → deploy → **Run workflow** on `main` (the last run on main failed on a flaky test before Pages was on; run it again once if it flakes), wait for green, then open https://parthdalvi2001.github.io/Roomsong/
 4. If deploy says the branch is not allowed: Settings → Environments → github-pages → allow `main`, then Actions → deploy → Run workflow.
-5. Netlify mirror: log in to netlify.com with GitHub, "Add new site → Import from GitHub → Roomsong", branch `main`, build command `npm run build`, publish folder `dist`. Send me the address it gives.
+5. Netlify mirror: by hand, from the deploy's own build, so both links serve the same files: `specs/06-release/FREEZE_AND_SUBMIT_RUNBOOK.md` §1.4 (not "Import from GitHub": that rebuilds without version.json). Send me the address it gives.
 Reply **"2 done"** with the Netlify address.
 
 ## 2. Register for Playtest & React, 29 Oct 22:30 IST
