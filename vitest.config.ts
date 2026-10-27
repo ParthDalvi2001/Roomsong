@@ -16,6 +16,10 @@ export default defineConfig({
     // 30 s, not Vitest's 5 s: with several agents testing at once on one machine, sound tests timed out from load
     // alone (2026-10-11 and 12). A test that really hangs now takes 30 s to say so.
     testTimeout: 30_000,
+    // CI only (GitHub sets CI=true): a failed test runs up to twice more, because the heap and timing probes
+    // (VineRenderer.heap, HandSystem's no-allocation) flake on GitHub's shared machines (25 Oct) and blocked a
+    // deploy. Locally the first failure fails; no bound is changed.
+    retry: process.env.CI ? 2 : 0,
     // Four workers, not one per core: with agents testing side by side, eight node workers each pushed this
     // 16 GB machine into swap until the editor was killed (2026-10-12).
     maxWorkers: 4,
