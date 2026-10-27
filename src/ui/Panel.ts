@@ -261,6 +261,9 @@ export class Panel {
   /** The hold on the New garden row began while the old garden could come back: its release restores, never
    *  erases, though the window closed during the hold (bug bash 27 Oct, S1). */
   private restoreHeld = false;
+  /** BUG-014: the gaze mode was just switched by a press: the first control the gaze rests on after it (one that
+   *  appears under the head's line a frame later) counts as selected, until the gaze leaves it. */
+  private isFreshGaze = false;
   stale = true;
   /**
    * `fill[0]`: how far the hold on New garden or the dwell has come, 0..1. A level, never a blink (FR-UI-11).
@@ -421,7 +424,8 @@ export class Panel {
     if (id !== this.gazeId) {
       this.gazeId = id;
       ms[GAZE] = 0;
-      this.gazeDone = afterSelection;
+      this.gazeDone = afterSelection || (this.isFreshGaze && id !== '');
+      if (id !== '') this.isFreshGaze = false;
       if (id === NEW_GARDEN_ID && !this.pinching.left && !this.pinching.right)
         this.restoreHeld = this.actions.canRestore();
       return;
@@ -463,6 +467,7 @@ export class Panel {
     // The gaze switch is dim for the gaze only: a pinch still switches it.
     if (control === undefined || (control.dim && id !== GAZE_TOGGLE_ID)) return;
     this.selected = true;
+    if (id === GAZE_TOGGLE_ID) this.isFreshGaze = true;
     this.actions.pressed(id);
     const patch = PATCHES[id];
     const tab = TABS[id];

@@ -680,6 +680,20 @@ describe('settings panel: gaze dwell selects with no pinch (FR-HND-12)', () => {
     expect(asked).toHaveLength(1);
   });
 
+  it('BUG-014: switched on by a pinch, the gaze does not select the control that appears under it a frame later', () => {
+    const panel = opened('access');
+    expect(settings.get()).toMatchObject({ gazeDwell: false, dwellMs: 900 });
+    press(panel, 'gazeDwell'); // the pinch switches the gaze mode on: the look-time row appears
+    expect(settings.get().gazeDwell).toBe(true);
+    panel.frame(16, '', false); // the frame after the press: the new row is not a target yet
+    run(panel, 2000, 'dwell:600'); // the head held still, on the row that appeared under its line
+    expect(settings.get().dwellMs).toBe(900);
+    lookAt(panel, ''); // the gaze leaves and comes back: now it selects
+    lookAt(panel, 'dwell:600');
+    run(panel, 900, 'dwell:600');
+    expect(settings.get().dwellMs).toBe(600);
+  });
+
   it('cannot switch itself off: a user with no hand to pinch with could not switch it back on', () => {
     settings.set({ gazeDwell: true });
     const panel = opened('access');
