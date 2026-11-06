@@ -5,7 +5,7 @@
  * file LICENSES/IWSDK-MIT.txt in the root directory of this source tree.
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -158,8 +158,38 @@ const emulatorRoom: Plugin = {
   },
 };
 
+// Dev server only: with ?rec=1 the page loads tests/tools/headset-recorder.ts, which posts what a real headset session
+// senses here, appended to .tmp/headset/rec.jsonl. Same origin; not in the build (`apply: 'serve'`).
+const headsetRecorder: Plugin = {
+  name: 'roomsong-headset-recorder',
+  apply: 'serve',
+  transformIndexHtml: () => [
+    {
+      tag: 'script',
+      attrs: { type: 'module' },
+      children: 'if (/[?&]rec=1/.test(location.search)) import("/tests/tools/headset-recorder.ts");',
+      injectTo: 'head-prepend',
+    },
+  ],
+  configureServer: (server) => {
+    const dir = join(ROOT, '.tmp/headset');
+    mkdirSync(dir, { recursive: true });
+    server.middlewares.use('/__rec', (req, res) => {
+      let body = '';
+      req.on('data', (chunk: Buffer) => {
+        if (body.length < 1_000_000) body += chunk.toString();
+      });
+      req.on('end', () => {
+        appendFileSync(join(dir, 'rec.jsonl'), `${body}\n`);
+        res.statusCode = 204;
+        res.end();
+      });
+    });
+  },
+};
+
 export default defineConfig({
-  plugins: [iwsdkDev(), emulatorRoom, contentSecurityPolicy, licenseTexts],
+  plugins: [iwsdkDev(), emulatorRoom, headsetRecorder, contentSecurityPolicy, licenseTexts],
   server: { host: '0.0.0.0', port: 8081, open: false },
   build: {
     outDir: 'dist',

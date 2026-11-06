@@ -15,3 +15,4 @@ npx claude-token-optimizer@2.3.20 audit   # token check of the always-loaded ins
 - Two dev servers at once clash on port 8081: give the second one another port.
 - `npm run audio:renders` — WAVs and numbers of the mix to `.tmp/renders/` (about 1 min; one Playwright run at a time; `E2E_PORT=8097` if 8081 is busy; `-- -g P-023` for one group).
 - `WORST_ROOM=table npx playwright test tests/e2e/26-worst-frame.spec.ts` for the table-room worst frame; the default is the counter (the vine in view).
+- Real headset over Wi-Fi: `npx vite --port 8081 --strictPort`, then `https://<Mac address>:8081/?rec=1` in Quest Browser (Advanced → Proceed). Its events, palm angles and frame numbers go to `.tmp/headset/rec.jsonl` (dev server only; a saved source file reloads the page, so press Enter again). Frame numbers with it on are a little pessimistic.
