@@ -13,6 +13,7 @@ import {
   STEPS,
   TIME_LAPSE_DAY_MS,
   UNDO_LIFE_MS,
+  SEED_PALM_DOWN_MS,
 } from './config.js';
 import { applyVisit, newGarden } from './growth.js';
 import {
@@ -55,7 +56,9 @@ export class GardenSystem {
   /** This session's visit has been applied: no seed is handed out before (API_SPEC §1.10 rule 8). */
   private isVisited = false;
   /** The one seed that is out, and the hand that pinched it off the palm, if any has. */
-  private out: { seedId: string; carrier: Hand | null } | null = null;
+  private out: { seedId: string; carrier: Hand | null; palm: Hand } | null = null;
+  /** When each hand last held its palm up (core's clock): a palm that stays up asks again and again. */
+  private readonly palmAskedAt: Record<Hand, number> = { left: Number.NEGATIVE_INFINITY, right: Number.NEGATIVE_INFINITY };
   /** The removed plants that can still come back, by plant id (FR-MUS-12). */
   private readonly undos = new Map<string, { token: UndoToken; expiresAt: number }>();
   /** newGarden() calls so far, and the count at each hand's latest gesture:pinchStart (BUG-006). */
@@ -298,13 +301,31 @@ export class GardenSystem {
 
   /** FR-HND-05: the first seed of the supply rests on that hand, and stays in the supply until planted. */
   private handOut(s: GardenState, hand: Hand): void {
+    const now = this.appClock.now();
+    this.palmAskedAt[hand] = now;
     const seed = s.seeds[0];
     if (this.listenEnd !== null) return; // PRD §3.4: in Listen nothing but the wake is taken
-    if (!this.isVisited || this.out !== null || seed === undefined) return;
-    this.out = { seedId: seed.id, carrier: null };
+    if (this.out !== null) {
+      this.crossOver(s, this.out, hand, now);
+      return;
+    }
+    if (!this.isVisited || seed === undefined) return;
+    this.out = { seedId: seed.id, carrier: null, palm: hand };
     // BUG-006's check reads the hand's latest pinchStart; a seed planted with none (the gaze, T-160) must not meet
     // a pinch from before a New garden.
     this.pinchedIn.delete(hand);
+    bus.emit('garden:seedOut', { seed, hand });
+  }
+
+  /**
+   * First device run: a player raises the other palm and pinches with the first hand, so a resting seed goes to the
+   * palm that is up. Not while its own palm is up too, or two raised palms would toss it back and forth.
+   */
+  private crossOver(s: GardenState, out: NonNullable<GardenSystem['out']>, hand: Hand, now: number): void {
+    if (out.carrier !== null || out.palm === hand || now - this.palmAskedAt[out.palm] < SEED_PALM_DOWN_MS) return;
+    const seed = s.seeds.find(({ id }) => id === out.seedId);
+    if (seed === undefined) return;
+    out.palm = hand;
     bus.emit('garden:seedOut', { seed, hand });
   }
 

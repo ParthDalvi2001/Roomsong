@@ -127,14 +127,15 @@ describe('PoseHold', () => {
     expect(hold(new PoseHold(WAKE_HOLD_MS), true, 0, 2000)).toEqual([602]); // 43 frames of 14 ms
   });
 
-  it('one sample without the pose restarts the hold, and a pose retaken fires again', () => {
+  it('a tracking drop does not restart the hold; a break of the grace or more does, and a pose retaken fires again', () => {
     const pose = new PoseHold(PALMS_OUT_HOLD_MS);
     expect(hold(pose, true, 0, 1400)).toEqual([]);
-    expect(pose.update(false, 1414)).toBe(false);
-    expect(hold(pose, true, 1428, 2900)).toEqual([]); // 1.47 s since the restart
-    expect(hold(pose, true, 2914, 3000)).toEqual([2928]);
-    pose.update(false, 3014);
-    expect(hold(pose, true, 3028, 5000)).toEqual([4540]); // the first sample at or past 4528
+    expect(pose.update(false, 1414)).toBe(false); // a drop, as a real headset gives many of
+    expect(hold(pose, true, 1428, 1600)).toEqual([1512]); // the first sample at or past 1500, from the same hold
+    pose.update(false, 1610);
+    expect(hold(pose, true, 1624, 1700)).toEqual([]); // the drop did not re-arm it: it fired once
+    pose.update(false, 1900); // 200 ms or more since the pose
+    expect(hold(pose, true, 1914, 3500)).toEqual([3426]); // the first sample at or past 3414
   });
 
   it('reset() starts the hold over', () => {

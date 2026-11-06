@@ -44,7 +44,7 @@ describe('garden/config', () => {
   });
 
   it('a pull of 0.25 m covers the whole height range (FR-HND-08)', () => {
-    expect(PULL_RANGE_M).toBe(0.25);
+    expect(PULL_RANGE_M).toBe(0.11);
   });
 
   it('a new plant starts at height 0.55 (API_SPEC §1.1)', () => {

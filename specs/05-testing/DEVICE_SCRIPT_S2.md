@@ -160,14 +160,14 @@ For every play, watch the panel right of the ring: write down the lowest `fps` a
 
 **You need:** the "S2, shaping" bookmark; for step 9, the "S2, console" bookmark and the console.
 
-**Checked against:** API_SPEC §1.1 (`PULL_RANGE_M` 0.25, `heightAfterPull`), §1.4 ("Shaping as built (T-146)", `DRAG_DEAD_ZONE_M` 0.02, `HIT_RADIUS_M` 0.040, `HOVER_DEAD_BAND_M` 0.005, the `pull` row of the release table), §1.8 ("Shaping as drawn (T-147)"), §1.10 rule 7; `src/garden/config.ts` (`NEW_PLANT_HEIGHT` 0.55); `src/render/config.ts` (`PLANT_PINCH_LIFT_M` 0.01, `PLANT_STEM_MIN_M` 0.03, `PLANT_STEM_MAX_M` 0.14, `LADDER_MARKS` 5, `HOVER_CUE_MS` 100); UX §3.4.
+**Checked against:** API_SPEC §1.1 (`PULL_RANGE_M` 0.11, `heightAfterPull`), §1.4 ("Shaping as built (T-146)", `DRAG_DEAD_ZONE_M` 0.02, `HIT_RADIUS_M` 0.040, `HOVER_DEAD_BAND_M` 0.005, the `pull` row of the release table), §1.8 ("Shaping as drawn (T-147)"), §1.10 rule 7; `src/garden/config.ts` (`NEW_PLANT_HEIGHT` 0.55); `src/render/config.ts` (`PLANT_PINCH_LIFT_M` 0.01, `PLANT_STEM_MIN_M` 0.03, `PLANT_STEM_MAX_M` 0.14, `LADDER_MARKS` 5, `HOVER_CUE_MS` 100); UX §3.4.
 
 **Know this first:**
 
 - **Where to pinch:** a plant is picked within 4 cm of its foot, the middle of its cell on the bed; the nearest plant wins (FR-HND-04, API_SPEC §1.10 rule 7). The plant's head, 9 cm up on a new plant, is outside that. Before each pinch the plant your fingers would take glows 20 % brighter with a soft outline (the hover cue, UX §3.4).
 - **What a pinch does:** the plant lifts 1 cm and glows, and stays lifted while you hold. For the first 2 cm of hand travel nothing else happens. After 2 cm, if your hand moved at least as much up or down as sideways, it is a pull, and it stays a pull until you let go: the plant never moves cell (FR-HND-08).
 - **How much:** 25 cm of hand travel is the whole range from the shortest plant to the tallest (FR-HND-08). 10 cm up adds 0.4 (US-05). The five ladder rings are 6.25 cm of hand apart (API_SPEC "Shaping as drawn"). The stem is 3 cm at the bottom and 14 cm at the top, so it grows slower than your hand rises (`src/render/config.ts`).
-- **A new plant** (and every autoplanted one) is at 0.55: 11.25 cm of hand up to the top, 13.75 cm down to the bottom (computed from `NEW_PLANT_HEIGHT` and `PULL_RANGE_M`).
+- **A new plant** (and every autoplanted one) is at 0.55: 4.95 cm of hand up to the top, 6.05 cm down to the bottom (computed from `NEW_PLANT_HEIGHT` and `PULL_RANGE_M`).
 - **Down on a table** (computed, not measured): the pinch starts at most 4 cm above the bed, so one pull can go down only as far as the table lets your fingers: about 0.16 at most. Taking a new plant to the bottom ring then needs four pulls or more. Steps 6 and 7 find out.
 - **Sound:** the soft tick on the pinch and the quiet live preview of UX §3.4 are not built (T-147 left them for T-164 or T-128d). Write down what you hear; there is no rule for it yet.
 

@@ -742,18 +742,22 @@ describe('HandSystem: the Listen poses (T-148, FR-HND-06/07)', () => {
     r.stopAll();
   });
 
-  it('a hand lost during the hold restarts it', () => {
+  it('a tracking drop during the hold keeps it; a hand lost for the grace or more restarts it', () => {
     const r = listenRig();
     r.pose('left', OUT);
     r.pose('right', OUT);
-    r.run(100);
+    r.run(50);
     r.hands.left.tracked = false;
-    r.run(1);
+    r.run(1); // a drop, as a real headset gives many of
     r.hands.left.tracked = true;
-    r.run(108); // the hold starts again on frame 102
+    r.run(55);
+    r.hands.left.tracked = false;
+    r.run(15); // 15 frames of 14 ms: past the 200 ms grace
+    r.hands.left.tracked = true;
+    r.run(107);
     expect(r.heard).toEqual([]);
-    r.run(1);
-    expect(r.heard).toEqual(['gesture:palmsOut @210']);
+    r.run(2);
+    expect(r.heard).toHaveLength(1);
     r.stopAll();
   });
 

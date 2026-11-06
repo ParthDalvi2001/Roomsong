@@ -90,7 +90,6 @@ function rig(hand: Hand = 'right') {
   const context: GestureContext = {
     candidates,
     bedPose: BED,
-    oneHand: false,
     nearestFreeCell(cell, ignorePlantId) {
       garden.asked.push(cell);
       garden.ignored.push(ignorePlantId);
@@ -1097,11 +1096,10 @@ describe('GestureMachine: the hover (TC-HND-08, TC-HND-05, FR-HND-16)', () => {
   });
 });
 
-describe('GestureMachine: one-hand mode takes the seed off its own palm (UX §9.1, D-048, FR-UI-09)', () => {
+describe('GestureMachine: a hand takes the seed off its own palm (UX §9.1, D-048, D-062)', () => {
   /** One hand, its palm (where a delivered seed rests) at `palm` and its fingertips at `tips`. */
-  function oneHand(palm: Vec3, tips: Vec3, isOn = true) {
+  function oneHand(palm: Vec3, tips: Vec3) {
     const r = rig();
-    r.context.oneHand = isOn;
     Object.assign(r.frame.palmPos, palm);
     r.step({ at: tips });
     return r;
@@ -1124,17 +1122,11 @@ describe('GestureMachine: one-hand mode takes the seed off its own palm (UX §9.
 
   it('a plant nearer the palm than the seed does not block the take: the palm pick looks at seeds only (D-048)', () => {
     const r = rig();
-    r.context.oneHand = true;
     const palm = moved(PLANT_AT, { y: 0.03 }); // 3 cm over the plant's foot
     r.candidates[0] = { target: { ...SEED }, radius: 0.04, pos: moved(palm, { x: 0.035 }) }; // the seed 3.5 cm off
     Object.assign(r.frame.palmPos, palm);
     r.step({ at: NOWHERE });
     expect(lastHover()?.target).toEqual(SEED);
-  });
-
-  it('one-hand mode off: the asking hand takes nothing off its own palm', () => {
-    oneHand(SEED_AT, NOWHERE, false);
-    expect(hovers()).toEqual([]);
   });
 
   it('a seed that is not on this palm (on the other hand, 4.1 cm away) is not the hover', () => {
@@ -1195,11 +1187,14 @@ describe('GestureMachine: palm up (TC-HND-03, FR-HND-05)', () => {
     expect(times[0]! - idleAt).toBeLessThanOrEqual(PALM_UP_HOLD_MS + 2 * FRAME_MS);
   });
 
-  it('starts the hold over when the hand is lost', () => {
+  it('starts the hold over when the hand is lost for the grace or more; a shorter drop keeps it', () => {
     const { step } = rig();
     step({ at: NOWHERE, palmUp: true });
     expect(palmUpTimes(step, 300)).toEqual([]);
     step({ tracked: false });
+    step({ tracked: true });
+    expect(palmUpTimes(step, 600).length).toBe(1); // the first hold, through the drop
+    for (let lost = 0; lost < TRACKING_GRACE_MS + FRAME_MS; lost += FRAME_MS) step({ tracked: false });
     const backAt = step({ tracked: true });
     const times = palmUpTimes(step, 1500);
     expect(times.length).toBeGreaterThanOrEqual(1);
@@ -1219,7 +1214,6 @@ describe('GestureMachine: no allocation per frame', () => {
     const context: GestureContext = {
       candidates: [{ target: { kind: 'seed', id: 's' }, radius: 0.04, pos: { x: 0.01, y: 1, z: -1 } }],
       bedPose: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, -1, 1],
-      oneHand: false,
       nearestFreeCell: (cell) => cell,
     };
     const machine = new GestureMachine('right');
@@ -1281,7 +1275,6 @@ describe('GestureMachine: no allocation per frame', () => {
     const context: GestureContext = {
       candidates: [{ target: { kind: 'seed', id: 's' }, radius: 0.04, pos: { x: 2.01, y: 1, z: -1 } }],
       bedPose: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, -1, 1],
-      oneHand: false,
       nearestFreeCell: (cell) => cell,
     };
     const machine = new GestureMachine('right');

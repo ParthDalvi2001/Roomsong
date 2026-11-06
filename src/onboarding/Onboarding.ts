@@ -1,7 +1,7 @@
 // The guided first minute (UX §3.3, T-150) as a plain state machine: no bus, no ECS, no clock of its own.
 // OnboardingSystem feeds it the events and the frame time; ui/Hints draws each step's icon from `onboarding:step`.
 // Mastery gates, one at a time: pinch (a seed planted), grow (a pull), move (a drag). No one is stuck: a gate step
-// that makes no progress for STEP_STALL_MS gives way to the next one (D-053).
+// that makes no progress for STEP_STALL_MS gives way to the next one (D-053), from a first plant on (D-061).
 import {
   HINT_RING_AFTER_PLANTS,
   LISTEN_AFTER_MS,
@@ -37,7 +37,7 @@ const ORDER: readonly OnboardingStep[] = [
   'done',
 ];
 const order = (step: OnboardingStep): number => ORDER.indexOf(step);
-/** The steps that wait for the player: each has the STEP_STALL_MS net. Gaze mode keeps the plant gate only. */
+/** The steps that wait for the player. Gaze mode keeps the plant gate only. */
 const isGate = (step: OnboardingStep): boolean =>
   order(step) >= order('palm') && order(step) <= order('move');
 
@@ -53,8 +53,6 @@ export class Onboarding {
   private hasPulled = false;
   private hasDragged = false;
   private hasListened = false;
-  /** The step the net last moved to: `next()` never goes below it (palm and plant swap with the seed). */
-  private floor = 0;
   /** The latest frame time, ms; when the tutorial, the current step and its Listen step began. */
   private nowMs = 0;
   private startedMs = 0;
@@ -123,9 +121,10 @@ export class Onboarding {
     this.nowMs = nowMs;
     this.advance();
     const step = this.step;
-    if (!isGate(step) || nowMs - this.stepAtMs < STEP_STALL_MS) return;
+    // D-061: no net on palm and plant. What follows them teaches shaping a plant, so with none planted their hint
+    // stays, the true one. Nothing waits on a hint: the player can still do everything.
+    if (!isGate(step) || order(step) <= order('plant') || nowMs - this.stepAtMs < STEP_STALL_MS) return;
     const to = step === 'more' && !this.canPull ? 'move' : ORDER[order(step) + 1]!;
-    this.floor = order(to);
     this.go(to);
     this.onStall(step, to);
     this.advance();
@@ -146,7 +145,6 @@ export class Onboarding {
     this.hasPulled = false;
     this.hasDragged = false;
     this.hasListened = false;
-    this.floor = 0;
     this.startedMs = 0;
     this.stepAtMs = 0;
     this.listenAtMs = 0;
@@ -174,8 +172,7 @@ export class Onboarding {
       return this.planted > 0 || order(step) > order('plant') ? 'free' : 'plant';
     if (step === 'palm' || step === 'plant') {
       if (this.planted > 0) return 'more';
-      const wanted = this.seedIsOut ? 'plant' : 'palm';
-      return order(wanted) < this.floor ? step : wanted;
+      return this.seedIsOut ? 'plant' : 'palm';
     }
     if (step === 'more' || step === 'grow' || step === 'move' || step === 'free') {
       // The Listen step: when both gates are earned (day 1 has 3 seeds, so LISTEN_AFTER_PLANTS is a later visit's

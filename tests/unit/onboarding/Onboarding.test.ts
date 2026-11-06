@@ -171,8 +171,6 @@ describe('Onboarding: the 60 s net (D-053): no one is stuck', () => {
   it('each gate step with no progress for STEP_STALL_MS gives way to the next, and says so', () => {
     const stalls: string[] = [];
     const pairs = [
-      ['palm', 'plant'],
-      ['plant', 'more'],
       ['more', 'grow'],
       ['grow', 'move'],
       ['move', 'free'],
@@ -184,17 +182,19 @@ describe('Onboarding: the 60 s net (D-053): no one is stuck', () => {
       m.tick(T0 + STEP_STALL_MS);
       expect(m.step).toBe(to);
     }
-    expect(stalls).toEqual(['palm>plant', 'plant>more', 'more>grow', 'grow>move', 'move>free']);
+    expect(stalls).toEqual(['more>grow', 'grow>move', 'move>free']);
   });
 
-  it('a step forced on holds: plant does not fall back to palm while no seed is out', () => {
-    const m = at('palm');
-    m.tick(T0 + STEP_STALL_MS);
+  it('palm and plant have no net: with nothing planted, nothing teaches shaping a plant (D-061)', () => {
+    const onStall = vi.fn();
+    const m = at('palm', true, onStall);
+    m.tick(T0 + 10 * STEP_STALL_MS);
+    expect(m.step).toBe('palm');
+    m.seed(true);
     expect(m.step).toBe('plant');
-    m.seed(false);
+    m.tick(T0 + 20 * STEP_STALL_MS);
     expect(m.step).toBe('plant');
-    m.changed(1);
-    expect(m.step).toBe('more');
+    expect(onStall).not.toHaveBeenCalled();
   });
 
   it('progress restarts the clock; the garden window steps from more to move', () => {

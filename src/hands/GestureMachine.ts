@@ -53,8 +53,6 @@ export interface GestureContext {
    * `ignorePlantId`: the plant that is being dragged, whose own cell counts as free.
    */
   nearestFreeCell: (cell: Cell, ignorePlantId?: string) => Cell | null;
-  /** `Settings.oneHand` (FR-UI-09): an idle hand with nothing at its fingertips may take the seed off its own palm. */
-  oneHand: boolean;
 }
 
 type State = 'IDLE' | 'PRESSED' | 'PINCHED' | 'PULLING' | 'DRAGGING' | 'CARRYING';
@@ -175,7 +173,6 @@ export class GestureMachine {
   private lose(timeMs: number): void {
     this.wasTracked = false;
     this.lostAtMs = timeMs;
-    this.palmUp.reset(); // LLD §4: pose timers restart when a hand is lost
     this.lostEvent.held = this.state !== 'IDLE' && this.holdsTarget ? this.held : null;
     bus.emit('hands:lost', this.lostEvent);
     if (this.state === 'IDLE') this.setHover(null, null);
@@ -186,6 +183,8 @@ export class GestureMachine {
     if (this.isGraceOver(timeMs)) this.revert(); // no sample came in time to end the grace (a paused page)
     this.wasTracked = true;
     if (Number.isNaN(this.lostAtMs)) return;
+    // Real hands drop out for tens of ms many times a second (first device run): only a longer loss restarts the pose.
+    if (timeMs - this.lostAtMs >= TRACKING_GRACE_MS) this.palmUp.reset();
     this.lostAtMs = Number.NaN;
     bus.emit('hands:found', this.foundEvent);
   }
@@ -234,8 +233,9 @@ export class GestureMachine {
       const isHeldPlant = state !== 'IDLE' && this.endsOnPinch;
       const kept = this.hoverEvent.target;
       let picked = isHeldPlant ? this.held : pickTarget(frame.pinchPos, context.candidates, kept);
-      // UX §9.1 (D-048): one-hand mode, nothing at the fingertips: the seed resting on this palm is the hover.
-      if (picked === null && state === 'IDLE' && context.oneHand) {
+      // D-062, first device run: nothing at the fingertips: the seed resting on this palm is the hover, for everyone.
+      // Players pinch with the hand that holds the seed and carry it down to the bed.
+      if (picked === null && state === 'IDLE') {
         picked = pickTarget(frame.palmPos, context.candidates, kept, 'seed'); // a plant by the palm does not block it
       }
       this.setHover(picked, null);

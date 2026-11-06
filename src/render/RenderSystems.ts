@@ -18,7 +18,7 @@ import {
 } from './config.js';
 import { createPerfHud, PerfSampler } from './PerfHud.js';
 import { PetalRenderer } from './PetalRenderer.js';
-import { PlantRenderer } from './PlantRenderer.js';
+import { PlantRenderer, stemFor } from './PlantRenderer.js';
 import { SeedRenderer } from './SeedRenderer.js';
 import { TideRenderer } from './TideRenderer.js';
 import { TuningRipple } from './TuningRipple.js';
@@ -180,6 +180,11 @@ export class SeedSystem extends createSystem(
 
   /** `garden:seedOut`: the seed glides to that hand's palm and is a pinch target from now on (FR-HND-04). */
   private send(seedId: string, hand: Hand): void {
+    if (this.outId === seedId) {
+      // The other palm is up now (GardenSystem.crossOver): the seed crosses over and stays a target.
+      this.seeds.follow(seedId, this.palms[handIndex(hand)]!, this.frameMs, 'glide');
+      return;
+    }
     if (this.outId !== null) {
       // At most one seed is out (rule 8): a second one sends the first home, drawn and target alike.
       this.seeds.follow(this.outId, null, this.frameMs, 'jump');
@@ -212,7 +217,7 @@ interface BedTarget {
   readonly id: string;
   readonly entity: Entity;
   cell: Cell;
-  readonly liftM: number;
+  liftM: number;
   /** The frame time it goes at, ms: a petal's end; Infinity for a plant's. */
   readonly untilMs: number;
 }
@@ -392,14 +397,17 @@ export class BedRenderSystem extends createSystem(
       if (!onBed(plant.cell)) continue; // not drawn, as in PlantRenderer: no target either
       live.add(plant.id);
       const kept = this.targets.get(plant.id);
+      // First device run: players pinch the head they see, and a plant's head stands above the hit radius of its foot.
+      const liftM = stemFor(plant.height);
       if (kept !== undefined) {
         kept.cell = plant.cell; // moved
+        kept.liftM = liftM; // grown
         continue;
       }
       // hands reads kind, id and radius once, when the component is added (rule 7)
       const entity = this.createEntity();
       entity.addComponent(Interactable, { kind: 'plant', id: plant.id, radius: HIT_RADIUS_M });
-      this.targets.set(plant.id, { id: plant.id, entity, cell: plant.cell, liftM: 0, untilMs: Infinity });
+      this.targets.set(plant.id, { id: plant.id, entity, cell: plant.cell, liftM, untilMs: Infinity });
     }
     this.plantTargets.length = 0;
     for (const [id, target] of this.targets) {

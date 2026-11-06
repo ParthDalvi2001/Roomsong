@@ -5,8 +5,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as core from '../../../src/core/index.js';
+import { SEED_PALM_DOWN_MS } from '../../../src/garden/config.js';
 import { GardenSystem, nearestFreeCell } from '../../../src/garden/index.js';
-import { PALM_UP_HOLD_MS } from '../../../src/hands/config.js';
+import { PALM_UP_HOLD_MS, TRACKING_GRACE_MS } from '../../../src/hands/config.js';
 import { GestureMachine } from '../../../src/hands/GestureMachine.js';
 import { createHandFrame } from '../../../src/hands/InputSource.js';
 import { garden, seed } from '../garden/fixtures.js';
@@ -35,13 +36,13 @@ afterEach(() => {
 
 /** The garden with seeds s1 and s2, both hands (the left palm up, the right one down) and a clock. */
 function rig() {
+  let timeMs = 0;
   const system = new GardenSystem(
-    core.createClock(() => T0),
+    core.createClock(() => T0 + timeMs),
     core.flags,
   );
   system.load(garden([], [seed('s1'), seed('s2')], { lastSeedDate: '2026-10-12', lastVisitAt: T0 - 1000 }));
   const out: { id: string; hand: Hand; atMs: number }[] = [];
-  let timeMs = 0;
   core.bus.on('garden:seedOut', ({ seed, hand }) => out.push({ id: seed.id, hand, atMs: timeMs }));
   const candidates: PickCandidate[] = [];
   // What SeedSystem does: the seed that is out is a target on the palm it rests on, until it is not out.
@@ -52,7 +53,6 @@ function rig() {
   const context: GestureContext = {
     candidates,
     bedPose: BED,
-    oneHand: false,
     nearestFreeCell: (cell, ignore) =>
       system.state === null ? cell : nearestFreeCell(system.state, cell, ignore),
   };
@@ -111,5 +111,46 @@ describe('palm up, re-armed while the palm stays up (T-127, FR-HND-05)', () => {
       ['s2', 'left'],
     ]);
     expect(out[1]!.atMs - plantedAt).toBeLessThanOrEqual(PALM_UP_HOLD_MS + FRAME_MS);
+  });
+
+  it('tracking drops do not restart a held palm; a loss of the grace or more does (first device run)', () => {
+    const machine = new GestureMachine('left');
+    const frame = createHandFrame('left');
+    const context: GestureContext = { candidates: [], bedPose: BED, nearestFreeCell: (cell) => cell };
+    frame.palmNormal.y = 1;
+    const asked: number[] = [];
+    let timeMs = 0;
+    core.bus.on('gesture:palmUp', () => asked.push(timeMs));
+    // As the Quest 3S gave: never tracked for the whole hold, dropping for 42 ms in every 112.
+    for (; timeMs < PALM_UP_HOLD_MS + 100; timeMs += FRAME_MS) {
+      frame.tracked = timeMs % 112 >= 42;
+      machine.update(frame, timeMs, context);
+    }
+    expect(asked.length).toBe(1);
+    asked.length = 0;
+    const back = timeMs + TRACKING_GRACE_MS + FRAME_MS;
+    for (; timeMs < back; timeMs += FRAME_MS) {
+      frame.tracked = false;
+      machine.update(frame, timeMs, context);
+    }
+    const end = back + PALM_UP_HOLD_MS - FRAME_MS;
+    for (; timeMs < end; timeMs += FRAME_MS) {
+      frame.tracked = true;
+      machine.update(frame, timeMs, context);
+    }
+    expect(asked).toEqual([]);
+  });
+
+  it('a resting seed crosses to the other palm once its own palm is down, and never while both are up', () => {
+    const { out, frames, run, now } = rig();
+    core.bus.emit('room:features', { features: { level: 4 }, surfaces: {} });
+    run(now() + 500);
+    expect(out.map(({ hand }) => hand)).toEqual(['left']);
+    frames.right.palmNormal.y = 1; // both up: it stays
+    run(now() + 2000);
+    expect(out.map(({ hand }) => hand)).toEqual(['left']);
+    frames.left.palmNormal.y = -1; // its own palm goes down
+    run(now() + SEED_PALM_DOWN_MS + 500);
+    expect(out.map(({ hand }) => hand)).toEqual(['left', 'right']);
   });
 });

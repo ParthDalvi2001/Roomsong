@@ -13,7 +13,7 @@ import { BedRenderer } from '../../../src/render/BedRenderer.js';
 import { PETAL_LIFT_M } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
 import { PetalRenderer } from '../../../src/render/PetalRenderer.js';
-import { PlantRenderer } from '../../../src/render/PlantRenderer.js';
+import { PlantRenderer, stemFor } from '../../../src/render/PlantRenderer.js';
 import { BedRenderSystem } from '../../../src/render/RenderSystems.js';
 import { TideRenderer } from '../../../src/render/TideRenderer.js';
 import { garden, plant } from '../garden/fixtures.js';
@@ -110,7 +110,7 @@ describe('the plants and their targets (LLD §3.5 d1; API_SPEC §1.10 rule 7)', 
     for (const t of targets) {
       expect(t.radius).toBe(HIT_RADIUS_M);
       const cell = three().find((p) => p.id === t.id)!.cell;
-      expect(t.at.distanceTo(r.worldOf(cell))).toBeLessThan(1e-6);
+      expect(t.at.distanceTo(r.worldOf(cell, stemFor(0.5)))).toBeLessThan(1e-6); // at the head a player sees
     }
   });
 
@@ -142,8 +142,8 @@ describe('the plants and their targets (LLD §3.5 d1; API_SPEC §1.10 rule 7)', 
     });
     const at = Object.fromEntries(r.targets('plant').map((t) => [t.id, t.at]));
     expect(Object.keys(at).sort()).toEqual(['a', 'b', 'd']);
-    expect(at.b!.distanceTo(r.worldOf({ ring: 1, step: 9 }))).toBeLessThan(1e-6);
-    expect(at.d!.distanceTo(r.worldOf({ ring: 3, step: 3 }))).toBeLessThan(1e-6);
+    expect(at.b!.distanceTo(r.worldOf({ ring: 1, step: 9 }, stemFor(0.5)))).toBeLessThan(1e-6);
+    expect(at.d!.distanceTo(r.worldOf({ ring: 3, step: 3 }, stemFor(0.5)))).toBeLessThan(1e-6);
   });
 
   it('a bed moved with no event (an anchor re-read after a recentre) moves the targets in the next frame', () => {
@@ -155,7 +155,7 @@ describe('the plants and their targets (LLD §3.5 d1; API_SPEC §1.10 rule 7)', 
     r.bed.updateMatrixWorld(true);
     r.frame();
     const a = r.targets('plant').find((t) => t.id === 'a')!;
-    expect(a.at.distanceTo(r.worldOf({ ring: 0, step: 0 }))).toBeLessThan(1e-6);
+    expect(a.at.distanceTo(r.worldOf({ ring: 0, step: 0 }, stemFor(0.5)))).toBeLessThan(1e-6);
   });
 });
 

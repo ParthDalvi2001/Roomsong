@@ -16,8 +16,11 @@ export const ZONE_OUTER_MARGIN_M = 0.05;
 /** FR-UI-10: the bed is raised or lowered by at most this many metres. persistence/ takes its bound from here. */
 export const BED_HEIGHT_OFFSET_MAX_M = 0.1;
 
-/** FR-HND-08: the vertical hand travel, in metres, that takes a plant's height from 0 to 1. */
-export const PULL_RANGE_M = 0.25;
+/**
+ * FR-HND-08: the vertical hand travel, in metres, that takes a plant's height from 0 to 1: the stem's own travel
+ * (render/config.ts), so the head stays at the fingers. First device run: at 25 cm the hand left the headset's view.
+ */
+export const PULL_RANGE_M = 0.11;
 /** API_SPEC §1.1 (plantSeed): the height a new plant starts at; the sound prototype's value. */
 export const NEW_PLANT_HEIGHT = 0.55;
 
@@ -119,3 +122,6 @@ export const AUTOPLANT_CELL_STRIDE = 7;
 export const TIME_LAPSE_DAY_MS = 4000;
 /** D-060 item 13: for this long after a New garden, and until the new one has a plant, the old one can come back. */
 export const RESTORE_WINDOW_MS = 10_000;
+
+/** A palm that has not asked for this long is down: PalmUpHold asks every 400 ms, through drops of up to 200 ms. */
+export const SEED_PALM_DOWN_MS = 900;

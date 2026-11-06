@@ -327,6 +327,9 @@ type Pull = Pick<EventMap['gesture:pull'], 'hand' | 'dy'>;
 type Drag = Pick<EventMap['gesture:drag'], 'hand' | 'pos' | 'zone'>;
 const handIndex = (hand: Hand): number => (hand === 'left' ? 0 : 1);
 
+/** The stem a plant of that height (0..1) stands on, in metres (UX §5). */
+export const stemFor = (height: number): number => PLANT_STEM_MIN_M + (PLANT_STEM_MAX_M - PLANT_STEM_MIN_M) * height;
+
 export class PlantRenderer {
   /** One per silhouette: bell, pad, pluck, bass, choir. Each geometry holds its cream outline shell too, drawn by
    *  the second half of its index in high contrast only (FR-UI-05); whorls have none. */
@@ -934,13 +937,13 @@ export class PlantRenderer {
     want[0] = this.rest[slot * 2]!;
     want[1] = 0;
     want[2] = this.rest[slot * 2 + 1]!;
-    want[3] = PLANT_STEM_MIN_M + (PLANT_STEM_MAX_M - PLANT_STEM_MIN_M) * this.height[slot]!;
+    want[3] = stemFor(this.height[slot]!);
     const h = this.holder[slot]! - 1;
     if (h < 0) return;
     const mode = this.holdMode[h];
     want[1] = PLANT_PINCH_LIFT_M;
     if (mode === PULLED) {
-      want[3] = PLANT_STEM_MIN_M + (PLANT_STEM_MAX_M - PLANT_STEM_MIN_M) * this.holdHeight[h + 2]!;
+      want[3] = stemFor(this.holdHeight[h + 2]!);
     } else if (mode === DRAGGED) {
       for (let i = 0; i < 3; i++) want[i] = this.dragFoot[h * 3 + i]!;
     }

@@ -90,7 +90,6 @@ function rig(plants: Plant[]) {
   const context: GestureContext = {
     candidates,
     bedPose: BED,
-    oneHand: false,
     nearestFreeCell: (wanted, ignorePlantId) => nearestFreeCell(state, wanted, ignorePlantId),
   };
   const hands = (['left', 'right'] as const).map((hand) => {
@@ -253,16 +252,16 @@ describe('the undo (TC-HND-06, FR-MUS-12)', () => {
 });
 
 describe('a pull and the garden (FR-HND-08)', () => {
-  it('sets the height the travel gives over 25 cm, and never moves the plant', () => {
+  it('sets the height the travel gives over 11 cm, and never moves the plant', () => {
     const r = rig([plant('a', 2, 0, { height: 0.5 })]);
-    r.shape('right', 'a', [over(cell(2, 0), 0.05)]);
-    expect(r.plantNow('a')?.height).toBeCloseTo(heightAfterPull(0.5, 0.05)); // 0.7
+    r.shape('right', 'a', [over(cell(2, 0), 0.022)]);
+    expect(r.plantNow('a')?.height).toBeCloseTo(heightAfterPull(0.5, 0.022)); // 0.7
     expect(r.plantNow('a')?.cell).toEqual(cell(2, 0));
     expect(r.changes).toEqual([{ added: [], removed: [], changed: ['a'] }]);
 
-    r.shape('right', 'a', [over(cell(2, 0), -0.03), over(cell(4, 3), -0.1), onBed(0.4, 3, -0.1)]);
+    r.shape('right', 'a', [over(cell(2, 0), -0.03), over(cell(4, 3), -0.044), onBed(0.4, 3, -0.044)]);
     expect(r.releases[1]).toMatchObject({ gesture: 'pull', zone: 'outer', cell: null });
-    expect(r.plantNow('a')?.height).toBeCloseTo(0.3); // 10 cm down from 0.7
+    expect(r.plantNow('a')?.height).toBeCloseTo(0.3); // 4.4 cm down from 0.7
     expect(r.plantNow('a')?.cell).toEqual(cell(2, 0)); // pulled over other cells and off the bed: still there
     expect(r.removals).toEqual([]);
   });
@@ -274,7 +273,7 @@ describe('two hands, and what else can happen to a held plant', () => {
     r.grab('left', 'b');
     r.grab('right', 'a');
     r.step('left', { at: over(cell(4, 8)) });
-    r.step('right', { at: over(cell(2, 0), 0.05) });
+    r.step('right', { at: over(cell(2, 0), 0.022) });
     r.step('left', { at: over(cell(4, 9)) });
     expect(r.changes).toEqual([]); // previews only, on both hands
     r.step('right', { pinch: false });

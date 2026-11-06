@@ -714,7 +714,7 @@ describe('garden/GardenSystem: the release table (API_SPEC §1.4)', () => {
       ['garden:changed', { state: s.state(), diff: { added: [], removed: [], changed: ['a'] } }],
     ]);
     expect(s.state().plants[0]?.height).toBe(s.lib.heightAfterPull(0.5, 0.05));
-    expect(s.state().plants[0]?.height).toBeCloseTo(0.7, 12);
+    expect(s.state().plants[0]?.height).toBeCloseTo(0.5 + 0.05 / 0.11, 12);
 
     s.clear();
     s.release('left', 'pull', plantRef('a'), 'bed', null, 0); // no travel: nothing changes, nothing is emitted

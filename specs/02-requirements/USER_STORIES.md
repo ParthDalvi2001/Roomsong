@@ -34,7 +34,7 @@ IDs are stable: cut stories stay in place marked *Cut (D-011)*. Device behaviour
 ## Epic E2 — Shape the garden
 
 **US-05 Grow a plant** (M) — FR-HND-08, FR-MUS-05
-- Given a plant, when I pinch it and pull up 10 cm, then its height rises by 0.4 from the height it had (10 cm of the 25 cm range, clamped at 1; FR-HND-08), its visual grows, and its sound is louder with a longer tail.
+- Given a plant, when I pinch it and pull up 5.5 cm, then its height rises by 0.5 from the height it had (5.5 cm of the 11 cm range, clamped at 1; FR-HND-08), its visual grows, and its sound is louder with a longer tail.
 - Given a pull, then the plant never changes cell, and the height I see while pulling is the height that is saved on release.
 
 **US-06 Recolour a voice** — *Cut (D-011)* — FR-HND-09 (Cut)

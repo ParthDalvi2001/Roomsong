@@ -139,8 +139,13 @@ describe('OnboardingSystem: who gets the tutorial', () => {
     r.frame();
     started();
     r.frame(STEP_STALL_MS / 1000);
-    expect(r.steps.slice(-1)).toEqual(['plant']);
-    expect(info).toHaveBeenCalledWith('onboarding', expect.stringContaining('"palm"'));
+    expect(r.steps.slice(-1)).toEqual(['palm']); // D-061: no net until a first plant
+    expect(info).not.toHaveBeenCalledWith('onboarding', expect.stringContaining('"palm"'));
+    bus.emit('garden:changed', changed(3));
+    expect(r.steps.slice(-1)).toEqual(['grow']);
+    r.frame(STEP_STALL_MS / 1000);
+    expect(r.steps.slice(-1)).toEqual(['move']);
+    expect(info).toHaveBeenCalledWith('onboarding', expect.stringContaining('"grow"'));
   });
 });
 

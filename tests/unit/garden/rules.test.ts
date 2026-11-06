@@ -162,10 +162,10 @@ describe('garden/rules setHeight and heightAfterPull (FR-HND-08)', () => {
     expect(setHeight(before, 'a', 0.5)).toBe(before);
   });
 
-  it('heightAfterPull adds dy / 0.25 m and clamps to 0..1', () => {
-    expect(heightAfterPull(0.5, 0.05)).toBeCloseTo(0.7, 12);
-    expect(heightAfterPull(0.5, -0.05)).toBeCloseTo(0.3, 12);
-    expect(heightAfterPull(0, 0.25)).toBe(1);
+  it('heightAfterPull adds dy / 0.11 m and clamps to 0..1', () => {
+    expect(heightAfterPull(0.5, 0.022)).toBeCloseTo(0.7, 12);
+    expect(heightAfterPull(0.5, -0.022)).toBeCloseTo(0.3, 12);
+    expect(heightAfterPull(0, 0.11)).toBe(1);
     expect(heightAfterPull(0.5, 3)).toBe(1);
     expect(heightAfterPull(0.5, -3)).toBe(0);
     expect(heightAfterPull(0.5, 0)).toBe(0.5);
