@@ -379,7 +379,8 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
 
   // The move gate: the newest plant dragged along the bed to a free cell; the remove arrow shows during it.
   const to = await probe.evaluate((p) => p.cellAt({ ring: 3, step: 6 }));
-  expect(await hands.pinchAt(foot)).toBeLessThan(HIT_RADIUS_M / 4);
+  const head = (await probe.evaluate((p) => p.plantTargets())).find((t) => t.id === newest.id)!.at; // grown: higher (D-063)
+  expect(await hands.pinchAt(head)).toBeLessThan(HIT_RADIUS_M / 4);
   await hands.carryTo(to);
   await xrFrames(page, 20);
   expect(await probe.evaluate((p) => p.shows().arrow)).toBe(ARROW);

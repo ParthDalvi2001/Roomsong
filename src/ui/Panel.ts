@@ -363,11 +363,23 @@ export class Panel {
   down(hand: Hand, id: string): void {
     this.pinching[hand] = true;
     if (id === '') return;
+    if (id === ORB_ID) {
+      this.select(id); // D-066: at once, not on the release: a held pinch that shows nothing feels broken
+      return;
+    }
     this.heldId = id;
     this.heldHand = hand;
     this.ms[HELD] = 0;
     if (id === NEW_GARDEN_ID) this.restoreHeld = this.actions.canRestore();
     this.refill();
+  }
+
+  /**
+   * D-064, first device run: a hand drifts during a pinch, so a pinch begun on a control is a press of it wherever it
+   * ends. '' for any other pinch. Not New garden, which a player can slide off to cancel.
+   */
+  heldBy(hand: Hand): string {
+    return this.heldHand === hand && this.heldId !== NEW_GARDEN_ID ? this.heldId : '';
   }
 
   /** A pinch ended (`gesture:release`): as a press on `id`, or as anything else (''), which acts on nothing. */
@@ -377,7 +389,7 @@ export class Panel {
     const heldMs = mine && this.heldId === id ? at(this.ms, HELD) : 0;
     if (mine) this.heldId = '';
     this.refill();
-    if (id === '' || (id === NEW_GARDEN_ID && heldMs < NEW_GARDEN_HOLD_MS)) return;
+    if (id === '' || id === ORB_ID || (id === NEW_GARDEN_ID && heldMs < NEW_GARDEN_HOLD_MS)) return;
     this.select(id);
   }
 

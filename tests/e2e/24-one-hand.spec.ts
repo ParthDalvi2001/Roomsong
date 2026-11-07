@@ -230,19 +230,20 @@ test('TC-E2E-07, one hand: palm up for a seed, the same hand pinches it off its 
 
   // UX §9.1, the second case: with a plant within reach of the fingertips the pinch takes the plant, and the seed
   // waits on the palm. The next seed comes to the palm turned up; the hand turns down over the plant (its pinch
-  // point on the plant's foot, the cell centre), closes there without moving it, pulls 5 cm up and opens.
+  // point on the plant's head, D-063), closes there without moving it, pulls 5 cm up and opens.
   await together([right(RIGHT_ROOT, PALM_UP)]);
   const next = await heard(probe, 'garden:seedOut', { hand: 'right', count: 2 });
   await expect
     .poll(async () => (await probe.evaluate((p) => p.seed()))?.id, { timeout: 20_000 })
     .toBe(next.id);
   const before = await probe.evaluate((p, id) => p.height(id), out.id!);
-  await together([right(rootFor(cell, open))]);
+  const head = { ...cell, y: cell.y + 0.0905 }; // stemFor(NEW_PLANT_HEIGHT)
+  await together([right(rootFor(head, open))]);
   await xrFrames(page, 2);
-  expect(distance(await probe.evaluate((p) => p.atRest()), cell)).toBeLessThan(0.01);
-  await together([right(rootFor(cell)), select(1)]);
+  expect(distance(await probe.evaluate((p) => p.atRest()), head)).toBeLessThan(0.01);
+  await together([right(rootFor(head)), select(1)]);
   expect(await heard(probe, 'gesture:pinchStart', { hand: 'right', count: 2 })).toMatchObject({ id: out.id });
-  const up = { ...cell, y: cell.y + 0.05 };
+  const up = { ...head, y: head.y + 0.05 };
   await together([right(rootFor(up))]);
   await xrFrames(page, 2);
   await probe.evaluate((p) => p.atRest());

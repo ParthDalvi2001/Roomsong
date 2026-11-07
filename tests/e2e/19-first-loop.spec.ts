@@ -221,7 +221,8 @@ test('d1: a garden is drawn on the bed: three plants, three plant targets at the
   expect(targets.map((t) => t.id).sort()).toEqual(['auto-0', 'auto-1', 'auto-2']);
   for (const t of targets) {
     expect(t.radius).toBeCloseTo(0.04, 6); // HIT_RADIUS_M, a Float32 field
-    expect(distance(t.at, t.cellAt), t.id).toBeLessThan(1e-4); // Float32 positions
+    // D-063: at the head a player sees, a new plant's stem above its cell (stemFor(NEW_PLANT_HEIGHT)). Float32 positions
+    expect(distance(t.at, { ...t.cellAt, y: t.cellAt.y + 0.0905 }), t.id).toBeLessThan(1e-4);
   }
   console.log(`T-128d d1 plant targets (emulator, table room): ${JSON.stringify(targets.map((t) => t.at))}`);
 

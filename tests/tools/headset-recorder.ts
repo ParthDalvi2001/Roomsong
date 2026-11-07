@@ -1,8 +1,9 @@
 // Dev server only, with ?rec=1 (vite.config.ts, plugin roomsong-headset-recorder): records what a real headset session
 // senses to .tmp/headset/rec.jsonl on the Mac, so a tester in the headset can be coached and bugs seen as they happen.
 // Allocates per event by design: never in a build, and frame numbers taken with it on are a little pessimistic.
-import { bus } from '../../src/core/index.js';
+import { bus, DEFAULT_SETTINGS, settings } from '../../src/core/index.js';
 import { HandSystem } from '../../src/hands/HandSystem.js';
+import { PanelSystem } from '../../src/ui/PanelSystem.js';
 
 type Line = Record<string, unknown>;
 const queue: Line[] = [];
@@ -58,11 +59,16 @@ const xr = navigator.xr;
 rec('page', { url: location.href, ua: navigator.userAgent, xr: xr !== undefined });
 void xr?.isSessionSupported('immersive-ar').then((ar) => rec('page:ar-supported', ar));
 
+// Each load starts from the default settings, once the save has loaded: a tester is not stuck with a stray switch.
+// &keep=1 keeps them, to test that they are saved.
+let isResetDue = !new URLSearchParams(location.search).has('keep');
+
 // What the bus does not say: the words on the page, the session's features and inputs, and where the head is.
 let status = '';
 let inputs = '';
 let sessionSeen: XRSession | null = null;
 type Dev = {
+  garden: { state: unknown };
   world: {
     renderer: { xr: { getSession(): XRSession | null } };
     getSystem(system: unknown): unknown;
@@ -74,6 +80,11 @@ setInterval(() => {
   if (words !== status) rec('page:status', (status = words));
   const dev = (window as unknown as { __roomsong?: Dev }).__roomsong;
   if (dev === undefined) return;
+  if (isResetDue && dev.garden.state !== null) {
+    isResetDue = false;
+    settings.set({ ...DEFAULT_SETTINGS });
+    rec('rec:settingsReset');
+  }
   const session = dev.world.renderer.xr.getSession();
   if (session !== sessionSeen) {
     sessionSeen = session;
@@ -100,19 +111,36 @@ setInterval(() => {
   });
 }, 1000);
 
-// Twice a second, each hand: tracked, and how far its palm faces up (1 = straight up; the seed asks for 0.82 or more).
-type Slots = { slots: { frame: { hand: string; tracked: boolean; pinch: boolean; palmNormal: { y: number } } }[] };
+// Twice a second, each hand: tracked; how far its palm faces up (1 = straight up; the seed asks for 0.82 or more); and
+// how far it faces the way the head looks (Listen asks for 0.77 or more, and a palm not within 30 degrees of down).
+type Slots = {
+  slots: {
+    frame: {
+      hand: string;
+      tracked: boolean;
+      pinch: boolean;
+      palmNormal: { x: number; y: number; z: number };
+    };
+  }[];
+};
+const round = (value: number): number => Math.round(value * 100) / 100;
+let panelOpen = false;
 setInterval(() => {
   const dev = (window as unknown as { __roomsong?: Dev }).__roomsong;
   const hands = dev?.world.getSystem(HandSystem) as Slots | undefined;
   if (dev?.world.renderer.xr.getSession() == null || hands === undefined) return;
+  const m = dev.world.player.head.matrixWorld.elements;
+  const isOpen =
+    (dev.world.getSystem(PanelSystem) as { panel?: { open: boolean } } | undefined)?.panel?.open ?? false;
+  if (isOpen !== panelOpen) rec('panel:open', (panelOpen = isOpen));
   rec(
     'hands:sample',
-    hands.slots.map(({ frame }) => ({
-      hand: frame.hand,
-      tracked: frame.tracked,
-      pinch: frame.pinch,
-      palmUp: Math.round(frame.palmNormal.y * 100) / 100,
+    hands.slots.map(({ frame: { hand, tracked, pinch, palmNormal: n } }) => ({
+      hand,
+      tracked,
+      pinch,
+      palmUp: round(n.y),
+      palmOut: round(-(n.x * (m[8] ?? 0) + n.y * (m[9] ?? 0) + n.z * (m[10] ?? 0))),
     })),
   );
 }, 500);

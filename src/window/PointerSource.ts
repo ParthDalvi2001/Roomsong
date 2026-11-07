@@ -142,15 +142,15 @@ export class PointerSource implements InputSource {
   }
 
   /**
-   * BUG-011: the Listen orb and the undo petal are drawn above the bed, so the bed point behind one is past its hit
-   * radius. A ray that passes within LIFTED_DRAWN_RADIUS_M of one moves `pos` to the ray's point nearest it (the
-   * nearest such target), held or not, so hover, press and release agree. Creates nothing (hot path).
+   * BUG-011: the Listen orb, the undo petal and a plant's head (D-063) are drawn above the bed, so the bed point behind
+   * one is past its hit radius. A ray that passes within LIFTED_DRAWN_RADIUS_M of one moves `pos` to the ray's point
+   * nearest it (the nearest such target), held or not, so hover, press and release agree. Creates nothing (hot path).
    */
   private liftOnto(pos: Vector3): void {
     let bestM = LIFTED_DRAWN_RADIUS_M;
     for (let i = 0; i < this.targets.length; i++) {
       const { target, pos: at } = this.targets[i]!;
-      if (target.kind !== 'orb' && target.kind !== 'undo') continue;
+      if (target.kind !== 'orb' && target.kind !== 'undo' && target.kind !== 'plant') continue;
       const offM = this.stage.closestOnRay(at, this.onRay);
       if (offM > bestM) continue;
       bestM = offM;

@@ -84,8 +84,11 @@ function build(root: HTMLElement) {
   const list = add(device, 'ul');
   const rows = Object.keys(LANDING.features).map(() => add(list, 'li'));
 
-  const access = add(root, 'fieldset');
-  add(access, 'legend', LANDING.accessHeading);
+  // Closed unless one is on (D-065): on the first device run a tap meant for Enter switched "look to select" on.
+  const more = add(root, 'details');
+  add(more, 'summary', LANDING.accessHeading);
+  const access = add(more, 'fieldset');
+  access.setAttribute('aria-label', LANDING.accessHeading);
   const boxes = TOGGLES.map((key) => {
     const label = add(access, 'label');
     const box = add(label, 'input');
@@ -99,7 +102,7 @@ function build(root: HTMLElement) {
   const steps = add(help, 'ol');
   for (const step of LANDING.help) add(steps, 'li', step);
   add(root, 'p', LANDING.privacy);
-  return { button, status, device, rows, boxes };
+  return { button, status, device, rows, boxes, more };
 }
 
 /**
@@ -107,7 +110,7 @@ function build(root: HTMLElement) {
  * `xr:sessionEnd`).
  */
 export function mountLanding(root: HTMLElement): Landing {
-  const { button, status, device, rows, boxes } = build(root);
+  const { button, status, device, rows, boxes, more } = build(root);
   let arSupported: boolean | undefined;
   let enabled: readonly string[] | null | undefined = null;
   let enter: (() => Promise<boolean>) | null = null;
@@ -139,6 +142,7 @@ export function mountLanding(root: HTMLElement): Landing {
     boxes.forEach((box, i) => {
       box.checked = current[TOGGLES[i] as (typeof TOGGLES)[number]];
     });
+    if (boxes.some((box) => box.checked)) more.open = true; // what is on stays in sight
   }
   function entered(started: boolean): void {
     entering = false;

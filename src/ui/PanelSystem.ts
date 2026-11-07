@@ -358,7 +358,10 @@ export class PanelSystem extends createSystem(
       bus.on('target:hover', (event) => panel.hover(event.hand, panelId(event.target))),
       bus.on('gesture:pinchStart', (event) => panel.down(event.hand, panelId(event.target))),
       bus.on('gesture:release', (event) =>
-        panel.up(event.hand, event.gesture === 'press' ? panelId(event.target) : ''),
+        panel.up(
+          event.hand,
+          event.gesture === 'press' ? panelId(event.target) || panel.heldBy(event.hand) : '',
+        ),
       ),
       bus.on('gesture:trackingLost', (event) => panel.up(event.hand, '')),
       bus.on('xr:sessionStart', () => {

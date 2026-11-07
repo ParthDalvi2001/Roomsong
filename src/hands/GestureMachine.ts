@@ -9,7 +9,7 @@ import { bedZone } from '../garden/index.js';
 
 import { DRAG_DEAD_ZONE_M, TRACKING_GRACE_MS } from './config.js';
 import { PalmUpHold } from './poses/palmUp.js';
-import { pickTarget, stickyCell, toBedLocal } from './TargetPicker.js';
+import { pickPastHand, pickTarget, stickyCell, toBedLocal } from './TargetPicker.js';
 
 import type { HandFrame } from './InputSource.js';
 import type { PickCandidate, TargetRef } from './TargetPicker.js';
@@ -48,6 +48,8 @@ export interface GestureContext {
   candidates: readonly PickCandidate[];
   /** The BedAnchor entity's `matrixWorld.elements` (LLD §3); null while no bed is placed. */
   bedPose: Mat4 | null;
+  /** Where the eyes are (D-066): a panel control is picked along the line through the fingers. */
+  eye?: Vec3;
   /**
    * garden's `nearestFreeCell` on the state of the latest `garden:changed`. null = the bed is full.
    * `ignorePlantId`: the plant that is being dragged, whose own cell counts as free.
@@ -237,6 +239,9 @@ export class GestureMachine {
       // Players pinch with the hand that holds the seed and carry it down to the bed.
       if (picked === null && state === 'IDLE') {
         picked = pickTarget(frame.palmPos, context.candidates, kept, 'seed'); // a plant by the palm does not block it
+      }
+      if (picked === null && context.eye !== undefined && (state === 'IDLE' || state === 'PRESSED')) {
+        picked = pickPastHand(context.eye, frame.pinchPos, context.candidates, kept);
       }
       this.setHover(picked, null);
       return;

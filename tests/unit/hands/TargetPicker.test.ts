@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { HIT_RADIUS_M, HOVER_DEAD_BAND_M, TARGET_VISIBLE_DIAMETER_M } from '../../../src/hands/config.js';
-import { pickTarget, stickyCell, toBedLocal } from '../../../src/hands/TargetPicker.js';
+import { pickPastHand, pickTarget, stickyCell, toBedLocal } from '../../../src/hands/TargetPicker.js';
 
 import type { Cell } from '../../../src/garden/index.js';
 import type { PickCandidate } from '../../../src/hands/TargetPicker.js';
@@ -133,5 +133,33 @@ describe('toBedLocal', () => {
     expect(toBedLocal(turned, { x: 2.1, y: 0.74, z: -0.75 }, out)).toBe(out);
     expect(out.x).toBeCloseTo(0.3, 9);
     expect(out.y).toBeCloseTo(0.1, 9);
+  });
+});
+
+describe('pickPastHand (D-066): the panel control the fingers look on, from the eyes', () => {
+  const eye = { x: 0, y: 1.2, z: 0 };
+  const hand = { x: 0, y: 1.2, z: -0.25 }; // 25 cm from the eyes
+  const control = (id: string, x: number, z = -0.55): PickCandidate => ({
+    target: { kind: 'panel', id },
+    radius: 0.04,
+    pos: { x, y: 1.2, z },
+  });
+
+  it('takes the control on the line through the hand, 30 cm past it, and the nearest of two', () => {
+    expect(pickPastHand(eye, hand, [control('a', 0.03), control('b', 0.01)])?.id).toBe('b');
+  });
+
+  it('misses a control off the line, one nearer than the hand, and anything but the panel', () => {
+    expect(pickPastHand(eye, hand, [control('a', 0.05)])).toBeNull();
+    expect(pickPastHand(eye, hand, [control('a', 0, -0.2)])).toBeNull();
+    const plant: PickCandidate = { target: { kind: 'plant', id: 'p' }, radius: 0.04, pos: { x: 0, y: 1.2, z: -0.55 } };
+    expect(pickPastHand(eye, hand, [plant])).toBeNull();
+    expect(pickPastHand(eye, eye, [control('a', 0)])).toBeNull(); // no line: the hand at the eyes
+  });
+
+  it('keeps the kept control a dead band further, so the highlight does not flicker at its edge', () => {
+    const edge = control('a', 0.042);
+    expect(pickPastHand(eye, hand, [edge])).toBeNull();
+    expect(pickPastHand(eye, hand, [edge], { kind: 'panel', id: 'a' })?.id).toBe('a');
   });
 });

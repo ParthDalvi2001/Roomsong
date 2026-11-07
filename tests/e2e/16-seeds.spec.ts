@@ -384,7 +384,9 @@ test('TC-E2E-03: palm up, a seed, a pinch, a carry, a release over a cell: a pla
   expect(await probe.evaluate((p) => p.seeds())).not.toContain(a.id);
   await expect.poll(() => probe.evaluate((p) => p.plantTargets().map((t) => t.id))).toEqual([a.id]);
   const target = (await probe.evaluate((p) => p.plantTargets()))[0]!;
-  expect(distance(target.at, await probe.evaluate((p, c) => p.cellAt(c), cellA!))).toBeLessThan(1e-4);
+  const footA = await probe.evaluate((p, c) => p.cellAt(c), cellA!);
+  // D-063: at the head a player sees, a new plant's stem above its cell (stemFor(NEW_PLANT_HEIGHT))
+  expect(distance(target.at, { ...footA, y: footA.y + 0.0905 })).toBeLessThan(1e-4);
   await page.screenshot({ path: test.info().outputPath('first-plant.png') });
 
   // Its first note: when the tide next reaches its step in a bar style B does not rest it (P-009, FR-MUS-13: one

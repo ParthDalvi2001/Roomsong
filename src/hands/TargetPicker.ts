@@ -54,6 +54,46 @@ export function pickTarget(
 }
 
 /**
+ * D-066, first device run: the settings panel is drawn over the real hand, which leaves no depth to reach by, so
+ * fingers that look on a control can be 30 cm short of it. The nearest panel target past the hand, within its own hit
+ * radius of the line from the eyes through `at`, with the same memory as `pickTarget`. Creates nothing.
+ */
+export function pickPastHand(
+  eye: Vec3,
+  at: Vec3,
+  candidates: readonly PickCandidate[],
+  kept: TargetRef | null = null,
+): TargetRef | null {
+  const dx = at.x - eye.x;
+  const dy = at.y - eye.y;
+  const dz = at.z - eye.z;
+  const squared = dx * dx + dy * dy + dz * dz;
+  if (squared === 0) return null;
+  let best: TargetRef | null = null;
+  let bestM = Infinity;
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i]!;
+    const { target } = candidate;
+    if (target.kind !== 'panel') continue;
+    const vx = candidate.pos.x - eye.x;
+    const vy = candidate.pos.y - eye.y;
+    const vz = candidate.pos.z - eye.z;
+    const along = (vx * dx + vy * dy + vz * dz) / squared;
+    if (along <= 1) continue; // between the eyes and the hand: not what the fingers are on
+    const ox = vx - along * dx;
+    const oy = vy - along * dy;
+    const oz = vz - along * dz;
+    let offM = Math.sqrt(ox * ox + oy * oy + oz * oz);
+    if (kept !== null && target.kind === kept.kind && target.id === kept.id) offM -= HOVER_DEAD_BAND_M;
+    if (offM <= candidate.radius && offM < bestM) {
+      best = target;
+      bestM = offM;
+    }
+  }
+  return best;
+}
+
+/**
  * A world point on the bed's horizontal plane, in metres from the bed centre (API_SPEC §1.0: x = bed-local x,
  * y = bed-local z; the height is dropped). `bedPose` is the BedAnchor entity's `matrixWorld.elements` (LLD §3).
  */

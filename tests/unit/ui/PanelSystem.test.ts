@@ -507,14 +507,16 @@ describe('PanelSystem: what it takes for a press (API_SPEC §1.4)', () => {
   });
 
   it('ignores a release that is not a press', () => {
-    const { watch, frame, pinch, release, system } = rig();
+    const { watch, frame, press, pinch, release, system } = rig();
     watch();
     frame();
+    press(ORB_ID);
+    frame();
     for (const gesture of ['none', 'carry', 'drag', 'pull']) {
-      pinch('panel', ORB_ID);
-      release(gesture, 'panel', ORB_ID);
+      pinch('panel', 'close');
+      release(gesture, 'panel', 'close');
       frame();
-      expect(system.panel.open, gesture).toBe(false);
+      expect(system.panel.open, gesture).toBe(true);
     }
   });
 

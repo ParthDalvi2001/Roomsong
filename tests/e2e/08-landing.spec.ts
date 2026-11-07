@@ -112,15 +112,22 @@ test('landing page: name, Enter, device support, toggles and Help, all by keyboa
     'Saved position: checked when you enter. Without it the garden is placed again on each visit.',
   ]);
   // The other words UX §9.7 changed: the heading of the toggles, the last two Help steps, the privacy line.
-  await expect(landing(page).getByRole('group', { name: 'Accessibility' })).toBeVisible();
+  // D-065: closed until asked for: a tap meant for Enter cannot switch one on.
+  const accessibility = landing(page).locator('summary', { hasText: 'Accessibility' });
+  await expect(accessibility).toBeVisible();
+  await expect(landing(page).getByLabel('One hand')).toBeHidden();
   await expect(
     landing(page).getByText(
       'Your garden is saved in this browser, on this device only. What the headset shares about your room and your hands stays on the device: nothing is sent anywhere.',
     ),
   ).toBeVisible();
 
-  // Keyboard: Enter, then the four toggles, then Help, in reading order, each with a visible focus ring.
+  // Keyboard: Enter, the section, then its four toggles, in reading order, each with a visible focus ring.
   await enterButton(page).focus();
+  await page.keyboard.press('Tab');
+  await expect(accessibility).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(landing(page).getByRole('group', { name: 'Accessibility' })).toBeVisible();
   for (const [label] of TOGGLES) {
     await page.keyboard.press('Tab');
     await expect(landing(page).getByLabel(label)).toBeFocused();
@@ -156,6 +163,7 @@ test('landing page: each access toggle changes core settings, and follows them',
     reducedMotion: false,
   });
 
+  await landing(page).locator('summary', { hasText: 'Accessibility' }).click();
   for (const [label, key] of TOGGLES) {
     await landing(page).getByLabel(label).check();
     expect(await readSettings(page), label).toMatchObject({ [key]: true });

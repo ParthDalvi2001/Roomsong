@@ -114,6 +114,21 @@ beforeEach(() => {
 });
 
 describe('settings panel: opening, closing and the tabs (UX §3.6)', () => {
+  it('D-066: the orb acts at the pinch, not the release; D-064: a control is pressed wherever its pinch ends', () => {
+    const panel = new Panel(actions);
+    panel.down('right', ORB_ID);
+    expect(panel.open).toBe(true);
+    panel.up('right', ORB_ID);
+    expect(panel.open).toBe(true); // once
+    panel.frame(0, '', false);
+    panel.down('right', 'close');
+    expect(panel.heldBy('right')).toBe('close');
+    expect(panel.heldBy('left')).toBe('');
+    panel.up('right', panel.heldBy('right'));
+    expect(panel.open).toBe(false);
+    expect(panel.heldBy('right')).toBe('');
+  });
+
   it('starts closed, with nothing to pinch; the orb opens it and the orb or Close shuts it', () => {
     const panel = new Panel(actions);
     expect(panel.open).toBe(false);
