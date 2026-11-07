@@ -151,7 +151,7 @@ Grace 200 ms (tunable 150–250), glide 150 ms: `hands/config.ts`. Reduced motio
 │          ⦿ Beat ring   Main hand  (L) (R)           │
 │ Garden:  Day 4, Seeds left 2, Key D major (room)    │
 │          Height [−] 0 cm [+]    ○ Time-lapse        │
-│          [start]  Place the garden again            │
+│          [start]  Place the garden again    [Exit]  │
 │          [hold]   New garden (erases this one)      │
 └─────────────────────────────────────────────────────┘
 ```

@@ -105,8 +105,9 @@ IDs are stable: cut stories stay in place marked *Cut (D-011)*. Device behaviour
 - Given 24 plants, Listen mode, halo (and vines if present), then the perf HUD shows ≥72 fps for 10 minutes on Quest 3, never below 60.
 - Until a headset exists: given the same scene in the emulator, then draw calls, triangles and JS ms per frame stay within the HLD §7 budgets (a proxy, not a pass).
 
-**US-20 Pause and resume** (M) — FR-SYS-05
+**US-20 Pause and resume** (M) — FR-SYS-05, FR-SYS-08
 - When I press the Quest button and come back, then audio fades out/in and the tide continues from where it was.
+- When I press Exit on the settings panel's Garden tab, then the session ends at once, with no hold, and the start page shows; when I press Enter, my garden is back as I left it (D-067).
 
 ## Epic E7 — Submission
 

@@ -36,6 +36,7 @@ Hosting: static files over HTTPS: GitHub Pages + a mirror of the same build (D-0
 | FR-SYS-05 | Pause/resume: on XR session `visibilitychange` to hidden, audio shall fade out within 300 ms and state shall be saved; on resume, audio fades in and the tide continues from its saved phase. | M | T, D |
 | FR-SYS-06 | Cold start to first rendered frame in XR ≤ 5 s on Quest 3 over Wi-Fi; total initial download ≤ 4 MB gzipped. | M | T |
 | FR-SYS-07 | **Garden window.** When `immersive-ar` is unsupported (or `?flags=window` in dev) the app shall run the same garden in a non-XR window: a fixed camera over a virtual table, pointer/touch as the pinch-equivalent through the `InputSource` abstraction (API_SPEC §1.4, §1.7); the same `garden/`, `audio/`, `persistence/` modules. Never the judged path; the dev bench and demo. Limits in v1 (LLD §11): a pointer cannot pull (no height shaping), the settings panel is not reachable, and the signature is Wanderer. | S (S6) | T (TC-E2E-14) |
+| FR-SYS-08 | **Exit.** The settings panel's Garden tab shall have an Exit control that ends the immersive session on one press (pinch, eye-line press or gaze dwell; no hold, D-067). The garden is saved at the session's end, audio fades out and suspends, the 2D page returns, and Enter brings the same garden back (FR-PER-01, FR-SYS-05). | M | T, D |
 
 ### 2.2 Hands & interaction
 | ID | Requirement | Pri | Verify |
@@ -156,6 +157,7 @@ Rows added or re-rated by plan v2.1 (PLAN_AMENDMENT §6.1); the test ids are def
 | SRS ID | PRD §6 | Story / use case | Task | Verification |
 |---|---|---|---|---|
 | FR-SYS-07 | S6 | US-24 | T-114 | TC-E2E-14 |
+| FR-SYS-08 | M1, M5 | US-20 | D-067 | e2e `22-save-restore` (D-067 Exit); device |
 | FR-HND-15 | M3 | UC-4, US-07, US-08 | T-116, T-146 | TC-HND-07, TC-E2E-16 |
 | FR-HND-16 | M3 | US-03, US-07 | T-116 | TC-HND-08 |
 | FR-UI-11 | M7 | US-17, US-18 | T-125 | TC-E2E-15 |
