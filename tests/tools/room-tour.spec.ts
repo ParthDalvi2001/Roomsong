@@ -139,16 +139,22 @@ ROOMS.forEach((name, i) => {
     info.annotations.push({ type: 'startMs', description: String(startMs) });
     info.annotations.push({ type: 'durationMs', description: String(RECORD_MS) });
 
-    // Further back and higher, still looking at the bed: inside the floor's own edge where the fixture has one.
+    // Further back and higher, still looking at the bed: inside the floor's own edge where the fixture has one. The
+    // room's planes are drawn by tests/tools/room-planes.ts for this still only: IWER draws none of them.
+    await page.evaluate(async (room) => {
+      const url = '/tests/tools/room-planes.ts';
+      const planes = (await import(/* @vite-ignore */ url)) as typeof import('./room-planes');
+      planes.drawRoom(room);
+    }, room);
     const floor = room.planes.find((plane) => plane.label === 'floor');
-    let back = 1.4;
+    let back = 1.2;
     if (floor !== undefined) {
       const towards = Math.sign(bed!.toward.z) || 1; // the fixtures' rooms are square to z
       const edge = floor.center[2] + (towards * floor.size[1]) / 2;
       back = Math.min(back, Math.abs(edge - bed!.z) - 0.15);
     }
     const ceiling = room.planes.find((plane) => plane.label === 'ceiling')?.center[1] ?? 2.5;
-    await look(page, at(back, Math.min(1.0, ceiling - 0.25 - bed!.y)), centre);
+    await look(page, at(back, Math.min(0.8, ceiling - 0.25 - bed!.y)), centre);
     await xrFrames(page, 3);
     await page.screenshot({ path: `${OUT}${n}-room.png` });
 
