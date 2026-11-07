@@ -119,7 +119,7 @@ async function takePlant(rig: Rig, hand: Hand, cell: Cell): Promise<{ id: string
     .find((p) => p.cell.ring === cell.ring && p.cell.step === cell.step);
   rig.check(plant !== undefined, `No plant at ring ${cell.ring} step ${cell.step}`);
   const { id } = plant!;
-  const head = rig.target('plant', id)!;
+  const head = rig.plantHead(id)!;
   await rig.go(hand, head, 900, { normal: DOWN, fingers: rig.ahead() });
   await rig.wait(SETTLE_MS);
   const from = performance.now();
@@ -185,7 +185,7 @@ const SCENES: Record<number, Scene> = {
     rig.dropMode('right', 'underGrace');
     // The close shift at the recording's median, its 75th and its 90th percentile.
     for (const percentile of [0.5, 0.75, 0.9]) {
-      const head = rig.target('plant', plant.id)!; // a let-go can grow it: the opening fingers move too
+      const head = rig.plantHead(plant.id)!; // a let-go can grow it: the opening fingers move too
       rig.beat(`Fingers short of the plant's head, close shift at p${percentile * 100}`);
       await rig.go('right', rig.sight(head, PLANT_SHORT_M), 800, {
         normal: DOWN,
@@ -240,7 +240,7 @@ const SCENES: Record<number, Scene> = {
     rig.check(release.gesture === 'pull' && release.dy !== null, `The lift ended as ${release.gesture}`);
     await rig.wait(100);
     const after = rig.plants().find((p) => p.id === id)!.height;
-    const rise = rig.target('plant', id)!.y - head.y;
+    const rise = rig.plantHead(id)!.y - head.y;
     facts.height = `${round(height, 2)} to ${round(after, 2)}`;
     facts.headRoseM = round(rise);
     facts.maxViewDeg = Math.round(rig.maxViewDeg);

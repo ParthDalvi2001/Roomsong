@@ -112,8 +112,10 @@ const caption = (page: Page, title: string) =>
   }, title);
 
 /**
- * The start page (BUG-028), played from Node, since only Playwright's mouse makes a real tap. A tap is drawn in a ring
- * round the Enter button, or at the side of it: a laser pointer's stray click. Nothing on it may switch anything on.
+ * The start page (BUG-028), played from Node, since only Playwright's mouse makes a real tap. On the headset a tap meant
+ * for Enter switched "look to select" on. A laser pointer's stray tap can land anywhere on the page's column, so taps
+ * fall on a 48 by 40 px grid from under Enter to the foot of the page, Enter and the sections' own headings left out (a
+ * tap on "Accessibility" opens it, as it should). Nothing may switch on, and the section stays closed.
  */
 async function strayTaps(page: Page): Promise<Facts> {
   const enter = page.getByRole('main').getByRole('button', { name: 'Enter the garden' });
@@ -121,37 +123,38 @@ async function strayTaps(page: Page): Promise<Facts> {
   const section = page.getByRole('main').locator('details').first();
   await expect(section).toHaveJSProperty('open', false);
   const box = (await enter.boundingBox())!;
-  // Every 4th tap goes further: the Enter button and the section's switches are this far apart on the headset's page.
-  const taps = Array.from({ length: 24 }, (_, i) => {
-    const angle = (i / 24) * 2 * Math.PI;
-    const reach = i % 4 === 3 ? 260 : 110;
-    return {
-      x: box.x + box.width / 2 + Math.cos(angle) * (box.width / 2 + reach),
-      y: box.y + box.height / 2 + Math.sin(angle) * (box.height / 2 + reach),
-    };
-  });
-  let landedOnSwitch = 0;
-  for (const tap of taps) {
-    landedOnSwitch += await page.evaluate(({ x, y }) => {
-      const under = document.elementFromPoint(x, y);
-      return under?.closest('label, input') !== null && under !== null ? 1 : 0;
-    }, tap);
-    await page.mouse.click(tap.x, tap.y);
-  }
-  const settings = await page.evaluate(async () => {
+  const bottom = page.viewportSize()!.height;
+  // Every change is heard, not only the last state: two taps on one switch put it back.
+  const changes = await page.evaluateHandle(async () => {
     const url = '/src/core/index.ts';
     const core = (await import(/* @vite-ignore */ url)) as typeof import('../../../src/core/index');
-    const { oneHand, gazeDwell, highContrast, reducedMotion } = core.settings.get();
-    return { oneHand, gazeDwell, highContrast, reducedMotion };
+    const heard: string[] = [];
+    core.bus.on('settings:changed', ({ settings }) => {
+      const on = (['oneHand', 'gazeDwell', 'highContrast', 'reducedMotion'] as const).filter((key) => settings[key]);
+      heard.push(on.join('+') || 'all off');
+    });
+    return heard;
   });
-  expect(settings, 'stray taps round Enter switched something on').toEqual({
-    oneHand: false,
-    gazeDwell: false,
-    highContrast: false,
-    reducedMotion: false,
-  });
-  await expect(section, 'stray taps round Enter opened the Accessibility section').toHaveJSProperty('open', false);
-  return { taps: taps.length, landedOnSwitch };
+  let taps = 0;
+  let onSwitch = 0;
+  for (let y = box.y + box.height + 12; y < bottom; y += 40) {
+    for (let x = box.x - 40; x <= box.x + box.width + 40; x += 48) {
+      const under = await page.evaluate(
+        ({ x, y }) => document.elementFromPoint(x, y)?.closest('button, summary, label')?.tagName ?? '',
+        { x, y },
+      );
+      if (under === 'BUTTON' || under === 'SUMMARY') continue;
+      if (under === 'LABEL') onSwitch++;
+      await page.mouse.click(x, y);
+      taps++;
+    }
+  }
+  expect(
+    await changes.jsonValue(),
+    `${taps} stray taps under Enter, ${onSwitch} of them on a switch: the settings changed to`,
+  ).toEqual([]);
+  await expect(section, 'stray taps under Enter opened the Accessibility section').toHaveJSProperty('open', false);
+  return { taps, onSwitch };
 }
 
 /** Opens the app, plays scene `s` and throws if a player would be stuck, or if the page reports an error. */

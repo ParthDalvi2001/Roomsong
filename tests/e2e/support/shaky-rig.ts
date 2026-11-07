@@ -8,6 +8,7 @@ import { bus } from '../../../src/core/index.js';
 import { cellCentre } from '../../../src/garden/index.js';
 import { TRACKING_GRACE_MS as GRACE_MS } from '../../../src/hands/config.js';
 import { HandSystem } from '../../../src/hands/HandSystem.js';
+import { stemFor } from '../../../src/render/PlantRenderer.js';
 import { RoomSystem } from '../../../src/room/index.js';
 
 
@@ -495,6 +496,12 @@ export class Rig {
 
   target(kind: string, id?: string): Vector3 | null {
     return this.targets(kind).find((t) => id === undefined || t.id === id)?.at ?? null;
+  }
+
+  /** Where a plant's head is drawn, which is what a player pinches: on its stem (render's stemFor) over its cell. */
+  plantHead(id: string): Vector3 | null {
+    const plant = this.plants().find((p) => p.id === id);
+    return plant === undefined ? null : this.cell(plant.cell, stemFor(plant.height));
   }
 
   plants(): { id: string; cell: Cell; height: number }[] {
