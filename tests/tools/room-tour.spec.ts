@@ -1,15 +1,23 @@
 // `npm run test:room-tour` (tests/tools/test-videos.ts --rooms): the garden in each room fixture of tests/fixtures/rooms,
-// in name order, for a look at how the rooms differ. Twenty plants (`autoplant`), no tutorial; IWER enters, a seated head
-// 40 cm over the bed and 42 cm back looks down at it (as the shaky-hands scenes sit), and the tide is recorded for 10 s
-// from `room:tuned`, with a still 4 s in. Then the head steps back and up for a still of the room round the garden.
-// Each room's numbers go to .tmp/room-tour/<n>.json for the README. Emulator footage: software rendering, the fixture's
-// planes for walls, no passthrough.
+// in name order, for a look at how the rooms differ. Twenty plants (`autoplant`), no tutorial; IWER enters and the room's
+// planes are drawn (room-planes.ts: IWER draws none) with a label of what the room is and what the game made of it. A
+// seated head 40 cm over the bed and 42 cm back looks down at it (as the shaky-hands scenes sit), and the tide is
+// recorded for 10 s from `room:tuned`, with a still 4 s in. Then an overview from the same distance for every room.
+// Each room's numbers go to .tmp/room-tour/<n>.json for the README. Emulator footage: software rendering, no passthrough.
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { test, type Page } from '@playwright/test';
 
-import { enterXR, openApp, playHandPath, readHandPath, readRoom, xrFrames } from '../e2e/support/iwer';
+import {
+  enterXR,
+  openApp,
+  playHandPath,
+  readHandPath,
+  readRoom,
+  xrFrames,
+  type Room,
+} from '../e2e/support/iwer';
 
 type Core = typeof import('../../src/core/index');
 type RoomModule = typeof import('../../src/room/index');
@@ -38,6 +46,54 @@ const STANDS: Record<string, string> = {
 };
 const RECORD_MS = 10_000;
 const STILL_AT_MS = 4_000;
+/** The overview's distance from the room's middle, the same for every room, and its look down. */
+const OVERVIEW_M = 7.5;
+const DOWN_RAD = (35 * Math.PI) / 180;
+const KEYS: Record<number, string> = { [-3]: 'A', 0: 'C', 2: 'D', 4: 'E' };
+
+/** The room and what the game made of it, in four lines: its size, its table, the bed, the signature. */
+function describe(room: Room, h: Heard): string[] {
+  const floor = room.planes.find((p) => p.label === 'floor');
+  const ceiling = room.planes.find((p) => p.label === 'ceiling');
+  const walls = room.planes.filter((p) => p.label === 'wall').length;
+  const size =
+    floor === undefined
+      ? 'no floor, no walls: nothing sensed'
+      : `${floor.size[0]} x ${floor.size[1]} m floor, ` +
+        (ceiling === undefined ? 'no ceiling' : `ceiling ${ceiling.center[1]} m`) +
+        `, ${walls} walls`;
+  const table = room.planes.find((p) => p.label === 'table' || p.label === 'other');
+  const s = h.signature;
+  return [
+    size,
+    table === undefined
+      ? 'no table'
+      : `${table.label} ${table.center[1]} m high, ${table.size[0]} x ${table.size[1]} m`,
+    `bed: level ${h.placedLevel ?? '?'}, ${h.bed?.y.toFixed(2) ?? '?'} m over the floor`,
+    s === null
+      ? 'no signature'
+      : `${KEYS[s.keyRoot] ?? s.keyRoot} ${s.mode}, echo ${s.reverbRt60} s, palette ${h.palette!.shiftDeg} deg / sat ${h.palette!.saturation.toFixed(2)}`,
+  ];
+}
+
+/** Writes the lines over the page, so they are in the stills and the video (as the test videos do). */
+function label(lines: string[]): void {
+  const box = document.createElement('div');
+  box.style.cssText =
+    'position:fixed;left:14px;top:10px;z-index:99999;font:500 19px system-ui,sans-serif;color:#fff;' +
+    'background:rgba(0,0,0,.55);padding:8px 12px;border-radius:8px;line-height:1.35;pointer-events:none';
+  lines.forEach((line, i) => {
+    const row = document.createElement('div');
+    row.textContent = line;
+    if (i === 0) row.style.cssText = 'font-weight:700;font-size:22px';
+    box.append(row);
+  });
+  const tag = document.createElement('div');
+  tag.textContent = 'EMULATOR: room drawn from the fixture the game reads';
+  tag.style.cssText = 'font-size:14px;opacity:.8';
+  box.append(tag);
+  document.body.append(box);
+}
 
 /** What the page heard of the room, and where the bed is. */
 interface Heard {
@@ -121,16 +177,24 @@ ROOMS.forEach((name, i) => {
       await playHandPath(page, readHandPath('pinch'));
     }
     await page.waitForFunction((h) => h.tuned, heard, { timeout: 20_000 });
-    const { bed } = await heard.evaluate((h) => h.read());
-    const at = (back: number, up: number) => ({
-      x: bed!.x + bed!.toward.x * back,
-      y: bed!.y + up,
-      z: bed!.z + bed!.toward.z * back,
-    });
-    const centre = { x: bed!.x, y: bed!.y, z: bed!.z };
-    await look(page, at(0.42, 0.4), centre);
-    await xrFrames(page, 3);
+    const facts = await heard.evaluate((h) => h.read());
+    const bed = facts.bed!;
+    // The room the game reads, drawn (IWER draws none of it), and what it is, written over the picture.
+    await page.evaluate(async (room) => {
+      const url = '/tests/tools/room-planes.ts';
+      const planes = (await import(/* @vite-ignore */ url)) as typeof import('./room-planes');
+      planes.drawRoom(room);
+    }, room);
+    await page.evaluate(label, [`${n}. ${name}`, ...describe(room, facts)]);
 
+    // The garden: a seated head 40 cm over the bed and 42 cm back, looking down at it; 10 s of the tide.
+    const centre = { x: bed.x, y: bed.y, z: bed.z };
+    await look(
+      page,
+      { x: bed.x + bed.toward.x * 0.42, y: bed.y + 0.4, z: bed.z + bed.toward.z * 0.42 },
+      centre,
+    );
+    await xrFrames(page, 3);
     const startMs = Date.now() - opened;
     await page.waitForTimeout(STILL_AT_MS); // the recording itself: the tide sweeps while it runs
     mkdirSync(OUT, { recursive: true });
@@ -139,30 +203,21 @@ ROOMS.forEach((name, i) => {
     info.annotations.push({ type: 'startMs', description: String(startMs) });
     info.annotations.push({ type: 'durationMs', description: String(RECORD_MS) });
 
-    // Further back and higher, still looking at the bed: inside the floor's own edge where the fixture has one. The
-    // room's planes are drawn by tests/tools/room-planes.ts for this still only: IWER draws none of them.
-    await page.evaluate(async (room) => {
-      const url = '/tests/tools/room-planes.ts';
-      const planes = (await import(/* @vite-ignore */ url)) as typeof import('./room-planes');
-      planes.drawRoom(room);
-    }, room);
+    // The overview: the same spot for every room, OVERVIEW_M from the room's middle towards the back right corner,
+    // looking down 35 degrees, so a small room is small in the picture and a large one large. From outside, the near
+    // walls drop away (room-planes.ts draws each wall from its room's side only).
     const floor = room.planes.find((plane) => plane.label === 'floor');
-    let back = 1.2;
-    if (floor !== undefined) {
-      const towards = Math.sign(bed!.toward.z) || 1; // the fixtures' rooms are square to z
-      const edge = floor.center[2] + (towards * floor.size[1]) / 2;
-      back = Math.min(back, Math.abs(edge - bed!.z) - 0.15);
-    }
-    const ceiling = room.planes.find((plane) => plane.label === 'ceiling')?.center[1] ?? 2.5;
-    await look(page, at(back, Math.min(0.8, ceiling - 0.25 - bed!.y)), centre);
+    const middle = { x: floor?.center[0] ?? bed.x, y: 0.5, z: floor?.center[2] ?? bed.z };
+    const flat = OVERVIEW_M * Math.cos(DOWN_RAD) * Math.SQRT1_2;
+    const from = { x: middle.x + flat, y: middle.y + OVERVIEW_M * Math.sin(DOWN_RAD), z: middle.z + flat };
+    await look(page, from, middle);
     await xrFrames(page, 3);
     await page.screenshot({ path: `${OUT}${n}-room.png` });
 
     mkdirSync(FACTS, { recursive: true });
-    const facts = await heard.evaluate((h) => h.read());
     writeFileSync(
       `${FACTS}${n}.json`,
-      JSON.stringify({ n, room: name, stands: STANDS[name] ?? '', ...facts }),
+      JSON.stringify({ n, room: name, stands: STANDS[name] ?? '', size: describe(room, facts)[0], ...facts }),
     );
   });
 });
