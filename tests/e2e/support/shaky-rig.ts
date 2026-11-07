@@ -11,7 +11,6 @@ import { HandSystem } from '../../../src/hands/HandSystem.js';
 import { stemFor } from '../../../src/render/PlantRenderer.js';
 import { RoomSystem } from '../../../src/room/index.js';
 
-
 import { CLOSE_MS, closeShiftM, Drops, palmReading, shake, UNDER_GRACE_GAP_MS } from './shaky-noise.js';
 
 import type { Hand } from '../../../src/core/index.js';
@@ -120,14 +119,19 @@ function pinchOf(hand: Hand, curl: number, out: Vector3): Vector3 {
  * of 3.2 cm; the relaxed hand (curl 0) has its tips 9.4 cm apart.
  */
 export const READY_CURL = 0.6;
-const NATURAL_SHIFT_M = pinchOf('left', 1, new Vector3()).distanceTo(pinchOf('left', READY_CURL, new Vector3()));
+const NATURAL_SHIFT_M = pinchOf('left', 1, new Vector3()).distanceTo(
+  pinchOf('left', READY_CURL, new Vector3()),
+);
 
 /** The palm normal HandSampler reads off the relaxed hand at no turn: IWER's hand is not quite flat to its origin. */
 function restNormal(hand: Hand): Vector3 {
   const wrist = jointOf(hand, WRIST, 0, new Vector3());
   const a = jointOf(hand, INDEX_ROOT, 0, new Vector3()).sub(wrist);
   const b = jointOf(hand, PINKY_ROOT, 0, new Vector3()).sub(wrist);
-  return a.cross(b).normalize().multiplyScalar(hand === 'left' ? -1 : 1);
+  return a
+    .cross(b)
+    .normalize()
+    .multiplyScalar(hand === 'left' ? -1 : 1);
 }
 
 /** The turn that gives a hand this palm normal, its fingers towards `fingers`. */
@@ -340,7 +344,10 @@ export class Rig {
     const normal = p.normal.clone();
     if (p.band !== null) {
       // The reading is the cosine of the tilt off the normal asked for, about the fingers' line.
-      normal.applyAxisAngle(p.fingers, (hand === 'left' ? -1 : 1) * Math.acos(palmReading(p.seed, p.band, now)));
+      normal.applyAxisAngle(
+        p.fingers,
+        (hand === 'left' ? -1 : 1) * Math.acos(palmReading(p.seed, p.band, now)),
+      );
     }
     const turn = turnFor(hand, normal, p.fingers, new Quaternion());
     const off = new Vector3();
@@ -449,7 +456,8 @@ export class Rig {
     const where = (['left', 'right'] as const).map((hand) => {
       const p = this.puppets[hand];
       const read = this.read(hand);
-      const v = (a: { x: number; y: number; z: number }) => `${a.x.toFixed(3)},${a.y.toFixed(3)},${a.z.toFixed(3)}`;
+      const v = (a: { x: number; y: number; z: number }) =>
+        `${a.x.toFixed(3)},${a.y.toFixed(3)},${a.z.toFixed(3)}`;
       return `${hand} asked ${v(p.at)} curl ${p.curl.toFixed(2)} read ${v(read.pinchPos)} palm ${v(read.palmNormal)}`;
     });
     return `Heard ${JSON.stringify(counts)}; last pinches: ${last.join(' | ') || 'none'}; ${where.join('; ')}`;
@@ -540,7 +548,10 @@ export class Rig {
   sight(target: Vector3, short: number, off = 0): Vector3 {
     const eye = this.eye();
     const along = target.clone().sub(eye).normalize();
-    const side = along.clone().cross(new Vector3(0, 1, 0)).normalize();
+    const side = along
+      .clone()
+      .cross(new Vector3(0, 1, 0))
+      .normalize();
     return target.clone().addScaledVector(along, -short).addScaledVector(side, off);
   }
 
@@ -574,7 +585,10 @@ export class Rig {
       p.drops = null; // a hand out of sight comes back at its next change
       return;
     }
-    p.drops = new Drops(p.seed + (mode === 'burst' ? 10 : 20), mode === 'burst' ? Infinity : UNDER_GRACE_GAP_MS);
+    p.drops = new Drops(
+      p.seed + (mode === 'burst' ? 10 : 20),
+      mode === 'burst' ? Infinity : UNDER_GRACE_GAP_MS,
+    );
     p.nextMs = performance.now() + p.drops.spellMs();
     p.settled = true;
   }

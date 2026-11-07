@@ -114,9 +114,7 @@ const pinchedOn = (rig: Rig, hand: Hand, kind: string, fromMs: number, id?: stri
 
 /** Moves a hand on the head of the plant in that cell and takes it. */
 async function takePlant(rig: Rig, hand: Hand, cell: Cell): Promise<{ id: string; head: Vector3 }> {
-  const plant = rig
-    .plants()
-    .find((p) => p.cell.ring === cell.ring && p.cell.step === cell.step);
+  const plant = rig.plants().find((p) => p.cell.ring === cell.ring && p.cell.step === cell.step);
   rig.check(plant !== undefined, `No plant at ring ${cell.ring} step ${cell.step}`);
   const { id } = plant!;
   const head = rig.plantHead(id)!;
@@ -124,7 +122,11 @@ async function takePlant(rig: Rig, hand: Hand, cell: Cell): Promise<{ id: string
   await rig.wait(SETTLE_MS);
   const from = performance.now();
   await rig.close(hand);
-  await rig.until(() => pinchedOn(rig, hand, 'plant', from, id), HEARD_MS, 'The pinch on the plant took nothing');
+  await rig.until(
+    () => pinchedOn(rig, hand, 'plant', from, id),
+    HEARD_MS,
+    'The pinch on the plant took nothing',
+  );
   return { id, head };
 }
 
@@ -133,7 +135,10 @@ const SCENES: Record<number, Scene> = {
     await seated(rig);
     await askForSeed(rig, facts, 'left');
     await seedRestsOn(rig, 'left');
-    rig.check(Number(facts.dropsBeforeSeed) >= 1, 'The palm-up hold saw no tracking drop: this is not the test');
+    rig.check(
+      Number(facts.dropsBeforeSeed) >= 1,
+      'The palm-up hold saw no tracking drop: this is not the test',
+    );
   },
 
   async 2(rig, facts) {
@@ -148,7 +153,11 @@ const SCENES: Record<number, Scene> = {
     rig.dropMode('left', 'underGrace');
     const from = performance.now();
     await rig.close('left');
-    await rig.until(() => pinchedOn(rig, 'left', 'seed', from), HEARD_MS, "A pinch by the seed's own hand took nothing");
+    await rig.until(
+      () => pinchedOn(rig, 'left', 'seed', from),
+      HEARD_MS,
+      "A pinch by the seed's own hand took nothing",
+    );
     facts.dropsInCarryBefore = rig.count('hands:lost', (e) => e.hand === 'left');
     await plantAt(rig, 'left', GUIDE_CELL, facts);
     facts.dropsInCarry = rig.count('hands:lost', (e) => e.hand === 'left') - Number(facts.dropsInCarryBefore);
@@ -173,7 +182,11 @@ const SCENES: Record<number, Scene> = {
     await rig.wait(SETTLE_MS);
     const from = performance.now();
     await rig.close('left');
-    await rig.until(() => pinchedOn(rig, 'left', 'seed', from), HEARD_MS, 'The first hand could not pinch the crossed seed');
+    await rig.until(
+      () => pinchedOn(rig, 'left', 'seed', from),
+      HEARD_MS,
+      'The first hand could not pinch the crossed seed',
+    );
     rig.dropMode('right', 'none');
     rig.palm('right', null);
     await plantAt(rig, 'left', GUIDE_CELL, facts);
@@ -206,7 +219,11 @@ const SCENES: Record<number, Scene> = {
       const at = rig.last('gesture:pinchStart', (e) => e.hand === 'right')!.pos!;
       const eye = rig.eye();
       const line = at.clone().sub(eye).normalize();
-      const offLine = head.clone().sub(eye).sub(line.multiplyScalar(head.clone().sub(eye).dot(line))).length();
+      const offLine = head
+        .clone()
+        .sub(eye)
+        .sub(line.multiplyScalar(head.clone().sub(eye).dot(line)))
+        .length();
       facts[`offLineAtPinchP${percentile * 100}M`] = round(offLine);
       rig.check(
         pinchedOn(rig, 'right', 'plant', from, plant.id),
@@ -232,7 +249,11 @@ const SCENES: Record<number, Scene> = {
     await carry(rig, 'right', head.clone().add(new Vector3(0, 0.035, 0)), 900);
     await rig.wait(SETTLE_MS);
     await rig.open('right');
-    await rig.until(() => rig.count('gesture:release', (e) => e.id === id) > 0, HEARD_MS, 'The pull was never released');
+    await rig.until(
+      () => rig.count('gesture:release', (e) => e.id === id) > 0,
+      HEARD_MS,
+      'The pull was never released',
+    );
     rig.watchView = null;
     const release = rig.last('gesture:release', (e) => e.id === id)!;
     facts.gesture = release.gesture!;
@@ -263,7 +284,11 @@ const SCENES: Record<number, Scene> = {
     await carry(rig, 'right', rig.cell(to, head.y - rig.cell(to).y), 900);
     await rig.wait(SETTLE_MS);
     await rig.open('right');
-    await rig.until(() => rig.count('gesture:release', (e) => e.id === id) > 0, HEARD_MS, 'The slide was never released');
+    await rig.until(
+      () => rig.count('gesture:release', (e) => e.id === id) > 0,
+      HEARD_MS,
+      'The slide was never released',
+    );
     const release = rig.last('gesture:release', (e) => e.id === id)!;
     facts.gesture = release.gesture!;
     rig.check(release.gesture === 'drag', `A sideways slide ended as ${release.gesture}`);
@@ -288,7 +313,11 @@ const SCENES: Record<number, Scene> = {
     await carry(rig, 'right', off, 900);
     await rig.wait(SETTLE_MS);
     await rig.open('right');
-    await rig.until(() => rig.count('garden:removed', (e) => e.id === id) > 0, HEARD_MS, 'The plant dragged off the bed was not removed');
+    await rig.until(
+      () => rig.count('garden:removed', (e) => e.id === id) > 0,
+      HEARD_MS,
+      'The plant dragged off the bed was not removed',
+    );
     facts.zone = rig.last('gesture:release', (e) => e.id === id)!.zone!;
     const removedAt = performance.now();
     await rig.until(() => rig.target('undo', id) !== null, HEARD_MS, 'No undo petal came');
@@ -298,10 +327,18 @@ const SCENES: Record<number, Scene> = {
     await rig.wait(SETTLE_MS);
     const pressed = performance.now();
     await rig.close('right');
-    await rig.until(() => pinchedOn(rig, 'right', 'undo', pressed, id), HEARD_MS, 'The pinch on the petal took nothing');
+    await rig.until(
+      () => pinchedOn(rig, 'right', 'undo', pressed, id),
+      HEARD_MS,
+      'The pinch on the petal took nothing',
+    );
     await rig.wait(150);
     await rig.open('right');
-    await rig.until(() => rig.plants().some((p) => p.id === id), HEARD_MS, 'The petal did not bring the plant back');
+    await rig.until(
+      () => rig.plants().some((p) => p.id === id),
+      HEARD_MS,
+      'The petal did not bring the plant back',
+    );
     facts.undoAfterMs = Math.round(performance.now() - removedAt);
     const back = rig.plants().find((p) => p.id === id)!;
     rig.check(
@@ -315,13 +352,21 @@ const SCENES: Record<number, Scene> = {
     await seated(rig);
     // Measured at a real palms-out: the head a little down, 0.49 of the way to the floor.
     const eye = rig.eye();
-    rig.lookAt(eye.clone().addScaledVector(rig.ahead(), 0.4).add(new Vector3(0, -0.22, 0)));
+    rig.lookAt(
+      eye
+        .clone()
+        .addScaledVector(rig.ahead(), 0.4)
+        .add(new Vector3(0, -0.22, 0)),
+    );
     await rig.wait(100);
     const m = rig.head();
     const forward = new Vector3(-m[8]!, -m[9]!, -m[10]!);
     const side = forward.clone().cross(UP).normalize();
     const palmAt = (hand: Hand) =>
-      eye.clone().addScaledVector(forward, 0.33).addScaledVector(side, hand === 'left' ? -0.14 : 0.14);
+      eye
+        .clone()
+        .addScaledVector(forward, 0.33)
+        .addScaledVector(side, hand === 'left' ? -0.14 : 0.14);
     // Drops on the left hand, every gap under the grace: the recording has none in the 4 s before a real palms-out,
     // and two hands dropping out in turn can leave the pose for longer than a real drop.
     const palmsOut = async (): Promise<void> => {
@@ -337,22 +382,37 @@ const SCENES: Record<number, Scene> = {
     rig.beat('Both palms out, shaky');
     const from = performance.now();
     await palmsOut();
-    await rig.until(() => rig.count('listen:enter') > 0, 12_000, 'Palms out never started Listen through the drops');
+    await rig.until(
+      () => rig.count('listen:enter') > 0,
+      12_000,
+      'Palms out never started Listen through the drops',
+    );
     facts.listenAfterMs = Math.round(performance.now() - from);
     facts.dropsBeforeListen = rig.count('hands:lost', () => true, from);
-    rig.check(Number(facts.dropsBeforeListen) >= 1, 'The palms-out hold saw no tracking drop: this is not the test');
+    rig.check(
+      Number(facts.dropsBeforeListen) >= 1,
+      'The palms-out hold saw no tracking drop: this is not the test',
+    );
 
     rig.beat('Wake by a palm to the face');
     rig.dropMode('right', 'underGrace');
     rig.palm('right', null);
     await rig.go('right', palmAt('right'), 400, { normal: forward.clone().negate(), fingers: UP });
-    await rig.until(() => rig.count('gesture:wake') > 0, 8000, 'A palm to the face did not wake through the drops');
+    await rig.until(
+      () => rig.count('gesture:wake') > 0,
+      8000,
+      'A palm to the face did not wake through the drops',
+    );
     await rig.until(() => rig.count('listen:exit') > 0, HEARD_MS, 'Woken, Listen did not end');
 
     rig.beat('Palms out again');
     await rig.wait(300);
     await palmsOut();
-    await rig.until(() => rig.count('listen:enter') > 1, 12_000, 'Palms out did not start Listen a second time');
+    await rig.until(
+      () => rig.count('listen:enter') > 1,
+      12_000,
+      'Palms out did not start Listen a second time',
+    );
     rig.beat('Wake by a pinch');
     rig.dropMode('right', 'underGrace');
     rig.palm('right', null);
@@ -368,14 +428,25 @@ const SCENES: Record<number, Scene> = {
     const panel = window.__roomsong!.world.getSystem(PanelSystem)!.panel;
     rig.beat('The orb rides the left hand');
     rig.dropMode('right', 'underGrace');
-    await rig.until(() => rig.target('panel', 'orb') !== null, HEARD_MS, 'No settings orb showed on the left hand');
+    await rig.until(
+      () => rig.target('panel', 'orb') !== null,
+      HEARD_MS,
+      'No settings orb showed on the left hand',
+    );
     await rig.go('right', rig.target('panel', 'orb'), 900, { normal: DOWN, fingers: rig.ahead() });
     await rig.wait(SETTLE_MS);
     let from = performance.now();
     await rig.close('right');
-    await rig.until(() => pinchedOn(rig, 'right', 'panel', from, 'orb'), HEARD_MS, 'The pinch on the orb took nothing');
+    await rig.until(
+      () => pinchedOn(rig, 'right', 'panel', from, 'orb'),
+      HEARD_MS,
+      'The pinch on the orb took nothing',
+    );
     await rig.wait(120);
-    rig.check(panel.open, 'The fingers closed on the orb and the panel did not open at the pinch (the fingers are still closed)');
+    rig.check(
+      panel.open,
+      'The fingers closed on the orb and the panel did not open at the pinch (the fingers are still closed)',
+    );
     rig.beat('It opened at the pinch; the hand carrying the orb drifts');
     await carry(rig, 'left', rig.fromBed(-0.27, 0.13, 0.2), 300);
     await rig.open('right');
@@ -425,7 +496,11 @@ const SCENES: Record<number, Scene> = {
     let skewS = 0;
     const update = tutorial.update.bind(tutorial);
     tutorial.update = (delta, time) => update(delta, time + skewS);
-    await rig.until(() => tutorial.step === 'palm', 5000, `The tutorial stands at "${tutorial.step}", not "palm"`);
+    await rig.until(
+      () => tutorial.step === 'palm',
+      5000,
+      `The tutorial stands at "${tutorial.step}", not "palm"`,
+    );
     await rig.until(() => hints.shows.icon === PALM_ICON, 5000, 'The palm hint never showed');
     rig.dropMode('left', 'burst');
     rig.beat('Nothing planted: the palm hint');
@@ -441,12 +516,19 @@ const SCENES: Record<number, Scene> = {
     );
     rig.beat('Still the palm hint; a palm up still brings a seed');
     await askForSeed(rig, facts, 'left');
-    await rig.until(() => (tutorial.step as string) === 'plant', HEARD_MS, 'A seed out did not bring the plant step');
+    await rig.until(
+      () => (tutorial.step as string) === 'plant',
+      HEARD_MS,
+      'A seed out did not bring the plant step',
+    );
     rig.beat('The clock jumps 61 s again');
     skewS += 61;
     await rig.wait(800);
     facts.stepAfter122s = tutorial.step;
-    rig.check((tutorial.step as string) === 'plant', `61 s more, with nothing planted, the tutorial stands at "${tutorial.step}"`);
+    rig.check(
+      (tutorial.step as string) === 'plant',
+      `61 s more, with nothing planted, the tutorial stands at "${tutorial.step}"`,
+    );
     rig.beat('Still the plant hint');
   },
 };

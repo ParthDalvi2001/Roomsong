@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = Number(process.env.E2E_PORT ?? 8081);
+const PORT = Number(process.env.E2E_PORT ?? 8097); // not 8081: that is the dev server a headset may be on
 const BASE_URL = `https://localhost:${PORT}`;
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const SIZE = { width: 1280, height: 720 };

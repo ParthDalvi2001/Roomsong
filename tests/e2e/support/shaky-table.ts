@@ -29,28 +29,31 @@ export const SHAKY_SCENARIOS: readonly ShakyScenario[] = [
   {
     n: 2,
     title: 'The hand holding the seed pinches it off its own palm, carries it, plants it',
-    watch: 'One hand does it all: seed on the palm, its own pinch, the carry down, a plant on the glowing ring.',
+    watch:
+      'One hand does it all: seed on the palm, its own pinch, the carry down, a plant on the glowing ring.',
     bug: 'BUG-023',
     flags: '',
   },
   {
     n: 3,
     title: 'The other palm goes up: the seed crosses; the first hand pinches it',
-    watch: 'The seed leaves the left palm for the right one once the left is down; the left hand then takes it.',
+    watch:
+      'The seed leaves the left palm for the right one once the left is down; the left hand then takes it.',
     bug: 'BUG-024',
     flags: '',
   },
   {
     n: 4,
     title: 'Pinch a plant by its head, fingers off in depth',
-    watch: 'The fingers stop 13 cm short of the plant, on the line from the eyes, and three pinches still take it.',
+    watch:
+      'The fingers stop 13 cm short of the plant, on the line from the eyes, and three pinches still take it.',
     bug: 'BUG-025, BUG-030',
     flags: PLANTS,
   },
   {
     n: 5,
     title: "A small pull that commits, the hand staying in the headset's view",
-    watch: 'A 4.5 cm lift; the plant grows with the fingers, its head stays at them.',
+    watch: 'A 3.5 cm lift with one tracking drop; the plant grows with the fingers, its head stays at them.',
     bug: 'BUG-026',
     flags: PLANTS,
   },
@@ -64,28 +67,32 @@ export const SHAKY_SCENARIOS: readonly ShakyScenario[] = [
   {
     n: 7,
     title: 'Drag a plant off the ring, a petal appears, pinch it: undo',
-    watch: 'The plant is dropped past the rim, a petal stands where it was, a pinch on it brings the plant back.',
+    watch:
+      'The plant is dropped past the rim, a petal stands where it was, a pinch on it brings the plant back.',
     bug: 'none: never yet confirmed on a device',
     flags: PLANTS,
   },
   {
     n: 8,
     title: 'Listen: both palms out, shaky; wake by palm, and by pinch',
-    watch: 'Both hands flicker with palms out and the room dims; a palm to the face wakes it; then again, by a pinch.',
+    watch:
+      'Both hands flicker with palms out and the room dims; a palm to the face wakes it; then again, by a pinch.',
     bug: 'BUG-021 (the Listen hold)',
     flags: PLANTS,
   },
   {
     n: 9,
     title: 'Settings: the orb opens at the pinch; a button pressed with fingers 25 cm from the head; close',
-    watch: 'The panel opens as the fingers close on the orb; fingers far short of the panel still press Volume + and Close.',
+    watch:
+      'The panel opens as the fingers close on the orb; fingers far short of the panel still press Volume + and Close.',
     bug: 'BUG-027, BUG-029',
     flags: PLANTS,
   },
   {
     n: 10,
     title: 'Start page: a stray tap near Enter switches nothing on; the Accessibility section is closed',
-    watch: 'Taps land all around Enter, no switch shows or changes, then Enter still works.',
+    watch:
+      'Dots mark taps over the whole page under Enter: no switch shows or changes; then Enter still works.',
     bug: 'BUG-028',
     flags: '',
     pageOnly: true,

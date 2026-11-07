@@ -31,7 +31,9 @@ interface Iwer {
 
 /** `SHAKY_VIDEO=1` (tests/tools/test-videos.ts): the ghost hands on, a caption, and a look at each ending. */
 const IS_VIDEO = process.env.SHAKY_VIDEO === '1';
+/** A video's ending stays on screen this long, and a video lasts at least VIDEO_MIN_MS. */
 const LINGER_MS = 1800;
+const VIDEO_MIN_MS = 11_000;
 
 const SEED_BASE = 20261107;
 
@@ -76,7 +78,8 @@ function preparePage(seed: number): Promise<void> {
         if (wrapped !== session) {
           wrapped = session;
           const dispatch = session.dispatchEvent.bind(session);
-          session.dispatchEvent = (event) => (event.type.startsWith('select') && !isOurs ? true : dispatch(event));
+          session.dispatchEvent = (event) =>
+            event.type.startsWith('select') && !isOurs ? true : dispatch(event);
         }
         session.requestAnimationFrame((_time, frame) => {
           lastFrame = frame;
@@ -130,7 +133,9 @@ async function strayTaps(page: Page): Promise<Facts> {
     const core = (await import(/* @vite-ignore */ url)) as typeof import('../../../src/core/index');
     const heard: string[] = [];
     core.bus.on('settings:changed', ({ settings }) => {
-      const on = (['oneHand', 'gazeDwell', 'highContrast', 'reducedMotion'] as const).filter((key) => settings[key]);
+      const on = (['oneHand', 'gazeDwell', 'highContrast', 'reducedMotion'] as const).filter(
+        (key) => settings[key],
+      );
       heard.push(on.join('+') || 'all off');
     });
     return heard;
@@ -145,6 +150,7 @@ async function strayTaps(page: Page): Promise<Facts> {
       );
       if (under === 'BUTTON' || under === 'SUMMARY') continue;
       if (under === 'LABEL') onSwitch++;
+      if (IS_VIDEO) await markTap(page, x, y);
       await page.mouse.click(x, y);
       taps++;
     }
@@ -153,8 +159,25 @@ async function strayTaps(page: Page): Promise<Facts> {
     await changes.jsonValue(),
     `${taps} stray taps under Enter, ${onSwitch} of them on a switch: the settings changed to`,
   ).toEqual([]);
-  await expect(section, 'stray taps under Enter opened the Accessibility section').toHaveJSProperty('open', false);
+  await expect(section, 'stray taps under Enter opened the Accessibility section').toHaveJSProperty(
+    'open',
+    false,
+  );
   return { taps, onSwitch };
+}
+
+/** For the video: a dot where a stray tap lands, and a moment to see it. */
+async function markTap(page: Page, x: number, y: number): Promise<void> {
+  await page.evaluate(
+    ({ x, y }) => {
+      const dot = document.createElement('div');
+      dot.style.cssText = `position:fixed;left:${x - 5}px;top:${y - 5}px;width:10px;height:10px;border-radius:50%;
+        background:#ffe9a8;opacity:.8;pointer-events:none;z-index:99998`;
+      document.body.append(dot);
+    },
+    { x, y },
+  );
+  await page.waitForTimeout(25); // the recording's pace, in no test's logic
 }
 
 /** Opens the app, plays scene `s` and throws if a player would be stuck, or if the page reports an error. */
@@ -169,7 +192,11 @@ export async function playScene(page: Page, s: ShakyScenario, info: TestInfo): P
   const offHost = await openApp(page, readRoom('table'), flags === '' ? '/' : `/?flags=${flags}`, {
     onboarding: s.tutorial === true,
   });
-  const markStart = () => info.annotations.push({ type: 'startMs', description: String(Date.now() - opened) });
+  let startedMs = 0;
+  const markStart = () => {
+    startedMs = Date.now();
+    info.annotations.push({ type: 'startMs', description: String(startedMs - opened) });
+  };
   let facts: Facts;
   if (s.pageOnly === true) {
     if (IS_VIDEO) await caption(page, `${s.n}. ${s.title}`);
@@ -188,7 +215,8 @@ export async function playScene(page: Page, s: ShakyScenario, info: TestInfo): P
       return m.play(n);
     }, s.n);
   }
-  if (IS_VIDEO) await page.waitForTimeout(LINGER_MS); // the ending on screen: a recording's pause, in no test's logic
+  // The ending on screen: a recording's pause, in no test's logic.
+  if (IS_VIDEO) await page.waitForTimeout(Math.max(LINGER_MS, VIDEO_MIN_MS - (Date.now() - startedMs)));
   console.log(`Shaky ${s.n} (emulator, seed ${SEED_BASE + s.n}): ${JSON.stringify(facts)}`);
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
