@@ -18,7 +18,7 @@
 
 | Field | Draft | State |
 |---|---|---|
-| Name | Roomsong | done (D-016; a quick search, not a trademark search) |
+| Name | SonicSpace | done (D-068, Parth 8 Nov: the name on Devpost and in the app; the repository and URL stay `Roomsong`) |
 | Tagline (≤140) | **A:** "Plant glowing seeds on your real table with a pinch. Each one sings. Every room gives your garden its own song." (111 characters) · fallback B, only if G2 cuts S1: "Plant glowing seeds on your real table with a pinch. Each one sings, and your garden grows every day you return." (112 characters) | A chosen 27 Oct: the room signature stays in, GO by default (D-060 (16), G1); both are true of the emulator build |
 | Track | Entertainment | done (D-001) |
 | Division | New Experience (first commit 2026-10-10, 4c831aa) | done |
@@ -59,7 +59,7 @@ No headset? Watch the video [not yet: T-181].
 **Laptop preview:** in a Chromium desktop browser, a click pinches; no passthrough, room tuning, poses, pull or settings. The headset is the real experience.
 
 ## What it is
-Instruments ask for skill before they give joy. We wanted a song you grow. Roomsong turns your real table into a glowing ring garden where every plant sings. Where you plant sets when it plays and how high. A sweep of light plays each plant, always in scale, never quite repeating. Your room tunes it: floor size sets the key, ceiling height the scale, room volume the echo.
+Instruments ask for skill before they give joy. We wanted a song you grow. SonicSpace turns your real table into a glowing ring garden where every plant sings. Where you plant sets when it plays and how high. A sweep of light plays each plant, always in scale, never quite repeating. Your room tunes it: floor size sets the key, ceiling height the scale, room volume the echo.
 
 ## Your first minute
 The ring settles on your table (none: look at a surface and pinch). A ripple crosses table, wall and ceiling, each ringing a note. Hold a palm up: a seed glides in. Pinch it with your other hand; its landing spot lights up. Let go: the sweep makes it sing. Three plants make a song within 90 seconds.

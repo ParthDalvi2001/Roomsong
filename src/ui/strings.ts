@@ -5,13 +5,13 @@
 // text, the browser's feature names only in the keys. Re-read against the working app once the save and the room
 // were wired (T-128e, emulator: every line held, none changed); re-read them again at release.
 export const LANDING = {
-  title: 'Roomsong',
+  title: 'SonicSpace',
   tagline: 'Grow a song on your table.',
   enter: 'Enter the garden',
   loading: 'Getting the garden ready.',
   loadFailed: 'The garden could not load. Reload the page.',
   E_XR_UNSUPPORTED:
-    'Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S.',
+    'SonicSpace is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S.',
   // The garden window (LLD §11): a browser with no mixed reality, or the `window` flag.
   window: 'The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset.',
   close: 'Close the garden',
@@ -21,13 +21,13 @@ export const LANDING = {
   features: {
     immersiveAr: {
       yes: 'Mixed reality: supported.',
-      no: 'Mixed reality: not supported. Roomsong needs it.',
+      no: 'Mixed reality: not supported. SonicSpace needs it.',
       unknown: 'Mixed reality: checking.',
     },
     // No `no`: a request that fails does not say why, so the page never claims that hand tracking is off.
     handTracking: {
       yes: 'Hand tracking: on.',
-      unknown: 'Hand tracking: checked when you enter. Roomsong cannot start without it.',
+      unknown: 'Hand tracking: checked when you enter. SonicSpace cannot start without it.',
     },
     // "not available", not "not supported", for these two: a session may simply not have been granted the feature.
     planeDetection: {
@@ -51,7 +51,7 @@ export const LANDING = {
   },
   helpHeading: 'Help',
   help: [
-    'Sit at a table and put the controllers down. Roomsong is played with bare hands.',
+    'Sit at a table and put the controllers down. SonicSpace is played with bare hands.',
     'Open a hand, palm up, and a seed comes to it.',
     'Pinch the seed, carry it over the glowing ring and let go. Where you plant it sets when it sounds and which note it sings.',
     'Hold your palms out, facing away from you, to sit back and listen. Pinch to come back.',

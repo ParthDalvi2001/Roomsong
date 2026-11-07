@@ -72,7 +72,7 @@ All Terminal commands run in `~/Documents/test-pro/Roomsong`.
 2. Settings → Secrets and variables → Actions → **Variables** tab → **New repository variable** → Name `MIRROR_URL`,
    Value `<mirror>/` → Add variable.
 3. Actions → **uptime** → **Run workflow** → Branch `main` → Run. It goes green and its log shows two lines ending in
-   "200, Roomsong", one per link. "no mirror yet" means step 2 is missing.
+   "200, SonicSpace", one per link. "no mirror yet" means step 2 is missing.
 
 ### 1.7 Evidence (Guide §8)
 1. Parth: a screenshot of the green `deploy` run, and `github-pages.zip`, into `specs/06-release/evidence/v1.0.0-rc1/`

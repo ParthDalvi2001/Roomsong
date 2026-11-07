@@ -100,14 +100,14 @@ test('landing page: name, Enter, device support, toggles and Help, all by keyboa
   const errors = watch(page);
   const offHost = await openApp(page, readRoom('table'));
 
-  await expect(landing(page).getByRole('heading', { level: 1 })).toHaveText('Roomsong');
+  await expect(landing(page).getByRole('heading', { level: 1 })).toHaveText('SonicSpace');
   await expect(landing(page).getByText('Grow a song on your table.')).toBeVisible();
   await expect(enterButton(page)).toBeEnabled({ timeout: WORLD_READY_MS });
   await expect(status(page)).toHaveText('');
   // Before a session only immersive AR can be known; the page says so for the rest.
   await expect(deviceRows(page)).toHaveText([
     'Mixed reality: supported.',
-    'Hand tracking: checked when you enter. Roomsong cannot start without it.',
+    'Hand tracking: checked when you enter. SonicSpace cannot start without it.',
     'Table detection: checked when you enter. Without it the garden asks you where to put it, or floats in front of you.',
     'Saved position: checked when you enter. Without it the garden is placed again on each visit.',
   ]);

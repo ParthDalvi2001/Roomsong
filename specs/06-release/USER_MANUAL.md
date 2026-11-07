@@ -1,4 +1,4 @@
-# Roomsong: Player Guide
+# SonicSpace: Player Guide
 
 **Status:** Living · **Owner:** product-owner · Checked against `develop` at dca03de on 2026-10-17 (states refreshed after T-128d, T-128e, T-114b, T-142b, T-148, T-150, T-160, T-163 and T-164; the pass before was at 9730ef6 on 16 Oct). On 2026-10-23, against `develop` 36dc6cc, the 23 Oct features were added: stillness opens the garden (T-173), the Time-lapse switch (T-174), the vine (T-149), the pause caption (T-152), the guide's new words and the UI sounds (T-164 §6); the other rows are as at dca03de.
 The long form of the landing page's Help lines and the source for the "How to test" text of the submission. No task builds a page of its own for it.
@@ -14,7 +14,7 @@ The long form of the landing page's Help lines and the source for the "How to te
 ---
 
 ## What it is
-Roomsong is a small glowing garden on your real table. Every plant sings. Where you plant decides when a plant plays and how high it sounds. You play with bare hands, sitting down. Ten minutes is plenty for a visit.
+SonicSpace is a small glowing garden on your real table. Every plant sings. Where you plant decides when a plant plays and how high it sounds. You play with bare hands, sitting down. Ten minutes is plenty for a visit.
 
 ## What you need
 - A Meta Quest 3 or 3S with hand tracking on (Settings, Movement tracking, Hand tracking; *names not yet read off a headset*).
@@ -24,12 +24,12 @@ Roomsong is a small glowing garden on your real table. Every plant sings. Where 
 - No headset? A browser on a computer gives you a preview: see **Laptop mode**.
 
 ## How to open it `[app]`
-1. Open the Roomsong link in the headset's browser.
+1. Open the SonicSpace link in the headset's browser.
 2. Wait until "Getting the garden ready." goes away.
 3. If you need one, tick a box under **Accessibility**: One hand; No hands: look to select; High contrast; Reduce motion. Each is explained under **Accessibility modes**.
 4. Press **Enter the garden** and say yes when the headset asks to share your hands and your room. Sound starts with this press.
 
-You see your real room and hands. Roomsong draws no hands of its own.
+You see your real room and hands. SonicSpace draws no hands of its own.
 
 ## Your first minute `[app]`
 A guide walks you through it whenever a visit starts on an empty bed: one short caption or one small picture at a time. If you have not done a step after a minute, it moves on without you. A visit that starts with plants on the bed has no guide.
@@ -127,7 +127,7 @@ Nothing flashes more than three times a second, in any mode `[app]`.
 
 ## Laptop mode (no headset) `[app]`
 A preview for anyone without a headset: the same garden, sound, guide and save, in a browser tab on a computer. It is not the mixed-reality experience, and it has been tested in one desktop browser only.
-1. Open the Roomsong link in a browser on a computer. The first page says "The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset."
+1. Open the SonicSpace link in a browser on a computer. The first page says "The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset."
 2. If you need them, tick **High contrast** or **Reduce motion**. One hand and look to select are for the headset.
 3. Press **Enter the garden**. Sound starts with this press.
 4. You look down at the bed on a drawn table, as if seated at it. A seed follows your pointer.
@@ -144,9 +144,9 @@ What laptop mode does not have: your real room and table (no passthrough); your 
 | "Getting the garden ready." | The page is loading | Wait a few seconds | `[app]` |
 | "The garden could not load. Reload the page." | The page did not finish loading | Check the connection and reload | `[app]` |
 | "The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset." | This browser has no mixed reality, so Enter opens laptop mode | Press Enter, or open the link in the headset | `[app]` |
-| "Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S." | This browser cannot show virtual things in your real room, and laptop mode did not open here | Open the link in the headset | `[app]` |
+| "SonicSpace is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S." | This browser cannot show virtual things in your real room, and laptop mode did not open here | Open the link in the headset | `[app]` |
 | "The garden did not open. Say yes when the headset asks, and check that hand tracking is on: Settings, Movement tracking, Hand tracking." | The headset refused to start. Hand tracking is off, or you answered no | Switch hand tracking on, press Enter again and say yes | `[app]` |
-| "Roomsong needs JavaScript. Turn it on and reload the page." | The browser blocks scripts | Allow scripts and reload | `[app]` |
+| "SonicSpace needs JavaScript. Turn it on and reload the page." | The browser blocks scripts | Allow scripts and reload | `[app]` |
 | "Table detection: not available." and "Saved position: not available." (under This device) | The headset did not share the room's layout, or cannot remember spots | Nothing. The garden asks you where to put it or floats, and it is placed again on each visit | `[app]` |
 | A palm in a dashed ring (an icon) | The headset lost the hand that held something | Bring the hand back in front of you. What you held goes back to where it was. Nothing is lost | `[app]` |
 | "No sound. Leave and enter again." (5 seconds) | The browser did not start the sound. The garden still works, silent | Check the volume. Leave the garden and press Enter again: sound starts only in that press | `[app]` |
@@ -164,7 +164,7 @@ What laptop mode does not have: your real room and table (no passthrough); your 
 Nothing leaves your headset or computer. No account, no adverts, no tracking. What the headset shares about your room and hands stays on the device. Only the garden, your settings and the name of its spot are saved, in this browser: clearing the browser's data deletes them.
 
 ## Known limits
-- No one has run Roomsong on a headset yet.
+- No one has run SonicSpace on a headset yet.
 - Made for Quest 3 or 3S, in the headset's browser. On a computer, laptop mode is a preview without your room or your hands `[app]`. Phones and tablets are untested.
 - A room near a measuring step can get a different mood or echo on another day: about one room in five, by calculation.
 - One garden per browser. It cannot be shared or moved.

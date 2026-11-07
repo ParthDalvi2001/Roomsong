@@ -52,14 +52,14 @@ describe('featureLines: the visible text', () => {
 
   it('says what is still unknown before the first session, and that hands are required', () => {
     const lines = featureLines(detectSupport(true, null));
-    expect(lines[1]).toBe('Hand tracking: checked when you enter. Roomsong cannot start without it.');
+    expect(lines[1]).toBe('Hand tracking: checked when you enter. SonicSpace cannot start without it.');
     expect(lines[2]).toMatch(/^Table detection: checked when you enter\. Without it /);
     expect(lines[3]).toMatch(/^Saved position: checked when you enter\. Without it /);
   });
 
   it('names the missing immersive AR', () => {
     const [first] = featureLines(detectSupport(false, null));
-    expect(first).toBe('Mixed reality: not supported. Roomsong needs it.');
+    expect(first).toBe('Mixed reality: not supported. SonicSpace needs it.');
   });
 });
 
@@ -73,7 +73,7 @@ describe('the wording of UX §9.7', () => {
     expect(LANDING.accessHeading).toBe('Accessibility');
     expect(LANDING.access.gazeDwell).toBe('No hands: look to select');
     expect(LANDING.E_XR_UNSUPPORTED).toBe(
-      'Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S.',
+      'SonicSpace is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S.',
     );
     expect(LANDING.features.anchors.yes).toBe(
       'Saved position: on. The garden can come back to the same spot.',
