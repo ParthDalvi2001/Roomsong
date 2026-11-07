@@ -27,9 +27,22 @@ test('the recorder saves a PNG of the left eye with the bed in it once the room 
       .split('\n')
       .filter((line) => line.includes('"kind":"snap"'))
       .map((line) => (JSON.parse(line) as Snap).data);
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(String(error)));
   try {
     await openApp(page, readRoom('table'), '/?rec=1');
     await enterXR(page);
+    // Looking down at the table, where the bed lands, as a seated player does.
+    await page.evaluate(() =>
+      (
+        window as unknown as {
+          IWER_DEVICE: { remote: { dispatch(action: string, payload: unknown): unknown } };
+        }
+      ).IWER_DEVICE.remote.dispatch('set_transform', {
+        device: 'headset',
+        orientation: { pitch: -45, yaw: 0, roll: 0 },
+      }),
+    );
     await expect
       .poll(() => snaps().some(({ why }) => why === 'room:tuned'), { timeout: TUNED_SNAP_MS })
       .toBe(true);
@@ -59,7 +72,9 @@ test('the recorder saves a PNG of the left eye with the bed in it once the room 
     }, png.toString('base64'));
     console.log(`snapshot ${tuned.file}: ${size.width}x${size.height}, ${(drawn * 100).toFixed(1)}% drawn`);
     expect(drawn).toBeGreaterThan(0.005);
+    expect(pageErrors).toEqual([]);
   } finally {
+    await page.close(); // no snapshot lands after the clean-up
     if (existsSync(REC_FILE)) for (const { file } of snaps()) unlinkSync(`${REC_DIR}${file}`);
   }
 });
