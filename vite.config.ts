@@ -159,7 +159,8 @@ const emulatorRoom: Plugin = {
 };
 
 // Dev server only: with ?rec=1 the page loads tests/tools/headset-recorder.ts, which posts what a real headset session
-// senses here, appended to .tmp/headset/rec.jsonl. Same origin; not in the build (`apply: 'serve'`).
+// senses here, appended to .tmp/headset/rec.jsonl; with &ghost=1 too, tests/tools/headset-ghost.ts, which plays the
+// shaky-hands scenes with pretend hands in the room. Same origin; not in the build (`apply: 'serve'`).
 const headsetRecorder: Plugin = {
   name: 'roomsong-headset-recorder',
   apply: 'serve',
@@ -167,7 +168,10 @@ const headsetRecorder: Plugin = {
     {
       tag: 'script',
       attrs: { type: 'module' },
-      children: 'if (/[?&]rec=1/.test(location.search)) import("/tests/tools/headset-recorder.ts");',
+      children:
+        'if (/[?&]rec=1/.test(location.search)) import("/tests/tools/headset-recorder.ts");' +
+        'if (/[?&]rec=1/.test(location.search) && /[?&]ghost=1/.test(location.search))' +
+        ' import("/tests/tools/headset-ghost.ts");',
       injectTo: 'head-prepend',
     },
   ],
