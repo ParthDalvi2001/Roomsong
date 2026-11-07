@@ -8,6 +8,7 @@ tests/e2e/__artifacts__/
 playwright-report/
 test-results/
 test-videos/
+room-tour/
 .DS_Store
 *.log
 .env

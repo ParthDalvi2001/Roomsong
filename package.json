@@ -26,6 +26,7 @@
     "video:audio": "VIDEO_TRACK=1 playwright test -c tests/renders/playwright.config.ts video-track",
     "video:cut": "node tests/tools/rough-cut.ts",
     "test:videos": "node tests/tools/test-videos.ts",
+    "test:room-tour": "node tests/tools/test-videos.ts --rooms",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-dist.mjs && node scripts/check-size.mjs",
     "audit": "npm audit --omit=dev --audit-level=high",
     "audio:renders": "playwright test -c tests/renders/playwright.config.ts"
