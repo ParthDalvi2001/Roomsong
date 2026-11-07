@@ -185,6 +185,8 @@ test('T-122 TC-PER-02 a corrupt state loads as null and is moved to state.backup
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(String(error)));
   const offHost = await openApp(page, readRoom('none'));
+  // BUG-034: after the app's own boot load, or on a slow boot both loads read the corrupt state and both back it up.
+  await page.waitForFunction(() => window.__roomsong !== undefined, null, { timeout: 15_000 });
 
   await save(page, garden(1, 2));
   const started = Date.now();
