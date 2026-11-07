@@ -114,7 +114,6 @@ export const SHAKY_SCENARIOS: readonly ShakyScenario[] = [
       'As scene 7, but the fingers stop short of the petal on the line from the eyes, as they do for a plant.',
     bug: 'BUG-032 (new)',
     flags: PLANTS,
-    newBug: 'BUG-032: the eye-line pick (D-066) takes panel controls and plants, not the undo petal',
   },
   {
     n: 13,
@@ -122,7 +121,5 @@ export const SHAKY_SCENARIOS: readonly ShakyScenario[] = [
     watch: 'As scene 6, but the fingers stay 13 cm short of the head on the line from the eyes all the way.',
     bug: 'BUG-033 (new)',
     flags: PLANTS,
-    newBug:
-      'BUG-033: a plant taken by the eye-line pick is dragged to the cell under the fingers, not the one looked at',
   },
 ];
