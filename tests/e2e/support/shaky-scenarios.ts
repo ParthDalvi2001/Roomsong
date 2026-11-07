@@ -34,7 +34,7 @@ const round = (value: number, digits = 3): number => Number(value.toFixed(digits
 
 /** The player is seated and has both hands at rest; the room has tuned, so a seed can be asked for. */
 async function seated(rig: Rig): Promise<void> {
-  await rig.until(() => rig.count('room:tuned') > 0, 20_000, 'The room never tuned');
+  await rig.until(() => rig.count('room:tuned', undefined, 0) > 0, 20_000, 'The room never tuned');
   rig.seat();
   await rig.rest('left');
   await rig.rest('right');
@@ -508,7 +508,7 @@ const SCENES: Record<number, Scene> = {
   },
 
   async 11(rig, facts) {
-    await rig.until(() => rig.count('room:tuned') > 0, 20_000, 'The room never tuned');
+    await rig.until(() => rig.count('room:tuned', undefined, 0) > 0, 20_000, 'The room never tuned');
     rig.seat();
     await rig.rest('left');
     await rig.rest('right');
@@ -573,6 +573,7 @@ export async function play(n: number): Promise<Facts> {
   const scene = SCENES[n];
   if (rig === null || scene === undefined) throw new Error(`No rig, or no scene ${n}`);
   rig.start();
+  rig.sceneStartMs = performance.now();
   const facts: Facts = {};
   await scene(rig, facts);
   facts.fps = rig.fps();

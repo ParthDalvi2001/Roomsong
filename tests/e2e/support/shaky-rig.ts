@@ -228,6 +228,8 @@ export const SETTLE_MS = 450;
 export class Rig {
   /** What the app said on its bus, from the moment the rig was made. */
   readonly heard: Heard[] = [];
+  /** `count` and `last` look from here on: a headset plays the scenes one after another in one session. */
+  sceneStartMs = 0;
   /** The largest angle between where the head looks and each hand's fingers, while `watchView` is set, in degrees. */
   maxViewDeg = 0;
   watchView: Hand | null = null;
@@ -443,19 +445,24 @@ export class Rig {
   }
 
   /** How many events of that type the app has said since `fromMs`, those `is` accepts. */
-  count(type: (typeof NOTED)[number], is: (e: Heard) => boolean = () => true, fromMs = 0): number {
+  count(
+    type: (typeof NOTED)[number],
+    is: (e: Heard) => boolean = () => true,
+    fromMs = this.sceneStartMs,
+  ): number {
     return this.heard.filter((e) => e.type === type && e.t >= fromMs && is(e)).length;
   }
 
   /** The latest event of that type that `is` accepts. */
   last(type: (typeof NOTED)[number], is: (e: Heard) => boolean = () => true): Heard | null {
-    return this.heard.filter((e) => e.type === type && is(e)).pop() ?? null;
+    return this.heard.filter((e) => e.type === type && e.t >= this.sceneStartMs && is(e)).pop() ?? null;
   }
 
   summary(): string {
     const counts: Record<string, number> = {};
-    for (const e of this.heard) counts[e.type] = (counts[e.type] ?? 0) + 1;
-    const last = this.heard
+    const heard = this.heard.filter((e) => e.t >= this.sceneStartMs);
+    for (const e of heard) counts[e.type] = (counts[e.type] ?? 0) + 1;
+    const last = heard
       .filter((e) => e.type === 'gesture:pinchStart' || e.type === 'gesture:release')
       .slice(-4)
       .map((e) => `${e.type} ${e.hand} ${e.kind ?? 'null'}:${e.id ?? ''} ${e.gesture ?? ''}`.trim());
