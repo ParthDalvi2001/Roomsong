@@ -63,6 +63,7 @@ function drawn(tab: PanelTab, highContrast = false) {
     setBedHeightOffset: () => {},
     isTimeLapse: () => false,
     setTimeLapse: () => {},
+    exit: () => {},
     pressed: () => {},
   });
   for (const id of [ORB_ID, `tab:${tab}`]) {

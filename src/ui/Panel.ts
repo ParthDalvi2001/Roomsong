@@ -80,6 +80,8 @@ export interface PanelActions {
   /** T-174: whether the time-lapse demo runs, read each time the switch is drawn; and the switch's ask. */
   isTimeLapse(): boolean;
   setTimeLapse(on: boolean): void;
+  /** D-067: leave the garden: the immersive session ends (the save is flushed at its end). The panel has closed. */
+  exit(): void;
   /** A press or a dwell acted on `id` (ORB_ID for the orb): its sound (T-164 §6), before what it does. */
   pressed(id: string): void;
 }
@@ -95,6 +97,7 @@ const AWAY = 2;
 export const ORB_ID = 'orb';
 export const NEW_GARDEN_ID = 'newGarden';
 const TIME_LAPSE_ID = 'timeLapse';
+const EXIT_ID = 'exit';
 // The gaze cannot switch itself off: a user with no hand to pinch with could not switch it back on.
 const GAZE_TOGGLE_ID = 'gazeDwell';
 
@@ -134,6 +137,10 @@ const HEIGHT_VALUE_W = 0.04; // ends 1 cm before the plus button
 const HEIGHT_PLUS_X = -0.01;
 const TIME_LAPSE_X = 0.045; // one pitch from the plus
 const TIME_LAPSE_LABEL_W = 0.115; // "Time-lapse" is about 0.1 m: it ends about 2 cm short of the panel's edge
+// D-067: Exit at the right end of the Place-again row, the one action row with room for it ("New garden (erases
+// this one)" fills its row); the row's label ends 1 cm before it.
+const EXIT_X = 0.15;
+const REPLACE_LABEL_W = EXIT_X - PANEL_WIDE_TARGET_M / 2 - 0.01 - ACTION_LABEL_X;
 const TUNED_Y = ROW_Y[3] + 0.005; // the two lines of "Tuned by" sit a little above the last row's middle
 const LINE_M = 0.013; // half the distance between those two lines
 // Both lines end before the Mono switch: "Tuned by: C major," is about 0.165 m, "echo 0.9 s" 0.09 m and the longest
@@ -327,7 +334,7 @@ export class Panel {
       label(LEFT_X, ROW_Y[1], HEIGHT_LABEL_W, PANEL.bedHeight),
       label(HEIGHT_VALUE_X, ROW_Y[1], HEIGHT_VALUE_W, heightText(this.garden)),
       label(TIME_LAPSE_X + TOGGLE_LABEL_M, ROW_Y[1], TIME_LAPSE_LABEL_W, PANEL.timeLapse),
-      label(ACTION_LABEL_X, ROW_Y[2], ACTION_LABEL_W, PANEL.replaceBed),
+      label(ACTION_LABEL_X, ROW_Y[2], REPLACE_LABEL_W, PANEL.replaceBed),
       label(
         ACTION_LABEL_X,
         ROW_Y[3],
@@ -502,6 +509,11 @@ export class Panel {
       // The placement needs the view, and its confirming pinch must not land on a control.
       this.setOpen(false);
       this.actions.replaceBed();
+    } else if (id === EXIT_ID) {
+      // D-067: one press, no hold: the garden is saved and Enter brings it back. Closed first, so a second press
+      // in the frames before the session's end has nothing to land on.
+      this.setOpen(false);
+      this.actions.exit();
     }
   }
 
@@ -569,6 +581,7 @@ export class Panel {
       { ...round('height:-', HEIGHT_MINUS_X, ROW_Y[1], PANEL.minus), dim: atEnd(-1) },
       { ...round('height:+', HEIGHT_PLUS_X, ROW_Y[1], PANEL.plus), dim: atEnd(1) },
       wide('replaceBed', ACTION_X, ROW_Y[2], PANEL.start),
+      wide(EXIT_ID, EXIT_X, ROW_Y[2], PANEL.exit),
       // Not during the time-lapse demo (the garden refuses it then): drawn faint, and not selected.
       { ...wide(NEW_GARDEN_ID, ACTION_X, ROW_Y[3], PANEL.hold), dim: this.actions.isTimeLapse() },
       { ...toggle(TIME_LAPSE_ID, 1, ROW_Y[1], this.actions.isTimeLapse()), x: TIME_LAPSE_X },

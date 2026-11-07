@@ -109,4 +109,5 @@ export const PANEL = {
   bringBack: 'Bring back the old garden', // D-060 item 13: the same row, for RESTORE_WINDOW_MS after a New garden
   hold: 'hold',
   timeLapse: 'Time-lapse', // T-174: the demo switch; "(demo)" does not fit the row at a readable size
+  exit: 'Exit', // D-067: leaves the session; the garden is saved and Enter brings it back
 } as const;
