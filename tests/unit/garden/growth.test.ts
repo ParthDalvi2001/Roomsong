@@ -9,6 +9,7 @@ import { parseFlags } from '../../../src/core/flags.js';
 import { DEFAULT_SETTINGS } from '../../../src/core/settings.js';
 import {
   applyVisit,
+  gardenDay,
   nearestFreeCell,
   newGarden,
   plantSeed,
@@ -109,6 +110,26 @@ describe('garden/growth stageFor (TC-GAR-05)', () => {
     expect(stageFor(NaN)).toBe(0);
     expect(stageFor(-Infinity)).toBe(0);
     expect(stageFor(Infinity)).toBe(3);
+  });
+});
+
+describe("garden/growth gardenDay: the Garden tab's day (UX §3.6)", () => {
+  it('counts local calendar days, as the daily seed does, not 24-hour spans', () => {
+    const made = at('2026-11-07T23:00:00+05:30');
+    expect(gardenDay(made, IST, at('2026-11-08T00:30:00+05:30'), IST)).toBe(2); // the day seed-2026-11-08 comes
+    const early = at('2026-11-07T01:00:00+05:30');
+    expect(gardenDay(early, IST, at('2026-11-07T23:59:00+05:30'), IST)).toBe(1);
+  });
+
+  it('reads each time in its own zone offset, so a daylight-saving change moves no date', () => {
+    // made at 23:30 on 7 March in Los Angeles in winter time; 03:00 on 8 March there is summer time, the next date
+    expect(gardenDay(at('2026-03-07T23:30:00-08:00'), PST, at('2026-03-08T03:00:00-07:00'), PDT)).toBe(2);
+  });
+
+  it('is 1 for a clock set back or a time or offset that is not finite', () => {
+    expect(gardenDay(DAY1, IST, DAY1 - 5 * MS_PER_DAY, IST)).toBe(1);
+    expect(gardenDay(NaN, IST, DAY1, IST)).toBe(1);
+    expect(gardenDay(DAY1, IST, DAY1, NaN)).toBe(1);
   });
 });
 

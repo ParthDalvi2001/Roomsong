@@ -1,8 +1,8 @@
 // The settings panel without its drawing (UX §3.6, T-151): what each tab shows, what a press, a hold or a dwell
 // does, and where the panel and its orb go. No Three.js and no canvas here: ui/PanelSystem.ts draws what this file
 // lists and feeds it the events and the frame. Settings are read from and written through core's store.
-import { MS_PER_DAY, settings, validateSettings } from '../core/index.js';
-import { setBedHeightOffset, WANDERER } from '../garden/index.js';
+import { settings, validateSettings } from '../core/index.js';
+import { gardenDay, setBedHeightOffset, WANDERER } from '../garden/index.js';
 import { HIT_RADIUS_M, HOVER_DEAD_BAND_M, ORB_HIDE_FACING, ORB_SHOW_FACING } from '../hands/index.js';
 
 import {
@@ -232,15 +232,22 @@ function roomLine(sig: RoomSignature, features: RoomFeatures | null): string {
   return parts.join(', ');
 }
 
+/** The device's zone at `t`, UTC minus local in minutes, as GardenSystem hands it to the daily seed. */
+const tzAt = (t: number): number => new Date(t).getTimezoneOffset();
+
 /**
- * UX §3.6: "Day 4, Seeds left 2, Key D major (room)". The day is the garden's age in whole days of 24 hours, plus one.
- * The seeds' day is the local calendar day (garden/growth.ts, which keeps that helper to itself and needs the time
- * zone): the two can differ by one around midnight.
+ * UX §3.6: "Day 4, Seeds left 2, Key D major (room)". The day counts local calendar dates from the garden's making
+ * to its last visit, the daily seed's rule (BUG-037): the day's new seed and "Day 2" come together.
  */
 function gardenLine(garden: GardenState | null, sig: RoomSignature): string {
   const parts: string[] = [];
   if (garden !== null) {
-    const day = Math.max(1, Math.floor((garden.lastVisitAt - garden.createdAt) / MS_PER_DAY) + 1);
+    const day = gardenDay(
+      garden.createdAt,
+      tzAt(garden.createdAt),
+      garden.lastVisitAt,
+      tzAt(garden.lastVisitAt),
+    );
     parts.push(`${PANEL.day} ${day}`, `${PANEL.seeds} ${garden.seeds.length}`);
   }
   parts.push(`${PANEL.key} ${keyName(sig)}${sig.paletteSeed === 0 ? '' : ` ${PANEL.fromRoom}`}`);

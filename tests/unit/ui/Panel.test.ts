@@ -373,12 +373,14 @@ describe('settings panel: the Sound tab says what tuned the song (UX §3.6, US-2
 });
 
 describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () => {
-  const DAY_MS = 86_400_000;
-
   it('reads the day, the seeds and the key off the garden and the room', () => {
     const panel = opened('garden');
     expect(words(panel)[0]).toBe('Key C major'); // no garden seen yet
-    const visited = { createdAt: 1000, lastVisitAt: 1000 + 3.5 * DAY_MS };
+    // local times in the host's zone: two days and 90 minutes apart, four calendar dates, so Day 4 (BUG-037)
+    const visited = {
+      createdAt: new Date(2026, 10, 7, 23, 0).getTime(),
+      lastVisitAt: new Date(2026, 10, 10, 0, 30).getTime(),
+    };
     panel.setGarden(garden([], [seed('a'), seed('b')], visited));
     expect(words(panel)[0]).toBe('Day 4, Seeds left 2, Key C major');
     panel.setSignature(D_MAJOR_ROOM);
