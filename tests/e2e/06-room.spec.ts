@@ -69,6 +69,8 @@ interface RoomProbe {
   anchored(): number;
   /** The key of the caption on screen. */
   shown(): string | null;
+  /** The caption's edges in degrees from the gaze, on the last frame it was shown (CaptionSystem's read-out). */
+  captionFov(): { leftDeg: number; rightDeg: number; downDeg: number; upDeg: number };
   eyes(): number;
   log(): string[];
   /** The confirm by hand, as hands/ sends it for a pinch on nothing, its start and its release (LLD §3.5 c2). */
@@ -192,6 +194,7 @@ async function watchRoom(page: Page): Promise<JSHandle<RoomProbe>> {
       bed,
       anchored: () => anchors.entities.size,
       shown: () => captions.shown,
+      captionFov: () => ({ ...captions.fov }),
       eyes: () => world.renderer.xr.getCamera().cameras.length,
       log: () => core.log.recent().map((entry) => `${entry.level} ${entry.scope} ${entry.msg}`),
       release: () => {
@@ -340,6 +343,8 @@ for (const { room, flags, levels, level, heightM, source, features } of CASES) {
     expect(anchored.frame).toBeGreaterThan(placed.frame);
     expect(anchored.payload).toMatchObject({ level });
     expect(anchored.payload.handle).toMatch(/^[0-9a-f-]{36}$/);
+    // FR-ROOM-14: a room with planes, even at level 4, raises no no-room notice (it would come with room:features).
+    expect(await probe.evaluate((p) => p.captionLog.map((c) => c.key))).not.toContain('noRoomScan');
 
     // The bed's draw calls, in each eye: the glass with its ring lines and the markers, plus the Listen orb in the
     // centre hole (T-148) when it is in view: a small mesh, culled when the bed lies on a table below the view.
@@ -614,6 +619,17 @@ test('T-128c the none room: the ghost after the 3 s for a plane, then an emulate
   const read = only(events, 'room:features');
   expect(read.frame).toBe(placed.frame);
   expect(read.payload).toEqual({ features: { level: 4 }, surfaces: {} });
+  // FR-ROOM-14: no plane at all, so the headset says why the song is not the room's, once, inside the view box
+  // (NFR-FOV-01), after the hint's own time on screen.
+  await page.waitForFunction((p) => p.shown() === 'noRoomScan', probe, { timeout: 5000 });
+  await xrFrames(page, 3);
+  await page.screenshot({ path: test.info().outputPath('no-room-scan.png') });
+  const fov = await probe.evaluate((p) => p.captionFov());
+  expect(Math.min(fov.leftDeg, -fov.rightDeg)).toBeGreaterThanOrEqual(-25); // FOV_HALF_H_DEG
+  expect(Math.min(fov.downDeg, -fov.upDeg)).toBeGreaterThanOrEqual(-20); // FOV_HALF_V_DEG
+  const raised = await probe.evaluate((p) => p.captionLog.filter((c) => c.key === 'noRoomScan'));
+  expect(raised).toHaveLength(1);
+  expect(raised[0]!.frame).toBe(read.frame);
   // Glass, then glass and markers: one draw call and two, in each eye, on top of what else is drawn.
   const draws = await probe.evaluate(
     (p, at) => ({
@@ -645,7 +661,7 @@ test('T-128c the none room with no pinch: the bed floats when the 3 s and the 6 
   expect(placedOf(placed)).toMatchObject({ restored: false, placement: { level: 4 } });
   expectPose(placedOf(placed).placement.pose, aheadAt(FLOATING_M), 1e-6, 'the floating bed');
   expect(placed.bed).toMatchObject({ isPlaced: true, source: 'floating', isShown: true, hasMarkers: true });
-  // A floating bed is a complete garden: logged at warn, and nothing tells the user.
+  // A floating bed is a complete garden: logged at warn; the user is told only that no room scan was found.
   expect(await probe.evaluate((p) => p.log())).toContain('warn room E_PLACEMENT_TIMEOUT');
   await page.waitForFunction((p) => p.shown() === null, probe);
   expect(errors).toEqual([]);

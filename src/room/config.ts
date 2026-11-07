@@ -37,6 +37,9 @@ export const PLANE_LEVELS_TIMEOUT_MS = 3000;
 /** FR-ROOM-01: level 3 waits this long for the pinch that confirms. 6 s, was 10 s (D-060 item 12): the first-sound
  *  budget is then 5 + 3 + 6 + the planting, under FR-UI-02's 20 s. */
 export const HIT_TEST_TIMEOUT_MS = 6000;
+/** FR-ROOM-14: how long the no-room notice is asked to stay. It ends as the tutorial's first caption comes
+ *  (room:tuned, 4 s after room:features), so neither waits for the other. */
+export const NO_ROOM_NOTICE_MS = 4000;
 /** UX §9.2: the level-3 ghost follows the preview with this ease, so hit-test jitter does not shake it. */
 export const GHOST_EASE_MS = 100;
 
