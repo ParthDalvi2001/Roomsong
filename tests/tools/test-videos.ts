@@ -76,7 +76,14 @@ for (const s of SHAKY_SCENARIOS) {
     const ffmpeg = spawnSync(FFMPEG, args, { stdio: 'inherit' });
     made = ffmpeg.status === 0 ? `${s.n}.mp4` : `ffmpeg failed (${ffmpeg.status})`;
   }
-  const status = result === undefined ? 'not run' : result.status;
+  // A test.fail scene that failed is "passed" to Playwright.
+  const failedAsExpected = `failed, as expected (${s.newBug?.split(':')[0]} not fixed)`;
+  const status =
+    result === undefined
+      ? 'not run'
+      : s.newBug !== undefined && result.status === 'passed'
+        ? failedAsExpected
+        : result.status;
   rows.push(`| ${s.n} | ${made} | ${s.title}. ${s.watch} | ${s.bug} | ${status} |`);
 }
 
@@ -85,11 +92,12 @@ writeFileSync(
   [
     '# Shaky-hands test videos (emulator footage)',
     '',
-    `Made by \`npm run test:videos\` on ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC. Each video is one`,
-    'scene of `tests/e2e/30-shaky-hands.spec.ts`, from its start to its end. The dots and lines are the pretend hands',
-    "(the dev-only `handCue` flag): IWER's emulated hands, moved with the tracking drops, drift, depth error and finger",
-    'shift measured on the first Quest 3S sessions (`tests/e2e/support/shaky-noise.ts`). A hand that blinks out is a',
-    'tracking drop. Software rendering at 20 to 30 frames a second. None of this is a headset.',
+    `Made by \`npm run test:videos\` on ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC.`,
+    'Each video is one scene of `tests/e2e/30-shaky-hands.spec.ts`, from its start to its end. The dots and lines are',
+    "the pretend hands (the dev-only `handCue` flag): IWER's emulated hands, moved with the tracking drops, drift, depth",
+    'error and finger shift measured on the first Quest 3S sessions (`tests/e2e/support/shaky-noise.ts`). A hand that',
+    'blinks out is a tracking drop. Software rendering at 20 to 30 frames a second. None of this is a headset.',
+    'Scenes 12 and 13 show two bugs these tests found (BUG-031, BUG-032): they fail on purpose until those are fixed.',
     '',
     '| # | Video | What to watch for | Bug | Result |',
     '|---|---|---|---|---|',

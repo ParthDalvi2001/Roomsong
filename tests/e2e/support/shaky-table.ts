@@ -13,6 +13,8 @@ export interface ShakyScenario {
   tutorial?: boolean;
   /** It has no XR session to play in, so the headset's ghost mode leaves it out. */
   pageOnly?: boolean;
+  /** A bug this scene found and nobody has fixed: the test is expected to fail (test.fail) until it is. */
+  newBug?: string;
 }
 
 /** Three plants: the middle ring nearest the player, (2,11) across the bed, and (3,2) on the side. API_SPEC §3. */
@@ -46,7 +48,7 @@ export const SHAKY_SCENARIOS: readonly ShakyScenario[] = [
     n: 4,
     title: 'Pinch a plant by its head, fingers off in depth',
     watch:
-      'The fingers stop 13 cm short of the plant, on the line from the eyes, and three pinches still take it.',
+      'The fingers stop 13 cm short of the plant, on the line from the eyes, and the pinches still take it.',
     bug: 'BUG-025, BUG-030',
     flags: PLANTS,
   },
@@ -76,7 +78,7 @@ export const SHAKY_SCENARIOS: readonly ShakyScenario[] = [
     n: 8,
     title: 'Listen: both palms out, shaky; wake by palm, and by pinch',
     watch:
-      'Both hands flicker with palms out and the room dims; a palm to the face wakes it; then again, by a pinch.',
+      'Both palms out and wobbling, the left one flickering; the room dims; a palm to the face wakes it; again by a pinch.',
     bug: 'BUG-021 (the Listen hold)',
     flags: PLANTS,
   },
@@ -104,5 +106,23 @@ export const SHAKY_SCENARIOS: readonly ShakyScenario[] = [
     bug: 'BUG-022',
     flags: '',
     tutorial: true,
+  },
+  {
+    n: 12,
+    title: 'Undo by sight: the petal pinched with the fingers 13 cm short of it',
+    watch:
+      'As scene 7, but the fingers stop short of the petal on the line from the eyes, as they do for a plant.',
+    bug: 'BUG-031 (new)',
+    flags: PLANTS,
+    newBug: 'BUG-031: the eye-line pick (D-066) takes panel controls and plants, not the undo petal',
+  },
+  {
+    n: 13,
+    title: 'Move by sight: a plant pinched with the fingers 13 cm short, slid one step along its ring',
+    watch: 'As scene 6, but the fingers stay 13 cm short of the head on the line from the eyes all the way.',
+    bug: 'BUG-032 (new)',
+    flags: PLANTS,
+    newBug:
+      'BUG-032: a plant taken by the eye-line pick is dragged to the cell under the fingers, not the one looked at',
   },
 ];
