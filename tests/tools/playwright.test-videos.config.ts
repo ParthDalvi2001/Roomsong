@@ -11,10 +11,12 @@ const BASE_URL = `https://localhost:${PORT}`;
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const SIZE = { width: 1280, height: 720 };
 const IS_VIDEO = process.env.SHAKY_VIDEO === '1';
+/** ROOM_TOUR=1 (`npm run test:room-tour`): tests/tools/room-tour.spec.ts, recorded, instead. */
+const IS_TOUR = process.env.ROOM_TOUR === '1';
 
 export default defineConfig({
-  testDir: '../e2e',
-  testMatch: '30-shaky-hands.spec.ts',
+  testDir: IS_TOUR ? '.' : '../e2e',
+  testMatch: IS_TOUR ? 'room-tour.spec.ts' : '30-shaky-hands.spec.ts',
   outputDir: `${ROOT}.tmp/test-videos-artifacts`,
   workers: 1,
   reporter: [['list'], ['json', { outputFile: `${ROOT}.tmp/test-videos-artifacts/results.json` }]],
@@ -22,7 +24,7 @@ export default defineConfig({
     baseURL: BASE_URL,
     ignoreHTTPSErrors: true,
     viewport: SIZE,
-    video: IS_VIDEO ? { mode: 'on', size: SIZE } : 'off',
+    video: IS_VIDEO || IS_TOUR ? { mode: 'on', size: SIZE } : 'off',
     trace: 'off',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: SIZE } }],
