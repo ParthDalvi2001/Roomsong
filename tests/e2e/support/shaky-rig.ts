@@ -177,6 +177,7 @@ const NOTED = [
   'onboarding:step',
   'settings:changed',
   'room:tuned',
+  'target:hover',
 ] as const;
 
 type DropMode = 'none' | 'burst' | 'underGrace';
@@ -463,8 +464,10 @@ export class Rig {
     const heard = this.heard.filter((e) => e.t >= this.sceneStartMs);
     for (const e of heard) counts[e.type] = (counts[e.type] ?? 0) + 1;
     const last = heard
-      .filter((e) => e.type === 'gesture:pinchStart' || e.type === 'gesture:release')
-      .slice(-4)
+      .filter(
+        (e) => e.type === 'gesture:pinchStart' || e.type === 'gesture:release' || e.type === 'target:hover',
+      )
+      .slice(-6)
       .map((e) => `${e.type} ${e.hand} ${e.kind ?? 'null'}:${e.id ?? ''} ${e.gesture ?? ''}`.trim());
     const where = (['left', 'right'] as const).map((hand) => {
       const p = this.puppets[hand];
