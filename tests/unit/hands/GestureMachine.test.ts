@@ -566,6 +566,27 @@ describe('GestureMachine: pull and drag (TC-HND-04, FR-HND-08/10/11)', () => {
     }
   });
 
+  it('a plant taken by sight is held on the line from the eyes, as far out as it was taken (D-066, BUG-033)', () => {
+    const r = rig();
+    r.context.eye = { x: 0.2, y: 1.16, z: 0 };
+    const fingers: Vec3 = { x: 0.2, y: 0.96, z: -0.225 }; // halfway from the eyes to the head: 30 cm short of it
+    r.step({ at: fingers });
+    r.step({ pinch: true });
+    r.step({ at: moved(fingers, { x: 0.025 }) }); // 2.5 cm sideways: the line now meets ALONG_5CM, ring 3 step 0
+    r.step({ pinch: false });
+    const nearly = (p: Vec3) => ({ x: near(p.x), y: near(p.y), z: near(p.z) });
+    // Render draws the plant at the drag's point plus its offset from the start's: both on the line, not at the fingers.
+    expect(seen[0]).toMatchObject({ type: 'gesture:pinchStart', target: PLANT, pos: nearly(PLANT_AT) });
+    expect(shown).toMatchObject([{ type: 'gesture:drag', pos: nearly(ALONG_5CM), zone: 'bed' }]);
+    expect(seen[1]).toMatchObject({
+      gesture: 'drag',
+      target: PLANT,
+      pos: nearly(ALONG_5CM),
+      zone: 'bed',
+      cell: { ring: 3, step: 0 },
+    });
+  });
+
   it('a dragged plant hovers the cell a release would fill, and its own cell counts as free', () => {
     const r = rig();
     r.step({ at: PLANT_AT });

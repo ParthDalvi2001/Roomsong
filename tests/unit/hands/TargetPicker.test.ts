@@ -172,6 +172,17 @@ describe('pickPastHand (D-066): the panel control the fingers look on, from the 
     expect(pickPastHand(eye, hand, [plantAt(0.2)])).toBeNull();
   });
 
+  it('takes the undo petal on the line as it takes a plant, and says how far along the line it lies (BUG-032/033)', () => {
+    const petal: PickCandidate = {
+      target: { kind: 'undo', id: 'u' },
+      radius: 0.04,
+      pos: { x: 0, y: 1.2, z: -0.38 },
+    };
+    const out = { along: 0 };
+    expect(pickPastHand(eye, hand, [petal], null, out)?.id).toBe('u');
+    expect(out.along).toBeCloseTo(0.38 / 0.25, 9); // the petal is 1.52 eye-to-fingers lengths out
+  });
+
   it('keeps the kept control a dead band further, so the highlight does not flicker at its edge', () => {
     const edge = control('a', 0.042);
     expect(pickPastHand(eye, hand, [edge])).toBeNull();

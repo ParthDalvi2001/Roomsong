@@ -55,15 +55,17 @@ export function pickTarget(
 
 /**
  * D-066, first device run: what is drawn stands over the real hand, which leaves no depth to reach by, so fingers that
- * look on a panel control or a plant can be many centimetres off it. The nearest of them within its own hit radius of
- * the line from the eyes through `at`, with the same memory as `pickTarget`: a control past the hand (the orb rides a
- * hand, nearer than the fingers), a plant anywhere ahead of the eyes. Creates nothing.
+ * look on a panel control, a plant or an undo petal can be many centimetres off it. The nearest of them within its own
+ * hit radius of the line from the eyes through `at`, with the same memory as `pickTarget`: a control past the hand (the
+ * orb rides a hand, nearer than the fingers), a plant or petal anywhere ahead of the eyes (BUG-032). `out.along`: how
+ * far out on that line the picked one lies, in lengths from the eyes to `at`; untouched when none is. Creates nothing.
  */
 export function pickPastHand(
   eye: Vec3,
   at: Vec3,
   candidates: readonly PickCandidate[],
   kept: TargetRef | null = null,
+  out?: { along: number },
 ): TargetRef | null {
   const dx = at.x - eye.x;
   const dy = at.y - eye.y;
@@ -75,7 +77,7 @@ export function pickPastHand(
   for (let i = 0; i < candidates.length; i++) {
     const candidate = candidates[i]!;
     const { target } = candidate;
-    if (target.kind !== 'panel' && target.kind !== 'plant') continue;
+    if (target.kind !== 'panel' && target.kind !== 'plant' && target.kind !== 'undo') continue;
     const vx = candidate.pos.x - eye.x;
     const vy = candidate.pos.y - eye.y;
     const vz = candidate.pos.z - eye.z;
@@ -89,6 +91,7 @@ export function pickPastHand(
     if (offM <= candidate.radius && offM < bestM) {
       best = target;
       bestM = offM;
+      if (out !== undefined) out.along = along;
     }
   }
   return best;

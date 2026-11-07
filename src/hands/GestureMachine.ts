@@ -48,7 +48,7 @@ export interface GestureContext {
   candidates: readonly PickCandidate[];
   /** The BedAnchor entity's `matrixWorld.elements` (LLD §3); null while no bed is placed. */
   bedPose: Mat4 | null;
-  /** Where the eyes are (D-066): a panel control is picked along the line through the fingers. */
+  /** Where the eyes are (D-066): a panel control, plant or petal is picked along the line through the fingers. */
   eye?: Vec3;
   /**
    * garden's `nearestFreeCell` on the state of the latest `garden:changed`. null = the bed is full.
@@ -105,6 +105,16 @@ export class GestureMachine {
   private snapped: Cell | null = null;
   private readonly palmUp = new PalmUpHold();
   private readonly local: Vec2 = { x: 0, y: 0 };
+  /** The eye-line pick's `along` for this sample's hover (D-066); 0 when the hover was not picked by sight. */
+  private readonly sight = { along: 0 };
+  /**
+   * BUG-033: a plant taken by sight is held on the line from the eyes through the fingers, this many eye-to-fingers
+   * lengths out (as far out as it was picked), so it goes where the player looks; 0 = held at the fingers.
+   */
+  private heldAlong = 0;
+  private readonly heldAt = new Vector3();
+  /** Where the fingers were when the pinch began: a hold's travel is the hand's own, wherever its plant is held. */
+  private readonly pinchedAt = new Vector3();
   private readonly palmUpEvent: GesturePayload<'gesture:palmUp'>;
   private readonly startEvent: GesturePayload<'gesture:pinchStart'>;
   private readonly pullEvent: GesturePayload<'gesture:pull'>;
@@ -152,9 +162,9 @@ export class GestureMachine {
     // Not on the sample where the pinch opens: opening moves the pinch point, and what commits is what was shown.
     if (this.state !== 'IDLE' && this.endsOnPinch && frame.pinch) this.shape(frame, context.bedPose);
     this.hover(frame, context);
-    if (this.state === 'IDLE') this.idle(frame, timeMs);
+    if (this.state === 'IDLE') this.idle(frame, timeMs, context.eye);
     else if (!(this.endsOnPinch ? frame.pinch : frame.select)) this.release(frame, context);
-    else this.preview(frame, context.bedPose);
+    else this.preview(frame, context);
     this.wasPinch = frame.pinch;
     this.wasSelect = frame.select;
   }
@@ -212,7 +222,7 @@ export class GestureMachine {
    * remove a plant.
    */
   private shape(frame: HandFrame, bedPose: Mat4 | null): void {
-    const from = this.startEvent.pos; // where the pinch began: start() wrote it, and nothing does before the next
+    const from = this.pinchedAt; // start() wrote it, and nothing does before the next
     const dx = frame.pinchPos.x - from.x;
     const dy = frame.pinchPos.y - from.y;
     const dz = frame.pinchPos.z - from.z;
@@ -234,6 +244,7 @@ export class GestureMachine {
       // A pinched or pulled plant is its own hover wherever the hand goes: its release acts on it and on no cell.
       const isHeldPlant = state !== 'IDLE' && this.endsOnPinch;
       const kept = this.hoverEvent.target;
+      this.sight.along = 0;
       let picked = isHeldPlant ? this.held : pickTarget(frame.pinchPos, context.candidates, kept);
       // D-062, first device run: nothing at the fingertips: the seed resting on this palm is the hover, for everyone.
       // Players pinch with the hand that holds the seed and carry it down to the bed.
@@ -241,7 +252,7 @@ export class GestureMachine {
         picked = pickTarget(frame.palmPos, context.candidates, kept, 'seed'); // a plant by the palm does not block it
       }
       if (picked === null && context.eye !== undefined && (state === 'IDLE' || state === 'PRESSED')) {
-        picked = pickPastHand(context.eye, frame.pinchPos, context.candidates, kept);
+        picked = pickPastHand(context.eye, frame.pinchPos, context.candidates, kept, this.sight);
       }
       this.setHover(picked, null);
       return;
@@ -249,7 +260,7 @@ export class GestureMachine {
     this.snapped =
       context.bedPose === null
         ? null
-        : stickyCell(toBedLocal(context.bedPose, frame.pinchPos, this.local), this.snapped);
+        : stickyCell(toBedLocal(context.bedPose, this.point(frame, context.eye), this.local), this.snapped);
     // Garden is asked on every sample: the other hand may fill the cell while this one hovers it. A dragged
     // plant's own cell counts as free: it may be put back where it stands.
     const dragged = state === 'DRAGGING' ? this.held.id : undefined;
@@ -257,21 +268,34 @@ export class GestureMachine {
   }
 
   /** No bed placed: 'inner', the zone where a release commits nothing (API_SPEC §1.4). */
-  private zone(frame: HandFrame, bedPose: Mat4 | null): BedZone {
-    return bedPose === null ? 'inner' : bedZone(toBedLocal(bedPose, frame.pinchPos, this.local));
+  private zone(at: Vec3, bedPose: Mat4 | null): BedZone {
+    return bedPose === null ? 'inner' : bedZone(toBedLocal(bedPose, at, this.local));
+  }
+
+  /** Where the hold is this sample: the fingers, or for a plant taken by sight its point on the eye line (BUG-033). */
+  private point(frame: HandFrame, eye: Vec3 | undefined): Vec3 {
+    const k = this.heldAlong;
+    const fingers = frame.pinchPos;
+    if (k === 0 || eye === undefined) return fingers;
+    const at = this.heldAt;
+    at.x = eye.x + k * (fingers.x - eye.x);
+    at.y = eye.y + k * (fingers.y - eye.y);
+    at.z = eye.z + k * (fingers.z - eye.z);
+    return at;
   }
 
   /**
    * The previews of a held plant (LLD §4): one per tracked sample, from the sample that decided to the one
    * before the release. They commit nothing (FR-HND-16).
    */
-  private preview(frame: HandFrame, bedPose: Mat4 | null): void {
+  private preview(frame: HandFrame, context: GestureContext): void {
     if (this.state === 'PULLING') {
       bus.emit('gesture:pull', this.pullEvent); // shape() wrote its travel on this same sample
     } else if (this.state === 'DRAGGING') {
       const event = this.dragEvent;
-      copy(event.pos, frame.pinchPos);
-      event.zone = this.zone(frame, bedPose);
+      const at = this.point(frame, context.eye);
+      copy(event.pos, at);
+      event.zone = this.zone(at, context.bedPose);
       bus.emit('gesture:drag', event);
     }
   }
@@ -294,7 +318,7 @@ export class GestureMachine {
     bus.emit('target:hover', event);
   }
 
-  private idle(frame: HandFrame, timeMs: number): void {
+  private idle(frame: HandFrame, timeMs: number, eye: Vec3 | undefined): void {
     // Edges, not levels: a signal that is still down from the last pinch starts nothing.
     const pinchRose = frame.pinch && !this.wasPinch;
     const selectRose = frame.select && !this.wasSelect;
@@ -304,15 +328,16 @@ export class GestureMachine {
       // select. What is under the hand picks the signal; the other one's edge does nothing (never OR-ed).
       const usesPinch = target !== null && target.kind === 'plant';
       if (usesPinch ? pinchRose : selectRose) {
-        this.start(frame, target, usesPinch);
+        this.start(frame, target, usesPinch, eye);
         return;
       }
     }
     if (this.palmUp.update(frame, timeMs)) bus.emit('gesture:palmUp', this.palmUpEvent);
   }
 
-  private start(frame: HandFrame, target: TargetRef | null, usesPinch: boolean): void {
+  private start(frame: HandFrame, target: TargetRef | null, usesPinch: boolean, eye: Vec3 | undefined): void {
     this.endsOnPinch = usesPinch;
+    this.heldAlong = usesPinch ? this.sight.along : 0; // this same sample's hover picked the target
     this.holdsTarget = target !== null;
     this.state = 'PINCHED'; // a plant, or nothing
     if (target !== null) {
@@ -324,14 +349,17 @@ export class GestureMachine {
     this.palmUp.reset(); // the hold starts over once the hand is idle again (LLD §11: the next seed)
     const event = this.startEvent;
     event.target = target === null ? null : this.held;
-    copy(event.pos, frame.pinchPos);
+    copy(this.pinchedAt, frame.pinchPos);
+    copy(event.pos, this.point(frame, eye));
     bus.emit('gesture:pinchStart', event);
   }
 
   private release(frame: HandFrame, context: GestureContext): void {
     const event = this.releaseEvent;
     const state = this.state;
-    event.zone = this.zone(frame, context.bedPose);
+    const at = this.point(frame, context.eye);
+    copy(event.pos, at);
+    event.zone = this.zone(at, context.bedPose);
     event.gesture = ENDS_AS[state];
     // PLANT and a drag (FR-HND-16): the hovered cell of this same sample, not a fresh snap; null off the bed.
     // Every other hover has no cell, so a pull cannot move its plant.
@@ -340,7 +368,6 @@ export class GestureMachine {
     // A press counts only when the hover is still on what was pressed; moving off it first cancels.
     if (state === 'PRESSED' && !isSame(this.hoverEvent.target, this.held)) event.target = null;
     event.dy = state === 'PULLING' ? this.pullEvent.dy : null; // FR-HND-08: a pull always carries its travel
-    copy(event.pos, frame.pinchPos);
     this.state = 'IDLE';
     bus.emit('gesture:release', event);
   }
