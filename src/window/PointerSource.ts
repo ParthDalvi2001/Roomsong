@@ -36,6 +36,8 @@ export class PointerSource implements InputSource {
   private isSeen = false;
   private readonly pos = new Vector3();
   private readonly onRay = new Vector3();
+  /** How far above the bed the plant under the pointer stands: kept through a press, or a drag would read as a pull. */
+  private heldLiftM = 0;
   private readonly lastPos = new Vector3();
   /** The previous sample's time, ms; -1 before the first one. */
   private lastMs = -1;
@@ -147,21 +149,29 @@ export class PointerSource implements InputSource {
    * nearest it (the nearest such target), held or not, so hover, press and release agree. Creates nothing (hot path).
    */
   private liftOnto(pos: Vector3): void {
+    if (this.isDown && this.heldLiftM > 0) {
+      pos.y += this.heldLiftM;
+      return;
+    }
+    this.heldLiftM = 0;
+    const bedY = pos.y;
     let bestM = LIFTED_DRAWN_RADIUS_M;
     for (let i = 0; i < this.targets.length; i++) {
-      const { target, pos: at } = this.targets[i]!;
+      const { target, radius, pos: at } = this.targets[i]!;
       if (target.kind !== 'orb' && target.kind !== 'undo' && target.kind !== 'plant') continue;
       // A click on a plant's foot takes it too: a pointer's bed point right under its head (D-063).
       const dx = at.x - pos.x;
       const dz = at.z - pos.z; // not Math.hypot: it allocates on every call in V8
-      if (target.kind === 'plant' && dx * dx + dz * dz <= LIFTED_DRAWN_RADIUS_M * LIFTED_DRAWN_RADIUS_M) {
-        pos.copy(at);
+      if (target.kind === 'plant' && dx * dx + dz * dz <= radius * radius) {
+        pos.y = at.y;
+        this.heldLiftM = at.y - bedY;
         return;
       }
       const offM = this.stage.closestOnRay(at, this.onRay);
       if (offM > bestM) continue;
       bestM = offM;
       pos.copy(this.onRay);
+      this.heldLiftM = target.kind === 'plant' ? pos.y - bedY : 0;
     }
   }
 

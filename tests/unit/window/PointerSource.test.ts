@@ -153,6 +153,25 @@ describe('PointerSource: the latched button (LLD §11)', () => {
     expect(sample()).toMatchObject({ pinch: false, at: { x: -0.5, z: -0.5 } });
   });
 
+  it('D-063: over a plant the point is at its head, and stays that high through a press: a drag is not a pull', () => {
+    const plant: PickCandidate = {
+      target: { kind: 'plant', id: 'p' },
+      radius: 0.04,
+      pos: { x: 0.5, y: 1.09, z: 0 },
+    };
+    const { canvas, sample } = rig([plant]);
+    enter();
+    canvas.fire('pointermove', at(600, 300));
+    expect(sample().at.y).toBeCloseTo(1.09); // the bed plane of this stage is y = 1: this is its foot, under its head
+    canvas.fire('pointerdown', at(600, 300));
+    expect(sample().at.y).toBeCloseTo(1.09);
+    canvas.fire('pointermove', at(200, 150, { buttons: 1 }));
+    expect(sample()).toMatchObject({ pinch: true, at: { x: -0.5, z: -0.5 } });
+    expect(sample().at.y).toBeCloseTo(1.09);
+    canvas.fire('pointerup', at(200, 150));
+    expect(sample().at.y).toBe(1); // let go, on open ground: back on the bed
+  });
+
   it('a press and a drag before the next frame: the press is where it began, the drag after it', () => {
     const { canvas, sample } = rig();
     enter();
