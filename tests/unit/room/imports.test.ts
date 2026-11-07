@@ -125,6 +125,7 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
       PLANE_LEVELS_TIMEOUT_MS: 3000,
       HIT_TEST_TIMEOUT_MS: 6000, // D-060 item 12, was 10 000
       GHOST_EASE_MS: 100, // UX §9.2
+      NO_ROOM_NOTICE_MS: 4000, // FR-ROOM-14, D-068
       EPSILON_M: 1e-6,
     });
     // index.ts hands on the same values, not copies of its own

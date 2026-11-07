@@ -12,6 +12,7 @@ import {
   BED_CENTRE_MAX_M,
   GHOST_EASE_MS,
   HIT_TEST_TIMEOUT_MS,
+  NO_ROOM_NOTICE_MS,
   PLANE_LEVELS_TIMEOUT_MS,
   RESTORE_REACH_SLACK_M,
 } from '../../../src/room/config.js';
@@ -108,6 +109,8 @@ function rig() {
   head.matrixWorld.makeTranslation(0, EYE_M, 0); // the emulator's head: at the origin, looking down -z
   const bed = new FakeEntity();
   const hint = new FakeEntity();
+  const notice = new FakeEntity();
+  const entities = [hint, notice]; // in the order RoomSystem makes them
   const made: unknown[] = [];
   const world = {
     renderer: { xr },
@@ -117,7 +120,7 @@ function rig() {
       made.push([object, options]);
       return bed;
     },
-    createEntity: () => hint,
+    createEntity: () => entities.shift()!,
   };
   const system = new RoomSystem(world as never, {} as never, 10);
 
@@ -226,6 +229,7 @@ function rig() {
     head,
     bed,
     hint,
+    notice,
     made,
     room,
     calls,
@@ -690,7 +694,7 @@ describe('RoomSystem: placing, the decision of the first update (LLD §3.2, §5.
     chain.room.planes = [];
     await chain.place();
     expect(chain.types()).toEqual(['room:bedPlaced', 'room:features']);
-    expect(chain.readPlanes).not.toHaveBeenCalled();
+    expect(chain.readPlanes).toHaveBeenCalledTimes(1); // FR-ROOM-14's look after the room read, not a wait
   });
 });
 
@@ -1374,6 +1378,61 @@ describe('RoomSystem: a placed bed after a pause and after a recentre (LLD §3.2
     r.frame();
     (r.xr.space as unknown as EventTarget).dispatchEvent(new Event('reset'));
     expect(r.restores).toHaveLength(2);
+  });
+});
+
+describe('RoomSystem: the no-room notice (FR-ROOM-14, D-068)', () => {
+  const NOTICE = { key: 'noRoomScan' };
+
+  it('a room read with no plane: the notice in the frame of room:features, once a session; the next session says it again', async () => {
+    const r = rig();
+    r.room.planes = [];
+    let atFeatures: unknown;
+    stops.push(bus.on('room:features', () => (atFeatures = r.notice.data.get(Caption))));
+    await r.place(FLOATING);
+    expect(atFeatures).toBeUndefined(); // raised after the room read, not before it
+    expect(r.notice.data.get(Caption)).toEqual({ ...NOTICE, expiresAt: r.wallMs() + NO_ROOM_NOTICE_MS });
+    r.notice.removeComponent(Caption); // CaptionSystem took it down once shown
+    r.system.replace(); // a Re-place reads the room again, and says nothing again
+    r.frame();
+    r.runs[r.runs.length - 1]!.resolve(FLOATING);
+    await betweenFrames();
+    r.frame();
+    expect(r.notice.ops).toEqual(['add', 'remove']);
+    endSession();
+    await r.place(FLOATING);
+    expect(r.notice.ops).toEqual(['add', 'remove', 'add']);
+    endSession(); // the session end takes a notice that is still up
+    expect(r.notice.hasComponent(Caption)).toBe(false);
+  });
+
+  it('a room with planes says nothing: on a table, and at level 4 too (forceLevel); nor does the garden window', async () => {
+    for (const placement of [ON_TABLE, FLOATING]) {
+      const r = rig();
+      await r.place(placement);
+      for (let i = 0; i < 5; i++) r.frame();
+      expect(r.notice.ops, `level ${placement.level}`).toEqual([]);
+      endSession();
+    }
+    const window = rig();
+    window.xr.frame = null;
+    window.xr.isPresenting = false;
+    window.room.planes = [];
+    await window.place(FLOATING);
+    expect(window.notice.ops).toEqual([]);
+  });
+
+  it('planes that come after the read take the notice back, queued or on screen, and it is not raised again', async () => {
+    const r = rig();
+    r.room.planes = [];
+    await r.place(FLOATING);
+    r.frame();
+    expect(r.notice.hasComponent(Caption)).toBe(true);
+    r.room.planes = [A_PLANE]; // a scanned room whose planes came late
+    r.frame();
+    expect(r.notice.ops).toEqual(['add', 'remove']);
+    for (let i = 0; i < 5; i++) r.frame();
+    expect(r.notice.ops).toEqual(['add', 'remove']);
   });
 });
 

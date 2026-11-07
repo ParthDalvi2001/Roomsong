@@ -36,6 +36,12 @@ describe('core/strings', () => {
       expect(STRINGS[key].split(' ')).toHaveLength(6);
   });
 
+  it('holds the no-room notice of FR-ROOM-14 (D-068), six words, within the 29 characters a caption fits', () => {
+    expect(STRINGS.noRoomScan).toBe('No room scan: run Space Setup');
+    expect(STRINGS.noRoomScan.split(' ')).toHaveLength(6);
+    expect(STRINGS.noRoomScan.length).toBeLessThanOrEqual(29); // ui/Captions.ts: the longest that fits unsqueezed
+  });
+
   it('holds the ending of a Listen that ran its time (UX §3.5, T-148)', () => {
     expect(STRINGS.goodnight).toBe('Goodnight');
   });
@@ -81,6 +87,7 @@ describe('core/strings', () => {
       'soundResume',
       'soundResumeClick',
       'putControllersDown',
+      'noRoomScan',
     ]; // T-152 and the 23 Oct audit: instructions, each with its gaze or window twin
     const failures = entries.filter(([k]) => !/^(ripple|place|onboard)/.test(k) && !notices.includes(k));
     for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);
