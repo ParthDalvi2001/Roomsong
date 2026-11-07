@@ -190,6 +190,7 @@ test('a1 the landing page is on screen and usable before the app chunk, and no S
   await expect(enterButton(page)).toBeDisabled();
   await expect(status(page)).toHaveText('Getting the garden ready.');
   await expect(landing(page).getByRole('listitem').first()).toHaveText('Mixed reality: supported.');
+  await landing(page).locator('summary', { hasText: 'Accessibility' }).click(); // D-065: closed until asked for
   await landing(page).getByLabel('High contrast').check();
   await expect(landing(page).getByLabel('High contrast')).toBeChecked();
   expect(requests.filter(isSdk)).toEqual([]);

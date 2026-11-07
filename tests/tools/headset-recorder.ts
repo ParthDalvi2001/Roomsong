@@ -114,6 +114,7 @@ setInterval(() => {
 // Twice a second, each hand: tracked; how far its palm faces up (1 = straight up; the seed asks for 0.82 or more); and
 // how far it faces the way the head looks (Listen asks for 0.77 or more, and a palm not within 30 degrees of down).
 type Slots = {
+  candidates: { target: { kind: string; id: string }; pos: { x: number; y: number; z: number } }[];
   slots: {
     frame: {
       hand: string;
@@ -130,6 +131,12 @@ setInterval(() => {
   const hands = dev?.world.getSystem(HandSystem) as Slots | undefined;
   if (dev?.world.renderer.xr.getSession() == null || hands === undefined) return;
   const m = dev.world.player.head.matrixWorld.elements;
+  rec(
+    'plants:at',
+    hands.candidates
+      .filter(({ target }) => target.kind === 'plant')
+      .map(({ target, pos }) => [target.id.slice(-1), round(pos.x), round(pos.y), round(pos.z)]),
+  );
   const isOpen =
     (dev.world.getSystem(PanelSystem) as { panel?: { open: boolean } } | undefined)?.panel?.open ?? false;
   if (isOpen !== panelOpen) rec('panel:open', (panelOpen = isOpen));

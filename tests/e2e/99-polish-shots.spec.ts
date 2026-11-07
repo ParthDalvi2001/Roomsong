@@ -15,7 +15,8 @@ const DIR = '.tmp/polish';
 const PREFIX = process.env.SHOT_PREFIX ?? 'before';
 const shot = (name: string) => `${DIR}/${PREFIX}-${name}.png`;
 const WORLD_READY_MS = 15_000;
-const WINDOW = 'The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset.';
+const WINDOW =
+  'The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset.';
 /** One plant on each ring, spread round the bed; grown for 8, 4, 2 days, 0 and 0 (GROWTH_STAGE_DAYS 1/3/7). */
 const CELLS = [
   { ring: 0, step: 0 },
@@ -181,6 +182,7 @@ test('laptop mode: five plants, Listen', async ({ page }) => {
 
 test('laptop mode: high contrast with five plants', async ({ page }) => {
   await openPlain(page, '/?flags=skipOnboarding');
+  await page.locator('summary', { hasText: 'Accessibility' }).click(); // D-065: closed until asked for
   await page.getByLabel('High contrast').check();
   await withFivePlants(page);
   await page.screenshot({ path: shot('high-contrast') });

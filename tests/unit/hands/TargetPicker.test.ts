@@ -149,12 +149,27 @@ describe('pickPastHand (D-066): the panel control the fingers look on, from the 
     expect(pickPastHand(eye, hand, [control('a', 0.03), control('b', 0.01)])?.id).toBe('b');
   });
 
-  it('misses a control off the line, one nearer than the hand, and anything but the panel', () => {
+  it('misses a control off the line, one nearer than the hand, and any other kind of target', () => {
     expect(pickPastHand(eye, hand, [control('a', 0.05)])).toBeNull();
     expect(pickPastHand(eye, hand, [control('a', 0, -0.2)])).toBeNull();
-    const plant: PickCandidate = { target: { kind: 'plant', id: 'p' }, radius: 0.04, pos: { x: 0, y: 1.2, z: -0.55 } };
-    expect(pickPastHand(eye, hand, [plant])).toBeNull();
+    const seed: PickCandidate = {
+      target: { kind: 'seed', id: 's' },
+      radius: 0.04,
+      pos: { x: 0, y: 1.2, z: -0.55 },
+    };
+    expect(pickPastHand(eye, hand, [seed])).toBeNull();
     expect(pickPastHand(eye, eye, [control('a', 0)])).toBeNull(); // no line: the hand at the eyes
+  });
+
+  it('takes a plant on the line whether the fingers stop short of it or reach past it, never one behind the eyes', () => {
+    const plantAt = (z: number): PickCandidate => ({
+      target: { kind: 'plant', id: 'p' },
+      radius: 0.04,
+      pos: { x: 0, y: 1.2, z },
+    });
+    expect(pickPastHand(eye, hand, [plantAt(-0.55)])?.id).toBe('p');
+    expect(pickPastHand(eye, hand, [plantAt(-0.15)])?.id).toBe('p');
+    expect(pickPastHand(eye, hand, [plantAt(0.2)])).toBeNull();
   });
 
   it('keeps the kept control a dead band further, so the highlight does not flicker at its edge', () => {

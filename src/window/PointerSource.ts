@@ -151,6 +151,13 @@ export class PointerSource implements InputSource {
     for (let i = 0; i < this.targets.length; i++) {
       const { target, pos: at } = this.targets[i]!;
       if (target.kind !== 'orb' && target.kind !== 'undo' && target.kind !== 'plant') continue;
+      // A click on a plant's foot takes it too: a pointer's bed point right under its head (D-063).
+      const dx = at.x - pos.x;
+      const dz = at.z - pos.z; // not Math.hypot: it allocates on every call in V8
+      if (target.kind === 'plant' && dx * dx + dz * dz <= LIFTED_DRAWN_RADIUS_M * LIFTED_DRAWN_RADIUS_M) {
+        pos.copy(at);
+        return;
+      }
       const offM = this.stage.closestOnRay(at, this.onRay);
       if (offM > bestM) continue;
       bestM = offM;

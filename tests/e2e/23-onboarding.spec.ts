@@ -381,11 +381,12 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   const to = await probe.evaluate((p) => p.cellAt({ ring: 3, step: 6 }));
   const head = (await probe.evaluate((p) => p.plantTargets())).find((t) => t.id === newest.id)!.at; // grown: higher (D-063)
   expect(await hands.pinchAt(head)).toBeLessThan(HIT_RADIUS_M / 4);
-  await hands.carryTo(to);
+  const across = { ...to, y: head.y }; // along the bed: straight down from a tall plant's head would be a pull
+  await hands.carryTo(across);
   await xrFrames(page, 20);
   expect(await probe.evaluate((p) => p.shows().arrow)).toBe(ARROW);
   await page.screenshot({ path: '.tmp/t150-5-drag.png' });
-  await hands.releaseAt(to);
+  await hands.releaseAt(across);
   await heard(probe, 'gesture:release', { gesture: 'drag' });
   // Both gates earned: the Listen step at once, "Show your palms to listen" (free is passed, not said).
   const free = await stepAt(probe, 'listen');

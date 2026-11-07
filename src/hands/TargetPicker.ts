@@ -54,9 +54,10 @@ export function pickTarget(
 }
 
 /**
- * D-066, first device run: the settings panel is drawn over the real hand, which leaves no depth to reach by, so
- * fingers that look on a control can be 30 cm short of it. The nearest panel target past the hand, within its own hit
- * radius of the line from the eyes through `at`, with the same memory as `pickTarget`. Creates nothing.
+ * D-066, first device run: what is drawn stands over the real hand, which leaves no depth to reach by, so fingers that
+ * look on a panel control or a plant can be many centimetres off it. The nearest of them within its own hit radius of
+ * the line from the eyes through `at`, with the same memory as `pickTarget`: a control past the hand (the orb rides a
+ * hand, nearer than the fingers), a plant anywhere ahead of the eyes. Creates nothing.
  */
 export function pickPastHand(
   eye: Vec3,
@@ -74,12 +75,12 @@ export function pickPastHand(
   for (let i = 0; i < candidates.length; i++) {
     const candidate = candidates[i]!;
     const { target } = candidate;
-    if (target.kind !== 'panel') continue;
+    if (target.kind !== 'panel' && target.kind !== 'plant') continue;
     const vx = candidate.pos.x - eye.x;
     const vy = candidate.pos.y - eye.y;
     const vz = candidate.pos.z - eye.z;
     const along = (vx * dx + vy * dy + vz * dz) / squared;
-    if (along <= 1) continue; // between the eyes and the hand: not what the fingers are on
+    if (along <= (target.kind === 'panel' ? 1 : 0)) continue;
     const ox = vx - along * dx;
     const oy = vy - along * dy;
     const oz = vz - along * dz;

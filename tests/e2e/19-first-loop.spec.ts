@@ -236,7 +236,7 @@ test('d1: a garden is drawn on the bed: three plants, three plant targets at the
   for (const t of raised) {
     const was = targets.find((each) => each.id === t.id)!;
     expect(t.at.y - was.at.y, t.id).toBeCloseTo(0.02, 4);
-    expect(distance(t.at, t.cellAt), t.id).toBeLessThan(1e-4);
+    expect(distance(t.at, { ...t.cellAt, y: t.cellAt.y + 0.0905 }), t.id).toBeLessThan(1e-4); // its head, D-063
   }
   expect((await probe.evaluate((p) => p.audioBedY())) - audioBefore).toBeCloseTo(0.02, 4);
 

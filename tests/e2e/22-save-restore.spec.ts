@@ -159,6 +159,7 @@ test('e1 a reload brings the garden back: the same plants in the same cells, see
   const offHost = await openApp(page, readRoom('table'));
   let probe = await probeSave(page);
   // A box ticked on the landing page, with no session after it, is saved on its own.
+  await landing(page).locator('summary', { hasText: 'Accessibility' }).click(); // D-065: closed until asked for
   await landing(page).getByLabel('High contrast').check();
   await expect.poll(() => probe.evaluate(async (p) => (await p.stored())?.settings.highContrast)).toBe(true);
   await page.reload();
@@ -239,6 +240,7 @@ test('e2 a change followed at once by closing the page is there when the page is
   const errors = watch(page);
   const offHost = await openApp(page, readRoom('none'));
   await probeSave(page);
+  await landing(page).locator('summary', { hasText: 'Accessibility' }).click(); // D-065: closed until asked for
   await landing(page).getByLabel('One hand').check();
   // Well inside the debounce. The IndexedDB write the hide starts goes with the page (Chromium drops it, even with
   // an explicit commit()); the synchronous write to the localStorage fallback at `pagehide` is what survives.
@@ -342,6 +344,7 @@ test('e2 with storage refused the garden still plays, and "This garden cannot be
   const saveFailed = () =>
     probe.evaluate((p, key) => p.raised.filter((raised) => raised === key), SAVE_FAILED);
   // The first failure on the landing page, where no caption shows: it waits for the session.
+  await landing(page).locator('summary', { hasText: 'Accessibility' }).click(); // D-065: closed until asked for
   await landing(page).getByLabel('High contrast').check();
   await expect.poll(() => probe.evaluate((p) => p.refused())).toBe(1);
   expect(await saveFailed()).toEqual([]);
