@@ -132,7 +132,6 @@ function apart(a: Buffer, b: Buffer): number {
   return (100 * sum) / (a.length * 255);
 }
 
-
 /** The room tour's videos and README: one row per room, from .tmp/room-tour/<n>.json (room-tour.spec.ts). */
 function writeTour(): void {
   const KEYS: Record<number, string> = { [-3]: 'A', 0: 'C', 2: 'D', 4: 'E' };
