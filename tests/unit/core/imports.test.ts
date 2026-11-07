@@ -66,6 +66,7 @@ describe('core/ dependency direction (API_SPEC §1)', () => {
         'createClock',
         'flags',
         'log',
+        'parseAccessLink',
         'parseFlags',
         'settings',
         'validateSettings',

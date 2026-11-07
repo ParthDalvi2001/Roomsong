@@ -16,7 +16,7 @@ import {
   register,
   restoreSettings,
 } from '../../src/app.js';
-import { bus, clock, DEFAULT_SETTINGS, log, settings } from '../../src/core/index.js';
+import { bus, clock, DEFAULT_SETTINGS, log, parseAccessLink, settings } from '../../src/core/index.js';
 import { TIME_LAPSE_DAY_MS } from '../../src/garden/config.js';
 import { GardenSystem, stageFor } from '../../src/garden/index.js';
 import { SAVE_DEBOUNCE_MS, STATE_KEY } from '../../src/persistence/config.js';
@@ -806,5 +806,16 @@ describe('the saved settings go live under what the page changed (LLD §3.3 A4)'
     settings.set({ oneHand: true }); // ticked on the landing page during the load
     restoreSettings({ ...DEFAULT_SETTINGS, oneHand: false, tempo: 96, volume: 0.5 });
     expect(settings.get()).toEqual({ ...DEFAULT_SETTINGS, oneHand: true, tempo: 96, volume: 0.5 });
+  });
+  it('an accessibility link, set at boot as src/index.ts does, wins over the save for this visit (FR-UI-12)', () => {
+    settings.set(parseAccessLink('?access=gaze,contrast'));
+    restoreSettings({ ...DEFAULT_SETTINGS, gazeDwell: false, highContrast: false, oneHand: true, tempo: 96 });
+    expect(settings.get()).toEqual({
+      ...DEFAULT_SETTINGS,
+      gazeDwell: true,
+      highContrast: true,
+      oneHand: true,
+      tempo: 96,
+    });
   });
 });
