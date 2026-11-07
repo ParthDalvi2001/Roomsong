@@ -16,9 +16,11 @@ const IS_TOUR = process.argv.includes('--rooms');
 const OUT = `${ROOT}${IS_TOUR ? 'room-tour' : 'test-videos'}/`;
 const RESULTS = `${ROOT}.tmp/test-videos-artifacts/results.json`;
 const FFMPEG = process.env.FFMPEG ?? 'ffmpeg';
-/** Room tour: below this two stills count as the same picture, below NEAR_PCT as nearly the same. */
-const SAME_PCT = 0.5;
-const NEAR_PCT = 2;
+/** Room tour: two stills with under this share of their pixels apart are the same picture, under NEAR_PCT nearly. */
+const SAME_PCT = 0.05;
+const NEAR_PCT = 1;
+/** A pixel is apart when a colour differs by more than this (of 255): over the encoder's and the renderer's noise. */
+const PIXEL_STEP = 24;
 
 interface Result {
   status: string;
@@ -118,18 +120,29 @@ writeFileSync(
 );
 console.log(`test videos: ${OUT}`);
 
-/** A still as 160 x 64 grey levels, through ffmpeg, without the label in its top part (each room's own words). */
+/** A still as 640 x 260 RGB pixels, through ffmpeg, without the label in its top part (each room's own words). */
 function grey(path: string): Buffer {
-  const vf = 'crop=iw:ih*0.72:0:ih*0.28,scale=160:64,format=gray';
+  const vf = 'crop=iw:ih*0.72:0:ih*0.28,scale=640:260,format=rgb24';
   const args = ['-v', 'error', '-i', path, '-vf', vf, '-f', 'rawvideo', '-'];
-  return spawnSync(FFMPEG, args, { maxBuffer: 1 << 20 }).stdout;
+  return spawnSync(FFMPEG, args, { maxBuffer: 1 << 22 }).stdout;
 }
 
-/** How far apart two stills are: the mean difference of their grey levels, in % of full scale. */
+/**
+ * How far apart two stills are: the share of their pixels, in %, that differ by more than PIXEL_STEP in a colour. A
+ * share and not a mean: a room is a small part of an overview, and a brown floor on the grey backdrop is near it in
+ * brightness, so a mean difference called clearly different rooms the same.
+ */
 function apart(a: Buffer, b: Buffer): number {
-  let sum = 0;
-  for (let i = 0; i < a.length; i++) sum += Math.abs(a[i]! - b[i]!);
-  return (100 * sum) / (a.length * 255);
+  let changed = 0;
+  for (let i = 0; i < a.length; i += 3) {
+    const most = Math.max(
+      Math.abs(a[i]! - b[i]!),
+      Math.abs(a[i + 1]! - b[i + 1]!),
+      Math.abs(a[i + 2]! - b[i + 2]!),
+    );
+    if (most > PIXEL_STEP) changed++;
+  }
+  return (300 * changed) / a.length;
 }
 
 /** The room tour's videos and README: one row per room, from .tmp/room-tour/<n>.json (room-tour.spec.ts). */
@@ -216,10 +229,11 @@ function writeTour(): void {
       '',
       '## Do the outputs differ?',
       '',
-      `Each still against every other one (${overviews.length} pairs): the mean grey-level difference below the label,`,
-      `in % of full scale. Overviews: ${spread(overviews)}. Garden stills: ${spread(gardens)}. Under ${SAME_PCT} % is`,
-      `the same picture, under ${NEAR_PCT} % nearly the same. The pairs nearly the same in a picture, or the same in`,
-      'every number:',
+      `Each still against every other one (${overviews.length} pairs): the share of pixels, below the label, whose`,
+      `colour differs by more than ${PIXEL_STEP} of 255. Overviews: ${spread(overviews)}. Garden stills:`,
+      `${spread(gardens)}. Under ${SAME_PCT} % is the same picture, under ${NEAR_PCT} % nearly the same. A room is a`,
+      'small part of an overview, so small numbers there still mean different rooms. The pairs nearly the same in a',
+      'picture, or the same in every number:',
       '',
       '| Pair | Overview | Garden still | Why |',
       '|---|---|---|---|',
