@@ -115,6 +115,24 @@ writeFileSync(
 );
 console.log(`test videos: ${OUT}`);
 
+/** A still as 160 x 64 grey levels, through ffmpeg, without the label in its top part (each room's own words). */
+function grey(path: string): Buffer {
+  const vf = 'crop=iw:ih*0.72:0:ih*0.28,scale=160:64,format=gray';
+  const args = ['-v', 'error', '-i', path, '-vf', vf, '-f', 'rawvideo', '-'];
+  return spawnSync(FFMPEG, args, { maxBuffer: 1 << 20 }).stdout;
+}
+
+/** How far apart two stills are: the mean difference of their grey levels, in % of full scale. */
+function apart(a: Buffer, b: Buffer): number {
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) sum += Math.abs(a[i]! - b[i]!);
+  return (100 * sum) / (a.length * 255);
+}
+
+/** Below this two stills count as the same picture, below NEAR_PCT as nearly the same. */
+const SAME_PCT = 0.5;
+const NEAR_PCT = 2;
+
 /** The room tour's videos and README: one row per room, from .tmp/room-tour/<n>.json (room-tour.spec.ts). */
 function writeTour(): void {
   const KEYS: Record<number, string> = { [-3]: 'A', 0: 'C', 2: 'D', 4: 'E' };
@@ -133,8 +151,50 @@ function writeTour(): void {
       r.palette === null ? '' : `${r.palette.shiftDeg} deg, sat ${r.palette.saturation.toFixed(2)}`;
     const height = r.bed === null ? '' : `${r.bed.y.toFixed(2)} m`;
     const files = `${made}, ${r.n}.png, ${r.n}-room.png`;
-    return `| ${r.n} | ${r.room} | ${r.stands} | ${r.placedLevel ?? 'none'} | ${height} | ${sound} | ${palette} | ${files} |`;
+    return `| ${r.n} | ${r.room} | ${r.stands} | ${r.size} | ${r.placedLevel ?? 'none'} | ${height} | ${sound} | ${palette} | ${files} |`;
   });
+
+  // Every pair of rooms: how far apart their pictures are, and whether their numbers (and fixtures) are the same.
+  const numbers = (r: Tour) =>
+    JSON.stringify([r.signature, r.palette, r.placedLevel, r.bed === null ? null : r.bed.y.toFixed(2)]);
+  const fixture = (r: Tour) => readFileSync(`${ROOT}tests/fixtures/rooms/${r.room}.json`, 'utf8');
+  const stills = rooms.map((r) => ({
+    room: grey(`${OUT}${r.n}-room.png`),
+    garden: grey(`${OUT}${r.n}.png`),
+  }));
+  const pairs: string[] = [];
+  const loud: string[] = [];
+  const overviews: number[] = [];
+  const gardens: number[] = [];
+  rooms.forEach((a, i) => {
+    rooms.slice(i + 1).forEach((b, k) => {
+      const j = i + 1 + k;
+      const room = apart(stills[i]!.room, stills[j]!.room);
+      const garden = apart(stills[i]!.garden, stills[j]!.garden);
+      overviews.push(room);
+      gardens.push(garden);
+      const isSameNumbers = numbers(a) === numbers(b);
+      const pair = `${a.room} and ${b.room}`;
+      if (room < SAME_PCT && fixture(a) !== fixture(b))
+        loud.push(`${pair}: different rooms, the same overview (${room.toFixed(2)} %)`);
+      if (garden < SAME_PCT && !isSameNumbers)
+        loud.push(`${pair}: different numbers, the same garden still (${garden.toFixed(2)} %)`);
+      if (room < NEAR_PCT || garden < NEAR_PCT || isSameNumbers) {
+        const why = isSameNumbers
+          ? 'the same level, bed height, signature and palette'
+          : 'their numbers differ';
+        pairs.push(`| ${pair} | ${room.toFixed(2)} % | ${garden.toFixed(2)} % | ${why} |`);
+      }
+    });
+  });
+  for (const line of loud) console.error(`ROOM TOUR, SHOULD DIFFER: ${line}`);
+  if (loud.length > 0) process.exitCode = 1;
+  const spread = (values: number[]) => {
+    const sorted = [...values].sort((x, y) => x - y);
+    const at = (k: number) => sorted[k]!.toFixed(2);
+    return `${at(0)} % for the most alike pair, ${at(sorted.length >> 1)} % median, ${at(sorted.length - 1)} % most`;
+  };
+
   writeFileSync(
     `${OUT}README.md`,
     [
@@ -142,16 +202,33 @@ function writeTour(): void {
       '',
       `Made by \`npm run test:room-tour\` on ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC from`,
       '`tests/tools/room-tour.spec.ts`: each room fixture of `tests/fixtures/rooms`, twenty plants (`autoplant=20`), no',
-      'tutorial. The video is 10 s of the tide from `room:tuned`, a seated head 40 cm over the bed and 42 cm back;',
-      "`<n>.png` is 4 s in; `<n>-room.png` is from further back and higher, with the fixture's planes drawn by the tour",
-      '(tests/tools/room-planes.ts: floor and walls see-through, furniture pale, no ceiling), since IWER draws none of',
-      "them: the video and `<n>.png` show only the app over IWER's grey backdrop (the table room's grey table is",
-      "IWER's own). No passthrough, software rendering. Bed height: metres over the floor. Palette: the turn of the",
-      "plants' colour arc and their saturation (src/render/palette.ts).",
+      "tutorial. IWER draws none of a fixture's planes, so the tour draws them (tests/tools/room-planes.ts): the floor",
+      'dark, each wall its own light tone, the ceiling as an outline, the table or counter as a slab on four legs. These',
+      'are the planes the game reads; nothing else is drawn. A label over each picture says what the room is and what',
+      'the game made of it. `<n>.mp4`: 10 s of the tide from `room:tuned`, a seated head 40 cm over the bed and 42 cm',
+      'back. `<n>.png`: that view, 4 s in. `<n>-room.png`: the overview, 7.5 m from the middle of the room towards its',
+      'back right corner, 35 degrees down, the same for every room, so the sizes compare; from outside, the near walls',
+      'are not drawn. No passthrough, software rendering. Palette: the turn of the colour arc and the saturation',
+      '(src/render/palette.ts).',
       '',
-      '| # | Room | Stands for | Level | Bed height | Signature | Palette | Files |',
-      '|---|---|---|---|---|---|---|---|',
+      '| # | Room | Stands for | Size | Level | Bed height | Signature | Palette | Files |',
+      '|---|---|---|---|---|---|---|---|---|',
       ...rows,
+      '',
+      '## Do the outputs differ?',
+      '',
+      `Each still against every other one (${overviews.length} pairs): the mean grey-level difference below the label,`,
+      `in % of full scale. Overviews: ${spread(overviews)}. Garden stills: ${spread(gardens)}. Under ${SAME_PCT} % is`,
+      `the same picture, under ${NEAR_PCT} % nearly the same. The pairs nearly the same in a picture, or the same in`,
+      'every number:',
+      '',
+      '| Pair | Overview | Garden still | Why |',
+      '|---|---|---|---|',
+      ...(pairs.length > 0 ? pairs : ['| none | | | |']),
+      '',
+      loud.length === 0
+        ? 'No two rooms that should differ gave the same picture.'
+        : `**Rooms that should differ gave the same picture:** ${loud.join('; ')}.`,
       '',
     ].join('\n'),
   );
@@ -162,6 +239,7 @@ interface Tour {
   n: number;
   room: string;
   stands: string;
+  size: string;
   placedLevel: number | null;
   bed: { y: number } | null;
   signature: { keyRoot: number; mode: string; tempo: number; reverbRt60: number; reverbSize: string } | null;

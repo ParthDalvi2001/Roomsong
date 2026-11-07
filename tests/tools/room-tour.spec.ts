@@ -1,9 +1,9 @@
 // `npm run test:room-tour` (tests/tools/test-videos.ts --rooms): the garden in each room fixture of tests/fixtures/rooms,
-// in name order, for a look at how the rooms differ. Twenty plants (`autoplant`), no tutorial; IWER enters, a seated head
-// 40 cm over the bed and 42 cm back looks down at it (as the shaky-hands scenes sit), and the tide is recorded for 10 s
-// from `room:tuned`, with a still 4 s in. Then the head steps back and up for a still of the room round the garden.
-// Each room's numbers go to .tmp/room-tour/<n>.json for the README. Emulator footage: software rendering, the fixture's
-// planes for walls, no passthrough.
+// in name order, for a look at how the rooms differ. Twenty plants (`autoplant`), no tutorial; IWER enters and the room's
+// planes are drawn (room-planes.ts: IWER draws none) with a label of what the room is and what the game made of it. A
+// seated head 40 cm over the bed and 42 cm back looks down at it (as the shaky-hands scenes sit), and the tide is
+// recorded for 10 s from `room:tuned`, with a still 4 s in. Then an overview from the same distance for every room.
+// Each room's numbers go to .tmp/room-tour/<n>.json for the README. Emulator footage: software rendering, no passthrough.
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -47,7 +47,7 @@ const STANDS: Record<string, string> = {
 const RECORD_MS = 10_000;
 const STILL_AT_MS = 4_000;
 /** The overview's distance from the room's middle, the same for every room, and its look down. */
-const OVERVIEW_M = 9;
+const OVERVIEW_M = 7.5;
 const DOWN_RAD = (35 * Math.PI) / 180;
 const KEYS: Record<number, string> = { [-3]: 'A', 0: 'C', 2: 'D', 4: 'E' };
 
