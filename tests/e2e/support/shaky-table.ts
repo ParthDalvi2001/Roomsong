@@ -112,14 +112,14 @@ export const SHAKY_SCENARIOS: readonly ShakyScenario[] = [
     title: 'Undo by sight: the petal pinched with the fingers 13 cm short of it',
     watch:
       'As scene 7, but the fingers stop short of the petal on the line from the eyes, as they do for a plant.',
-    bug: 'BUG-032 (new)',
+    bug: 'BUG-032',
     flags: PLANTS,
   },
   {
     n: 13,
     title: 'Move by sight: a plant pinched with the fingers 13 cm short, slid one step along its ring',
     watch: 'As scene 6, but the fingers stay 13 cm short of the head on the line from the eyes all the way.',
-    bug: 'BUG-033 (new)',
+    bug: 'BUG-033',
     flags: PLANTS,
   },
 ];

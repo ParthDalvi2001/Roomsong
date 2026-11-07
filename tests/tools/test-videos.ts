@@ -97,7 +97,7 @@ writeFileSync(
     "the pretend hands (the dev-only `handCue` flag): IWER's emulated hands, moved with the tracking drops, drift, depth",
     'error and finger shift measured on the first Quest 3S sessions (`tests/e2e/support/shaky-noise.ts`). A hand that',
     'blinks out is a tracking drop. Software rendering at 20 to 30 frames a second. None of this is a headset.',
-    'Scenes 12 and 13 show two bugs these tests found (BUG-032, BUG-033): they fail on purpose until those are fixed.',
+    'Scenes 12 and 13 found two bugs (BUG-032, BUG-033), now fixed in the emulator: they pass as plain tests.',
     '',
     '| # | Video | What to watch for | Bug | Result |',
     '|---|---|---|---|---|',
