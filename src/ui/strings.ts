@@ -49,6 +49,13 @@ export const LANDING = {
     highContrast: 'High contrast',
     reducedMotion: 'Reduce motion',
   },
+  // FR-UI-12: what is on, after the heading in the closed section's summary: "Accessibility: look to select, one hand".
+  accessOn: {
+    gazeDwell: 'look to select',
+    oneHand: 'one hand',
+    highContrast: 'high contrast',
+    reducedMotion: 'reduce motion',
+  },
   helpHeading: 'Help',
   help: [
     'Sit at a table and put the controllers down. Roomsong is played with bare hands.',

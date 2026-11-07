@@ -4,6 +4,7 @@ import { bus } from '../../../src/core/events.js';
 import {
   createSettingsStore,
   DEFAULT_SETTINGS,
+  parseAccessLink,
   validateSettings,
   type Settings,
 } from '../../../src/core/settings.js';
@@ -145,5 +146,29 @@ describe('core/settings store', () => {
 
     // The inner emit (tempo 100) reaches the second handler first; the outer one then hands it the old 90.
     expect(seen).toEqual([100, 100, 90, 100]);
+  });
+});
+
+describe('parseAccessLink (FR-UI-12)', () => {
+  it('turns on the four modes it names, whatever the case, spacing or repeats; ignores the rest; never throws', () => {
+    expect(parseAccessLink('?access=gaze,onehand,contrast,reduce')).toEqual({
+      gazeDwell: true,
+      oneHand: true,
+      highContrast: true,
+      reducedMotion: true,
+    });
+    expect(parseAccessLink('?access=GaZe,%20Contrast+,gaze&access=REDUCE')).toEqual({
+      gazeDwell: true,
+      highContrast: true,
+      reducedMotion: true,
+    });
+    // Unknown tokens, an object's own key names, another parameter, a malformed escape: nothing.
+    expect(
+      parseAccessLink(
+        '?access=eyes,__proto__,constructor,toString,gazeDwell,,&flags=window&gaze=1&access=%E0%A4%A',
+      ),
+    ).toEqual({});
+    for (const empty of ['', '?', '?access', '?access=', '?onehand', 'not a query'])
+      expect(parseAccessLink(empty)).toEqual({});
   });
 });

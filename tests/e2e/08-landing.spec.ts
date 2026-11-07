@@ -185,6 +185,47 @@ test('landing page: each access toggle changes core settings, and follows them',
   expect(errors).toEqual([]);
 });
 
+test('landing page: an accessibility link turns its modes on, ticked and named, saved, and in the built page too (FR-UI-12)', async ({
+  page,
+}) => {
+  const errors = watch(page);
+  const summary = landing(page).locator('summary', { hasText: 'Accessibility' });
+  const named = 'Accessibility: look to select, high contrast';
+  const ticked = async () => {
+    await expect(summary).toHaveText(named);
+    await expect(landing(page).getByLabel('No hands: look to select')).toBeChecked();
+    await expect(landing(page).getByLabel('High contrast')).toBeChecked();
+    await expect(landing(page).getByLabel('One hand')).not.toBeChecked();
+  };
+  await openApp(page, readRoom('none'), '/?access=Gaze, contrast,eyes');
+  await ticked();
+  await expect(enterButton(page)).toBeEnabled({ timeout: WORLD_READY_MS }); // the save has loaded under the link
+  expect(await readSettings(page)).toMatchObject({
+    gazeDwell: true,
+    highContrast: true,
+    oneHand: false,
+    reducedMotion: false,
+  });
+  // D-070: saved like a ticked box, so the plain link brings it back.
+  const stored = () =>
+    page.evaluate(async () => {
+      const url = '/src/persistence/index.ts';
+      const persistence = (await import(
+        /* @vite-ignore */ url
+      )) as typeof import('../../src/persistence/index');
+      const settings = (await (await persistence.openStore()).load())?.settings;
+      return [settings?.gazeDwell, settings?.highContrast];
+    });
+  await expect.poll(stored).toEqual([true, true]);
+  await page.goto('/?flags=skipOnboarding');
+  await ticked();
+
+  // Production: no `dev=1`, and the link still works (unlike `?flags=`).
+  await page.goto(`${BUILT_PAGE_URL}?access=gaze,contrast`);
+  await ticked();
+  expect(errors).toEqual([]);
+});
+
 test('landing page: Enter starts an immersive-ar session, the page steps aside and then reports what was granted', async ({
   page,
 }) => {

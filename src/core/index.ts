@@ -10,7 +10,7 @@ export { clock, createClock } from './clock.js';
 export type { Clock } from './clock.js';
 export { flags, parseFlags } from './flags.js';
 export type { Flags } from './flags.js';
-export { DEFAULT_SETTINGS, settings, validateSettings } from './settings.js';
+export { DEFAULT_SETTINGS, parseAccessLink, settings, validateSettings } from './settings.js';
 export type { Settings, SettingsStore } from './settings.js';
 export { STRINGS } from './strings.js';
 export type { StringKey } from './strings.js';

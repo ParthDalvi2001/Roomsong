@@ -9,9 +9,12 @@
 // `import()` load neither @iwsdk/core nor three (API_SPEC §1.10 rule 1; tests/unit/index.test.ts follows the
 // imports), so the page is readable before the SDK has arrived. `mountLanding` comes from ui/Landing.js, not
 // ui/index.js: the index also exports CaptionSystem.
-import { log } from './core/index.js';
+import { log, parseAccessLink, settings } from './core/index.js';
 import { mountLanding } from './ui/Landing.js';
 
+// FR-UI-12: an accessibility link's modes, before the page is built so its boxes show them ticked. The save loads
+// under them (restoreSettings), so the link wins for this visit and is saved like a ticked box (D-070).
+settings.set(parseAccessLink(location.search));
 const landing = mountLanding(document.getElementById('landing') as HTMLElement);
 
 // One catch for both ends: the chunk that does not arrive (network, a script error) and any throw in the

@@ -89,22 +89,28 @@ describe('the boot, with a fake page and a fake app chunk (LLD §3.3 A1, A2)', (
   });
 
   /** Runs src/index.ts once. `app` is the factory of the app chunk: what `import('./app.js')` gives, or throws. */
-  async function boot(app: () => { start: (landing: unknown) => Promise<void> }) {
+  async function boot(app: () => { start: (landing: unknown) => Promise<void> }, search = '') {
+    const { settings } = await import('../../src/core/index.js'); // the instance src/index.ts gets
     const landing = { ready: vi.fn(), granted: vi.fn(), failed: vi.fn() };
-    const mountLanding = vi.fn((root: unknown) => (void root, landing));
+    const gazeAtMount: boolean[] = [];
+    const mountLanding = vi.fn(
+      (root: unknown) => (void root, gazeAtMount.push(settings.get().gazeDwell), landing),
+    );
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.stubGlobal('document', { getElementById: (id: string) => ({ id }) });
+    vi.stubGlobal('location', { search });
     vi.doMock('../../src/ui/Landing.js', () => ({ mountLanding }));
     vi.doMock('../../src/app.js', app);
     await import('../../src/index.js');
-    return { landing, mountLanding, errors };
+    return { landing, mountLanding, errors, gazeAtMount };
   }
 
   it('mounts the landing page into #landing and hands that page to start()', async () => {
     const start = vi.fn((landing: unknown) => (void landing, Promise.resolve()));
-    const run = await boot(() => ({ start }));
+    const run = await boot(() => ({ start }), '?access=gaze');
     await vi.waitFor(() => expect(start).toHaveBeenCalledTimes(1));
     expect(run.mountLanding).toHaveBeenCalledWith({ id: 'landing' });
+    expect(run.gazeAtMount).toEqual([true]); // FR-UI-12: the link is in the store before the page is built
     expect(start).toHaveBeenCalledWith(run.landing);
     expect(run.landing.failed).not.toHaveBeenCalled();
     expect(run.errors).not.toHaveBeenCalled();
@@ -118,6 +124,7 @@ describe('the boot, with a fake page and a fake app chunk (LLD §3.3 A1, A2)', (
       throw new Error('planted: no page');
     };
     vi.stubGlobal('document', { getElementById: (id: string) => ({ id }) });
+    vi.stubGlobal('location', { search: '' });
     vi.doMock('../../src/ui/Landing.js', () => ({ mountLanding }));
     vi.doMock('../../src/app.js', app);
     await expect(import('../../src/index.js')).rejects.toThrow('planted: no page');

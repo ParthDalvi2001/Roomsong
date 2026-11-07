@@ -88,6 +88,28 @@ export function validateSettings(raw: unknown, fallback: Readonly<Settings> = DE
   }
 }
 
+// A Map, not an object: a token such as `constructor` must not find a prototype key.
+const ACCESS_LINK = new Map<string, 'gazeDwell' | 'oneHand' | 'highContrast' | 'reducedMotion'>([
+  ['gaze', 'gazeDwell'],
+  ['onehand', 'oneHand'],
+  ['contrast', 'highContrast'],
+  ['reduce', 'reducedMotion'],
+]);
+
+/**
+ * FR-UI-12: the modes an accessibility link turns on, `?access=gaze,onehand,contrast,reduce`, in every build (not a
+ * dev flag). Only `access` is read; a token is trimmed and case-blind, an unknown one is ignored; a link only turns
+ * modes on. Never throws: URLSearchParams reads any string.
+ */
+export function parseAccessLink(search: string): Partial<Settings> {
+  const on: Partial<Settings> = {};
+  for (const token of new URLSearchParams(search).getAll('access').join(',').split(',')) {
+    const key = ACCESS_LINK.get(token.trim().toLowerCase());
+    if (key !== undefined) on[key] = true;
+  }
+  return on;
+}
+
 export interface SettingsStore {
   /** The current settings: a frozen object, replaced (never mutated) on change. */
   get(): Readonly<Settings>;
