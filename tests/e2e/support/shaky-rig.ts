@@ -242,6 +242,8 @@ export class Rig {
   private lastFrameMs = 0;
   /** The latest frame's length. */
   private frameMs = 0;
+  /** Frames over 150 ms (software rendering stalls on a new shader), and the drops: for a failure's report. */
+  private readonly stalls: string[] = [];
 
   constructor(
     seed: number,
@@ -319,6 +321,8 @@ export class Rig {
     this.driver.frame(this.tick);
     const now = performance.now();
     if (this.lastFrameMs > 0) this.frameMs = now - this.lastFrameMs;
+    if (this.frameMs > 150)
+      this.stalls.push(`${Math.round(this.frameMs)} ms at ${Math.round(now - this.startedMs)}`);
     this.lastFrameMs = now;
     this.step('left', now);
     this.step('right', now);
@@ -375,16 +379,18 @@ export class Rig {
       return;
     }
     // A change shows a frame later and is seen a frame after that, and a slow emulator frame can be 100 ms: a gap kept
-    // under the grace comes back with two frames and GRACE_SPARE_MS to spare.
-    const isGraceNear = !p.tracked && now - p.changedMs + 2 * this.frameMs >= GRACE_MS - GRACE_SPARE_MS;
+    // under the grace comes back with two frames and GRACE_SPARE_MS to spare. Only an idle hand's burst may outlast it.
     const isHeld = p.curl >= 1 || p.mode === 'none';
+    const mayOutlast = p.mode === 'burst' && !isHeld && !p.isBlinking;
+    const isGraceNear =
+      !p.tracked && !mayOutlast && now - p.changedMs + 2 * this.frameMs >= GRACE_MS - GRACE_SPARE_MS;
     if (p.isBlinking || isHeld) {
-      if (p.tracked || (now < p.nextMs && !(p.isBlinking && isGraceNear))) return;
+      if (p.tracked || (now < p.nextMs && !isGraceNear)) return;
       p.isBlinking = false;
       this.change(p, now, true);
       return;
     }
-    if (p.drops === null || (now < p.nextMs && !(p.mode === 'underGrace' && isGraceNear))) return;
+    if (p.drops === null || (now < p.nextMs && !isGraceNear)) return;
     this.change(p, now, !p.tracked);
   }
 
@@ -460,7 +466,8 @@ export class Rig {
         `${a.x.toFixed(3)},${a.y.toFixed(3)},${a.z.toFixed(3)}`;
       return `${hand} asked ${v(p.at)} curl ${p.curl.toFixed(2)} read ${v(read.pinchPos)} palm ${v(read.palmNormal)}`;
     });
-    return `Heard ${JSON.stringify(counts)}; last pinches: ${last.join(' | ') || 'none'}; ${where.join('; ')}`;
+    const stalls = this.stalls.slice(-4).join(', ') || 'none';
+    return `Heard ${JSON.stringify(counts)}; last pinches: ${last.join(' | ') || 'none'}; ${where.join('; ')}; frames over 150 ms: ${stalls}`;
   }
 
   beat(line: string): void {
