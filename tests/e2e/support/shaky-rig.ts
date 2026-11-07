@@ -569,6 +569,14 @@ export class Rig {
     return target.clone().addScaledVector(along, -short).addScaledVector(side, off);
   }
 
+  /** How far `target` is off the line from the eyes through `at`: what the eye-line pick (D-066) measures. */
+  offLine(target: Vector3, at: { x: number; y: number; z: number }): number {
+    const eye = this.eye();
+    const line = new Vector3().copy(at).sub(eye).normalize();
+    const to = target.clone().sub(eye);
+    return to.sub(line.multiplyScalar(to.dot(line))).length();
+  }
+
   /** On the line from the eyes to `target`, `fromHead` metres from the eyes. */
   sightFromHead(target: Vector3, fromHead: number): Vector3 {
     const eye = this.eye();

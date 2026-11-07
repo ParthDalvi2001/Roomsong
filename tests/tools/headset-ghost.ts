@@ -164,10 +164,12 @@ async function main(): Promise<void> {
       board.draw(title, `Failed: ${String(error).slice(7, 90)}`);
       console.warn(`ghost ${s.n}: ${String(error)}`); // the recorder (rec=1) logs it
     }
-    await rig.wait(3000);
+    // Hands down at once, the result on the label meanwhile: a pose left up would ask for a seed or for Listen.
     await Promise.all([rig.open('left'), rig.open('right')]);
-    await rig.rest('left', 400);
-    await rig.rest('right', 400);
+    rig.dropMode('left', 'none');
+    rig.dropMode('right', 'none');
+    await Promise.all([rig.rest('left', 400), rig.rest('right', 400)]);
+    await rig.wait(2500);
   }
 
   // The real hands again. The garden on screen is the ghost's: a reload brings the saved one back.

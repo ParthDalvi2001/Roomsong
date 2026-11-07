@@ -307,14 +307,7 @@ const SCENES: Record<number, Scene> = {
         'The fingers closed and no pinch began',
       );
       // The recording measured this at its one plant pinch (PLANT_OFF_LINE_M, 1.6 cm): the target off the line at the pinch.
-      const at = rig.last('gesture:pinchStart', (e) => e.hand === 'right')!.pos!;
-      const eye = rig.eye();
-      const line = at.clone().sub(eye).normalize();
-      const offLine = head
-        .clone()
-        .sub(eye)
-        .sub(line.multiplyScalar(head.clone().sub(eye).dot(line)))
-        .length();
+      const offLine = rig.offLine(head, rig.last('gesture:pinchStart', (e) => e.hand === 'right')!.pos!);
       facts[`offLineAtPinchP${percentile * 100}M`] = round(offLine);
       const isTaken = pinchedOn(rig, 'right', 'plant', from, plant.id);
       if (percentile === 0.9) facts.takenAtP90 = String(isTaken);
@@ -484,12 +477,21 @@ const SCENES: Record<number, Scene> = {
       facts.fingersOffControlM = round(fingers.distanceTo(at!));
       await rig.go('right', fingers, 800);
       await rig.wait(SETTLE_MS);
+      const aimed = rig.offLine(at!, rig.read('right').pinchPos);
       from = performance.now();
       await rig.close('right');
       await rig.until(
-        () => pinchedOn(rig, 'right', 'panel', from, id),
+        () => rig.count('gesture:pinchStart', (e) => e.hand === 'right', from) > 0,
         HEARD_MS,
-        `A pinch ${facts.fingersFromHeadM} m from the head, on the line to ${id}, took nothing`,
+        'The fingers closed and no pinch began',
+      );
+      const offLine = rig.offLine(at!, rig.last('gesture:pinchStart', (e) => e.hand === 'right')!.pos!);
+      facts[`offLine_${id}`] =
+        `${round(aimed * 100, 1)} cm aimed, ${round(offLine * 100, 1)} cm at the pinch`;
+      rig.check(
+        pinchedOn(rig, 'right', 'panel', from, id),
+        `A pinch ${facts.fingersFromHeadM} m from the head, on the line to ${id}, took nothing: the control was ` +
+          `${facts[`offLine_${id}`]} off the line through the fingers`,
       );
       // What a real press does: rec.jsonl has a press moving up to 3.5 cm before its release.
       await carry(rig, 'right', fingers.clone().add(new Vector3(0.035, 0, 0)), 300);
