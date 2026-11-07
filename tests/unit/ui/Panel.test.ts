@@ -56,6 +56,7 @@ const calls = {
   replaceBed: [] as object[],
   bedHeight: [] as { metres: number }[],
   timeLapse: [] as boolean[],
+  exit: [] as object[],
   pressed: [] as string[],
 };
 /** The garden's time-lapse demo, as the stand-in garden has it; and whether its old garden can come back. */
@@ -72,6 +73,7 @@ const actions: PanelActions = {
     calls.timeLapse.push(on);
     isTimeLapse = on;
   },
+  exit: () => calls.exit.push({}),
   pressed: (id) => calls.pressed.push(id),
 };
 
@@ -157,7 +159,7 @@ describe('settings panel: opening, closing and the tabs (UX §3.6)', () => {
     ]);
     expect(ids(opened('garden'))).toEqual([
       ...header,
-      ...['height:-', 'height:+', 'replaceBed', 'newGarden', 'timeLapse'],
+      ...['height:-', 'height:+', 'replaceBed', 'exit', 'newGarden', 'timeLapse'],
     ]);
     const panel = opened('garden');
     expect(control(panel, 'tab:garden')?.on).toBe(true);
@@ -391,6 +393,26 @@ describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () =
     press(panel, 'replaceBed');
     expect(asked).toHaveLength(1);
     expect(panel.open).toBe(false);
+  });
+
+  it('D-067: Exit asks to leave on one press, with its tick, by a pinch or a look; the panel closes first', () => {
+    const panel = opened('garden');
+    expect(control(panel, 'exit')?.text).toBe(PANEL.exit);
+    panel.down('right', 'exit');
+    expect(calls.exit).toEqual([]); // the release acts, not the pinch (FR-HND-16); no hold
+    panel.up('right', 'exit');
+    expect(calls.exit).toHaveLength(1);
+    expect(calls.pressed.at(-1)).toBe('exit');
+    expect(panel.open).toBe(false);
+    press(panel, 'exit'); // a second press before the session ends lands on nothing
+    expect(calls.exit).toHaveLength(1);
+
+    settings.set({ gazeDwell: true });
+    const looked = opened('garden');
+    lookAt(looked, 'exit');
+    run(looked, DEFAULT_SETTINGS.dwellMs, 'exit');
+    expect(calls.exit).toHaveLength(2);
+    expect(looked.open).toBe(false);
   });
 
   it('a bed-height step asks for the next 2 cm, from the height of the garden it last saw', () => {

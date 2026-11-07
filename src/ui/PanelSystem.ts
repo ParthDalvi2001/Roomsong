@@ -222,7 +222,8 @@ export interface PanelSounds {
 /**
  * Owns the settings panel and its orb (UX §3.6): creates them, places them, redraws the panel when something it
  * shows has changed, and disposes of them. Priority 62 (API_SPEC §1.10), with the app's `garden` and `room` as
- * `configData`: the Garden tab calls `garden.newGarden()`, `garden.setBedHeightOffset(metres)` and `room.replace()`;
+ * `configData`: the Garden tab calls `garden.newGarden()`, `garden.setBedHeightOffset(metres)` and `room.replace()`,
+ * and its Exit the world's `exitXR()` (D-067);
  * every press or dwell that acts is `engine.ui('tick')`, New garden's hold `ui('confirm')` (T-164 §6).
  * A press arrives as `gesture:release` with the control as its target (API_SPEC §1.4); a gaze dwell is worked out
  * here, from the head pose, while `Settings.gazeDwell` is on. The orb rides the hand that is not the dominant one,
@@ -285,6 +286,8 @@ export class PanelSystem extends createSystem(
       setBedHeightOffset: (metres) => garden?.setBedHeightOffset(metres),
       isTimeLapse: () => garden?.timeLapse ?? false,
       setTimeLapse: (on) => garden?.setTimeLapse(on),
+      // D-067: IWSDK's own exit, `session.end()`; the wiring saves at `xr:sessionEnd` and the landing page returns.
+      exit: () => this.world.exitXR(),
       // Place the garden again is a plain press: its confirm sounds when the bed lands (room:bedPlaced, GardenAudioSystem).
       pressed: (id) => engine?.ui(id === NEW_GARDEN_ID ? 'confirm' : 'tick'),
     });
