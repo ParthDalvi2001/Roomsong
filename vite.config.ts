@@ -5,7 +5,7 @@
  * file LICENSES/IWSDK-MIT.txt in the root directory of this source tree.
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -159,8 +159,11 @@ const emulatorRoom: Plugin = {
 };
 
 // Dev server only: with ?rec=1 the page loads tests/tools/headset-recorder.ts, which posts what a real headset session
-// senses here, appended to .tmp/headset/rec.jsonl; with &ghost=1 too, tests/tools/headset-ghost.ts, which plays the
-// shaky-hands scenes with pretend hands in the room. Same origin; not in the build (`apply: 'serve'`).
+// senses here, appended to .tmp/headset/rec.jsonl, and its snapshots of the drawn view (.tmp/headset/snaps/); with
+// &ghost=1 too, tests/tools/headset-ghost.ts, which plays the shaky-hands scenes with pretend hands in the room.
+// Same origin; not in the build (`apply: 'serve'`).
+const SNAP_MAX_BYTES = 4_000_000;
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const headsetRecorder: Plugin = {
   name: 'roomsong-headset-recorder',
   apply: 'serve',
@@ -186,6 +189,40 @@ const headsetRecorder: Plugin = {
       req.on('end', () => {
         appendFileSync(join(dir, 'rec.jsonl'), `${body}\n`);
         res.statusCode = 204;
+        res.end();
+      });
+    });
+    // The recorder's snapshots of the drawn view: one PNG each, and a `snap` line naming it. Anyone on the network
+    // can post here, so the name, the size and the PNG signature are checked before anything is written.
+    const snaps = join(dir, 'snaps');
+    mkdirSync(snaps, { recursive: true });
+    server.middlewares.use('/__snap', (req, res) => {
+      const query = new URLSearchParams((req.url ?? '').split('?')[1]);
+      const name = query.get('name') ?? '';
+      const why = query.get('why') ?? '';
+      const chunks: Buffer[] = [];
+      let size = 0;
+      req.on('data', (chunk: Buffer) => {
+        size += chunk.length;
+        if (size <= SNAP_MAX_BYTES) chunks.push(chunk);
+      });
+      req.on('end', () => {
+        const png = Buffer.concat(chunks);
+        const isValid =
+          req.method === 'POST' &&
+          /^[\dTZ.-]{1,40}-\d{1,6}$/.test(name) &&
+          /^[\w:]{1,40}$/.test(why) &&
+          size <= SNAP_MAX_BYTES &&
+          png.subarray(0, 8).equals(PNG_SIGNATURE);
+        if (isValid) {
+          writeFileSync(join(snaps, `${name}.png`), png);
+          const data = { file: `snaps/${name}.png`, why, multiview: query.get('multiview') === '1' };
+          appendFileSync(
+            join(dir, 'rec.jsonl'),
+            `${JSON.stringify({ t: Number(query.get('t')), kind: 'snap', data })}\n`,
+          );
+        }
+        res.statusCode = isValid ? 204 : 400;
         res.end();
       });
     });
