@@ -8,6 +8,8 @@ export const STRINGS = {
   // The level-3 placement hint (UX §9.2): room/ raises one of the two while the ghost of the bed shows.
   placeLook: 'Look at your table, and pinch',
   placeLookGaze: 'Look at your table, and wait', // gaze mode (Settings.gazeDwell)
+  // FR-ROOM-14 (D-068): the room read found no plane at all, so the song is Wanderer's; room/ raises it once a session.
+  noRoomScan: 'No room scan: run Space Setup',
   // UX §3.5: the end of a Listen that ran its 10 minutes, the one caption that is not an instruction (T-148).
   goodnight: 'Goodnight',
   // A seed let go over a full bed (UX §7): render's SeedSystem raises it (T-127).

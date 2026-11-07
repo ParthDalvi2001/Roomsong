@@ -17,6 +17,7 @@ import {
   FLOATING_DROP_M,
   GHOST_EASE_MS,
   HIT_TEST_TIMEOUT_MS,
+  NO_ROOM_NOTICE_MS,
   PLANE_LEVELS_TIMEOUT_MS,
   RESTORE_REACH_SLACK_M,
   SURFACE_MIN_HEIGHT_M,
@@ -91,6 +92,10 @@ export class RoomSystem extends createSystem() {
   private readonly bedObject = this.bed.object3D as Object3D;
   /** Carries the level-3 hint while it is up. Its own entity: a Caption added to one that has one is not seen. */
   private readonly hint = this.createEntity();
+  /** Carries the no-room notice (FR-ROOM-14) while it is queued or on screen. */
+  private readonly notice = this.createEntity();
+  /** The no-room notice was raised in this session: it is said once. */
+  private isNoRoomSaid = false;
 
   private stage: Stage = 'idle';
   /** Counts the placements begun and ended: the continuation of an earlier one finds another number and keeps nothing. */
@@ -131,10 +136,14 @@ export class RoomSystem extends createSystem() {
       bus.on('xr:sessionStart', () => {
         this.headFromMs = Infinity;
         this.isLowHeadTaken = false;
+        this.isNoRoomSaid = false;
         this.clear('starting');
       }),
       // The solver's pending promise never settles, so no bed arrives late (LLD §3.2).
-      bus.on('xr:sessionEnd', () => this.clear('idle')),
+      bus.on('xr:sessionEnd', () => {
+        this.clear('idle');
+        this.takeNotice();
+      }),
       bus.on('xr:visibility', ({ visible }) => {
         if (visible) this.resume();
       }),
@@ -185,6 +194,9 @@ export class RoomSystem extends createSystem() {
       }
     }
     if (this.stage === 'idle') return;
+    // FR-ROOM-14: planes that come after the room read take the notice back, queued or on screen. choice: read()
+    // allocates, as the chain's 3 s do (D-034); it runs only while the notice is up, a few seconds once a session.
+    if (this.notice.hasComponent(Caption) && this.planes.read().length > 0) this.takeNotice();
     // Whole milliseconds: a fraction handed on as an argument can cost an object a frame (HandSystem does the same).
     if (this.stage !== 'placed') this.place(delta, Math.round(time * 1000));
     // Not `else`: the frame that finds a bed to place does the placed step too.
@@ -216,6 +228,20 @@ export class RoomSystem extends createSystem() {
     this.isAimed[0] = this.isAimed[1] = false;
     // CaptionSystem takes a caption down itself once it was shown to its end.
     if (this.hint.hasComponent(Caption)) this.hint.removeComponent(Caption);
+  }
+
+  private takeNotice(): void {
+    if (this.notice.hasComponent(Caption)) this.notice.removeComponent(Caption);
+  }
+
+  /**
+   * FR-ROOM-14: once a session, a room read in a headset that found no plane at all (no Space Setup scan, or none
+   * shared) says so, after the chain's own wait for planes. Not in the garden window, which has no room to read.
+   */
+  private sayNoRoom(): void {
+    if (this.isNoRoomSaid || !this.xrManager.isPresenting || this.planes.read().length > 0) return;
+    this.isNoRoomSaid = true;
+    this.notice.addComponent(Caption, { key: 'noRoomScan', expiresAt: clock.now() + NO_ROOM_NOTICE_MS });
   }
 
   /** The saved pair and the height offset. It also runs inside this system's own emits: the garden answers them. */
@@ -407,6 +433,7 @@ export class RoomSystem extends createSystem() {
       this.xrManager.isPresenting ? { placement, restored } : { placement, restored, inWindow: true },
     );
     bus.emit('room:features', this.readRoom(placement));
+    this.sayNoRoom();
     if (restored) return;
     // The new anchor is made in the background and holds nothing up (FR-ROOM-07); null is "no anchor".
     const turn = this.turn;
