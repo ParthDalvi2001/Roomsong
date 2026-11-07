@@ -402,7 +402,7 @@ describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () =
     expect(calls.exit).toEqual([]); // the release acts, not the pinch (FR-HND-16); no hold
     panel.up('right', 'exit');
     expect(calls.exit).toHaveLength(1);
-    expect(calls.pressed.at(-1)).toBe('exit');
+    expect(calls.pressed[calls.pressed.length - 1]).toBe('exit');
     expect(panel.open).toBe(false);
     press(panel, 'exit'); // a second press before the session ends lands on nothing
     expect(calls.exit).toHaveLength(1);

@@ -18,6 +18,7 @@ type Components = typeof import('../../src/core/components');
 type Persistence = typeof import('../../src/persistence/index');
 
 interface Device {
+  activeSession?: XRSession;
   updateVisibilityState(state: XRVisibilityState): void;
 }
 interface Probe {
@@ -38,6 +39,10 @@ interface Probe {
   refused(): number;
   /** Plants the next seed of the supply at `cell` the way hands would: palm up, a pinch on it, a carry. */
   plant(cell: Cell): void;
+  /** A press on the settings control `id` the way hands reports one: a pinch on it and its release. */
+  press(id: string): void;
+  /** The state of the audio engine's context ('none' before the first Enter). */
+  audio(): string;
   /** What a store of the test's own loads now: the save on disk. */
   stored(): Promise<GardenState | null>;
 }
@@ -135,6 +140,22 @@ async function probeSave(page: Page): Promise<JSHandle<Probe>> {
           dy: null,
         });
       },
+      press: (id) => {
+        const target = { kind: 'panel' as const, id };
+        core.bus.emit('gesture:pinchStart', { type: 'gesture:pinchStart', hand: 'right', target, pos });
+        core.bus.emit('gesture:release', {
+          type: 'gesture:release',
+          hand: 'right',
+          gesture: 'press',
+          target,
+          pos,
+          zone: 'outer',
+          cell: null,
+          dy: null,
+        });
+      },
+      // `g` is the engine's private graph: read, never written.
+      audio: () => (engine as unknown as { g: { ctx: AudioContext } | null }).g?.ctx.state ?? 'none',
       stored: async () => (await openStore()).load(),
     };
     return probe;
@@ -187,6 +208,37 @@ test('e1 a reload brings the garden back: the same plants in the same cells, see
   );
   // A second visit issues no starter seeds.
   expect(await probe.evaluate((p) => p.heard)).toContain('room:signature false');
+  expect(errors).toEqual([]);
+  expect(offHost).toEqual([]);
+});
+
+test('e1 D-067 Exit on the settings panel ends the session with the garden saved; Enter brings the same garden back', async ({
+  page,
+}) => {
+  const errors = watch(page);
+  const offHost = await openApp(page, readRoom('table'));
+  const probe = await probeSave(page);
+  await enterAndVisit(page, probe, 1);
+  await probe.evaluate((p, cell) => p.plant(cell), CELLS[0]!);
+  const planted = plantsOf(await probe.evaluate((p) => p.state()));
+  expect(planted).toHaveLength(1);
+
+  // The orb opens the panel, then the Garden tab, then Exit: one press each, a frame or two apart.
+  for (const id of ['orb', 'tab:garden']) {
+    await probe.evaluate((p, id) => p.press(id), id);
+    await xrFrames(page, 2);
+  }
+  await probe.evaluate((p) => p.press('exit'));
+  await page.waitForFunction((d) => d.activeSession === undefined, await device(page));
+  await expect(landing(page)).toBeVisible();
+  await expect(landing(page).getByRole('button', { name: 'Enter the garden' })).toBeFocused();
+  await expect.poll(() => probe.evaluate((p) => p.audio())).toBe('suspended'); // the tide and its context stop
+  await expect.poll(() => probe.evaluate((p) => p.stored()).then(plantsOf)).toEqual(planted);
+
+  await enterAndVisit(page, probe, 2);
+  expect(plantsOf(await probe.evaluate((p) => p.state()))).toEqual(planted);
+  expect(await probe.evaluate((p) => p.drawn())).toEqual(planted);
+  await expect.poll(() => probe.evaluate((p) => p.audio())).toBe('running');
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
 });

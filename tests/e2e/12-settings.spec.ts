@@ -417,7 +417,7 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
   expect(await ids(probe)).toEqual([
     'orb',
     ...header,
-    ...['height:-', 'height:+', 'replaceBed', 'newGarden', 'timeLapse'],
+    ...['height:-', 'height:+', 'replaceBed', 'exit', 'newGarden', 'timeLapse'],
   ]);
   await press('height:+');
   expect(await events(probe, 'garden.setBedHeightOffset')).toEqual([0.02]);
