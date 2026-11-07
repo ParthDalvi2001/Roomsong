@@ -129,6 +129,7 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
         'bedZone',
         'cellCentre',
         'chordDegrees',
+        'gardenDay',
         'heightAfterPull',
         'movePlant',
         'nearestFreeCell',

@@ -15,7 +15,7 @@ export {
   UNDO_LIFE_MS,
 } from './config.js';
 export { GardenSystem } from './GardenSystem.js';
-export { applyVisit, newGarden, stageFor } from './growth.js';
+export { applyVisit, gardenDay, newGarden, stageFor } from './growth.js';
 export { MODE_DEGREES } from './model.js';
 export type {
   BedZone,

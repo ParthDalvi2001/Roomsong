@@ -71,6 +71,17 @@ function localDay(now: number, tzOffsetMin: number): Day | null {
 }
 
 /**
+ * The garden's day for the Garden tab (UX §3.6): 1 on the local date it was made, plus one for each local date
+ * since, the daily seed's calendar rule. Each time is read with its own zone offset; a time or an offset that no
+ * date holds, or a clock set back, gives 1.
+ */
+export function gardenDay(createdAt: number, createdTzMin: number, now: number, nowTzMin: number): number {
+  const made = localDay(createdAt, createdTzMin);
+  const today = localDay(now, nowTzMin);
+  return made === null || today === null ? 1 : Math.max(1, today.index - made.index + 1);
+}
+
+/**
  * The seeds a visit brings (FR-MUS-08): the starters on the first visit, afterwards one on a local date later
  * than the last seed's. An id holds its date, and a date brings seeds once, so no id comes twice (D-031). A
  * starter's id holds the garden's `createdAt` too: two gardens of one day (New garden) share no id (BUG-006).
