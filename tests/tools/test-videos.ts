@@ -16,6 +16,9 @@ const IS_TOUR = process.argv.includes('--rooms');
 const OUT = `${ROOT}${IS_TOUR ? 'room-tour' : 'test-videos'}/`;
 const RESULTS = `${ROOT}.tmp/test-videos-artifacts/results.json`;
 const FFMPEG = process.env.FFMPEG ?? 'ffmpeg';
+/** Room tour: below this two stills count as the same picture, below NEAR_PCT as nearly the same. */
+const SAME_PCT = 0.5;
+const NEAR_PCT = 2;
 
 interface Result {
   status: string;
@@ -129,9 +132,6 @@ function apart(a: Buffer, b: Buffer): number {
   return (100 * sum) / (a.length * 255);
 }
 
-/** Below this two stills count as the same picture, below NEAR_PCT as nearly the same. */
-const SAME_PCT = 0.5;
-const NEAR_PCT = 2;
 
 /** The room tour's videos and README: one row per room, from .tmp/room-tour/<n>.json (room-tour.spec.ts). */
 function writeTour(): void {
