@@ -1,8 +1,8 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-10-19 02:00 IST (plan v2.1; one driving session with role agents in worktrees, D-038)
-**Phase:** 1 Build (Oct 18–24) · **Next gate:** G1 Oct 24 (D-023; G0 was not held, item 37) · **Headset gate H1:** Oct 20, missed: no headset for now, Emergency mode from 27 Oct (D-060 (4), D-013) · **Plan:** v2.1
-**Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 30 on 2026-10-19
+**Last updated:** 2026-11-09 01:45 IST (plan v2.1; one driving session with role agents in worktrees, D-038)
+**Phase:** 3 Polish (Nov 4–11) · **Next gate:** G3 feature freeze Nov 12 · **Headset:** yes since 7 Nov (Parth's Quest 3S; Chinmay's Quest 3 on 8 Nov); Emergency mode (D-013) no longer applies · **Plan:** v2.1
+**Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 8 on 2026-11-09
 
 > **Read first this session:** `specs/08-status/REPLAN_2026-10-10.md` (v2 decisions), `specs/08-status/PLAN_AMENDMENT_2026-10-10.md` (v2.1 deltas) and `specs/07-workflow/SPRINT_PLAN.md` v2.1.
 > **ONE DRIVER, AT MOST 3 HEAVY JOBS AT ONCE (the driver's own checks count as one; document agents extra), ONE BROWSER RUN AT A TIME (D-052, on Parth's word; his ceiling is 10, D-036):** one Claude session drives the repository. On Parth's word up to 8 agents run at once (unit tests with `--maxWorkers=2`, no package installs in worktrees), one per module, each in its own worktree; shared files and the contract are edited only by the driving session. Agent ids for resuming after a restart are in `.tmp/agents.json`. After any restart: list Claude processes, stop leftover copies (parent pid 1), then resume the agents by id. The tracking page (port 4180), the sound preview (port 4173) and the dev server with the emulator (port 8081) run detached.
@@ -15,7 +15,7 @@
 ## Now (what is being worked on / next up)
 | Task | Owner | Status | Note |
 |---|---|---|---|
-| **T-000 Get a Quest 3/3S by Oct 20** | Parth + Chinmay | **todo (critical)** | no headset on the team; everything device-side waits on this. **25 Oct (D-060 (4)): no headset for now**; Parth says when he borrows one; Emergency mode (D-013) from 27 Oct: device rows stay unverified and the Devpost says so. **Playtest & React, 29 Oct 22:30 IST, Chinmay attends (D-060 (3))**: other developers play the entry on their own Quests, the only outside play before the freeze; it needs the public link live (T-108) |
+| **T-000 Get a Quest 3/3S** | Parth + Chinmay | **done** | 7 Nov: Parth's Quest 3S, first real runs (seeds, plant pinch, pulls, moves, settings, Exit, room tuning after Space Setup); 8 Nov: Chinmay's Quest 3 (90 fps, Exit, save, daily seed, one-hand; an unscanned room plays the default song, now with a "No room scan" message, D-068). Still to try on a headset: DECISIONS_PENDING 4 |
 | T-100 Local git init + GitHub remote | devops-engineer | **done** | pushed by Parth 2026-10-10 18:05 IST: `main` (115b9c1) and `develop` (41d5438) on github.com/ParthDalvi2001/Roomsong (D-018) |
 | T-101 Scaffold IWSDK + tooling | devops-engineer | **done** | merged to `develop` (541235b); verify green ≈19 s; follow-up T-111 (strip starter content) |
 | T-102 Desktop sound prototype | backend-dev | **done** | merged to `develop` (1d32497) after independent review and fix; 70 unit tests + headless render check green; **ready for the listening review (T-103)** |
@@ -82,12 +82,12 @@ Every open decision for Parth is in one file: **`specs/08-status/DECISIONS_PENDI
 ## Test status
 | Suite | Last run | Result | Coverage |
 |---|---|---|---|
-| unit | 2026-10-23 20:05 | `npm run verify`: 111 files, 1 882 tests pass (typecheck, lint, build, check-dist, check-size green) | 96.0 % lines (`npm run test:coverage`, 20 Oct) |
-| e2e (emulator) | 2026-10-23 | the full suite 107/107 on 20 Oct (20 min); on 23 Oct every merged change's specs green: 29-room-matrix 6/6 (six rooms), 26-worst-frame 1/1 (46 draws), 06-room 12, 14-boot 13, 23-onboarding 4, 22-save-restore 7, 09-audio 7, 18-listen 3, 15-shaping 3, 12-settings 3, 08-landing 8, 00-emulator 3, 01-enter-xr 3, 20-window 1, 28-stillness 1, 26-time-lapse 1 · apart: TC-E2E-10 soak (`npm run test:e2e:heap`, re-running), `npm run audio:renders`, `npm run gallery`, `npm run polish:shots` | — |
-| device | — | **no headset** (T-000; Emergency mode from 27 Oct) | — |
+| unit | 2026-11-08 | `npm run verify` at 1f91c40: 1 959 tests pass (typecheck, lint, build, check-dist, check-size, audit 0); GitHub CI on main 45518e5 running 9 Nov | 96.0 % lines (`npm run test:coverage`, 20 Oct) |
+| e2e (emulator) | 2026-11-08 | full suite at 1f91c40: 132 passed, 1 flaky (06-room T-128c c1 timeout, passes alone 10/10, BUG-039), 6 skipped (23 min) | — |
+| device | 2026-11-07/08 | Quest 3S (Parth) and Quest 3 (Chinmay): enter with hands, seeds, planting, sound, save and reload, pulls, moves, settings, Listen, Exit and re-entry, daily seed, one-hand, room tuning after Space Setup. Not yet: undo petal, drag by sight, hands-free run, Day 2, the built page's frame rate on 3S | — |
 
 ## Perf (latest)
-emulator, 25 Oct: worst frame **48 draws** (both eyes, the counter room with the vine; budget 60) · **103 972 triangles** (budget 150k) · **JS 2.03 ms** (budget 6; 26-worst-frame) · heap **+1.13 % in 5 min** (36.56 → 36.97 MB after a full collection), `src/` 8.3 kB a frame at 14 fps (23 Oct 20:30, after the day's merges; the largest owner FlashGuard.request 1.1 kB) · voices ≤ 24 · bundle **743.6 kB gzip** of 4 000 (check-size) · 0 lights, no shadow map, no post-processing · device fps: no headset
+device, 7–8 Nov: about **90 fps** (Quest 3S on the dev server with the recorder, low 88; Quest 3 90 fps), draws 11, about 5k triangles, JS under 2 ms · emulator, 25 Oct: worst frame **48 draws** (both eyes, the counter room with the vine; budget 60) · **103 972 triangles** (budget 150k) · **JS 2.03 ms** (budget 6; 26-worst-frame) · heap **+1.13 % in 5 min** (36.56 → 36.97 MB after a full collection), `src/` 8.3 kB a frame at 14 fps (23 Oct 20:30, after the day's merges; the largest owner FlashGuard.request 1.1 kB) · voices ≤ 24 · bundle **743.6 kB gzip** of 4 000 (check-size) · 0 lights, no shadow map, no post-processing · device fps: no headset
 
 ## Judging self-scores (/10)
 | Gate | Innovation | Experience | Technical | Polish | By |
@@ -95,6 +95,9 @@ emulator, 25 Oct: worst frame **48 draws** (both eyes, the counter room with the
 | Today, 15 Oct (product-owner guess, no headset; Nov 12 guess 6 / 6 / 5 / 5; see DEVPOST_DRAFT §2) | 4 | 3 | 5 | 2 | product-owner |
 
 ## Stand-ups
+### 2026-11-09
+- **01:45 IST — live site updated; what is left.** Parth pushed `main` (45518e5): deploy green, the live link has the "No room scan" message (D-068), the `?access=` links (D-070) and the calendar-day Garden count (BUG-037). Full browser suite on 8 Nov: 132 passed, 1 flaky (BUG-039). GitHub `develop` is 13 commits behind `main` until Parth says "push". Open for Parth (DECISIONS_PENDING): the name (★ Roomsong), room looks (★ #4 + #2), headset checks, a new-person test before the 12 Nov freeze, the freeze tag. Controllers and virtual rooms: not for the contest (hands-first is a hard rule; D-011 cut controllers; the real room is the idea).
+
 ### 2026-10-27
 - **13:45 IST — the seven tasks of 27 Oct, prepared or done; pushed (develop = main = 7b3eadc).** Live-site pre-check: the build served under /Roomsong/ passes every check; on GitHub the deploy now builds and tests green (CI limit 45 min, unit tests retried twice on CI only, BUG-020) and fails only at publishing because Pages is not switched on (Parth: Settings → Pages → Source: GitHub Actions, then Run workflow). The freeze-and-submit runbook (FREEZE_AND_SUBMIT_RUNBOOK.md). G2 prepared (G2_REVIEW_2026-11-03.md, conditional pass suggested; Parth's six questions are DECISIONS_PENDING item 5) and the feature freeze prepared (FEATURE_FREEZE_PREP_2026-11-12.md; new rows T-188, T-147b, T-189). Rule check: no changes, 4,142 entrants. Devpost text's final pass, 499 words. Early bug bash: full suite 114 of 117 (the 3 were BUG-012), a played-through first session; BUG-011 to BUG-020, all fixed or mitigated, among them a data loss (BUG-013: a 'Bring back' hold past its window erased the old garden). Open S1/S2: 0. Verify 1 936. Emergency mode since today (no headset).
 

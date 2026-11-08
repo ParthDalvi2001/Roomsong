@@ -1,32 +1,28 @@
 # Decisions waiting for Parth
 
-**The one file for every open decision.** All 21 questions of 25 Oct are answered (DECISIONS_LOG D-060). What is left are things only you can do; tick them off by replying with the number and "done".
+**The one file for every open decision** (updated 9 Nov 01:45 IST). Reply with the number and your answer, or "done". Answered ones go to DECISIONS_LOG.
 
-## 1. Put the game online (about 10 minutes)
-1. On github.com/ParthDalvi2001/Roomsong: **Settings → Pages → Source: GitHub Actions**.
-2. In Terminal, in the Roomsong folder: `git checkout main && git merge --ff-only develop && git push origin main && git checkout develop` (I never push `main` myself).
-3. Actions tab → deploy → **Run workflow** on `main` (the last run on main failed on a flaky test before Pages was on; run it again once if it flakes), wait for green, then open https://parthdalvi2001.github.io/Roomsong/
-4. If deploy says the branch is not allowed: Settings → Environments → github-pages → allow `main`, then Actions → deploy → Run workflow.
-5. Netlify mirror: by hand, from the deploy's own build, so both links serve the same files: `specs/06-release/FREEZE_AND_SUBMIT_RUNBOOK.md` §1.4 (not "Import from GitHub": that rebuilds without version.json). Send me the address it gives.
-Reply **"2 done"** with the Netlify address.
+## 1. Push develop (one word)
+The live site already has everything: you pushed `main` on 9 Nov 01:30 IST, deploy green, https://parthdalvi2001.github.io/Roomsong/ serves 45518e5. GitHub `develop` is 13 commits behind it. Reply **"push"**.
 
-## 2. Register for Playtest & React, 29 Oct 22:30 IST
-Chinmay registers with his Meta Start account (Devpost → the competition → Webinars & Office Hours tab) and joins with the live link. Reply **"3 done"**.
+## 2. The name: Roomsong or SonicSpace
+★ **Keep Roomsong.** The name check (RND_2026-11-08 §3) found no SonicSpace app or registered mark, but "Sonic" reads as SEGA's game in a games contest, and the name drops "room", the core idea. If SonicSpace: the rename branch is ready (title, landing page); the video, gallery and the `/Roomsong/` link must change too.
 
-## 3. Chinmay's Start Member screenshot, by 31 Oct
-Ask him for a screenshot of the "Start Member" label next to his name on the Meta Developer Forum. Reply **"5 done"**.
+## 3. Room looks: do it or skip
+Rooms sound different but look almost the same (ROOM_LOOKS_REVIEW_2026-11-07 §3; Chinmay parked it). ★ **Do #4 + #2 before the 12 Nov freeze:** colour follows room size (small rooms warmer, big rooms cooler) and the ceiling caption names the mood. Small, no extra draw cost. Or skip.
 
-## 4. Listen to style B once
-https://localhost:8093/proto/styles/ in Chrome (Advanced → Proceed), tick "full garden", play B for a few minutes. Reply "B good" or what to change.
+## 4. Headset checks (you or Chinmay, on the live link)
+1. Open the link over a phone hotspot. 2. "No room scan" message: once unscanned, once after Space Setup. 3. Undo a plant (undo petal). 4. Drag a plant by looking at it. 5. Listen: both palms out 1.5 s. 6. A no-pinch run: the link with `?access=gaze`. 7. Tomorrow: Garden tab says Day 2. 8. A 10 s Quest video with sound. Optional: the voice test (RND_2026-11-08 §1).
 
-## 5. G2 review, 15 minutes (by 3 Nov)
-Read `specs/08-status/G2_REVIEW_2026-11-03.md` §6: six questions with ★ recommendations; reply with numbers or "all recommended". Suggested verdict: conditional pass.
+## 5. Before 12 Nov: a new person plays it
+Someone who has never seen Roomsong plays the first five minutes on a headset while you watch, without help. Tell me what got stuck. This is the evidence for "Best First Five Minutes".
 
-## 6. Two lines of the Devpost form (with Chinmay)
-- **Target launch:** proposed "Store launch: early 2027" (copy) and "Early 2027 on the Quest store, as a web app" (form). Reply "6 ok" or your words.
-- **"What excites us about VR":** must be in your and Chinmay's own words; a few sentences. Write it in the reply.
+## 6. 12 Nov feature freeze: how to tag
+★ **A:** you push `main` and tag v0.5.0 (the freeze build is the live one). **B:** say "go", I tag `develop`, no deploy. FEATURE_FREEZE_PREP_2026-11-12 §5–§6. After the freeze: only bug fixes.
 
-## Later
-- **The headset:** tell me when you borrow one; the 1-hour script (`specs/05-testing/DEVICE_SCRIPT_S1.md`) is ready.
-- **Headset day:** which room and table (at least 75 cm deep), results by mail or USB, keep it overnight?
-- **12 Nov, the feature freeze:** v0.5.0 by A (you merge main and tag, the freeze build goes public) ★ or B (say "go", I tag develop, no deploy); and the self-score decision (≥ 8 is out of reach without a headset). `FEATURE_FREEZE_PREP_2026-11-12.md` §5–§6.
+## 7. Old items of 25 Oct: tell me which are done
+1. Netlify mirror: send the address, or say "no mirror". 2. Playtest & React (29 Oct): did Chinmay attend? 3. Chinmay's "Start Member" screenshot. 4. Listen to sound style B. 5. G2 review, six questions (G2_REVIEW_2026-11-03 §6). 6. Devpost: target launch line and "What excites us about VR" (your and Chinmay's own words).
+
+## Dates
+- 13–14 Nov: video (Chinmay). Devpost text: I draft it, aimed at Best First Five Minutes.
+- 15 Nov: code freeze. 16 Nov: final check. 17 Nov by 18:00 IST: Chinmay submits.
