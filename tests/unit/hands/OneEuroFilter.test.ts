@@ -28,7 +28,7 @@ describe('OneEuroFilter', () => {
   });
 
   it('with the contract values cuts jitter around a still hand by at least 60% RMS at 72 Hz', () => {
-    expect([ONE_EURO_MIN_CUTOFF_HZ, ONE_EURO_BETA, ONE_EURO_D_CUTOFF_HZ]).toEqual([1, 0, 1]);
+    expect([ONE_EURO_MIN_CUTOFF_HZ, ONE_EURO_BETA, ONE_EURO_D_CUTOFF_HZ]).toEqual([1, 30, 1]); // beta 30 since BUG-055
     const filter = new OneEuroFilter(ONE_EURO_MIN_CUTOFF_HZ, ONE_EURO_BETA, ONE_EURO_D_CUTOFF_HZ);
     let seed = 12345; // a fixed linear congruential sequence: the same noise on every run
     const noise = () => {

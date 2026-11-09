@@ -265,7 +265,11 @@ export class GestureMachine {
     this.snapped =
       context.bedPose === null
         ? null
-        : stickyCell(toBedLocal(context.bedPose, this.point(frame, context.eye), this.local), this.snapped);
+        : stickyCell(
+            toBedLocal(context.bedPose, this.point(frame, context.eye), this.local),
+            this.snapped,
+            state === 'CARRYING', // BUG-055: a seed over the hole takes the innermost ring; a dragged plant does not
+          );
     // Garden is asked on every sample: the other hand may fill the cell while this one hovers it. A dragged
     // plant's own cell counts as free: it may be put back where it stands.
     const dragged = state === 'DRAGGING' ? this.held.id : undefined;

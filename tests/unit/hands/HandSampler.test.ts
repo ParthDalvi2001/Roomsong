@@ -188,8 +188,10 @@ describe('HandSampler: joints to HandFrame', () => {
     expect(sample().pinchPos.x).toBe(0); // the first sample passes through
     right.pose({ x: 0.1, y: 1, z: -0.4 }, OPEN_M);
     const jumped = sample().pinchPos.x; // a 10 cm jump in one frame
-    expect(jumped).toBeGreaterThan(0);
-    expect(jumped).toBeLessThan(0.02); // a 1 Hz low-pass lets through about 8% a frame
+    // BUG-055, beta 30: a jump this fast opens the cutoff to about 18 Hz, so about 60% passes in the frame; at
+    // beta 0 it was 8%, and a carried seed trailed the hand.
+    expect(jumped).toBeGreaterThan(0.04);
+    expect(jumped).toBeLessThan(0.09);
     let frame = sample();
     for (let i = 1; i <= 720; i++) {
       right.pose({ x: 0.1 + i * 0.2 * (FRAME_MS / 1000), y: 1, z: -0.4 }, OPEN_M); // 0.2 m/s to the right
