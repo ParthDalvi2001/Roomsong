@@ -21,7 +21,7 @@ The order matters. Step 1 needs Parth's go; steps 2, 3 and 6 are his to do.
 2. github.com/ParthDalvi2001/Roomsong → Settings → Pages → Source: **GitHub Actions**. Do this **before** `main` is pushed.
 3. Parth: `git checkout main && git merge --ff-only develop && git push origin main && git checkout develop`.
 4. Actions tab: wait for `ci` and `deploy` to go green.
-5. Open the site and `https://parthdalvi2001.github.io/Roomsong/version.json`: `commit` must equal `git rev-parse main`. Open `/Roomsong/proto/pinch/` and `/Roomsong/proto/spike/` too.
+5. Open the site and `https://parthdalvi2001.github.io/Roomsong/version.json`: `commit` must equal `git rev-parse main`. `/Roomsong/proto/pinch/` and `/Roomsong/proto/spike/` must not open (404): the device test pages are not published (T-189).
 6. If `deploy` says the branch is not allowed: Settings → Environments → `github-pages` → Deployment branches → allow `main`, then Actions → deploy → Run workflow → Branch: `main`. Leave **only** `main` allowed (§2, manual runs).
 
 Do the first push days before the link is needed. Not proven until that first run: the Linux runner (WebGL2 on software rendering, speed) and that the `github-pages` environment accepts `main`.
@@ -50,7 +50,7 @@ Read the files: they are short and commented. This section says what they do, no
 - **A manual run builds the branch chosen in the Run workflow box,** which opens on the default branch, `main`. The `deploy` job publishes only when the run is on `main` (`if: github.ref == 'refs/heads/main'`); a run from another branch builds and publishes nothing. The `github-pages` environment's branch rule is a second guard (§1.1 step 6).
 - A manual run is a **rebuild** of that commit: the same `commit`, a new `builtAt`.
 - The Pages upload drops dotfiles, so a `.well-known/` folder would not ship.
-- Published with the app, from the same build: the device test pages `/Roomsong/proto/pinch/` (TC-DEV-00) and `/Roomsong/proto/spike/` (TC-DEV-0A). Their device scripts are `proto/pinch/README.md` and `proto/spike/README.md`. The garden preview `/Roomsong/proto/bed/` (T-125) is published the same way; it is a flat page for looking at the bed, plants and tide, not a device test.
+- **Not published (T-189, D-060 (10)):** the device test pages `proto/pinch/` (TC-DEV-00) and `proto/spike/` (TC-DEV-0A) and the garden preview `proto/bed/` (T-125). Only a `ROOMSONG_PROTO=1` build has them, for the LAN preview (§3), and `scripts/check-dist.mjs` fails `npm run verify` if one is in `dist/`. Their device scripts are `proto/pinch/README.md` and `proto/spike/README.md`.
 - *Superseded (T-108):* the YAML that stood here (checkout and setup-node `@v4`, Node 22, a `v*` tag trigger, `scripts/size-check.mjs`, a `/staging/` build), and `scripts/deploy.mjs` with the `deploy:staging` / `deploy:prod` npm scripts, which are deleted.
 
 ## 3. Staging (superseded by T-108: there is no hosted staging)
@@ -59,7 +59,7 @@ A push to `develop` runs `ci` and publishes nothing. To look at a production bui
 2. Headset on the same Wi-Fi, when one exists: open that address and accept the certificate once. Until then: Chrome with the Immersive Web Emulator extension (not yet tried against the built page's Content Security Policy).
 3. Run UAT-01 and record the result in PROGRESS.md as emulator or device.
 
-The first hosted copy of any change is production. The device test pages can be run from this LAN address before go-live (`proto/spike/README.md` step 1).
+The first hosted copy of any change is production. The device test pages run only from this LAN address, built with `ROOMSONG_PROTO=1 npm run build` (`proto/spike/README.md` step 1).
 
 ## 4. Production release procedure
 1. All of: the `ci` run of the `develop` commit to release is green (verify, e2e, audit); device suite TC-DEV-01..09 passed **(requires headset — in Emergency mode record them as unverified, per TEST_PLAN §2)**; BUG_LOG open S1/S2 = 0.

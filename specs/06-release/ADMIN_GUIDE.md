@@ -8,7 +8,7 @@ For whoever operates the hosted app (the team). There is no admin UI; "admin" me
 ## 1. Hosting at a glance
 - Static site on **GitHub Pages**, the submitted URL: `https://parthdalvi2001.github.io/Roomsong/` (D-022; the path is case-sensitive; live once Parth enables Pages, T-108). A Vercel or Netlify mirror serves the same build (host not chosen yet). There is no staging site (DEPLOYMENT_GUIDE §3). *Superseded (D-022, T-108):* "hosting to be chosen", "staging under `/staging/`".
 - `version.json` beside `index.html` on each link reports `{ version, commit, builtAt }`. Check it first when debugging: both links must show the same values, and `commit` is the commit of `main` that is live.
-- Device test pages on the same site: `/Roomsong/proto/pinch/` (TC-DEV-00) and `/Roomsong/proto/spike/` (TC-DEV-0A). Their numbered scripts are `proto/pinch/README.md` and `proto/spike/README.md`. Device runs are pending: no headset yet.
+- Device test pages `proto/pinch/` (TC-DEV-00) and `proto/spike/` (TC-DEV-0A): not on the public site (T-189), only on a LAN preview built with `ROOMSONG_PROTO=1 npm run build`. Their numbered scripts are `proto/pinch/README.md` and `proto/spike/README.md`. Device runs are pending: no headset yet.
 - No server, no database, no secrets, no service worker (offline mode *Cut (D-011)*).
 - Team tracking page, local only and read-only: `python3 tracker/server.py` (the `tracker/` folder is a team tool, not part of the app) → `http://127.0.0.1:4180/`.
 
@@ -33,7 +33,7 @@ The parser is built (`src/core/flags.ts`, T-106). Each effect below arrives with
 ## 3. Resetting a headset to "judge state"
 Quest Browser → ⋮ → Settings → Privacy → Clear browsing data → **Site data** for the origin (menu names not checked on a headset). Or in-app: Garden → New garden (hold; arrives with T-151).
 - The Pages link and the mirror are two origins: a garden saved on one is not on the other. Reset the one the judge will open (the Pages link).
-- Clearing site data also deletes the saved runs of the capability page (`/Roomsong/proto/spike/`). Press **Copy JSON** there first.
+- Clearing site data also deletes the saved runs of the capability page (`proto/spike/`, on the LAN preview's origin). Press **Copy JSON** there first.
 
 ## 4. Reading logs on device
 - *(requires headset — none on the team as of 2026-10-10)* `metavr logs --filter roomsong` (if the metavr device tooling is connected), or Quest Browser remote debugging via `chrome://inspect` over ADB. In the emulator: `?flags=eventLog` and the browser console.

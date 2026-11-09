@@ -6,6 +6,7 @@
 //    vite.config.ts adds, and must hold no inline script, event handler or style element (the policy blocks them).
 // 3. Licences (T-171, THIRD_PARTY_LICENSES.md): dist/LICENSES/ holds licence texts, and no file holds the code of
 //    @drawcall/uikitml, which has no licence (vite.config.ts swaps it for build/stubs/uikitml.js).
+// 4. No device test page (proto/) is in the build (T-189, D-060 (10)): only a ROOMSONG_PROTO=1 build has them.
 // shortcut: a host joined from pieces inside SDK code shows only as its fixed head (down to a bare "https://"),
 // upgrade if the policy ever allows a remote host; until then the browser blocks the request itself.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -52,6 +53,8 @@ for (const file of files) {
   if (!LICENSE_TEXT.test(file) && text.includes('hand-cue'))
     failures.push(`${file}: the hand cue (render/HandCue.ts) is in a production build`);
   if (!file.endsWith('.html')) continue;
+  if (/^proto[/\\]/.test(file))
+    failures.push(`${file}: a device test page is in the build: build without ROOMSONG_PROTO=1`);
   pages += 1;
   const policy = CSP_META.exec(text)?.[1].replaceAll('&#39;', "'"); // Vite writes ' as &#39;
   if (policy === undefined) failures.push(`${file}: no Content-Security-Policy meta tag`);

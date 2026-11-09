@@ -11,7 +11,8 @@ It answers two questions, in two runs of about five minutes each on a Quest 3 or
 
 1. On the headset: hand tracking on, and Space Setup done with your table marked as a table.
 2. Put the controllers away. Sit at the table with your belly at its edge, facing it.
-3. In Meta Quest Browser open `<site>/proto/pinch/`.
+3. In Meta Quest Browser open `<site>/proto/pinch/`. `<site>` is the Mac's LAN preview: `ROOMSONG_PROTO=1 npm run build`,
+   then `npm run preview`, and its `Network:` address (the hosted site does not have this page, T-189).
 4. Pinch **Start**. Allow hand tracking and spatial data if asked. Keep facing the table while it starts.
 5. Dots appear on the table about 45 cm ahead. One glows yellow: pinch it, thumb and index finger, either hand.
 6. Keep the other hand open or in your lap: if its thumb and finger drift together, that counts as a pinch.

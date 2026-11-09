@@ -11,9 +11,9 @@ results stay in the browser until you copy them.
 Before you start: hand tracking is on, Space Setup has been run in this room (ENVIRONMENT_SETUP §5), you sit
 at your table, and the controllers are put down.
 
-1. On the Mac, in the repository: `npm run build`, then `npm run preview`. Note the `Network:` address it
-   prints (like `https://192.168.1.20:4173/`; if it prints two, take the one of your Wi-Fi, usually `192.168.`).
-   Once the site is hosted, use `<site>/proto/spike/` and skip this step.
+1. On the Mac, in the repository: `ROOMSONG_PROTO=1 npm run build`, then `npm run preview`. Note the `Network:`
+   address it prints (like `https://192.168.1.20:4173/`; if it prints two, take the one of your Wi-Fi, usually
+   `192.168.`). The flag adds this page to the build; the hosted site does not have it (T-189).
 2. Headset on the same Wi-Fi. In Meta Quest Browser open that address followed by `proto/spike/`.
    With the Mac address a certificate warning is expected: choose Advanced, then Proceed.
    *Not yet checked on a headset.*

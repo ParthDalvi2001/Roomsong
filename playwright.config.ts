@@ -47,9 +47,10 @@ export default defineConfig({
       timeout: SERVER_START_LIMIT_MS,
     },
     {
-      // Build first: a preview of an old dist/ would test old code.
+      // Build first: a preview of an old dist/ would test old code. ROOMSONG_PROTO=1 adds the device test pages
+      // (vite.config.ts), which 02-spike, 04-built-page-policy and 07-bed open built.
       command: `npx vite build && npx vite preview --port ${BUILT_PAGE_PORT} --strictPort`,
-      env: { IWSDK_DEV_OPEN: 'false' },
+      env: { IWSDK_DEV_OPEN: 'false', ROOMSONG_PROTO: '1' },
       url: BUILT_PAGE_URL,
       ignoreHTTPSErrors: true,
       reuseExistingServer: false,
