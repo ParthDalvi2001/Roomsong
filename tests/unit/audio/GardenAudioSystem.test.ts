@@ -246,6 +246,9 @@ describe('the UI sounds of the garden (T-164 §6)', () => {
         cell,
         dy: gesture === 'pull' ? 0.01 : null,
       });
+    r.changed(garden([plant('a', 1, 2)]));
+    pinch('right', { kind: 'plant', id: 'a' }); // a held plant is a pinched one
+    r.calls.length = 0;
     release('drag', 'inner', null);
     release('drag', 'bed', null);
     release('drag', 'bed', { ring: 1, step: 3 });
@@ -254,6 +257,34 @@ describe('the UI sounds of the garden (T-164 §6)', () => {
     release('carry', 'inner', null); // garden:seedBack bumps for it
     release('none', 'inner', null);
     expect(r.calls).toEqual(['ui bump', 'ui bump']);
+  });
+
+  it('in Listen a pinch on a plant is only the wake (PRD §3.4, BUG-050): no tick, preview or bump; from the next frame they are back', () => {
+    const r = rig();
+    r.changed(garden([plant('a', 1, 2)]));
+    const dropInHole = (): void =>
+      bus.emit('gesture:release', {
+        type: 'gesture:release',
+        hand: 'right',
+        gesture: 'drag',
+        target: { kind: 'plant', id: 'a' },
+        pos: ORIGIN,
+        zone: 'inner',
+        cell: null,
+        dy: null,
+      });
+    bus.emit('listen:enter', {});
+    // As in the app: the garden hears the pinch first and ends Listen in it, then this system hears that pinch.
+    bus.emit('listen:exit', { timedOut: false });
+    pinch('right', { kind: 'plant', id: 'a' });
+    pull('right', 0.033);
+    r.system.update(); // the wake's drag lasts into later frames
+    dropInHole();
+    expect(r.calls).toEqual([]);
+    pinch('right', { kind: 'plant', id: 'a' });
+    pull('right', 0.033);
+    dropInHole();
+    expect(r.calls).toEqual(['ui tick', 'preview a bell 1,2 0.25 0.80', 'ui bump']);
   });
 
   it('with the gaze mode on, a cell the gaze crosses does not tick: its dwell ring is the cue there (FR-HND-12)', () => {

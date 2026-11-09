@@ -92,8 +92,14 @@ export class GardenAudioSystem extends createSystem(
   private readonly removed = new Set<string>();
   /** Per hand (left 0, right 2) the ring and step a carried seed or dragged plant would land in; −1 = none. */
   private readonly hoverCell = new Int16Array(4).fill(-1);
-  /** T-147b: per hand (left 0, right 1) the plant its pinch took, as it was then; null for none. */
+  /** T-147b: per hand (left 0, right 1) the plant its pinch took, as it was then; null for none or the wake. */
   private readonly held: (Plant | null)[] = [null, null];
+  /**
+   * PRD §3.4 (BUG-050): Listen is on, from `listen:enter` to the frame after `listen:exit`. The garden ends Listen
+   * inside the waking pinch's own `gesture:pinchStart`, before this system hears that pinch.
+   */
+  private isListening = false;
+  private hasListenEnded = false;
   /** T-147b: the pulled plant the engine previews, one object written on every pull sample. */
   private readonly pulled: Plant = {
     id: '',
@@ -154,16 +160,22 @@ export class GardenAudioSystem extends createSystem(
         kept[i] = ring;
         kept[i + 1] = step;
       }),
+      bus.on('listen:enter', () => {
+        this.isListening = true;
+        this.hasListenEnded = false;
+      }),
+      // shortcut: an exit between frames (the timeout, a pause) also mutes a pinch in the next frame; split if heard
+      bus.on('listen:exit', () => void (this.hasListenEnded = true)),
       // T-147b, UX §3.4: a pinch on a plant ticks. Its cell is the hand's last, so a drag that starts there does not
-      // tick again.
+      // tick again. In Listen the pinch is the wake alone (PRD §3.4): no tick, and no preview or bump after it.
       bus.on('gesture:pinchStart', ({ hand, target }) => {
         const id = target?.kind === 'plant' ? target.id : null;
         let plant: Plant | null = null;
         for (let k = 0; k < this.plants.length; k++)
           if ((this.plants[k] as Plant).id === id) plant = this.plants[k] as Plant;
-        this.held[hand === 'left' ? 0 : 1] = plant;
+        this.held[hand === 'left' ? 0 : 1] = this.isListening ? null : plant;
         if (plant === null) return;
-        this.engine.ui('tick');
+        if (!this.isListening) this.engine.ui('tick');
         this.hoverCell[hand === 'left' ? 0 : 2] = plant.cell.ring;
         this.hoverCell[hand === 'left' ? 1 : 3] = plant.cell.step;
       }),
@@ -183,8 +195,9 @@ export class GardenAudioSystem extends createSystem(
         this.engine.preview(p);
       }),
       // A dragged plant let go where it does not land (the hole, or no cell) goes back: the one "no" sound.
-      bus.on('gesture:release', ({ gesture, zone, cell }) => {
-        if (gesture === 'drag' && zone !== 'outer' && cell === null) this.engine.ui('bump');
+      bus.on('gesture:release', ({ hand, gesture, zone, cell }) => {
+        const isHeld = this.held[hand === 'left' ? 0 : 1] !== null; // not the wake's
+        if (gesture === 'drag' && zone !== 'outer' && cell === null && isHeld) this.engine.ui('bump');
       }),
       // §6: the bed landed (a restore too): its chord, from the bed, once the signature that follows has tuned the
       // engine (chordDue). Before the signature the engine gets the bed with no plant, so the chord is at the bed
@@ -209,6 +222,7 @@ export class GardenAudioSystem extends createSystem(
   }
 
   override update(): void {
+    if (this.hasListenEnded) this.isListening = this.hasListenEnded = false;
     // The head, as every system takes it (LLD §3.2): the camera gets the pose only when the frame is rendered.
     const head = this.xrManager.isPresenting ? this.player.head : this.camera;
     this.engine.setListenerPose(head.matrixWorld.elements);
