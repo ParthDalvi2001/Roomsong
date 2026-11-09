@@ -50,3 +50,5 @@ pids/
 .claude/scheduled_tasks.lock
 
 __pycache__/
+# Devpost gallery drafts: kept on disk, not in git (Parth, 9 Nov)
+evidence/gallery/
