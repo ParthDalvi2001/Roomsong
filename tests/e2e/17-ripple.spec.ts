@@ -249,9 +249,9 @@ test('T-142 the table room: sweeps at 0.3, 1.5 and 2.7 s, one caption each, room
   expect(p.levels).toEqual([1]);
   expect(p.startFrame).toBe(p.featuresFrame); // started in the frame of room:features
   for (let i = 0; i < 3; i++) expectLitOnTime(p, i);
-  expect(ripple.map((c) => c.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeiling']);
+  expect(ripple.map((c) => c.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeilingMinor']);
   ripple.forEach((c, i) => expect(c.ms - p.startMs, c.key).toBe(due(p, SWEEP_AT_MS[i]!)));
-  expect(spans.map((s) => s.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeiling']);
+  expect(spans.map((s) => s.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeilingMinor']);
   for (const span of spans) expect(span.forMs, span.key).toBeGreaterThanOrEqual(CAPTION_MIN_MS);
   expect(p.tunedMs.map((ms) => ms - p.startMs)).toEqual([due(p, TUNED_MS)]);
   expectChord(p, true);

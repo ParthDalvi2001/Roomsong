@@ -57,13 +57,13 @@ describe('CaptionQueue', () => {
     queue.raise('a', 'rippleTableSeeds', 2000);
     expect(at(queue, 0)).toBe('rippleTableSeeds');
     queue.raise('b', 'rippleWalls', 500); // expired long before its turn comes
-    queue.raise('c', 'rippleCeiling', 9000);
+    queue.raise('c', 'rippleCeilingMinor', 9000);
     expect(at(queue, 1999)).toBe('rippleTableSeeds');
     expect(at(queue, 2000)).toBe('rippleWalls');
     expect(done).toEqual(['a']);
     expect(at(queue, 2000 + CAPTION_MIN_MS - 1)).toBe('rippleWalls');
-    expect(at(queue, 2000 + CAPTION_MIN_MS)).toBe('rippleCeiling');
-    expect(at(queue, 8999)).toBe('rippleCeiling');
+    expect(at(queue, 2000 + CAPTION_MIN_MS)).toBe('rippleCeilingMinor');
+    expect(at(queue, 8999)).toBe('rippleCeilingMinor');
     expect(at(queue, 9000)).toBeNull();
     expect(done).toEqual(['a', 'b', 'c']);
   });
@@ -75,13 +75,13 @@ describe('CaptionQueue', () => {
       // TuningRipple raises each caption at the start of its sweep, to last until the next sweep starts
       if (ms === 300) queue.raise('table', 'rippleTableNote', 1500);
       if (ms === 1500) queue.raise('wall', 'rippleWalls', 2700);
-      if (ms === 2700) queue.raise('ceiling', 'rippleCeiling', 4000);
+      if (ms === 2700) queue.raise('ceiling', 'rippleCeilingMinor', 4000);
       seen.push(at(queue, ms));
     }
     const shownFor = (key: string) => seen.filter((k) => k === key).length * 100;
     expect(shownFor('rippleTableNote')).toBe(1200);
     expect(shownFor('rippleWalls')).toBe(1200);
-    expect(shownFor('rippleCeiling')).toBe(1300);
+    expect(shownFor('rippleCeilingMinor')).toBe(1300);
     expect(seen.slice(0, 3)).toEqual([null, null, null]);
     expect(seen.slice(40)).toEqual([null, null]);
   });
@@ -89,7 +89,7 @@ describe('CaptionQueue', () => {
   it('never shows a waiting caption that its raiser took back', () => {
     const { queue, done } = setUp();
     queue.raise('a', 'rippleWalls', 0);
-    queue.raise('b', 'rippleCeiling', 0);
+    queue.raise('b', 'rippleCeilingMinor', 0);
     expect(at(queue, 0)).toBe('rippleWalls');
     queue.withdraw('b');
     queue.withdraw('never raised');
@@ -113,7 +113,7 @@ describe('CaptionQueue', () => {
     queue.raise('a', 'rippleWalls', 60_000);
     expect(at(queue, 0)).toBe('rippleWalls');
     queue.withdraw('a');
-    queue.raise('a', 'rippleCeiling', 60_000);
+    queue.raise('a', 'rippleCeilingMinor', 60_000);
     queue.withdraw('a');
     expect(at(queue, CAPTION_MIN_MS - 1)).toBe('rippleWalls');
     expect(at(queue, CAPTION_MIN_MS)).toBeNull(); // the second one is gone, not next in line
@@ -124,8 +124,8 @@ describe('CaptionQueue', () => {
     queue.raise('b', 'rippleWalls', 0);
     expect(at(queue, 20_000)).toBe('rippleWalls');
     queue.withdraw('b');
-    queue.raise('b', 'rippleCeiling', 0);
-    expect(at(queue, 20_000 + CAPTION_MIN_MS)).toBe('rippleCeiling');
+    queue.raise('b', 'rippleCeilingMinor', 0);
+    expect(at(queue, 20_000 + CAPTION_MIN_MS)).toBe('rippleCeilingMinor');
     expect(at(queue, 20_000 + 2 * CAPTION_MIN_MS)).toBeNull();
     expect(done).toEqual(['b']);
   });

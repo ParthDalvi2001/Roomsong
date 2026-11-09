@@ -411,7 +411,7 @@ test('TC-E2E-11 a caption is drawn in the scene and stays inside 25 by 20 degree
     if (!world.hasSystem(ui.CaptionSystem)) throw new Error('src/app.ts did not register CaptionSystem');
     const raise = () => {
       const expiresAt = core.clock.now() + 50_000;
-      world.createEntity().addComponent(Caption, { key: 'rippleCeiling', expiresAt });
+      world.createEntity().addComponent(Caption, { key: 'rippleCeilingMinor', expiresAt });
     };
     // A private field of TuningRippleSystem: its renderer's quads.
     const renderUrl = '/src/render/index.ts';
@@ -439,7 +439,7 @@ test('TC-E2E-11 a caption is drawn in the scene and stays inside 25 by 20 degree
   await probe.evaluate((p) => p.noCull());
   const before = await probe.evaluate((p) => ({ ...p.info.render }));
   await probe.evaluate((p) => p.raise());
-  await page.waitForFunction((p) => p.captions.shown === 'rippleCeiling', probe);
+  await page.waitForFunction((p) => p.captions.shown === 'rippleCeilingMinor', probe);
   /** How often the caption's canvas has been sent to the graphics card. */
   const uploads = () => probe.evaluate((p) => p.mesh.material.map.version);
 
@@ -520,7 +520,7 @@ test('TC-E2E-11 a caption is drawn in the scene and stays inside 25 by 20 degree
   await xrFrames(page, 3);
   expect(await uploads()).toBe(uploadsAtStart + 1);
 
-  expect(await probe.evaluate((p) => p.captions.shown)).toBe('rippleCeiling');
+  expect(await probe.evaluate((p) => p.captions.shown)).toBe('rippleCeilingMinor');
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
 });

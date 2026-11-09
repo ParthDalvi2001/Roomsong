@@ -1284,9 +1284,9 @@ describe('the flash cap, counted second by second from what is drawn (FR-UI-11, 
 });
 
 describe('PlantRenderer.setPalette (UX §5, ART_PASS_T163 §0, D-060)', () => {
-  const ROOM = 31 + 25; // a room whose signature turns the arc 10° on (render/palette.ts)
+  const ROOM = 31 + 25; // with a 1.6 s decay, a room whose signature turns the arc 9° on (render/palette.ts, D-071)
   const colourIn = (seed: number, hue: number, lightness: number, brightness: number): number[] =>
-    plantColour(new Color(), hue, lightness, setPalette(newPalette(), seed))
+    plantColour(new Color(), hue, lightness, setPalette(newPalette(), seed, 1.6))
       .multiplyScalar(brightness)
       .toArray();
 
@@ -1296,13 +1296,13 @@ describe('PlantRenderer.setPalette (UX §5, ART_PASS_T163 §0, D-060)', () => {
     const week = [plant('a', 2, 5, { hue: 0.4, plantedAt: 0 }), plant('b', 1, 3, { hue: 0.9, plantedAt: 0 })];
     show(renderer, week, 7.5 * MS_PER_DAY);
     renderer.update(Number.NaN, 0);
-    renderer.setPalette(ROOM);
+    renderer.setPalette(ROOM, 1.6);
     expectRgb(at(renderer, 2, 5)!.rgb, colourIn(ROOM, 0.4, PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     expectRgb(at(renderer, 1, 3)!.rgb, colourIn(ROOM, 0.9, PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     show(renderer, [plant('young', 0, 0, { hue: 0.2 })]);
     expectRgb(at(renderer, 0, 0)!.rgb, colourIn(ROOM, 0.2, PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     // Wanderer again: the plain arc.
-    renderer.setPalette(0);
+    renderer.setPalette(0, 1.6);
     expectRgb(at(renderer, 0, 0)!.rgb, colourIn(0, 0.2, PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
   });
 });

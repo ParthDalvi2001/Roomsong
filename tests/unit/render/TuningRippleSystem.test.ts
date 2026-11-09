@@ -7,14 +7,14 @@ import { Group, Object3D, type Mesh } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Caption } from '../../../src/core/components.js';
-import { bus, clock, DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
+import { bus, clock, DEFAULT_SETTINGS, settings, STRINGS } from '../../../src/core/index.js';
 import { WANDERER, type RoomSignature } from '../../../src/garden/index.js';
 import { RIPPLE_SWEEP_AT_MS, RIPPLE_TUNED_MS } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
 import { TuningRippleSystem } from '../../../src/render/RenderSystems.js';
 import { TuningRipple } from '../../../src/render/TuningRipple.js';
 
-import type { Vec3 } from '../../../src/core/index.js';
+import type { StringKey, Vec3 } from '../../../src/core/index.js';
 import type { RoomSurfaces } from '../../../src/room/index.js';
 
 const WALL_START_MS = 1_790_000_000_000;
@@ -199,7 +199,7 @@ describe('TuningRippleSystem: when the ripple starts (API_SPEC §1.10 rule 4)', 
     expect(r.raised).toEqual([
       { key: 'rippleTableSeeds', atS: at(RIPPLE_SWEEP_AT_MS[0]), forMs: 1200 },
       { key: 'rippleWalls', atS: at(RIPPLE_SWEEP_AT_MS[1]), forMs: 1200 },
-      { key: 'rippleCeiling', atS: at(RIPPLE_SWEEP_AT_MS[2]), forMs: 1300 },
+      { key: 'rippleCeilingMajor', atS: at(RIPPLE_SWEEP_AT_MS[2]), forMs: 1300 },
     ]);
     // Each caption on the system's own entity: the one before it is taken back first.
     expect(r.caption.ops).toEqual([
@@ -207,7 +207,7 @@ describe('TuningRippleSystem: when the ripple starts (API_SPEC §1.10 rule 4)', 
       'remove',
       'add rippleWalls',
       'remove',
-      'add rippleCeiling',
+      'add rippleCeilingMajor',
     ]);
     expect(r.tunedAfter()).toEqual([at(RIPPLE_TUNED_MS)]);
   });
@@ -220,7 +220,7 @@ describe('TuningRippleSystem: when the ripple starts (API_SPEC §1.10 rule 4)', 
     expect(r.raised.map((c) => [c.key, c.atS])).toEqual([
       ['rippleTableSeeds', 0.3],
       ['rippleWalls', 1.5],
-      ['rippleCeiling', 2.7],
+      ['rippleCeilingMajor', 2.7],
     ]);
     expect(r.tunedAfter()).toEqual([4]);
   });
@@ -234,7 +234,7 @@ describe('TuningRippleSystem: when the ripple starts (API_SPEC §1.10 rule 4)', 
     expect(r.meshes.some((mesh) => mesh.visible)).toBe(false);
     r.features(); // the placement's surfaces: now the ripple runs
     r.runFor(5);
-    expect(r.raised.map((c) => c.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeiling']);
+    expect(r.raised.map((c) => c.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeilingMajor']);
     stop?.();
     const s = rig();
     s.features();
@@ -255,10 +255,10 @@ describe('TuningRippleSystem: when the ripple starts (API_SPEC §1.10 rule 4)', 
     expect(r.raised.map((c) => c.key)).toEqual([
       'rippleTableSeeds',
       'rippleWalls',
-      'rippleCeiling',
+      'rippleCeilingMajor',
       'rippleTableNote',
       'rippleWalls',
-      'rippleCeiling',
+      'rippleCeilingMajor',
     ]);
     expect(r.tunedAfter()).toHaveLength(2);
   });
@@ -276,7 +276,7 @@ describe('TuningRippleSystem: when the ripple starts (API_SPEC §1.10 rule 4)', 
       'rippleWalls',
       'rippleTableNote',
       'rippleWalls',
-      'rippleCeiling',
+      'rippleCeilingMajor',
     ]);
     expect(r.tunedAfter()).toEqual([4]);
   });
@@ -303,6 +303,27 @@ describe('TuningRippleSystem: what is swept and captioned (LLD §5.8)', () => {
     expect(r.raised).toEqual([]);
   });
 
+  it('the ceiling caption names the mode its height set (D-071): minor, major, open; the afterglow gets the decay', () => {
+    const shown: string[] = [];
+    for (const mode of ['minorPent', 'majorPent', 'susPent'] as const) {
+      const r = rig();
+      const start = vi.spyOn(TuningRipple.prototype, 'start');
+      r.signature({ ...ROOM, mode, reverbRt60: 1.6 });
+      r.features();
+      r.runFor(5);
+      shown.push(r.raised[r.raised.length - 1]!.key);
+      expect(start.mock.calls[0]?.[0]).toMatchObject({ paletteSeed: ROOM.paletteSeed, reverbRt60: 1.6 });
+      stop?.();
+      vi.restoreAllMocks();
+    }
+    expect(shown).toEqual(['rippleCeilingMinor', 'rippleCeilingMajor', 'rippleCeilingOpen']);
+    expect(shown.map((key) => STRINGS[key as StringKey])).toEqual([
+      'Ceiling: minor mood.',
+      'Ceiling: major mood.',
+      'Ceiling: open mood.',
+    ]);
+  });
+
   it('a missing surface has no sweep and no caption; the others keep their times', () => {
     const r = rig();
     r.signature();
@@ -310,7 +331,7 @@ describe('TuningRippleSystem: what is swept and captioned (LLD §5.8)', () => {
     r.runFor(5);
     expect(r.raised.map((c) => [c.key, c.atS])).toEqual([
       ['rippleWalls', 1.5],
-      ['rippleCeiling', 2.7],
+      ['rippleCeilingMajor', 2.7],
     ]);
     expect(r.tunedAfter()).toEqual([4]);
   });
@@ -322,7 +343,7 @@ describe('TuningRippleSystem: what is swept and captioned (LLD §5.8)', () => {
     r.signature();
     r.features();
     r.runFor(5);
-    expect(r.raised.map((c) => c.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeiling']);
+    expect(r.raised.map((c) => c.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeilingMajor']);
     expect(r.tunedAfter()).toEqual([4]);
     expect(start.mock.calls[0]?.[0]).toMatchObject({ isReducedMotion: true, isWanderer: false });
   });
@@ -368,7 +389,7 @@ describe('TuningRippleSystem: the edges of a session', () => {
     r.runFor(0.5);
     r.setTime(2_000 + 3.0); // no frames for a while (the session was hidden): the wall's time is over
     r.runFor(2);
-    expect(r.raised.map((c) => c.key)).toEqual(['rippleTableSeeds', 'rippleCeiling']);
+    expect(r.raised.map((c) => c.key)).toEqual(['rippleTableSeeds', 'rippleCeilingMajor']);
     expect(r.tunedAfter()).toHaveLength(1);
   });
 
@@ -395,7 +416,7 @@ describe('TuningRippleSystem: the edges of a session', () => {
     r.features();
     expect(() => r.frame()).toThrow('planted'); // src/app.ts's breaker catches it and skips this system for 1 s
     r.runFor(5);
-    expect(r.raised.map((c) => c.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeiling']);
+    expect(r.raised.map((c) => c.key)).toEqual(['rippleTableSeeds', 'rippleWalls', 'rippleCeilingMajor']);
     expect(r.tunedAfter()).toEqual([4]);
   });
 });

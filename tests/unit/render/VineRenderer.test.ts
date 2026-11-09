@@ -145,10 +145,10 @@ describe('VineRenderer (T-149)', () => {
 
   it("a new room's palette (D-060) waits until no piece is drawn: never a recolour while the vine shows", () => {
     const { vine, mesh, runFor } = rig();
-    const ROOM = 31 + 25; // +10° (render/palette.ts)
+    const ROOM = 31 + 25; // with a 1.6 s decay: +9° (render/palette.ts, D-071)
     const piece0 = (): number => mesh.instanceColor!.getX(0) / mesh.instanceColor!.getY(0);
     const piece0In = (paletteSeed: number): number => {
-      const c = plantColour(new Color(), 0, PLANT_LIGHTNESS, setPalette(newPalette(), paletteSeed)); // plant p0's hue
+      const c = plantColour(new Color(), 0, PLANT_LIGHTNESS, setPalette(newPalette(), paletteSeed, 1.6)); // plant p0's hue
       return c.r / c.g;
     };
     vine.setWall(NEAR, BED);
@@ -157,13 +157,13 @@ describe('VineRenderer (T-149)', () => {
     vine.setWall(undefined, BED); // a Re-place: it shrinks away
     runFor(VINE_GROW_MS / 2);
     expect(mesh.count).toBeGreaterThan(0);
-    vine.setPalette(ROOM); // the next placement's signature, the vine still showing
+    vine.setPalette(ROOM, 1.6); // the next placement's signature, the vine still showing
     expect(piece0()).toBeCloseTo(piece0In(0), 5);
     runFor(2 * VINE_GROW_MS);
     expect(mesh.count).toBe(0);
     expect(piece0()).toBeCloseTo(piece0In(ROOM), 5);
     // With none drawn it is at once.
-    vine.setPalette(0);
+    vine.setPalette(0, 1.6);
     expect(piece0()).toBeCloseTo(piece0In(0), 5);
   });
 });
