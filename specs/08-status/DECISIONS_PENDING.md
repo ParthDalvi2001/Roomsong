@@ -1,15 +1,12 @@
 # Decisions waiting for Parth
 
-**The one file for every open decision** (updated 9 Nov 01:45 IST). Reply with the number and your answer, or "done". Answered ones go to DECISIONS_LOG.
+**The one file for every open decision** (updated 9 Nov 04:00 IST). Reply with the number and your answer, or "done". Answered ones go to DECISIONS_LOG.
 
-## 1. Push develop (one word)
-The live site already has everything: you pushed `main` on 9 Nov 01:30 IST, deploy green, https://parthdalvi2001.github.io/Roomsong/ serves 45518e5. GitHub `develop` is 13 commits behind it. Reply **"push"**.
+## 1. Push main (one line, for the live site)
+`develop` is pushed (5c676b6, 9 Nov) and local `main` is ready. In Terminal: `cd /Users/parth_baller/Documents/test-pro/Roomsong && git push origin main`. Then the live site gets the BUG-040 fix and drops the test pages (T-189).
 
-## 2. The name: Roomsong or SonicSpace
+## 2. The name: Roomsong or SonicSpace (Parth, 9 Nov: "wait, I will tell")
 ★ **Keep Roomsong.** The name check (RND_2026-11-08 §3) found no SonicSpace app or registered mark, but "Sonic" reads as SEGA's game in a games contest, and the name drops "room", the core idea. If SonicSpace: the rename branch is ready (title, landing page); the video, gallery and the `/Roomsong/` link must change too.
-
-## 3. Room looks: do it or skip
-Rooms sound different but look almost the same (ROOM_LOOKS_REVIEW_2026-11-07 §3; Chinmay parked it). ★ **Do #4 + #2 before the 12 Nov freeze:** colour follows room size (small rooms warmer, big rooms cooler) and the ceiling caption names the mood. Small, no extra draw cost. Or skip.
 
 ## 4. Headset checks (you or Chinmay, on the live link)
 1. Open the link over a phone hotspot. 2. "No room scan" message: once unscanned, once after Space Setup. 3. Undo a plant (undo petal). 4. Drag a plant by looking at it. 5. Listen: both palms out 1.5 s. 6. A no-pinch run: the link with `?access=gaze`. 7. Tomorrow: Garden tab says Day 2. 8. A 10 s Quest video with sound. Optional: the voice test (RND_2026-11-08 §1).
