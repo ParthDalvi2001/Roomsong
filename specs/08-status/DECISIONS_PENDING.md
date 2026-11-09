@@ -2,12 +2,6 @@
 
 **The one file for every open decision** (updated 9 Nov, after the plan sweep). Reply with the number and your answer, or "done". Answered ones go to DECISIONS_LOG.
 
-## 1. Put the freeze live (two commands, after develop's CI is green)
-In Terminal:
-1. `cd /Users/parth_baller/Documents/test-pro/Roomsong && git push origin main` (local `main` is already the freeze commit b9109fe)
-2. When Actions → `deploy` is green: `git tag -a v0.5.0 -m "Feature freeze 2026-11-09" b9109fe && git push origin v0.5.0`
-Then the live site has v0.5.0 for this evening's headset run.
-
 ## 2. The name: Roomsong or SonicSpace (Parth, 9 Nov: "wait, I will tell")
 ★ **Keep Roomsong.** The name check (RND_2026-11-08 §3) found no SonicSpace app or registered mark, but "Sonic" reads as SEGA's game in a games contest, and the name drops "room", the core idea. If SonicSpace: the rename branch is ready (title, landing page); the video, gallery and the `/Roomsong/` link must change too.
 
