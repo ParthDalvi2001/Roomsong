@@ -18,6 +18,7 @@ import {
   GHOST_EASE_MS,
   HIT_TEST_TIMEOUT_MS,
   NO_ROOM_NOTICE_MS,
+  NO_ROOM_READ_MS,
   PLANE_LEVELS_TIMEOUT_MS,
   RESTORE_REACH_SLACK_M,
   SURFACE_MIN_HEIGHT_M,
@@ -96,6 +97,8 @@ export class RoomSystem extends createSystem() {
   private readonly notice = this.createEntity();
   /** The no-room notice was raised in this session: it is said once. */
   private isNoRoomSaid = false;
+  /** The frame time, ms, from which the held notice may read the planes again (BUG-045). */
+  private noticeReadAtMs = 0;
 
   private stage: Stage = 'idle';
   /** Counts the placements begun and ended: the continuation of an earlier one finds another number and keeps nothing. */
@@ -196,11 +199,15 @@ export class RoomSystem extends createSystem() {
       }
     }
     if (this.stage === 'idle') return;
-    // FR-ROOM-14: planes that come after the room read take the notice back, queued or on screen. choice: read()
-    // allocates, as the chain's 3 s do (D-034); it runs only while the notice is up, a few seconds once a session.
-    if (this.notice.hasComponent(Caption) && this.planes.read().length > 0) this.takeNotice();
     // Whole milliseconds: a fraction handed on as an argument can cost an object a frame (HandSystem does the same).
-    if (this.stage !== 'placed') this.place(delta, Math.round(time * 1000));
+    const nowMs = Math.round(time * 1000);
+    // FR-ROOM-14: planes that come after the room read take the notice back, queued or on screen. read() allocates,
+    // and a notice queued behind a caption with no end is held for as long as that lasts: read every NO_ROOM_READ_MS.
+    if (this.notice.hasComponent(Caption) && nowMs >= this.noticeReadAtMs) {
+      this.noticeReadAtMs = nowMs + NO_ROOM_READ_MS;
+      if (this.planes.read().length > 0) this.takeNotice();
+    }
+    if (this.stage !== 'placed') this.place(delta, nowMs);
     // Not `else`: the frame that finds a bed to place does the placed step too.
     if (this.stage === 'placed') this.keep();
   }
