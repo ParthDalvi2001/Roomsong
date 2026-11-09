@@ -381,8 +381,11 @@ export class Engine implements AudioEngine {
     this.previewAt = now;
     this.previewHeight = h;
     // The record's pitch and place, and so a Pluck's string is the record's: height changes neither pitch nor hue.
-    const p = voiceParamsFor(plant, r.params.hz, this.chord, this.recipe.heightFloorDb);
-    p.gain *= dbToGain(this.recipe.mixDb[r.plant.voice] + PREVIEW_DB_RE_NOTE);
+    // The pitch copied in after and dbToGain inline: V8 may not inline a call on this rare branch, and then a
+    // fraction handed to it or returned from it is boxed (BUG-036, BUG-051).
+    const p = voiceParamsFor(plant, 0, this.chord, this.recipe.heightFloorDb);
+    p.hz = r.params.hz;
+    p.gain *= Math.pow(10, (this.recipe.mixDb[r.plant.voice] + PREVIEW_DB_RE_NOTE) / 20);
     g.pool.release(this.previewOwner, now);
     g.pool.play(r.voice, now, p, r.x, r.y, r.z, this.previewOwner);
   }
