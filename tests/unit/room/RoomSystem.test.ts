@@ -945,7 +945,7 @@ describe('RoomSystem: the end of a session, and the next one (LLD §3.3 H and I)
       r.restores[0]!.resolve(ON_TABLE.pose);
       await betweenFrames();
       r.frame(); // placed, restored
-      bus.emit('xr:visibility', { visible: true }); // a return from a pause: the pose is read again
+      (r.xr.space as unknown as EventTarget).dispatchEvent(new Event('reset')); // a recentre: the pose is read again
       r.restores[1]!.resolve(STALE);
       await betweenFrames(); // kept for the next frame
       if (end === 'replace') {
@@ -1324,9 +1324,7 @@ describe('RoomSystem: a placed bed after a pause and after a recentre (LLD §3.2
     r.frame();
     r.take();
 
-    bus.emit('xr:visibility', { visible: false });
-    expect(r.restores).toHaveLength(1);
-    bus.emit('xr:visibility', { visible: true });
+    (r.xr.space as unknown as EventTarget).dispatchEvent(new Event('reset')); // the user recentred
     expect(r.restores[1]).toMatchObject({ handle: HANDLE, timeoutMs: ANCHOR_RESTORE_TIMEOUT_MS });
     r.restores[1]!.resolve(at(0.03, 0.74, -0.43));
     await betweenFrames();
@@ -1334,7 +1332,7 @@ describe('RoomSystem: a placed bed after a pause and after a recentre (LLD §3.2
     r.frame();
     expect(r.bedNow().pose).toEqual(at(0.03, 0.74 + 0.05, -0.43)); // moved, world matrix current, offset kept
 
-    (r.xr.space as unknown as EventTarget).dispatchEvent(new Event('reset')); // the user recentred
+    (r.xr.space as unknown as EventTarget).dispatchEvent(new Event('reset')); // and again
     expect(r.restores).toHaveLength(3);
     r.restores[2]!.resolve(null); // the anchor is not there any more: the bed stays where it is
     await betweenFrames();
@@ -1345,6 +1343,38 @@ describe('RoomSystem: a placed bed after a pause and after a recentre (LLD §3.2
       'anchors.restore',
       'anchors.restore',
     ]);
+  });
+
+  it('BUG-040: a pause asks nothing, and a re-read that gave no pose is the last for that bed', async () => {
+    const r = rig();
+    r.gardenChanged({ anchorHandle: HANDLE, anchorLevel: 1 });
+    startSession();
+    r.frame();
+    r.restores[0]!.resolve(ON_TABLE.pose);
+    await betweenFrames();
+    r.frame(); // placed, restored
+    const space = r.xr.space as unknown as EventTarget;
+    bus.emit('xr:visibility', { visible: false });
+    bus.emit('xr:visibility', { visible: true }); // the headset back on: the bed keeps its place
+    expect(r.restores).toHaveLength(1);
+    space.dispatchEvent(new Event('reset'));
+    expect(r.restores).toHaveLength(2);
+    r.restores[1]!.resolve(null); // the device's "no pose in time"
+    await betweenFrames();
+    r.frame();
+    // Quest 3S, 7 Nov: re-reads every 8–17 s after a pause, each a 4 s wait and an E_ANCHOR_RESTORE
+    for (let i = 0; i < 3; i++) {
+      space.dispatchEvent(new Event('reset'));
+      bus.emit('xr:visibility', { visible: false });
+      bus.emit('xr:visibility', { visible: true });
+      r.frame();
+    }
+    expect(r.restores).toHaveLength(2);
+    expect(r.bedNow()).toMatchObject({ isPlaced: true, isShown: true, pose: ON_TABLE.pose });
+    endSession();
+    startSession();
+    r.frame();
+    expect(r.restores).toHaveLength(3); // the next placement asks anew
   });
 
   it('asks nothing with no saved pair, and nothing while the bed is being placed', async () => {
