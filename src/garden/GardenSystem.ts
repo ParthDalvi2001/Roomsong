@@ -6,6 +6,7 @@ import { bus, clock, flags, log, settings } from '../core/index.js';
 import {
   AUTOPLANT_CELL_STRIDE,
   DAILY_VOICES,
+  HIDDEN_KINDS,
   LISTEN_MAX_MS,
   MS_PER_DAY,
   RESTORE_WINDOW_MS,
@@ -14,6 +15,7 @@ import {
   TIME_LAPSE_DAY_MS,
   UNDO_LIFE_MS,
   SEED_PALM_DOWN_MS,
+  SEED_PICK_MIN_PLANTS,
 } from './config.js';
 import { applyVisit, newGarden } from './growth.js';
 import {
@@ -24,11 +26,12 @@ import {
   setAnchor,
   setBedHeightOffset,
   setHeight,
+  setSeedKind,
   undoRemove,
 } from './rules.js';
 import { roomSignature, WANDERER } from './signature.js';
 
-import type { GardenState, RoomFeatures, RoomSignature, Seed, UndoToken } from './model.js';
+import type { GardenState, RoomFeatures, RoomSignature, Seed, SeedKind, UndoToken } from './model.js';
 import type { Clock, EventMap, Flags, Hand } from '../core/index.js';
 
 type Release = EventMap['gesture:release'];
@@ -59,6 +62,11 @@ export class GardenSystem {
   private out: { seedId: string; carrier: Hand | null; palm: Hand } | null = null;
   /** When each hand last held its palm up (core's clock): a palm that stays up asks again and again. */
   private readonly palmAskedAt: Record<Hand, number> = { left: Number.NEGATIVE_INFINITY, right: Number.NEGATIVE_INFINITY };
+  /** T-193: the seed picker is on (`setPicking`), and the supply seed whose kind was picked, if any. */
+  private isPicking = false;
+  private pickedId: string | null = null;
+  /** That hand's palm raise has asked for a kind already: one garden:seedAsk per raise (rule 8). */
+  private readonly hasAsked: Record<Hand, boolean> = { left: false, right: false };
   /** The removed plants that can still come back, by plant id (FR-MUS-12). */
   private readonly undos = new Map<string, { token: UndoToken; expiresAt: number }>();
   /** newGarden() calls so far, and the count at each hand's latest gesture:pinchStart (BUG-006). */
@@ -123,6 +131,7 @@ export class GardenSystem {
         this.stopListen(WOKEN);
       }
       this.pinchedIn.set(e.hand, this.generation);
+      this.hasAsked[e.hand] = false; // its own pinch ends a palm raise: a palm turned up after Close asks again
       if (this.out !== null && e.target?.kind === 'seed' && e.target.id === this.out.seedId) {
         this.out.carrier = e.hand; // the hand of the latest pinch on it
       }
@@ -252,6 +261,23 @@ export class GardenSystem {
     this.changeBed((s) => setBedHeightOffset(s, metres));
   }
 
+  /** T-193: the seed picker on or off (API_SPEC §1.10 rule 8); off until called. */
+  setPicking(on: boolean): void {
+    this.isPicking = on;
+  }
+
+  /**
+   * T-193, the Seeds page's answer: the supply's next seed becomes `kind` and counts as picked, also when it had that
+   * kind already. Nothing with no garden, no seed in the supply, a seed out, or a kind in HIDDEN_KINDS.
+   */
+  pick(kind: SeedKind): void {
+    const s = this.current;
+    const seed = s?.seeds[0];
+    if (s === null || seed === undefined || this.out !== null || HIDDEN_KINDS.includes(kind)) return;
+    this.pickedId = seed.id;
+    this.commit(setSeedKind(s, seed.id, kind));
+  }
+
   /**
    * A change to the bed (its anchor pair, its height): while the time-lapse demo runs it reaches the real garden
    * too, so that it is saved and the next launch finds the bed where it is (T-174).
@@ -299,9 +325,13 @@ export class GardenSystem {
     for (const seed of newSeeds) bus.emit('garden:seedArrived', { seed });
   }
 
-  /** FR-HND-05: the first seed of the supply rests on that hand, and stays in the supply until planted. */
+  /**
+   * FR-HND-05: the first seed of the supply rests on that hand, and stays in the supply until planted. With picking
+   * on and SEED_PICK_MIN_PLANTS plants, only a picked seed: else the palm asks for a kind, once per raise (T-193).
+   */
   private handOut(s: GardenState, hand: Hand): void {
     const now = this.appClock.now();
+    if (now - this.palmAskedAt[hand] >= SEED_PALM_DOWN_MS) this.hasAsked[hand] = false; // it was down: a new raise
     this.palmAskedAt[hand] = now;
     const seed = s.seeds[0];
     if (this.listenEnd !== null) return; // PRD §3.4: in Listen nothing but the wake is taken
@@ -310,6 +340,12 @@ export class GardenSystem {
       return;
     }
     if (!this.isVisited || seed === undefined) return;
+    if (this.isPicking && s.plants.length >= SEED_PICK_MIN_PLANTS && seed.id !== this.pickedId) {
+      if (!this.hasAsked[hand]) bus.emit('garden:seedAsk', { hand });
+      this.hasAsked[hand] = true;
+      return;
+    }
+    this.hasAsked[hand] = false; // a seed is handed to it: its next palm-up may ask for the one after
     this.out = { seedId: seed.id, carrier: null, palm: hand };
     // BUG-006's check reads the hand's latest pinchStart; a seed planted with none (the gaze, T-160) must not meet
     // a pinch from before a New garden.
@@ -326,11 +362,15 @@ export class GardenSystem {
     const seed = s.seeds.find(({ id }) => id === out.seedId);
     if (seed === undefined) return;
     out.palm = hand;
+    this.hasAsked[hand] = false; // handed to it, as in handOut
     bus.emit('garden:seedOut', { seed, hand });
   }
 
   /** The seed that is out is in the supply again: it never left `state.seeds`, so only the hand lets go. */
   private takeBack(reason: EventMap['garden:seedBack']['reason']): void {
+    // The pick is forgotten off the bed (how a player changes it) and at a reset, with no seed out too: New garden
+    // gives the same seed ids again (BUG-006). A tracking loss and a full cell keep it.
+    if (reason === 'offBed' || reason === 'reset') this.pickedId = null;
     const out = this.out;
     if (out === null) return;
     this.out = null;
@@ -388,6 +428,7 @@ export class GardenSystem {
       return;
     }
     this.out = null;
+    this.pickedId = null; // the pick went with its seed
     this.commit(planted.value, [seedId]);
   }
 
@@ -432,7 +473,8 @@ export class GardenSystem {
 
   /**
    * The autoplant flag (API_SPEC §3): N plants of its own, only into a garden with none, so that a reload
-   * adds no more. Plant n: id `auto-<n>`, the Must voices in turn, hue n / N, cell (flags.seed + 7n) mod 80.
+   * adds no more. Plant n: id `auto-<n>`, the Must voices in turn, hue n / N, cell (flags.seed + 7n) mod 80; every
+   * second round of the voices is of the New library, so plants 5 to 9 of every ten (T-193).
    */
   private autoplanted(state: GardenState): GardenState {
     const count = this.appFlags.autoplant;
@@ -443,6 +485,7 @@ export class GardenSystem {
     for (let n = 0; n < count; n++) {
       const voice = DAILY_VOICES[n % DAILY_VOICES.length] ?? DAILY_VOICES[0];
       const seed: Seed = { id: `auto-${n}`, voice, hue: n / count, receivedAt: now };
+      if (Math.floor(n / DAILY_VOICES.length) % 2 === 1) seed.family = 'new';
       const index = ((this.appFlags.seed ?? 0) + AUTOPLANT_CELL_STRIDE * n) % (RINGS * STEPS);
       const cell = { ring: Math.floor(index / STEPS), step: index % STEPS };
       const planted = plantSeed({ ...s, seeds: [...s.seeds, seed] }, seed.id, cell, now);

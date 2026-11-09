@@ -4,7 +4,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as core from '../../../src/core/index.js';
-import { RESTORE_WINDOW_MS, TIME_LAPSE_DAY_MS } from '../../../src/garden/config.js';
+import {
+  RESTORE_WINDOW_MS,
+  SEED_PALM_DOWN_MS,
+  SEED_PICK_MIN_PLANTS,
+  TIME_LAPSE_DAY_MS,
+} from '../../../src/garden/config.js';
 import * as lib from '../../../src/garden/index.js';
 import { validateState } from '../../../src/persistence/schema.js';
 
@@ -18,6 +23,7 @@ import type {
   PlacementLevel,
   RoomFeatures,
   Seed,
+  SeedKind,
 } from '../../../src/garden/index.js';
 import type { MockInstance } from 'vitest';
 
@@ -43,6 +49,7 @@ const EMITTED = [
   'garden:seedArrived',
   'garden:seedOut',
   'garden:seedBack',
+  'garden:seedAsk',
   'garden:removed',
 ] as const;
 type Name = (typeof EMITTED)[number];
@@ -1283,5 +1290,237 @@ describe('garden/GardenSystem: the time-lapse demo (T-174, D-057)', () => {
     s.clear();
     vi.advanceTimersByTime(5 * TIME_LAPSE_DAY_MS);
     expect(s.seen).toEqual([]);
+  });
+});
+
+describe('garden/GardenSystem: the seed picker (T-193, API_SPEC §1.10 rule 8)', () => {
+  /** `count` plants on ring 0, from step 0. */
+  const bedOf = (count: number): Plant[] => Array.from({ length: count }, (_, i) => plant(`p${i}`, 0, i));
+
+  /** In a session with picking on: enough plants for a pick, seeds s1 (a pad) and s2 (a bell) in the supply. */
+  function picking(plants: Plant[] = bedOf(SEED_PICK_MIN_PLANTS)) {
+    const s = inSession(saved(plants, [seed('s1'), seed('s2', 'bell')]));
+    s.system.setPicking(true);
+    return s;
+  }
+
+  /** As `picking`, with s1 picked as a bowl, on the left palm and pinched by the right hand. */
+  function carryingBowl() {
+    const s = picking();
+    s.palmUp('left');
+    s.system.pick('bowl');
+    s.palmUp('left');
+    s.pinch('right', seedRef('s1'));
+    s.clear();
+    return s;
+  }
+
+  it('picking is off until setPicking(true): a palm-up hands out the next seed as it is and nothing asks', () => {
+    const s = inSession(saved(bedOf(SEED_PICK_MIN_PLANTS), [seed('s1'), seed('s2', 'bell')]));
+    s.palmUp('left');
+    expect(s.seen).toEqual([['garden:seedOut', { seed: seed('s1'), hand: 'left' }]]);
+
+    s.sessionEnd();
+    s.system.setPicking(true);
+    s.system.setPicking(false); // off again: the garden window, the presetSeeds flag
+    s.features();
+    s.clear();
+    s.palmUp('left');
+    expect(s.seen).toEqual([['garden:seedOut', { seed: seed('s1'), hand: 'left' }]]);
+  });
+
+  it('with fewer plants than SEED_PICK_MIN_PLANTS the seed comes as it is: no ask', () => {
+    const s = picking(bedOf(SEED_PICK_MIN_PLANTS - 1));
+    s.palmUp('left');
+    expect(s.seen).toEqual([['garden:seedOut', { seed: seed('s1'), hand: 'left' }]]);
+  });
+
+  it('with SEED_PICK_MIN_PLANTS plants a palm-up asks for a kind and hands out nothing', () => {
+    const s = picking();
+    const state = s.state();
+    s.palmUp('left');
+    expect(s.seen).toEqual([['garden:seedAsk', { hand: 'left' }]]);
+    expect(s.system.state).toBe(state);
+  });
+
+  it('asks once per palm raise: again after SEED_PALM_DOWN_MS palm-down, and after that hand’s own pinch', () => {
+    const s = picking();
+    s.palmUp('left');
+    for (let tick = 0; tick < 5; tick++) {
+      s.time.now += 400; // a palm held up asks every 400 ms (PalmUpHold)
+      s.palmUp('left');
+    }
+    expect(s.names()).toEqual(['garden:seedAsk']);
+
+    s.time.now += SEED_PALM_DOWN_MS; // down for that long, then raised again
+    s.palmUp('left');
+    expect(s.names()).toEqual(['garden:seedAsk', 'garden:seedAsk']);
+
+    s.time.now += 400;
+    s.pinch('right', null); // the other hand's pinch (it pressed Close) does not end this raise
+    s.palmUp('left');
+    expect(s.seen).toHaveLength(2);
+
+    s.pinch('left', null); // its own pinch does: a one-hand player pressed Close and turns the palm up again
+    s.palmUp('left');
+    expect(s.seen).toHaveLength(3);
+    expect(s.at(2, 'garden:seedAsk')).toEqual({ hand: 'left' });
+
+    s.palmUp('right'); // each hand has its own raise
+    expect(last(s.seen)).toEqual(['garden:seedAsk', { hand: 'right' }]);
+    expect(s.seen).toHaveLength(4);
+  });
+
+  it('pick(bowl), then a palm-up: garden:seedOut carries the kind, the plant is a New bell, the save round-trips it', () => {
+    const s = picking();
+    s.palmUp('left');
+    s.clear();
+    s.system.pick('bowl');
+    const bowl: Seed = { ...seed('s1', 'bell'), family: 'new' };
+    expect(s.names()).toEqual(['garden:changed']);
+    expect(s.state().seeds).toEqual([bowl, seed('s2', 'bell')]);
+
+    s.clear();
+    s.palmUp('left'); // the palm that asked is still up: the picked seed comes
+    expect(s.seen).toEqual([['garden:seedOut', { seed: bowl, hand: 'left' }]]);
+    expect(lib.kindOf(s.at(0, 'garden:seedOut').seed)).toBe('bowl');
+
+    s.pinch('right', seedRef('s1'));
+    s.release('right', 'carry', seedRef('s1'), 'bed', cell(2, 5));
+    const planted = last(s.state().plants);
+    expect(planted).toMatchObject({ id: 's1', voice: 'bell', family: 'new', cell: cell(2, 5) });
+    expect(validateState(JSON.parse(JSON.stringify(s.state())))).toEqual(s.state());
+
+    s.clear();
+    s.palmUp('left'); // the pick went with its seed: the next one is asked for, at once (a seed was handed to it)
+    expect(s.seen).toEqual([['garden:seedAsk', { hand: 'left' }]]);
+  });
+
+  it.each(['lost', 'full'] as const)(
+    'a picked seed that comes back for %s is handed out again with no ask',
+    (reason) => {
+      const s = carryingBowl();
+      if (reason === 'lost') s.lost('right');
+      else s.release('right', 'carry', seedRef('s1'), 'bed', cell(0, 0)); // p0's cell, taken
+      s.palmUp('left');
+      expect(s.names()).toEqual(['garden:seedBack', 'garden:seedOut']);
+      expect(s.at(0, 'garden:seedBack')).toEqual({ seedId: 's1', reason });
+      expect(lib.kindOf(s.at(1, 'garden:seedOut').seed)).toBe('bowl');
+    },
+  );
+
+  it('a picked seed released off the bed asks again: that is how a pick is changed', () => {
+    const s = carryingBowl();
+    s.release('right', 'carry', seedRef('s1'), 'outer');
+    s.palmUp('left');
+    expect(s.seen).toEqual([
+      ['garden:seedBack', { seedId: 's1', reason: 'offBed' }],
+      ['garden:seedAsk', { hand: 'left' }],
+    ]);
+
+    s.system.pick('chime');
+    s.palmUp('left');
+    expect(lib.kindOf(s.at(3, 'garden:seedOut').seed)).toBe('chime');
+  });
+
+  it('a pick is forgotten at a reset with no seed out: New garden gives the same seed ids again (BUG-006)', () => {
+    const s = picking();
+    s.system.pick('bowl');
+    s.sessionEnd(); // reset, and no seed is out
+    s.features();
+    s.clear();
+    s.palmUp('left');
+    expect(s.seen).toEqual([['garden:seedAsk', { hand: 'left' }]]);
+  });
+
+  it('pick of a kind in HIDDEN_KINDS does nothing; pick of the kind the seed has changes nothing and still counts', () => {
+    const s = picking();
+    const state = s.state();
+    const hidden = lib.HIDDEN_KINDS as SeedKind[];
+    const before = [...hidden];
+    try {
+      hidden.splice(0, hidden.length, 'bowl'); // whatever the list holds today
+      s.system.pick('bowl');
+    } finally {
+      hidden.splice(0, hidden.length, ...before);
+    }
+    for (const kind of lib.HIDDEN_KINDS) s.system.pick(kind);
+    s.palmUp('left');
+    expect(s.seen).toEqual([['garden:seedAsk', { hand: 'left' }]]);
+    expect(s.system.state).toBe(state);
+
+    s.clear();
+    s.system.pick('pad'); // s1 is a pad already
+    s.palmUp('left');
+    expect(s.seen).toEqual([['garden:seedOut', { seed: seed('s1'), hand: 'left' }]]);
+    expect(s.system.state).toBe(state);
+  });
+
+  it('pick does nothing while a seed is out, with an empty supply, and before load', () => {
+    const out = carryingBowl();
+    const state = out.state();
+    out.system.pick('chime');
+    expect(out.seen).toEqual([]);
+    expect(out.system.state).toBe(state);
+
+    const empty = inSession(saved(bedOf(SEED_PICK_MIN_PLANTS)));
+    empty.system.pick('bowl');
+    expect(empty.seen).toEqual([]);
+
+    const early = setup();
+    early.system.setPicking(true);
+    expect(() => early.system.pick('bowl')).not.toThrow();
+    early.system.load(saved(bedOf(SEED_PICK_MIN_PLANTS), [seed('s1')]));
+    early.features();
+    early.clear();
+    early.palmUp('left'); // that pick marked nothing
+    expect(early.seen).toEqual([['garden:seedAsk', { hand: 'left' }]]);
+    expect(early.state().seeds).toEqual([seed('s1')]);
+  });
+
+  it('the gaze order: palm-up, pick, palm-up and plant by one hand with no pinch; a palm-up 600 ms later asks', () => {
+    const s = picking();
+    s.palmUp('right'); // a dwell on a free cell is a palm-up (GazeDwell): the board opens
+    expect(s.names()).toEqual(['garden:seedAsk']);
+    s.time.now += 600;
+    s.system.pick('flute'); // a dwell on a swatch
+    s.time.now += 600;
+    s.palmUp('right'); // the dwell on the cell again: the seed comes, and is planted in the same call
+    s.release('right', 'carry', seedRef('s1'), 'bed', cell(2, 5));
+    expect(last(s.state().plants)).toMatchObject({ id: 's1', voice: 'choir', family: 'new' });
+
+    s.clear();
+    s.time.now += 600; // sooner than SEED_PALM_DOWN_MS: a seed was handed to this hand, so it asks
+    s.palmUp('right');
+    expect(s.seen).toEqual([['garden:seedAsk', { hand: 'right' }]]);
+  });
+
+  it('a seed that crosses to a palm held up since its ask was handed to it: that palm asks for the next one', () => {
+    const s = picking();
+    s.palmUp('right'); // asks, and stays up
+    s.system.pick('bowl');
+    s.palmUp('left'); // the seed comes to the left palm, which then goes down
+    for (let tick = 0; tick < 3; tick++) {
+      s.time.now += 400;
+      s.palmUp('right');
+    }
+    expect(last(s.seen)).toEqual(['garden:seedOut', { seed: s.state().seeds[0], hand: 'right' }]);
+    s.pinch('left', seedRef('s1'));
+    s.release('left', 'carry', seedRef('s1'), 'bed', cell(2, 5));
+
+    s.clear();
+    s.time.now += 400;
+    s.palmUp('right');
+    expect(s.seen).toEqual([['garden:seedAsk', { hand: 'right' }]]);
+  });
+
+  it('autoplant gives plants 5 to 9 of every ten the New library: all ten kinds stand on the bed', () => {
+    const s = setup({ autoplant: 20 });
+    s.system.load(s.lib.newGarden(T0, s.core.settings.get()));
+    const plants = s.state().plants;
+    expect(plants.map((p) => 'family' in p)).toEqual(plants.map((_, n) => Math.floor(n / 5) % 2 === 1));
+    expect(plants.filter((p) => 'family' in p).every((p) => p.family === 'new')).toBe(true);
+    expect(new Set(plants.map((p) => lib.kindOf(p))).size).toBe(10);
+    expect(validateState(JSON.parse(JSON.stringify(s.state())))).toEqual(s.state());
   });
 });

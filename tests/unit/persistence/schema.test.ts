@@ -147,6 +147,46 @@ describe('persistence/schema validateState', () => {
     });
   });
 
+  describe('the library of a plant and of a seed: kept only when it is exactly new (T-193, D-077)', () => {
+    it('an Old plant and an Old seed are saved with no family key, and the version is 1', () => {
+      const state = validateState(savedGarden());
+      expect(state?.version).toBe(1);
+      expect(state?.plants).toHaveLength(2);
+      for (const item of [...(state?.plants ?? []), ...(state?.seeds ?? [])]) {
+        expect(item).not.toHaveProperty('family');
+      }
+    });
+
+    it('keeps family new on a plant and on a seed, on a bass too (the hum), through a round trip at version 1', () => {
+      const made = savedGarden({
+        plants: [plant('b', 0, 0, { voice: 'bass', family: 'new' }), plant('o', 1, 1)],
+        seeds: [{ ...seed('n', 'bell'), family: 'new' }],
+      });
+      const state = validateState(JSON.parse(JSON.stringify(made)));
+      expect(state).toEqual(made);
+      expect(state?.plants[0]).toMatchObject({ voice: 'bass', family: 'new' });
+      expect(state?.plants[1]).not.toHaveProperty('family');
+      expect(state?.seeds[0]).toMatchObject({ voice: 'bell', family: 'new' });
+      expect(state?.version).toBe(1);
+    });
+
+    it.each([['old'], ['New'], [''], [null], [undefined], [1], [true], [['new']]])(
+      'drops a family of %j from a plant and from a seed, and keeps the state',
+      (family) => {
+        const raw = {
+          ...savedGarden(),
+          plants: [{ ...plant('n', 1, 1), family }],
+          seeds: [{ ...seed('m'), family }],
+        };
+        const state = validateState(raw);
+        expect(state?.plants).toEqual([plant('n', 1, 1)]);
+        expect(state?.seeds).toEqual([seed('m')]);
+        expect(state?.plants[0]).not.toHaveProperty('family');
+        expect(state?.seeds[0]).not.toHaveProperty('family');
+      },
+    );
+  });
+
   it('drops keys that are not part of the schema: the room signature is never stored (FR-ROOM-13)', () => {
     const extra = { ...savedGarden(), signature: { keyRoot: 0, mode: 'majorPent' }, bedRadius: 0.3 };
     expect(validateState(extra)).toEqual(savedGarden());
