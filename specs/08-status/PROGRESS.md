@@ -1,6 +1,6 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-11-09 16:05 IST, v0.5.0 live (plan v2.1; one driving session with role agents in worktrees, D-038)
+**Last updated:** 2026-11-09 22:20 IST, SonicSpace live at 40191a5; develop 577693b has the calm voices, the lower floating bed and the 40 s placement wait, not on main yet; T-193 (ten seeds and the picker, D-076) in design (plan v2.1; one driving session with role agents in worktrees, D-038)
 **Phase:** 3 Polish (Nov 4–11) · **Next gate:** code freeze Nov 15 (T-183; G3 passed 9 Nov, D-073) · **Headset:** yes since 7 Nov (Parth's Quest 3S; Chinmay's Quest 3 on 8 Nov); Emergency mode (D-013) no longer applies · **Plan:** v2.1
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 8 on 2026-11-09
 
