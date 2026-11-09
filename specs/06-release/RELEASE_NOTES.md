@@ -20,8 +20,8 @@ Versions follow SPRINT_PLAN v2.1 phases. Up to v0.4.0 every entry is **"emulator
 ## v0.4.0 — Polish (target ~2026-11-08)
 - Highlights: accessibility set, daily seed + growth, art + sound pass, perf pass, room matrix.
 
-## v0.5.0 (feature freeze, 12 Nov 2026) — draft
-- Build hash: `<F>` (the freeze commit, filled on 12 Nov; FEATURE_FREEZE_PREP_2026-11-12 §6). Drafted 9 Nov from `develop` f1c4d52. Deploy or label only: A or B, DECISIONS_PENDING 6.
+## v0.5.0 (feature freeze, 9 Nov 2026; moved forward from 12 Nov on Parth's word)
+- Build hash: the commit tagged `v0.5.0` (`git rev-parse 'v0.5.0^{commit}'`); it is the commit that sets `package.json` to 0.5.0. Deployed: option A, the freeze build goes live (DECISIONS_PENDING 6, Parth 9 Nov). Checks at freeze: `npm run verify` 1 986 unit tests green; the full browser suite 132 passed, 1 timing flake (BUG-052, passes 3 of 3 alone), 6 skipped.
 - Highlights: every Must built, the core of each seen on a headset; the room signature (S1) stays in. Headsets: a Quest 3S (7 Nov, dev server with the recorder) and a Quest 3 (8 Nov, the live site at 4bc6c7c), TEST_PLAN §4.6.
 
 **In the build**
@@ -36,6 +36,8 @@ Versions follow SPRINT_PLAN v2.1 phases. Up to v0.4.0 every entry is **"emulator
 - Emulator and unit only: "No room scan"; the `?access=` links; the closed switches (BUG-028); the calendar-day count; the D-071 colours and captions; the shaping sounds (not listened to yet); removal and the undo petal; plants and petals by look (BUG-030, BUG-032, BUG-033); a pinch at a control with a seed on the palm (BUG-042); a whole look-to-select game; the guide from a brand-new garden; in XR in 5 s or less on the built page; the first sound timed; first-try pinch rates (TC-DEV-00); two rooms by ear.
 
 **Known issues**
+- BUG-052 (S3, open, watch): a shaky-hands e2e scene timed out once under slow frames and passes alone. Tests only.
+- Fixed on 9 Nov in unit and emulator, pending device: BUG-043 to BUG-051 (the window's eye and head click, the no-room notice's reads, test flags that do not save on the live site, the tab channel, the dev recorder endpoint, the window drag after a sight pick, no shaping sounds on the Listen wake, the preview's allocation).
 - BUG-035, BUG-039 (S3, open, watch): two e2e tests time out on a very busy machine and pass alone. Tests only.
 - BUG-040 (S3, fixed in unit and emulator, pending device): after the headset came off and on, the log repeated an anchor warning; the bed stayed where it was.
 - BUG-042 (S3, fixed in unit and emulator, pending device): with a seed on the palm, a look-and-pinch at a panel control took the seed.
