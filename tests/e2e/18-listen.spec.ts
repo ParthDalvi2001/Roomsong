@@ -310,6 +310,12 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
   const exit = await heard(probe, 'listen:exit');
   expect(exit.timedOut).toBe(false);
   await select(page, 'right', 0);
+  // The palms go down: held out PALMS_OUT_HOLD_MS more they start Listen again, which a loaded host reached before
+  // the checks below (the whole suite of 10 Nov).
+  await pose(page, {
+    left: { position: { x: -0.15, y: 1.5, z: -0.35 }, orientation: PALM_DOWN },
+    right: { position: { x: 0.15, y: 1.5, z: -0.35 }, orientation: PALM_DOWN },
+  });
   await page.waitForFunction((p) => !p.meshes().halo && !p.meshes().dome, probe, { timeout: 5000 });
   const after = await nextSample(probe);
 

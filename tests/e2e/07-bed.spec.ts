@@ -64,7 +64,8 @@ function recordErrors(page: Page): string[] {
 async function nextSample(page: Page, inXr: boolean, sinceMs = 0): Promise<Sample> {
   const handle = await page.waitForFunction(
     ([inXr, sinceMs]) => {
-      const sample = (window as unknown as PageWindow).__bed.sample();
+      // `__bed` is set once the page's module has run: on a loaded host that can be after the room is in.
+      const sample = (window as unknown as Partial<PageWindow>).__bed?.sample() ?? null;
       return sample !== null && sample.inXr === inXr && sample.atMs > sinceMs ? sample : null;
     },
     [inXr, sinceMs] as const,
