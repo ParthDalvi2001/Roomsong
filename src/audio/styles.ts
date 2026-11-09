@@ -128,7 +128,10 @@ export interface Recipe {
   counterProbability: number;
   /** §1.8 variations (FR-MUS-11): every VARIATION_BARS bars an octave echo, ghost notes or a swell. */
   variations: boolean;
-  /** Style B's calm voices (voices/calm.ts): synthesized bowls, bansuri and shruti box for the bell, pluck, choir and pad plants. */
+  /**
+   * The calm voices (voices/calm.ts) for the notes that are no plant's: style B's drone, ripple and goodnight play the
+   * shruti box and the bowls. A plant's own notes follow its library (`VoiceParams.calm`, T-193), not this.
+   */
   calmVoices: boolean;
 }
 

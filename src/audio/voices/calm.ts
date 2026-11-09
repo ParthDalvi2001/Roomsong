@@ -1,5 +1,7 @@
-// Style B's calm voices (Parth and Chinmay, 9 Nov): every tone worked out here, no recording.
-//   Bell plant → a large singing bowl · Pluck → a small bowl · Choir → bansuri · Pad (and the drone) → shruti box.
+// The calm voices (Parth and Chinmay, 9 Nov): every tone worked out here, no recording. A note plays one when its
+// `calm` is set (T-193): a plant of the New library in every style, and style B's drone, ripple and goodnight.
+//   Bell plant → a large singing bowl · Pluck → a small bowl · Choir → bansuri · Pad (and the drone) → shruti box
+//   · Bass → the hum, a tanpura-like string (T-193 P5).
 // The garden and its notes are unchanged: only the tone behind each seed. Numbers and their sources: audio/config.ts.
 // Each plant sounds its own: `p.timbre` (its id and cell, mapping.ts) moves the bowl's modes, beat and brightness,
 // the flute's vibrato and breath, and the reeds' spread and bellows, each inside a "U" range.
@@ -45,6 +47,17 @@ import {
   FLUTE_VIBRATO_DELAY_S,
   FLUTE_VIBRATO_HZ_U,
   FLUTE_VIBRATO_RISE_S,
+  HUM_ATTACK_S,
+  HUM_CENTS_U,
+  HUM_FILTER_GAIN_DB,
+  HUM_FILTER_Q,
+  HUM_HARMONICS,
+  HUM_LEVEL,
+  HUM_SWEEP_MUL,
+  HUM_SWEEP_S_U,
+  HUM_TAIL_TAUS,
+  HUM_TAU_BASE_S,
+  HUM_TAU_PER_S,
   PAD_CUTOFF_MAX_HZ,
   PAD_CUTOFF_MIN_HZ,
   PAD_TAIL_TAUS,
@@ -63,6 +76,7 @@ import type { Note, VoiceParams } from './note.js';
 interface Kit {
   partner: PeriodicWave;
   flute: PeriodicWave;
+  hum: PeriodicWave;
   noise: AudioBuffer;
 }
 const KITS = new WeakMap<BaseAudioContext, Kit>();
@@ -75,6 +89,8 @@ function kitOf(ctx: BaseAudioContext): Kit {
     const sine = (level: number): Float32Array => Float32Array.of(0, level);
     const noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate * FLUTE_NOISE_S), ctx.sampleRate);
     renderNoise(noise.getChannelData(0), 0x5eed);
+    const humSines = new Float32Array(HUM_HARMONICS + 1);
+    for (let n = 1; n <= HUM_HARMONICS; n++) humSines[n] = 1 / n;
     kit = {
       // MDN createPeriodicWave: disableNormalization keeps the levels as given (see Choir).
       partner: ctx.createPeriodicWave(sine(0), sine(BOWL_PARTNER_LEVEL), { disableNormalization: true }),
@@ -85,6 +101,8 @@ function kitOf(ctx: BaseAudioContext): Kit {
           disableNormalization: true,
         },
       ),
+      // Normalised to a peak of 1 like the Bass's wave (MDN createPeriodicWave), so HUM_LEVEL means the same on any browser.
+      hum: ctx.createPeriodicWave(new Float32Array(HUM_HARMONICS + 1), humSines),
       noise,
     };
     KITS.set(ctx, kit);
@@ -162,7 +180,7 @@ export function playBowl(
   );
 }
 
-/** One sine (or `wave`) of a bowl into `dest`, added to the note. */
+/** One sine (or `wave`) of a bowl or the hum into `dest`, added to the note. */
 function sine(
   ctx: BaseAudioContext,
   note: Note,
@@ -182,6 +200,45 @@ function sine(
   osc.start(time);
   osc.stop(end);
   note.add(osc);
+}
+
+/**
+ * The hum: two strings on one wave a few cents apart, through a peaking filter that slides down the harmonics (the
+ * jawari), into a plucked envelope with a long decay. 4 nodes, 2 sources; the pitch is the Bass's.
+ */
+export function playHum(
+  ctx: BaseAudioContext,
+  note: Note,
+  time: number,
+  p: VoiceParams,
+  out: AudioNode,
+): void {
+  const kit = kitOf(ctx);
+  const t = p.timbre;
+  const tau = HUM_TAU_BASE_S + HUM_TAU_PER_S * p.release;
+  const end = time + HUM_ATTACK_S + HUM_TAIL_TAUS * tau;
+  const level = p.gain * HUM_LEVEL;
+
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0, time);
+  env.gain.linearRampToValueAtTime(level, time + HUM_ATTACK_S);
+  env.gain.setTargetAtTime(0, time + HUM_ATTACK_S, tau);
+  env.connect(out);
+
+  const jawari = ctx.createBiquadFilter();
+  jawari.type = 'peaking';
+  jawari.Q.value = HUM_FILTER_Q;
+  jawari.gain.value = HUM_FILTER_GAIN_DB;
+  jawari.frequency.setValueAtTime(p.hz * HUM_SWEEP_MUL[0], time);
+  jawari.frequency.exponentialRampToValueAtTime(
+    p.hz * HUM_SWEEP_MUL[1] * Math.sqrt(p.cutoffMul),
+    time + timbreIn(t, 0, HUM_SWEEP_S_U),
+  );
+  jawari.connect(env);
+
+  note.begin(time, end, env, level, time + HUM_ATTACK_S, tau);
+  sine(ctx, note, p.hz, p.detune, kit.hum, time, end, jawari);
+  sine(ctx, note, p.hz, p.detune + timbreIn(t, 10, HUM_CENTS_U), kit.hum, time, end, jawari);
 }
 
 /** Bansuri: a near-sine with weak harmonics, a soft attack, delayed vibrato and band-passed breath. 3 sources. */

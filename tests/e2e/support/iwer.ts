@@ -141,12 +141,14 @@ function slowFrames(ms: number): void {
  * `path` opens another page of the same site, for example '/proto/spike/'.
  * The app itself ('/') opens with the `skipOnboarding` flag added (T-150): a spec about something else is not held
  * up by the tutorial's captions and icons, which wait for the player. `onboarding: true` keeps the tutorial.
+ * It also gets `presetSeeds` (T-193), on its own: every palm-up hands out the next seed as it is, with no Seeds page.
+ * `presetSeeds: false` keeps the seed picker.
  */
 export async function openApp(
   page: Page,
   room: Room,
   path = '/',
-  { onboarding = false }: { onboarding?: boolean } = {},
+  { onboarding = false, presetSeeds = true }: { onboarding?: boolean; presetSeeds?: boolean } = {},
 ): Promise<string[]> {
   if (FRAME_MS > 0) await page.addInitScript(slowFrames, FRAME_MS);
   const offHost: string[] = [];
@@ -161,7 +163,9 @@ export async function openApp(
     return route.abort();
   });
   await page.route(ROOM_REQUEST, (route) => route.fulfill({ json: roomCapture(room) }));
-  await page.goto(onboarding ? path : withoutOnboarding(path));
+  await page.goto(
+    withFlags(path, [...(onboarding ? [] : ['skipOnboarding']), ...(presetSeeds ? ['presetSeeds'] : [])]),
+  );
   const want = [
     ...room.planes.map((plane) => `plane:${plane.label}`),
     ...(room.meshes ?? []).map((mesh) => `mesh:${mesh.label}`),
@@ -184,15 +188,12 @@ export async function openApp(
   return offHost;
 }
 
-/** The app's own page with `skipOnboarding` among its flags; any other page as it is. */
-function withoutOnboarding(path: string): string {
+/** The app's own page with `added` among its flags; any other page, or nothing to add, as it is. */
+function withFlags(path: string, added: string[]): string {
   const url = new URL(path, 'http://localhost');
-  if (url.pathname !== '/') return path;
+  if (url.pathname !== '/' || added.length === 0) return path;
   const flags = url.searchParams.get('flags');
-  url.searchParams.set(
-    'flags',
-    flags === null || flags === '' ? 'skipOnboarding' : `${flags},skipOnboarding`,
-  );
+  url.searchParams.set('flags', [...(flags === null || flags === '' ? [] : [flags]), ...added].join());
   return url.pathname + url.search;
 }
 

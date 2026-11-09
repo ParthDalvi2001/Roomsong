@@ -14,7 +14,7 @@ import {
 } from 'three';
 
 import { settings } from '../core/index.js';
-import { SEED_SUPPLY_MAX } from '../garden/index.js';
+import { kindOf, SEED_SUPPLY_MAX } from '../garden/index.js';
 
 import {
   HOVER_CUE_MS,
@@ -32,10 +32,10 @@ import {
   SUPPLY_ORB_RADIUS_M,
 } from './config.js';
 import { outlineShell } from './outline.js';
-import { newPalette, plantColour, setPalette } from './palette.js';
+import { kindColour, newPalette, setPalette } from './palette.js';
 
 import type { FlashGuard } from './FlashGuard.js';
-import type { Seed } from '../garden/index.js';
+import type { Seed, SeedKind } from '../garden/index.js';
 import type { BufferGeometry, Matrix4, Object3D, ShaderMaterial } from 'three';
 
 /** How a seed goes to its point: the orb glide, the hop from palm to pinch, the glide with a hop up, or at once. */
@@ -82,10 +82,10 @@ export class SeedRenderer {
   private hoverSlot = -1;
   private readonly lastMs = new Float64Array(1).fill(Number.NaN);
   private readonly rgb = new Float32Array(CAPACITY * 3);
-  /** The room's palette (render/palette.ts, D-060), each slot's seed hue, and whether it is still drawn in the last
+  /** The room's palette (render/palette.ts, D-060), each slot's seed kind, and whether it is still drawn in the last
    *  room's palette (`stale`: it was drawn when the signature came). */
   private readonly palette = newPalette();
-  private readonly hues = new Float32Array(CAPACITY);
+  private readonly kinds = new Array<SeedKind>(CAPACITY).fill('bell');
   private readonly stale = new Uint8Array(CAPACITY);
 
   constructor(
@@ -106,9 +106,10 @@ export class SeedRenderer {
 
   /**
    * On `garden:changed`: the seeds of the supply (FR-MUS-08). A new one appears in its place in the orb at rest,
-   * one that is gone (planted, or another garden's) goes at once. Set-up only, not per frame.
+   * one that is gone (planted, or another garden's) goes at once; one whose kind a pick changed is recoloured
+   * (T-193). Set-up only, not per frame.
    */
-  setSupply(seeds: readonly Pick<Seed, 'id' | 'hue'>[]): void {
+  setSupply(seeds: readonly Pick<Seed, 'id' | 'voice' | 'family'>[]): void {
     for (let slot = 0; slot < CAPACITY; slot++) {
       const id = this.ids[slot];
       if (typeof id === 'string' && !seeds.some((seed) => seed.id === id)) this.free(slot);
@@ -120,10 +121,12 @@ export class SeedRenderer {
         if (slot < 0) continue; // more than the supply holds: not drawn
         this.take(slot, seed.id);
       }
-      // A seed's hue tints it (UX §5), in the plants' palette, written in sRGB; one still drawn in the last
-      // room's palette keeps it (setPalette).
-      this.hues[slot] = seed.hue;
-      if (!this.stale[slot]) this.recolour(slot);
+      // A seed's kind tints it (UX §5), in the plants' palette, written in sRGB; one of the same kind still drawn
+      // in the last room's palette keeps it (setPalette).
+      const kind = kindOf(seed);
+      if (kind === this.kinds[slot] && this.stale[slot]) continue;
+      this.kinds[slot] = kind;
+      this.recolour(slot);
     }
   }
 
@@ -145,7 +148,7 @@ export class SeedRenderer {
   /** The slot's seed in the palette in force. */
   private recolour(slot: number): void {
     this.stale[slot] = 0;
-    plantColour(colour, this.hues[slot]!, PLANT_LIGHTNESS, this.palette).toArray(this.rgb, slot * 3);
+    kindColour(colour, this.kinds[slot]!, PLANT_LIGHTNESS, this.palette).toArray(this.rgb, slot * 3);
     this.paint(slot);
   }
 

@@ -1,7 +1,8 @@
 // Schema version 1 of the saved garden and its validator (API_SPEC §4, LLD §6): hand-written, no schema library.
 // This is the trust boundary for everything read from disk. The rule: a value the app could not have written is
 // corrupt and the whole state is refused, except where the contract names a repair: the settings (core's
-// validateSettings) and the anchor pair. The stored type is garden's GardenState, whose `version` is 1.
+// validateSettings), the anchor pair and, the third (T-193, D-077), the `family` of a plant or a seed, kept only when
+// it is exactly 'new' and else dropped. The stored type is garden's GardenState, whose `version` is 1.
 import { validateSettings } from '../core/index.js';
 import { BED_INNER, BED_OUTER, cellCentre, RINGS, snapToCell, STEPS } from '../garden/index.js';
 
@@ -38,20 +39,23 @@ function cellOf(raw: unknown): Cell | null {
   return cell !== null && cell.ring === raw.ring && cell.step === raw.step ? cell : null;
 }
 
+/** The New library, or nothing: any `family` that is not exactly 'new' is dropped and the item kept (D-077). */
+const familyOf = (raw: Raw): Pick<Seed, 'family'> => (raw.family === 'new' ? { family: 'new' } : {});
+
 function plantOf(raw: unknown): Plant | null {
   if (!isRaw(raw)) return null;
   const { id, voice, height, hue, plantedAt } = raw;
   const cell = cellOf(raw.cell);
   if (!isId(id) || !isVoice(voice) || cell === null) return null;
   if (!isUnit(height) || !isUnit(hue) || !isNumber(plantedAt)) return null;
-  return { id, voice, cell, height, hue, plantedAt };
+  return { id, voice, cell, height, hue, plantedAt, ...familyOf(raw) };
 }
 
 function seedOf(raw: unknown): Seed | null {
   if (!isRaw(raw)) return null;
   const { id, voice, hue, receivedAt } = raw;
   if (!isId(id) || !isVoice(voice) || !isUnit(hue) || !isNumber(receivedAt)) return null;
-  return { id, voice, hue, receivedAt };
+  return { id, voice, hue, receivedAt, ...familyOf(raw) };
 }
 
 /**

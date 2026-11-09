@@ -173,7 +173,7 @@ test('T-162 with noAnchors the store reads nothing of a frame and restores nothi
   );
   expect(handle).not.toBeNull();
 
-  await page.goto(APP_STORE_OFF); // loaded anew, with the same storage: the emulator still knows the handle
+  await page.goto(`${APP_STORE_OFF},presetSeeds`); // loaded anew, with the same storage: the emulator still knows the handle
   await enterXR(page);
   await startStore(page, false); // this time the store has the flag too
   const flagged = await page.evaluate(

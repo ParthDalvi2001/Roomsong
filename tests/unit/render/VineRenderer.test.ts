@@ -15,7 +15,7 @@ import {
   VINE_SWAY_M,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
-import { newPalette, plantColour, setPalette } from '../../../src/render/palette.js';
+import { kindColour, newPalette, setPalette } from '../../../src/render/palette.js';
 import { VineRenderer } from '../../../src/render/VineRenderer.js';
 
 import type { Plant } from '../../../src/garden/index.js';
@@ -36,7 +36,7 @@ const FAR = wall(-2.25); // 1.8 m: past VINE_WALL_MAX_M
 const plants = (count: number): Plant[] =>
   Array.from({ length: count }, (_, i) => ({
     id: `p${i}`,
-    voice: 'bell',
+    voice: i % 2 ? 'pad' : 'bell', // two kinds in turn: a plant's hue sets no colour (T-193)
     cell: { ring: i % 5, step: i % 16 },
     height: 0.5,
     hue: i / Math.max(1, count),
@@ -122,6 +122,9 @@ describe('VineRenderer (T-149)', () => {
     const colours = mesh.instanceColor!.array;
     expect(colours.slice(0, 3)).not.toEqual(colours.slice(3, 6));
     expect(colours.slice(0, 3)).toEqual(colours.slice(6, 9));
+    // Their kinds' colours (kindColour, T-193): piece 0 a bell's, piece 1 a pad's.
+    const pad = kindColour(new Color(), 'pad', PLANT_LIGHTNESS, newPalette()).toArray();
+    pad.forEach((channel, i) => expect(colours[3 + i]).toBeCloseTo(channel, 6));
   });
 
   it('under reduced motion the whole length fades in over VINE_FADE_MS and out again, never growing', () => {
@@ -148,7 +151,7 @@ describe('VineRenderer (T-149)', () => {
     const ROOM = 31 + 25; // with a 1.6 s decay: +9° (render/palette.ts, D-071)
     const piece0 = (): number => mesh.instanceColor!.getX(0) / mesh.instanceColor!.getY(0);
     const piece0In = (paletteSeed: number): number => {
-      const c = plantColour(new Color(), 0, PLANT_LIGHTNESS, setPalette(newPalette(), paletteSeed, 1.6)); // plant p0's hue
+      const c = kindColour(new Color(), 'bell', PLANT_LIGHTNESS, setPalette(newPalette(), paletteSeed, 1.6)); // plant p0's kind
       return c.r / c.g;
     };
     vine.setWall(NEAR, BED);

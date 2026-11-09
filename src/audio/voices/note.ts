@@ -17,6 +17,12 @@ export interface VoiceParams {
   detune: number;
   /** A plant's own 30-bit hash of its id and cell (mapping.ts plantTimbre); 0 for a note that is no plant's. */
   timbre: number;
+  /**
+   * T-193: the note plays the calm sibling of its voice (voices/calm.ts). A plant's: its library is New
+   * (voiceParamsFor). No plant's: the drone, the ripple and goodnight follow the style; a UI sound is never calm.
+   * Required: a scratch that is reused cannot keep the last note's.
+   */
+  calm: boolean;
 }
 
 /** API_SPEC §1.2. Internal to audio/. `out` is the input of the voice channel the pool assigned (LLD §7.1). */

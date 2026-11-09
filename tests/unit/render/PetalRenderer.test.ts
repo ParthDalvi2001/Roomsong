@@ -5,7 +5,7 @@ import { Color, Group, Matrix4, Quaternion, Vector3 } from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { settings } from '../../../src/core/index.js';
-import { cellCentre, RINGS, STEPS, UNDO_LIFE_MS } from '../../../src/garden/index.js';
+import { cellCentre, RINGS, SEED_KINDS, STEPS, UNDO_LIFE_MS } from '../../../src/garden/index.js';
 import {
   BURST_MS,
   BURST_PETAL_DIAMETER_M,
@@ -26,19 +26,22 @@ import {
   PLANT_REST_BRIGHTNESS,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
-import { newPalette, plantColour } from '../../../src/render/palette.js';
+import { kindColour, newPalette } from '../../../src/render/palette.js';
 import { PetalRenderer } from '../../../src/render/PetalRenderer.js';
 
 import { changeTimes, type Drawn } from './changes.js';
 
-import type { Cell } from '../../../src/garden/index.js';
+import type { Cell, SeedKind } from '../../../src/garden/index.js';
 import type { InstancedBufferAttribute } from 'three';
 
 const FRAME_MS = 1000 / 72;
 const T0 = 12_345_678; // a frame time of real size, in ms
 const cell = (ring: number, step: number): Cell => ({ ring, step });
-/** As much of a removed plant as the renderer reads. */
-const removed = (ring: number, step: number, hue = 0.25) => ({ cell: cell(ring, step), hue });
+/** As much of a removed plant as the renderer reads: its cell and what makes its kind (T-193). */
+const removed = (ring: number, step: number, kind: SeedKind = 'bell') => {
+  const { voice, family } = SEED_KINDS.find((row) => row.kind === kind)!;
+  return { cell: cell(ring, step), voice, ...(family && { family }) };
+};
 
 function make(): { petals: PetalRenderer; guard: FlashGuard; parent: Group } {
   const parent = new Group();
@@ -179,11 +182,11 @@ describe('PetalRenderer (UX §9.3)', () => {
     expect(petals.mesh.visible).toBe(false);
   });
 
-  it("is drawn in the plant's own colour at a plant's rest brightness", () => {
+  it("is drawn in the colour of the plant's kind (kindColour) at a plant's rest brightness", () => {
     const { petals } = make();
-    petals.show('p', removed(1, 1, 0.6), T0 + 5000);
+    petals.show('p', removed(1, 1, 'reed'), T0 + 5000);
     petals.update(T0);
-    const tint = plantColour(new Color(), 0.6, PLANT_LIGHTNESS, newPalette());
+    const tint = kindColour(new Color(), 'reed', PLANT_LIGHTNESS, newPalette());
     const { rgb, brightness } = only(petals);
     [tint.r, tint.g, tint.b].forEach((channel, i) => expect(rgb[i]).toBeCloseTo(channel * 0.7, 5));
     expect(brightness).toBeCloseTo(0.7);
@@ -241,15 +244,15 @@ describe('PetalRenderer (UX §9.3)', () => {
 
   it('never two on one spot: a second plant removed from the same cell takes the place of the older petal', () => {
     const { petals } = make();
-    petals.show('old', removed(3, 3, 0.1), T0 + 5000);
+    petals.show('old', removed(3, 3, 'bass'), T0 + 5000);
     petals.update(T0 + 4900); // deep in its fade
-    petals.show('new', removed(3, 3, 0.9), T0 + 9900);
+    petals.show('new', removed(3, 3, 'chime'), T0 + 9900);
     expect([petals.has('old'), petals.has('new')]).toEqual([false, true]); // the older plant cannot come back
     petals.update(T0 + 4914);
     const { widthM, brightness, rgb } = only(petals);
     expect(widthM).toBeCloseTo(0.025, 4);
     expect(brightness).toBeCloseTo(0.7); // at rest, whatever the older one had faded to
-    const tint = plantColour(new Color(), 0.9, PLANT_LIGHTNESS, newPalette());
+    const tint = kindColour(new Color(), 'chime', PLANT_LIGHTNESS, newPalette());
     expect(rgb[0]).toBeCloseTo(tint.r * 0.7, 5);
   });
 
@@ -284,7 +287,7 @@ describe('PetalRenderer (UX §9.3)', () => {
   it('a cell that is not on the bed is not drawn, and a time that is not a number neither shows nor moves one', () => {
     const { petals } = make();
     for (const off of [cell(5, 0), cell(0, 16), cell(-1, 3), cell(1.5, 3), cell(Number.NaN, 0)]) {
-      petals.show('off', { cell: off, hue: 0.5 }, T0 + 5000);
+      petals.show('off', { cell: off, voice: 'bell' }, T0 + 5000);
       expect(petals.has('off'), JSON.stringify(off)).toBe(false);
     }
     expect(petals.mesh.visible).toBe(false);
@@ -320,7 +323,7 @@ describe("PetalRenderer, the petal's arrival (UX §9.3, T-147)", () => {
   it('the plant dissolves into six petals at the release point; they drift to its cell in 400 ms and one stays', () => {
     expect(BURST_MS).toBe(400); // UX §5: the remove burst
     const { petals } = make();
-    petals.show('a', removed(2, 1, 0.6), T0 + UNDO_LIFE_MS, FROM);
+    petals.show('a', removed(2, 1, 'pad'), T0 + UNDO_LIFE_MS, FROM);
     petals.update(T0);
     const start = drawn(petals);
     expect(start).toHaveLength(BURST_PETALS);
@@ -345,7 +348,7 @@ describe("PetalRenderer, the petal's arrival (UX §9.3, T-147)", () => {
 
   it('every petal of the burst keeps one brightness: the burst changes no luminance (FR-UI-11)', () => {
     const { petals, guard } = make();
-    petals.show('a', removed(3, 7, 0.1), T0 + UNDO_LIFE_MS, FROM);
+    petals.show('a', removed(3, 7, 'bass'), T0 + UNDO_LIFE_MS, FROM);
     const seen = new Set<string>();
     for (let t = T0; t <= T0 + BURST_MS + 100; t += FRAME_MS) {
       petals.update(t);
@@ -450,7 +453,7 @@ describe('PetalRenderer: high contrast (FR-UI-05, BUG-008)', () => {
 
 describe('PetalRenderer: the hover cue (FR-HND-16, UX §9.3)', () => {
   const SLOT = 4 * STEPS + 9;
-  const unitG = plantColour(new Color(), 0.25, PLANT_LIGHTNESS, newPalette()).g;
+  const unitG = kindColour(new Color(), 'bell', PLANT_LIGHTNESS, newPalette()).g;
   /** What reaches the eye of the petal at cell (4, 9): its green over the plant's own, times its opacity. */
   const seen = (petals: PetalRenderer): number => {
     const colour = petals.mesh.geometry.getAttribute('aColour');

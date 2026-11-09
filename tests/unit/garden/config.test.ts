@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import { BED_ANCHOR_INNER_M, BED_ANCHOR_OUTER_M } from '../../../src/core/config.js';
+import { STRINGS } from '../../../src/core/strings.js';
 import {
   AUTOPLANT_CELL_STRIDE,
   BED_INNER,
   BED_OUTER,
+  HIDDEN_KINDS,
   NEW_PLANT_HEIGHT,
   PULL_RANGE_M,
   RINGS,
+  SEED_KINDS,
   STEPS,
   UNDO_LIFE_MS,
   ZONE_INNER_MARGIN_M,
@@ -84,5 +87,21 @@ describe('garden/model MODE_DEGREES (D-025)', () => {
   it('cannot be changed by a caller', () => {
     expect(Object.isFrozen(MODE_DEGREES)).toBe(true);
     expect(Object.values(MODE_DEGREES).every((degrees) => Object.isFrozen(degrees))).toBe(true);
+  });
+});
+
+describe('garden/config SEED_KINDS (T-193)', () => {
+  it('is always ten rows in one order: the five voices as built, then the New sibling of each', () => {
+    expect(SEED_KINDS.map((row) => [row.kind, row.voice, row.family ?? 'old'].join(' '))).toEqual([
+      ...['bell bell old', 'pluck pluck old', 'choir choir old', 'pad pad old', 'bass bass old'],
+      ...['bowl bell new', 'chime pluck new', 'flute choir new', 'reed pad new', 'hum bass new'],
+    ]);
+    for (const row of SEED_KINDS.slice(0, 5)) expect('family' in row).toBe(false); // omitted, as in a seed (D-077)
+    expect(Object.isFrozen(SEED_KINDS)).toBe(true);
+    // Each row names its kind by a key of core's STRINGS, ten different names.
+    expect(new Set(SEED_KINDS.map((row) => STRINGS[row.name])).size).toBe(10);
+    for (const row of SEED_KINDS) expect(row.name.toLowerCase()).toBe(`kind${row.kind}`);
+    // A hidden kind keeps its row: it is off the picker, not out of the garden.
+    for (const kind of HIDDEN_KINDS) expect(SEED_KINDS.map((row) => row.kind)).toContain(kind);
   });
 });

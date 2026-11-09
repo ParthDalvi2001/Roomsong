@@ -13,6 +13,8 @@ import {
 } from '../config.js';
 import { TODAY, type Recipe } from '../styles.js';
 
+import { playHum } from './calm.js';
+
 import type { NoteRef, Voice, VoiceParams } from './note.js';
 
 /**
@@ -48,6 +50,7 @@ export class Bass implements Voice {
   }
 
   trigger(time: number, p: VoiceParams, out: AudioNode): void {
+    if (p.calm) return playHum(this.ctx, this.ref.note, time, p, out); // T-193: a New plant's tanpura-like hum
     const ctx = this.ctx;
     const r = this.r;
     const releaseAt = time + r.bassAttackS + p.release * r.bassHoldMul;

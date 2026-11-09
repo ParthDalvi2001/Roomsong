@@ -1,5 +1,6 @@
 // Named constants of garden/ (CODING_GUIDELINES §4). Each cites the requirement it comes from.
-import type { ModeId, RoomSignature } from './model.js';
+import type { ModeId, RoomSignature, SeedKind, VoiceType } from './model.js';
+import type { StringKey } from '../core/index.js';
 
 /** FR-MUS-01: the bed is an annulus; radii in metres. core/config.ts repeats both (BedAnchor). */
 export const BED_INNER = 0.12;
@@ -132,3 +133,35 @@ export const RESTORE_WINDOW_MS = 10_000;
 
 /** A palm that has not asked for this long is down: PalmUpHold asks every 400 ms, through drops of up to 200 ms. */
 export const SEED_PALM_DOWN_MS = 900;
+
+// The seed kinds and the seed picker (T-193, D-076).
+
+/**
+ * FR-MUS-04: the ten kinds, always ten and in this order: the five voices as built (the Old library), then the calm
+ * sibling of each on the same voice (New). `name` is the key of the kind's name in core's STRINGS. A kind is taken
+ * off the picker through HIDDEN_KINDS, never by deleting its row: saved plants of it still load, are drawn and sound.
+ */
+export const SEED_KINDS: readonly Readonly<{
+  kind: SeedKind;
+  voice: VoiceType;
+  family?: 'new';
+  name: StringKey;
+}>[] = Object.freeze([
+  { kind: 'bell', voice: 'bell', name: 'kindBell' },
+  { kind: 'pluck', voice: 'pluck', name: 'kindPluck' },
+  { kind: 'choir', voice: 'choir', name: 'kindChoir' },
+  { kind: 'pad', voice: 'pad', name: 'kindPad' },
+  { kind: 'bass', voice: 'bass', name: 'kindBass' },
+  { kind: 'bowl', voice: 'bell', family: 'new', name: 'kindBowl' },
+  { kind: 'chime', voice: 'pluck', family: 'new', name: 'kindChime' },
+  { kind: 'flute', voice: 'choir', family: 'new', name: 'kindFlute' },
+  { kind: 'reed', voice: 'pad', family: 'new', name: 'kindReed' },
+  { kind: 'hum', voice: 'bass', family: 'new', name: 'kindHum' },
+]);
+/** The kinds the picker does not offer and `pick` refuses. None: `hum` goes back in if Parth rates it under 3 of 5. */
+export const HIDDEN_KINDS: readonly SeedKind[] = [];
+/**
+ * FR-UI-02: with picking on, a palm-up asks for a kind once the bed has this many plants; below it the seed comes as
+ * it is, so the first sound keeps its time. 3 is the agreed fallback if the timed first loop runs over 90 s.
+ */
+export const SEED_PICK_MIN_PLANTS = 1;

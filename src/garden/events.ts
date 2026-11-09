@@ -22,6 +22,11 @@ declare module '../core/index.js' {
      * carrying hand lost past its grace, or the session ended or New garden ran (API_SPEC §1.10 rule 8).
      */
     'garden:seedBack': { seedId: string; reason: 'offBed' | 'full' | 'lost' | 'reset' };
+    /**
+     * A palm-up that got no seed: with picking on, the player picks the next seed's kind first (T-193; API_SPEC
+     * §1.10 rule 8). ui/ opens the Seeds page. Once per palm raise.
+     */
+    'garden:seedAsk': { hand: Hand };
     /** FR-ROOM-11/13. `starterSeeds`: this session issued the starter seeds (a new garden). */
     'room:signature': { signature: RoomSignature; starterSeeds: boolean };
     'listen:enter': Record<string, never>;

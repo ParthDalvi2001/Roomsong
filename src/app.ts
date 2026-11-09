@@ -538,6 +538,7 @@ export async function start(landing: Landing): Promise<void> {
     ? new WindowStage(world.camera, room.bed.object3D!) // a transform entity always has one
     : null;
   if (stage !== null) hands.useSource(new PointerSource(world.renderer.domElement, stage, hands.candidates));
+  garden.setPicking(stage === null && !flags.presetSeeds); // T-193: never in the window, whose pointer is always palm up
   landing.ready(
     stage !== null ? () => enterWindow(stage, engine, sound) : () => enterSession(world, engine, sound),
     stage !== null,

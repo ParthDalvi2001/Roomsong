@@ -5,9 +5,11 @@
 import { Matrix4, Vector3 } from '@iwsdk/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Interactable } from '../../../src/core/components.js';
-import { bus, DEFAULT_SETTINGS, log, settings } from '../../../src/core/index.js';
+import { Caption, Interactable } from '../../../src/core/components.js';
+import { bus, DEFAULT_SETTINGS, log, settings, STRINGS } from '../../../src/core/index.js';
+import { SEED_KINDS, WANDERER } from '../../../src/garden/index.js';
 import { HandState, HIT_RADIUS_M } from '../../../src/hands/index.js';
+import { kindSwatch } from '../../../src/render/index.js';
 import {
   CAPTION_BACKDROP,
   CAPTION_BACKDROP_HIGH_CONTRAST,
@@ -53,8 +55,8 @@ function recorder() {
   });
   return { ctx: ctx as unknown as CanvasRenderingContext2D, calls };
 }
-/** What the open panel draws on `tab`. */
-function drawn(tab: PanelTab, highContrast = false) {
+/** What the open panel draws on `tab`, or on the Seeds page ('seeds'). */
+function drawn(tab: PanelTab | 'seeds', highContrast = false) {
   const panel = new Panel({
     newGarden: () => {},
     canRestore: () => false,
@@ -65,8 +67,14 @@ function drawn(tab: PanelTab, highContrast = false) {
     setTimeLapse: () => {},
     exit: () => {},
     pressed: () => {},
+    pickSeed: () => {},
+    swatch: (kind) => `swatch-${kind}`, // a stand-in for render's kindSwatch
   });
-  for (const id of [ORB_ID, `tab:${tab}`]) {
+  if (tab === 'seeds') {
+    panel.openSeeds();
+    panel.frame(0, '', false);
+  }
+  for (const id of tab === 'seeds' ? [] : [ORB_ID, `tab:${tab}`]) {
     panel.down('right', id);
     panel.up('right', id);
   }
@@ -203,6 +211,26 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
   it('the ring of a hold or a dwell shows against what it lies on, the cream ring and the backdrop: 3:1 or better', () => {
     const violet = rgb(CUE_FILL_COLOUR);
     for (const under of [CREAM, CHARCOAL, BLACK]) expect(contrast(violet, under)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('the Seeds page (T-193): each swatch is filled with its kind colour, in high contrast too, and its name keeps the text colour', () => {
+    for (const highContrast of [false, true]) {
+      const { panel, ops, text } = drawn('seeds', highContrast);
+      const controls = panel.controls();
+      const swatches = controls.filter((c) => c.id.startsWith('seed:'));
+      expect(swatches.length).toBeGreaterThanOrEqual(4);
+      const fills = ops('fill').slice(1); // after the backdrop: one per control, in their order
+      for (const swatch of swatches) {
+        const i = controls.indexOf(swatch);
+        expect(fills[i]?.fillStyle, swatch.id).toBe(`swatch-${swatch.id.slice(5)}`);
+        expect(fills[i]?.globalAlpha).toBe(1);
+      }
+      const names = swatches.map((c) => STRINGS[SEED_KINDS.find((row) => `seed:${row.kind}` === c.id)!.name]);
+      for (const word of [...names, STRINGS.pickSeed])
+        expect(text(word), word).toMatchObject({ fillStyle: CAPTION_TEXT_COLOUR, globalAlpha: 1, textAlign: 'left' });
+      expect(text(STRINGS.libNew)?.fillStyle).toBe(PANEL_INK); // the shown library, lit
+      expect(text(STRINGS.libOld)?.fillStyle).toBe(CAPTION_TEXT_COLOUR);
+    }
   });
 });
 
@@ -345,6 +373,7 @@ function rig(given: { garden?: object | null; room?: object | null; engine?: obj
     setBedHeightOffset: (metres: number) => asked.push(`setBedHeightOffset ${metres}`),
     timeLapse: false,
     setTimeLapse: (on: boolean) => asked.push(`setTimeLapse ${on}`),
+    pick: (kind: string) => asked.push(`pick ${kind}`),
   };
   const room = { replace: () => asked.push('replace') };
   const engine = { ui: (sound: string) => asked.push(`ui ${sound}`) };
@@ -662,6 +691,69 @@ describe('PanelSystem: the ring of a hold (UX §8)', () => {
     expect(fill.geometry.drawRange.count).toBe((CUE_SEGMENTS / 2) * 6); // half way round: two triangles a step
     for (let ms = 0; ms < NEW_GARDEN_HOLD_MS / 2; ms += 50) frame(50);
     expect(fill.geometry.drawRange.count).toBe(CUE_SEGMENTS * 6);
+  });
+});
+
+describe('PanelSystem: the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
+  const captions = (created: FakeEntity[]) => created.filter((entity) => entity.hasComponent(Caption));
+
+  it('garden:seedAsk opens it; a swatch is filled by render, and its press is garden.pick once, then the board closes', () => {
+    const { frame, press, emit, ids, asked, system, mesh } = rig();
+    frame();
+    emit('garden:seedAsk', { hand: 'right' });
+    frame();
+    expect(system.panel.open).toBe(true);
+    expect(mesh('settings-panel').visible).toBe(true);
+    expect(ids()).toEqual(['lib:old', 'lib:new', 'close', 'seed:bowl', 'seed:chime', 'seed:flute', 'seed:reed', 'seed:hum']);
+    const bowl = system.panel.controls().find((c) => c.id === 'seed:bowl')!;
+    expect(bowl.fill).toMatch(/^#[0-9a-f]{6}$/);
+    expect(bowl.fill).toBe(kindSwatch('bowl', WANDERER.paletteSeed, WANDERER.reverbRt60));
+    emit('garden:seedAsk', { hand: 'left' }); // while open: nothing
+    frame();
+    expect(ids()).toHaveLength(8);
+    press('seed:bowl');
+    expect(asked).toEqual(['ui tick', 'pick bowl']);
+    expect(system.panel.open).toBe(false);
+    expect(ids()).toEqual([]);
+  });
+
+  it('keeps the look-up caption on its own entity while the board is open and unseen, and takes it back when it is seen or closed, adding nothing in between', () => {
+    const { head, frame, press, emit, created, system } = rig();
+    const look = (downDeg: number) =>
+      head.makeRotationX((-downDeg * Math.PI) / 180).setPosition(...EYE);
+    look(44); // at the palm on the table: the board opens above the box
+    frame();
+    emit('garden:seedAsk', { hand: 'right' });
+    frame(); // the opening frame
+    frame();
+    expect(system.panel.unseen).toBe(true);
+    const [caption, ...others] = captions(created);
+    expect(others).toEqual([]);
+    expect(caption!.getValue(Caption, 'key')).toBe('pickSeedLookUp');
+    expect(caption!.getValue(Caption, 'expiresAt') as number).toBeGreaterThan(Date.now() + 3_600_000);
+    const added = vi.spyOn(caption!, 'addComponent');
+    const removed = vi.spyOn(caption!, 'removeComponent');
+    for (let ms = 0; ms < 6000; ms += 50) frame(50); // 6 s away, unseen: still open, the caption still up
+    expect(system.panel.open).toBe(true);
+    expect([added.mock.calls.length, removed.mock.calls.length]).toEqual([0, 0]);
+
+    look(24); // up to the board: seen
+    frame();
+    expect(system.panel.unseen).toBe(false);
+    expect(captions(created)).toEqual([]);
+    look(44);
+    for (let ms = 0; ms < 5000; ms += 50) frame(50); // looked away, seen before: today's rule closes it
+    expect(system.panel.open).toBe(false);
+    expect(captions(created)).toEqual([]);
+    expect(removed.mock.calls.length).toBe(1); // taken back once, when seen
+
+    look(44);
+    emit('garden:seedAsk', { hand: 'right' });
+    frame();
+    frame();
+    expect(captions(created)).toEqual([caption]); // the same entity carries it again
+    press('close');
+    expect(captions(created)).toEqual([]);
   });
 });
 

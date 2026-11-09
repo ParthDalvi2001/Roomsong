@@ -4,12 +4,15 @@ export {
   BED_HEIGHT_OFFSET_MAX_M,
   BED_INNER,
   BED_OUTER,
+  HIDDEN_KINDS,
   PULL_RANGE_M,
   REVERB_RT60_DEFAULT_S,
   REVERB_RT60_MAX_S,
   REVERB_RT60_MIN_S,
   REVERB_RT60_STEPS_S,
   RINGS,
+  SEED_KINDS,
+  SEED_PICK_MIN_PLANTS,
   SEED_SUPPLY_MAX,
   STEPS,
   UNDO_LIFE_MS,
@@ -29,11 +32,13 @@ export type {
   RoomFeatures,
   RoomSignature,
   Seed,
+  SeedKind,
   UndoToken,
   VoiceType,
 } from './model.js';
 export {
   heightAfterPull,
+  kindOf,
   movePlant,
   nearestFreeCell,
   plantSeed,
@@ -41,6 +46,7 @@ export {
   setAnchor,
   setBedHeightOffset,
   setHeight,
+  setSeedKind,
   undoRemove,
 } from './rules.js';
 export { chordDegrees, roomSignature, WANDERER } from './signature.js';

@@ -114,6 +114,7 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
         'BED_INNER',
         'BED_OUTER',
         'GardenSystem',
+        'HIDDEN_KINDS', // T-193
         'MODE_DEGREES',
         'PULL_RANGE_M',
         'REVERB_RT60_DEFAULT_S',
@@ -121,6 +122,8 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
         'REVERB_RT60_MIN_S',
         'REVERB_RT60_STEPS_S',
         'RINGS',
+        'SEED_KINDS', // T-193
+        'SEED_PICK_MIN_PLANTS', // T-193
         'SEED_SUPPLY_MAX',
         'STEPS',
         'UNDO_LIFE_MS',
@@ -131,6 +134,7 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
         'chordDegrees',
         'gardenDay',
         'heightAfterPull',
+        'kindOf', // T-193
         'movePlant',
         'nearestFreeCell',
         'newGarden',
@@ -140,6 +144,7 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
         'setAnchor',
         'setBedHeightOffset',
         'setHeight',
+        'setSeedKind', // T-193
         'snapToCell',
         'stageFor',
         'undoRemove',

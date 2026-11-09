@@ -5,7 +5,7 @@ import { Color, DoubleSide, Group, Matrix4, Vector3 } from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
-import { SEED_SUPPLY_MAX } from '../../../src/garden/index.js';
+import { SEED_KINDS, SEED_SUPPLY_MAX } from '../../../src/garden/index.js';
 import {
   HOVER_CUE_MS,
   PLANT_HOVER_LIFT,
@@ -21,16 +21,22 @@ import {
   SUPPLY_ORB_RADIUS_M,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
-import { newPalette, plantColour, setPalette } from '../../../src/render/palette.js';
+import { kindColour, newPalette, setPalette } from '../../../src/render/palette.js';
 import { SeedRenderer } from '../../../src/render/SeedRenderer.js';
 
 import { mostInAnyClip, type Drawn } from './changes.js';
+
+import type { SeedKind } from '../../../src/garden/index.js';
 
 const T0 = 12_345_678; // a frame time of real size, in ms
 const FRAME_MS = 14;
 const CENTRE = new Vector3(0, 0.74, -0.45);
 const BED = new Matrix4().makeTranslation(CENTRE.x, CENTRE.y, CENTRE.z); // flat, its centre 0.45 m ahead
-const seed = (id: string, hue = 0.4) => ({ id, hue });
+/** As much of a seed as the renderer reads: its id and what makes its kind (T-193). */
+const seed = (id: string, kind: SeedKind = 'pad') => {
+  const { voice, family } = SEED_KINDS.find((row) => row.kind === kind)!;
+  return { id, voice, ...(family && { family }) };
+};
 const SIZE = Math.fround(SEED_DIAMETER_M); // as the instance matrix holds it
 
 afterEach(() => settings.set(DEFAULT_SETTINGS));
@@ -65,9 +71,9 @@ function sizes(seeds: SeedRenderer): number[] {
   return seeds.mesh.visible ? out : [];
 }
 
-/** The brightness instance `slot` is drawn at, read back from its colour against its hue's full colour. */
-function brightnessOf(seeds: SeedRenderer, slot: number, hue = 0.4): number {
-  const full = plantColour(new Color(), hue, PLANT_LIGHTNESS, newPalette());
+/** The brightness instance `slot` is drawn at, read back from its colour against its kind's full colour. */
+function brightnessOf(seeds: SeedRenderer, slot: number, kind: SeedKind = 'pad'): number {
+  const full = kindColour(new Color(), kind, PLANT_LIGHTNESS, newPalette());
   return seeds.mesh.instanceColor!.getX(slot) / full.r;
 }
 
@@ -92,17 +98,22 @@ describe('SeedRenderer: the supply orb (UX §7, FR-MUS-08)', () => {
     expect(sizes(seeds)).toEqual([SIZE]);
   });
 
-  it('shows the count: one seed per place on a ring over the centre hole, each in its hue at rest', () => {
+  it("shows the count: one seed per place on a ring over the centre hole, each in its kind's colour at rest", () => {
     const { seeds } = make();
-    seeds.setSupply([seed('a', 0.1), seed('b', 0.4), seed('c', 0.7)]);
+    seeds.setSupply([seed('a', 'bell'), seed('b', 'pad'), seed('c', 'hum')]);
     seeds.update(BED, T0);
     expect(sizes(seeds)).toEqual([SIZE, SIZE, SIZE]);
     expectNear(at(seeds, 'a'), orbPlace(0));
     expectNear(at(seeds, 'b'), orbPlace(1));
     expectNear(at(seeds, 'c'), orbPlace(2));
     expect(at(seeds, 'a')!.z).toBeCloseTo(CENTRE.z + SUPPLY_ORB_RADIUS_M, 6); // place 0 nearest the user (D-029)
-    expect(brightnessOf(seeds, 0, 0.1)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
-    expect(brightnessOf(seeds, 2, 0.7)).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
+    expect(brightnessOf(seeds, 0, 'bell')).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
+    expect(brightnessOf(seeds, 2, 'hum')).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
+    // The colour of the plant it becomes (kindColour, T-193), in every channel.
+    const hum = kindColour(new Color(), 'hum', PLANT_LIGHTNESS, newPalette()).multiplyScalar(PLANT_REST_BRIGHTNESS);
+    const drawn = new Color();
+    seeds.mesh.getColorAt(2, drawn);
+    hum.toArray().forEach((channel, i) => expect(drawn.toArray()[i]).toBeCloseTo(channel, 5));
   });
 
   it('a seed gone from the supply goes at once; the others keep their places; a new one takes a free place', () => {
@@ -296,26 +307,39 @@ describe('SeedRenderer: the hover glow (FR-HND-16, BUG-007)', () => {
 
 describe('SeedRenderer.setPalette (D-060)', () => {
   const ROOM = 31 + 25; // with a 1.6 s decay: +9° (render/palette.ts, D-071)
-  /** The red-to-green share of a slot's colour: its hue, whatever its brightness. */
+  /** The red-to-green share of a slot's colour: its kind's, whatever its brightness. */
   const ratio = (seeds: SeedRenderer, slot: number): number =>
     seeds.mesh.instanceColor!.getX(slot) / seeds.mesh.instanceColor!.getY(slot);
-  const ratioIn = (paletteSeed: number, hue: number): number => {
-    const c = plantColour(new Color(), hue, PLANT_LIGHTNESS, setPalette(newPalette(), paletteSeed, 1.6));
+  const ratioIn = (paletteSeed: number, kind: SeedKind): number => {
+    const c = kindColour(new Color(), kind, PLANT_LIGHTNESS, setPalette(newPalette(), paletteSeed, 1.6));
     return c.r / c.g;
   };
 
   it('a seed not drawn takes the room at once; one out on a palm through a Re-place keeps its colour until it is not drawn', () => {
     const { seeds } = make();
-    seeds.setSupply([seed('a', 0.4), seed('b', 0.6)]);
+    seeds.setSupply([seed('a', 'pad'), seed('b', 'bell')]);
     seeds.follow('b', new Vector3(0.1, 1, -0.3), T0, 'jump'); // out on a palm
     seeds.update(null, T0); // no bed (a Re-place): 'a' in the orb is not drawn, 'b' rides the palm
     seeds.setPalette(ROOM, 1.6); // the placement's signature
-    expect(ratio(seeds, 0)).toBeCloseTo(ratioIn(ROOM, 0.4), 5);
-    expect(ratio(seeds, 1)).toBeCloseTo(ratioIn(0, 0.6), 5); // still the last room's
-    seeds.setSupply([seed('a', 0.4), seed('b', 0.6)]); // a garden change keeps it so
-    expect(ratio(seeds, 1)).toBeCloseTo(ratioIn(0, 0.6), 5);
+    expect(ratio(seeds, 0)).toBeCloseTo(ratioIn(ROOM, 'pad'), 5);
+    expect(ratio(seeds, 1)).toBeCloseTo(ratioIn(0, 'bell'), 5); // still the last room's
+    seeds.setSupply([seed('a', 'pad'), seed('b', 'bell')]); // a garden change keeps it so
+    expect(ratio(seeds, 1)).toBeCloseTo(ratioIn(0, 'bell'), 5);
     seeds.follow('b', null, T0 + FRAME_MS, 'jump'); // home to an orb not drawn: out of sight
     seeds.update(null, T0 + 2 * FRAME_MS);
-    expect(ratio(seeds, 1)).toBeCloseTo(ratioIn(ROOM, 0.6), 5);
+    expect(ratio(seeds, 1)).toBeCloseTo(ratioIn(ROOM, 'bell'), 5);
+  });
+
+  it('a seed whose kind changed is recoloured at once, in the room in force, also one that kept the last room (T-193)', () => {
+    const { seeds } = make();
+    seeds.setSupply([seed('a', 'pad')]);
+    seeds.setSupply([seed('a', 'reed')]); // a pick: the same id, another kind
+    expect(ratio(seeds, 0)).toBeCloseTo(ratioIn(0, 'reed'), 5);
+    seeds.follow('a', new Vector3(0.1, 1, -0.3), T0, 'jump');
+    seeds.update(null, T0);
+    seeds.setPalette(ROOM, 1.6); // drawn through a Re-place: it keeps the last room's colour
+    expect(ratio(seeds, 0)).toBeCloseTo(ratioIn(0, 'reed'), 5);
+    seeds.setSupply([seed('a', 'bowl')]);
+    expect(ratio(seeds, 0)).toBeCloseTo(ratioIn(ROOM, 'bowl'), 5);
   });
 });

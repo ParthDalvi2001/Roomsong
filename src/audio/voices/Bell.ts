@@ -17,7 +17,7 @@ export class Bell implements Voice {
   ) {}
 
   trigger(time: number, p: VoiceParams, out: AudioNode): void {
-    if (this.r.calmVoices) return playBowl(this.ctx, this.ref.note, time, p, out, true);
+    if (p.calm) return playBowl(this.ctx, this.ref.note, time, p, out, true);
     const ctx = this.ctx;
     const r = this.r;
     const carrier = ctx.createOscillator();

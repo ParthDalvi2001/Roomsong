@@ -450,3 +450,32 @@ export const REED_ATTACK_S = 0.8;
 export const BELLOWS_HZ_U: readonly [number, number] = [0.15, 0.35];
 export const BELLOWS_DEPTH = 0.12;
 export const REED_LEVEL = 0.5;
+/**
+ * The hum (T-193 P5, a Bass plant of the New library; voices/calm.ts playHum): a tanpura-like low string at the
+ * Bass's pitch. Two strings a few cents apart on one bright wave, through a resonance (the jawari's buzz) that slides
+ * down the harmonics, then a long decay. Nobody has heard it yet (listen gate: D-076's hum row goes back into
+ * HIDDEN_KINDS under 3 of 5).
+ */
+/** Sine terms of the shared wave: harmonics 1..HUM_HARMONICS at 1/n (a sawtooth cut short, so it cannot alias). */
+export const HUM_HARMONICS = 20;
+/** The second string this many cents sharp of the first, by timbre: the slow beat of a tanpura's pair. */
+export const HUM_CENTS_U: readonly [number, number] = [2, 5];
+/** The peaking filter's Q and gain (dB): a narrow band about 4x louder, sliding down the harmonics. */
+export const HUM_FILTER_Q = 4;
+export const HUM_FILTER_GAIN_DB = 12;
+/** The filter's frequency as multiples of the note: from the first to the second (then × √cutoffMul, the plant's hue). */
+export const HUM_SWEEP_MUL: readonly [number, number] = [14, 4];
+/** How long the slide takes, by timbre. */
+export const HUM_SWEEP_S_U: readonly [number, number] = [0.6, 1.0];
+/** A soft pluck: the envelope's rise. */
+export const HUM_ATTACK_S = 0.025;
+/** Decay τ = base + per × release (release 0.2..2.5 s from height): 0.33..1.25 s. */
+export const HUM_TAU_BASE_S = 0.25;
+export const HUM_TAU_PER_S = 0.4;
+/** The sources stop this many τ after the attack: 4.4 s at the longest release, under the 4.5 s the design allows. */
+export const HUM_TAIL_TAUS = 3.5;
+/**
+ * First pass, by arithmetic only (two peak-1 saw-like strings sum to about 1.15 RMS, plus the +12 dB band): near the
+ * Bass's held RMS (about 0.7 × gain) in style B. P8 matches it by rendering; nobody has heard it.
+ */
+export const HUM_LEVEL = 0.35;

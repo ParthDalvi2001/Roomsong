@@ -3,6 +3,8 @@
 import { RINGS, STEPS } from '../garden/index.js';
 import { TARGET_VISIBLE_DIAMETER_M } from '../hands/index.js';
 
+import type { SeedKind } from '../garden/index.js';
+
 /** FR-UI-11 (API_SPEC §1.8): luminance changes of one element in any 1 s window. */
 export const FLASH_CAP_PER_S = 3;
 /** FR-UI-11 (API_SPEC §1.8): a brightness swing smaller than this share of full scale is not a change. */
@@ -94,6 +96,23 @@ export const PALETTE_ARC_START_DEG = 47;
 export const PALETTE_ARC_SPAN_DEG = 220;
 export const PALETTE_TURN_DEG: readonly number[] = [-15, -9, -3, 3, 9, 15]; // one per REVERB_RT60_STEPS_S, 0.3 … 2.0 s
 export const PALETTE_SAT_STEP = 0.06;
+/** UX §5 (T-193, D-076): a seed kind's hue in degrees, on the same arc. Old kinds sit 46° apart and each New kind
+ *  about 20° past its Old sibling, so ten kinds are ten colours; a room turns all ten together (palette.ts) and the
+ *  two ends, 54° and 258°, stay on 32°–282°. A plant's own `hue` no longer sets its colour, only its sound. */
+export const KIND_HUE_DEG: Readonly<Record<SeedKind, number>> = {
+  bell: 54,
+  pluck: 100,
+  choir: 146,
+  pad: 192,
+  bass: 238,
+  bowl: 73,
+  chime: 120,
+  flute: 166,
+  reed: 212,
+  hum: 258,
+};
+/** UX §5 (T-193): a New kind is this much less saturated than an Old one: 0.50 against 0.72 in Wanderer's room. */
+export const NEW_KIND_SATURATION_DROP = 0.22;
 /** Chosen in T-125 (UX §5: glass-like, soft glow): a plant is this dark at its foot, full at its head, and
  *  this much brighter where its surface turns away from the eye. No light is involved (NFR-PERF-09). */
 export const PLANT_FOOT_SHADE = 0.45;

@@ -2,7 +2,8 @@
 // T-150, TC-E2E-03 timing (FR-UI-02, Golden Rule 4): the guided first minute in the app, walked by the emulator's
 // hands as a first-time player follows it. After the ripple (room:tuned): "Open your hand, palm up" and the palm
 // icon; a seed on the palm: "Pinch the seed, drop it here", the glowing cell and the ghost pinch looping over it;
-// the first plant: its first note (first sound <= 20 s); two more seeds with no caption; then the hint ring round
+// the first plant: its first note (first sound <= 20 s); two more seeds, each picked on the Seeds page with a real
+// pinch (T-193, the picker on), with no tutorial caption; then the hint ring round
 // the newest plant with the pull icon (grow), after a pull the drag icon (move), the remove arrow on the rim during
 // the drag; after the drag the gates are earned and the Listen step comes at once, "Show your palms to listen"
 // (first loop <= 90 s). The same in the garden window, where a click is the pinch and the grow gate is skipped (a
@@ -75,7 +76,11 @@ interface Probe {
   plantTargets(): { id: string; at: Vec3 }[];
   hand(hand: Hand): { palmPos: Vec3; pinchPos: Vec3 };
   cellAt(cell: Cell): Vec3;
-  plants(): { id: string; cell: Cell }[];
+  plants(): { id: string; cell: Cell; family: string | null }[];
+  /** T-193: the Seeds page is open; a board control's target while it is on show; the board's centre. */
+  isOpen(): boolean;
+  panelAt(id: string): Vec3 | null;
+  boardAt(): Vec3;
   atRest(): Promise<Vec3>;
   /** Where a cell's centre is on the page, in CSS pixels (the garden window). */
   cellOnPage(cell: Cell): { x: number; y: number };
@@ -111,6 +116,8 @@ async function probeApp(page: Page): Promise<JSHandle<Probe>> {
     const captions = world.getSystem(ui.CaptionSystem)!;
     const hints = world.getSystem(ui.HintSystem)!;
     const tutorial = world.getSystem(onboarding.OnboardingSystem)!;
+    const panel = world.getSystem(ui.PanelSystem)!.panel;
+    const board = world.scene.getObjectByName('settings-panel')!;
     const heard: Heard[] = [];
     const note = (name: string, more: Partial<Heard> = {}) =>
       heard.push({ name, id: null, step: null, gesture: null, ...more, atMs: performance.now() });
@@ -186,7 +193,19 @@ async function probeApp(page: Page): Promise<JSHandle<Probe>> {
           z: e[2] * c.x + e[10] * c.y + e[14],
         };
       },
-      plants: () => garden.state!.plants.map((p) => ({ id: p.id, cell: { ...p.cell } })),
+      plants: () =>
+        garden.state!.plants.map((p) => ({ id: p.id, cell: { ...p.cell }, family: p.family ?? null })),
+      isOpen: () => panel.open,
+      panelAt(id) {
+        const control = [...targets].find(
+          (e) => e.getValue(Interactable, 'kind') === 'panel' && e.getValue(Interactable, 'id') === id,
+        );
+        return control === undefined ? null : vec(control.getVectorView(Interactable, 'worldPos'));
+      },
+      boardAt: () => {
+        const at = board.getWorldPosition(board.position.clone());
+        return { x: at.x, y: at.y, z: at.z };
+      },
       atRest: () =>
         new Promise((done, fail) => {
           let last: Vec3 | null = null;
@@ -272,6 +291,7 @@ async function emulatedHands(page: Page, probe: JSHandle<Probe>) {
     putLeft: (orientation: typeof PALM_UP) => together([transform('left', LEFT_ROOT, orientation)]),
     lookDown: (pitch: number) =>
       together([['set_transform', { device: 'headset', orientation: { yaw: 0, pitch: -pitch, roll: 0 } }]]),
+    lookAt: (target: Vec3) => together([['look_at', { device: 'headset', target }]]),
     async pinchAt(pos: Vec3): Promise<number> {
       await together([transform('right', rootFor(pos, open))]);
       const tip = await settle();
@@ -303,6 +323,25 @@ async function carry(page: Page, probe: JSHandle<Probe>, hands: EmulatedHands, t
   await heard(probe, 'planted', { count });
 }
 
+/**
+ * T-193: the palm that got no seed opened the Seeds page above the view box (the head is at the table's pitch). The
+ * head looks up at it, the right hand pinches the swatch and lets go, the board closes, the head looks down again.
+ */
+async function pick(page: Page, probe: JSHandle<Probe>, hands: EmulatedHands, id: string) {
+  await page.waitForFunction((p) => p.isOpen(), probe, { timeout: 10_000 });
+  await hands.lookAt(await probe.evaluate((p) => p.boardAt()));
+  await xrFrames(page, 3);
+  const at = (await probe.evaluate((p, id) => p.panelAt(id), id))!;
+  expect(await hands.pinchAt(at)).toBeLessThan(HIT_RADIUS_M / 4);
+  await page.waitForFunction(
+    ([p, id]) => p.heard.some((e) => e.name === 'gesture:pinchStart' && e.id === id),
+    [probe, id] as const,
+  );
+  await hands.releaseAt(at);
+  await page.waitForFunction((p) => !p.isOpen(), probe);
+  await hands.lookDown(55);
+}
+
 /** Three cells of the middle ring nearest the user: the guide cell first, then its two neighbours. */
 const nearCells: Cell[] = [GUIDE_CELL, { ring: 2, step: 3 }, { ring: 2, step: 5 }];
 
@@ -310,7 +349,7 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   page,
 }) => {
   const errors = watch(page);
-  const offHost = await openApp(page, readRoom('table'), '/', { onboarding: true });
+  const offHost = await openApp(page, readRoom('table'), '/', { onboarding: true, presetSeeds: false });
   const probe = await probeApp(page);
   await enterXR(page);
   const hands = await emulatedHands(page, probe);
@@ -354,10 +393,14 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   await expect.poll(() => probe.evaluate((p) => p.firstNoteAtMs), { timeout: 10_000 }).toBeGreaterThan(0);
   expect(await probe.evaluate((p) => [p.shows().icon, p.shows().ring])).toEqual([-1, -1]); // step 3: nothing
 
-  // Two more seeds, no caption; at three plants the hint ring with the pull icon round the newest.
+  // Two more seeds, each picked on the Seeds page first (T-193), no caption of the tutorial; at three plants the
+  // hint ring with the pull icon round the newest.
+  await pick(page, probe, hands, 'seed:bowl');
   await carry(page, probe, hands, await probe.evaluate((p, c) => p.cellAt(c), nearCells[1]!), 2);
+  await pick(page, probe, hands, 'seed:chime');
   await carry(page, probe, hands, await probe.evaluate((p, c) => p.cellAt(c), nearCells[2]!), 3);
   await stepAt(probe, 'grow');
+  expect((await probe.evaluate((p) => p.plants())).map((p) => p.family)).toEqual([null, 'new', 'new']);
   const newest = (await probe.evaluate((p) => p.plants())).slice(-1)[0]!;
   expect(newest.cell).toEqual(nearCells[2]);
   const newestAt = await probe.evaluate((p, c) => p.cellAt(c), newest.cell);
@@ -441,7 +484,7 @@ async function openPlain(page: Page): Promise<string[]> {
       return route.abort();
     },
   );
-  await page.goto('/');
+  await page.goto('/?flags=presetSeeds');
   return offHost;
 }
 

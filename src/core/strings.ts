@@ -46,6 +46,24 @@ export const STRINGS = {
   // A session with controllers in the hands and no hand tracked for 2 s: hands/ HandSystem raises it until a hand is
   // seen. The landing page's Help says the same ("put the controllers down").
   putControllersDown: 'Put the controllers down',
+  // The ten seed kinds and the two libraries of the seed picker (T-193, D-076). garden's SEED_KINDS names a kind by its
+  // key here. Placeholder names: these twelve lines are the one place to rename them; no other file holds the words.
+  kindBell: 'Chimecap',
+  kindPluck: 'Plinkstem',
+  kindChoir: 'Chantleaf',
+  kindPad: 'Sighpetal',
+  kindBass: 'Thumpbulb',
+  kindBowl: 'Humbloom',
+  kindChime: 'Tinglet',
+  kindFlute: 'Whisperwort',
+  kindReed: 'Swellroot',
+  kindHum: 'Thrumsprout',
+  libOld: 'Old',
+  libNew: 'New',
+  // The Seeds page of the settings board (UX §3.6): its one line of text, and the caption ui/ holds up while the
+  // board is open and has not been seen yet (it opens above a head that looks down at the palm).
+  pickSeed: 'Pick a seed',
+  pickSeedLookUp: 'Look up to pick a seed',
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

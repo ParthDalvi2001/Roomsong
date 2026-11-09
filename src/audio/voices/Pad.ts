@@ -27,7 +27,7 @@ export class Pad implements Voice {
   ) {}
 
   trigger(time: number, p: VoiceParams, out: AudioNode): void {
-    if (this.r.calmVoices) return playReeds(this.ctx, this.ref.note, time, p, out, this.r);
+    if (p.calm) return playReeds(this.ctx, this.ref.note, time, p, out, this.r);
     const ctx = this.ctx;
     const r = this.r;
     const attack = r.padAttackS;
