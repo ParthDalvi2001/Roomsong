@@ -295,12 +295,12 @@ describe('SeedRenderer: the hover glow (FR-HND-16, BUG-007)', () => {
 });
 
 describe('SeedRenderer.setPalette (D-060)', () => {
-  const ROOM = 31 + 25; // +10° (render/palette.ts)
+  const ROOM = 31 + 25; // with a 1.6 s decay: +9° (render/palette.ts, D-071)
   /** The red-to-green share of a slot's colour: its hue, whatever its brightness. */
   const ratio = (seeds: SeedRenderer, slot: number): number =>
     seeds.mesh.instanceColor!.getX(slot) / seeds.mesh.instanceColor!.getY(slot);
   const ratioIn = (paletteSeed: number, hue: number): number => {
-    const c = plantColour(new Color(), hue, PLANT_LIGHTNESS, setPalette(newPalette(), paletteSeed));
+    const c = plantColour(new Color(), hue, PLANT_LIGHTNESS, setPalette(newPalette(), paletteSeed, 1.6));
     return c.r / c.g;
   };
 
@@ -309,7 +309,7 @@ describe('SeedRenderer.setPalette (D-060)', () => {
     seeds.setSupply([seed('a', 0.4), seed('b', 0.6)]);
     seeds.follow('b', new Vector3(0.1, 1, -0.3), T0, 'jump'); // out on a palm
     seeds.update(null, T0); // no bed (a Re-place): 'a' in the orb is not drawn, 'b' rides the palm
-    seeds.setPalette(ROOM); // the placement's signature
+    seeds.setPalette(ROOM, 1.6); // the placement's signature
     expect(ratio(seeds, 0)).toBeCloseTo(ratioIn(ROOM, 0.4), 5);
     expect(ratio(seeds, 1)).toBeCloseTo(ratioIn(0, 0.6), 5); // still the last room's
     seeds.setSupply([seed('a', 0.4), seed('b', 0.6)]); // a garden change keeps it so

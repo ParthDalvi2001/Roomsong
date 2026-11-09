@@ -284,8 +284,8 @@ export class PetalRenderer {
   }
 
   /** On `room:signature`: the palette of the petals shown from now on (D-060); one already up keeps its colour. */
-  setPalette(paletteSeed: number): void {
-    setPalette(this.palette, paletteSeed);
+  setPalette(paletteSeed: number, reverbRt60: number): void {
+    setPalette(this.palette, paletteSeed, reverbRt60);
   }
 
   /**

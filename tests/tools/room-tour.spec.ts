@@ -141,7 +141,7 @@ const listen = (page: Page) =>
     core.bus.on('room:signature', ({ signature }) => {
       const { keyRoot, mode, tempo, reverbRt60, reverbSize, paletteSeed } = signature;
       heard.signature = { keyRoot, mode, tempo, reverbRt60, reverbSize, paletteSeed };
-      heard.palette = { ...setPalette(newPalette(), paletteSeed) };
+      heard.palette = { ...setPalette(newPalette(), paletteSeed, reverbRt60) };
     });
     core.bus.on('room:tuned', () => (heard.tuned = true));
     return heard;

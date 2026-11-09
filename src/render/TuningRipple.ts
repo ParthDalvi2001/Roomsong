@@ -52,9 +52,10 @@ export interface RipplePlan {
   bedPose: Mat4;
   /** The signature is Wanderer: one ripple on the bed, none on the surfaces, whatever `surfaces` names. */
   isWanderer: boolean;
-  /** room:signature's paletteSeed: the afterglow is ICE turned by the room's shift of the plants' arc, at most ±15°
-   *  (render/palette.ts; ART_PASS_T163 §0, D-060), as the bed's ring lines are; Wanderer (0) is not turned. */
+  /** room:signature's paletteSeed and reverbRt60: the afterglow is ICE turned by the room's shift of the plants' arc,
+   *  at most ±15° (render/palette.ts; ART_PASS_T163 §0, D-060, D-071), as the bed's ring lines are; Wanderer (0) is not. */
   paletteSeed: number;
+  reverbRt60: number;
   isReducedMotion: boolean;
 }
 
@@ -166,7 +167,7 @@ export class TuningRipple {
     const { table, nearestWall, ceiling } = plan.surfaces;
     const bed = plan.bedPose;
     this.isGlow = plan.isReducedMotion;
-    const { shiftDeg } = setPalette(palette, plan.paletteSeed);
+    const { shiftDeg } = setPalette(palette, plan.paletteSeed, plan.reverbRt60);
     this.trail.setHSL(ICE_HSL.h + shiftDeg / 360, ICE_HSL.s, ICE_HSL.l, SRGBColorSpace).convertLinearToSRGB();
     this.startMs.fill(Number.NaN);
     this.isBusy = true;

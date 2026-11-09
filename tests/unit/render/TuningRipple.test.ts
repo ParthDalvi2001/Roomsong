@@ -51,6 +51,7 @@ const plan = (over: Partial<RipplePlan> = {}): RipplePlan => ({
   bedPose: BED,
   isWanderer: false,
   paletteSeed: 0x0fe2778b,
+  reverbRt60: 0.3,
   isReducedMotion: false,
   ...over,
 });
@@ -213,8 +214,8 @@ describe('TuningRipple: where each crest runs (UX §5)', () => {
 
   it("the afterglow is the room tint: ICE turned by the room's shift of the plants' arc (±15°); untinted in a Wanderer room", () => {
     const hsl = { h: 0, s: 0, l: 0 };
-    const trail = (seed: number) => {
-      const r = rig(plan({ paletteSeed: seed }));
+    const trail = (seed: number, reverbRt60 = 0.9) => {
+      const r = rig(plan({ paletteSeed: seed, reverbRt60 }));
       const value = uniforms(r.meshes[0]!).uTrail!.value as Color;
       return new Color().setRGB(value.r, value.g, value.b, SRGBColorSpace); // the uniform holds encoded values
     };
@@ -222,12 +223,12 @@ describe('TuningRipple: where each crest runs (UX §5)', () => {
     trail(0).getHSL(hsl, SRGBColorSpace);
     expect(hsl.h).toBeCloseTo(ice.h, 4);
     expect(hsl.s).toBeCloseTo(ice.s, 4);
-    // ((paletteSeed % 31) − 15)° (render/palette.ts): seed 31 + 25 turns it 10° on, seed 31 × 9 + 3 turns it 12° back.
-    trail(31 + 25).getHSL(hsl, SRGBColorSpace);
-    expect(hsl.h).toBeCloseTo(ice.h + 10 / 360, 4);
+    // The decay step turns it (render/palette.ts, D-071): a 1.6 s room 9° on, a 0.3 s room 15° back.
+    trail(31 + 25, 1.6).getHSL(hsl, SRGBColorSpace);
+    expect(hsl.h).toBeCloseTo(ice.h + 9 / 360, 4);
     expect(hsl.l).toBeCloseTo(ice.l, 4);
-    trail(31 * 9 + 3).getHSL(hsl, SRGBColorSpace);
-    expect(hsl.h).toBeCloseTo(ice.h - 12 / 360, 4);
+    trail(31 * 9 + 3, 0.3).getHSL(hsl, SRGBColorSpace);
+    expect(hsl.h).toBeCloseTo(ice.h - 15 / 360, 4);
   });
 });
 

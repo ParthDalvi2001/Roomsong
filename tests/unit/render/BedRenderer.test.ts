@@ -327,12 +327,12 @@ describe('BedRenderer.setPalette (ART_PASS_T163 §0, D-060)', () => {
     const hsl = { h: 0, s: 0, l: 0 };
     const ice = new Color(ICE).getHSL({ h: 0, s: 0, l: 0 }, SRGBColorSpace);
     expect(uLine().equals(new Color(ICE))).toBe(true);
-    bed.setPalette(31 + 25); // +10° (render/palette.ts)
+    bed.setPalette(31 + 25, 1.6); // a 1.6 s room: +9° (render/palette.ts, D-071)
     uLine().getHSL(hsl, SRGBColorSpace);
-    expect(hsl.h).toBeCloseTo(ice.h + 10 / 360, 4);
+    expect(hsl.h).toBeCloseTo(ice.h + 9 / 360, 4);
     expect(hsl.s).toBeCloseTo(ice.s, 4);
     expect(hsl.l).toBeCloseTo(ice.l, 4);
-    bed.setPalette(0);
+    bed.setPalette(0, 1.6);
     expect(uLine().equals(new Color(ICE))).toBe(true);
   });
 });

@@ -511,8 +511,8 @@ export class PlantRenderer {
    * At once is no flash (FR-UI-11): the signature always arrives with no plant on screen, in the placement frame
    * before its render (API_SPEC §1.10 rule 4), and the bed's loss draws an empty garden first (BedRenderSystem).
    */
-  setPalette(paletteSeed: number): void {
-    setPalette(this.palette, paletteSeed);
+  setPalette(paletteSeed: number, reverbRt60: number): void {
+    setPalette(this.palette, paletteSeed, reverbRt60);
     for (let shape = 0; shape < this.meshes.length; shape++) {
       const mesh = this.meshes[shape]!;
       for (let index = 0; index < mesh.count; index++) {

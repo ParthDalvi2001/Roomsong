@@ -1831,7 +1831,7 @@ Do this part last in this block. The flag `fakeDay=+7` makes the garden a week o
 
 - The ripple runs once each time the bed is placed: at every Enter, and after "Re-place bed". It is over in 4 s. To see it again, leave the session and enter.
 - From the moment the bed lands: at 0.3 s the table (0.6 s, out from the bed across the table), at 1.5 s the nearest wall (1.0 s, up from its foot), at 2.7 s the ceiling (0.8 s, from above the bed to its far side); `room:tuned` at 4.0 s. Each is a thin cream crest, 4 cm wide, led by a 6 cm dark band (so it shows on a light table), leaving a 1 s afterglow in the room's own tint.
-- Captions, one at a time, only for a surface the headset found: "Table: seeds." (in the session that hands out a new garden's first seeds) or "Table: a note." (every other session), "Walls: a note.", "Ceiling: mood.". Each is up from its sweep's start to the next one's: 1.2, 1.2 and 1.3 s. A caption appears where you look and stays at that spot in the room.
+- Captions, one at a time, only for a surface the headset found: "Table: seeds." (in the session that hands out a new garden's first seeds) or "Table: a note." (every other session), "Walls: a note.", "Ceiling: minor mood." ("major mood." or "open mood." under a higher ceiling). Each is up from its sweep's start to the next one's: 1.2, 1.2 and 1.3 s. A caption appears where you look and stays at that spot in the room.
 - A room the app could not read (level 3 or 4, "Wanderer") gets one ripple on the bed and no caption. With reduced motion each surface glows for 0.4 s in the same order, with the same captions.
 
 #### Steps

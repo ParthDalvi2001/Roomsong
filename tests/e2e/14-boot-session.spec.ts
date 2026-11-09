@@ -372,7 +372,7 @@ test('a3 a system that throws on every frame does not stop the frames, and runs 
       raise: () =>
         world
           .createEntity()
-          .addComponent(Caption, { key: 'rippleCeiling', expiresAt: core.clock.now() + 60_000 }),
+          .addComponent(Caption, { key: 'rippleCeilingMinor', expiresAt: core.clock.now() + 60_000 }),
     };
   });
   const threw = () => errors.filter((line) => line.startsWith('[app] CaptionSystem.update threw'));
@@ -402,7 +402,7 @@ test('a3 a system that throws on every frame does not stop the frames, and runs 
     p.mend();
     p.raise();
   });
-  await page.waitForFunction((p) => p.captions.shown === 'rippleCeiling', probe);
+  await page.waitForFunction((p) => p.captions.shown === 'rippleCeilingMinor', probe);
 });
 
 test('a4 the Enter click starts the session and the sound: one audio context, made in the click, and running', async ({

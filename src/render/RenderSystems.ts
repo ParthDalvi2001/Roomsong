@@ -28,7 +28,7 @@ import type { FlashGuard } from './FlashGuard.js';
 import type { SeedMove } from './SeedRenderer.js';
 import type { AudioEngine } from '../audio/index.js';
 import type { EventMap, Hand, StringKey } from '../core/index.js';
-import type { Cell, GardenState, Plant, RoomSignature } from '../garden/index.js';
+import type { Cell, GardenState, ModeId, Plant, RoomSignature } from '../garden/index.js';
 import type { RoomSurfaces, SurfaceRef } from '../room/index.js';
 
 const NOTHING = (): void => {};
@@ -41,6 +41,12 @@ const BACK: Readonly<Record<EventMap['garden:seedBack']['reason'], SeedMove>> = 
   full: 'glide',
   lost: 'jump',
   reset: 'jump',
+};
+/** LLD §5.8 (D-071): the ceiling's caption names the mode its height set; every ModeId has one. */
+const CEILING_CAPTION: Readonly<Record<ModeId, StringKey>> = {
+  minorPent: 'rippleCeilingMinor',
+  majorPent: 'rippleCeilingMajor',
+  susPent: 'rippleCeilingOpen',
 };
 const handIndex = (hand: Hand): number => (hand === 'left' ? 0 : 1);
 
@@ -141,7 +147,7 @@ export class SeedSystem extends createSystem(
         // Planted (its id is in diff.added, and a plant takes its seed's id) or gone with its garden.
         if (this.outId !== null && !this.seeds.has(this.outId)) this.end();
       }),
-      bus.on('room:signature', ({ signature }) => this.seeds.setPalette(signature.paletteSeed)), // D-060
+      bus.on('room:signature', ({ signature }) => this.seeds.setPalette(signature.paletteSeed, signature.reverbRt60)), // D-060
       bus.on('garden:seedOut', ({ seed, hand }) => this.send(seed.id, hand)),
       bus.on('target:hover', ({ hand, target }) => {
         this.hovers[handIndex(hand)] = target?.kind === 'seed' ? target.id : null;
@@ -308,9 +314,9 @@ export class BedRenderSystem extends createSystem(
       bus.on('room:signature', ({ signature }) => {
         this.isTuned = true;
         // D-060: the room's palette for the plants, their petals and the ring lines (ART_PASS_T163 §0)
-        this.plants.setPalette(signature.paletteSeed);
-        this.petals.setPalette(signature.paletteSeed);
-        this.bedRenderer.setPalette(signature.paletteSeed);
+        this.plants.setPalette(signature.paletteSeed, signature.reverbRt60);
+        this.petals.setPalette(signature.paletteSeed, signature.reverbRt60);
+        this.bedRenderer.setPalette(signature.paletteSeed, signature.reverbRt60);
       }),
       bus.on('xr:sessionEnd', () => {
         this.isTuned = false;
@@ -381,7 +387,7 @@ export class BedRenderSystem extends createSystem(
       this.isPlaced = isPlaced;
       this.bedRenderer.setGhost(!isPlaced);
       if (!isPlaced) this.petals.clear(); // nothing stands on a bed that is not placed; the token runs out alone
-      if (!isPlaced) this.bedRenderer.setPalette(0); // the ghost's lines are no room's; the next signature tints them
+      if (!isPlaced) this.bedRenderer.setPalette(0, 0); // the ghost's lines are no room's; the next signature tints them
       this.draw();
     } catch (error) {
       log.error('render', 'the bed could not be drawn as placed or as a ghost', error);
@@ -557,7 +563,7 @@ export class TuningRippleSystem extends createSystem(
     const table = this.starterSeeds ? 'rippleTableSeeds' : 'rippleTableNote';
     this.keys[0] = !isWanderer && surfaces.table !== undefined ? table : null;
     this.keys[1] = !isWanderer && surfaces.nearestWall !== undefined ? 'rippleWalls' : null;
-    this.keys[2] = !isWanderer && surfaces.ceiling !== undefined ? 'rippleCeiling' : null;
+    this.keys[2] = !isWanderer && surfaces.ceiling !== undefined ? CEILING_CAPTION[signature.mode] : null;
     this.takeCaption(); // a ripple started again: the last one's caption goes
     this.startedMs = nowMs;
     this.next = 0;
@@ -574,6 +580,7 @@ export class TuningRippleSystem extends createSystem(
         bedPose: this.bed.matrixWorld.elements,
         isWanderer,
         paletteSeed: signature.paletteSeed,
+        reverbRt60: signature.reverbRt60,
         isReducedMotion: settings.get().reducedMotion,
       },
       nowMs,
@@ -632,7 +639,7 @@ export class VineSystem extends createSystem(
     this.cleanupFuncs.push(
       bus.on('room:features', ({ surfaces }) => void (this.surfaces = surfaces)),
       bus.on('garden:changed', ({ state }) => this.vine.setPlants(state.plants)),
-      bus.on('room:signature', ({ signature }) => this.vine.setPalette(signature.paletteSeed)), // D-060
+      bus.on('room:signature', ({ signature }) => this.vine.setPalette(signature.paletteSeed, signature.reverbRt60)), // D-060
       bus.on('settings:changed', ({ settings: s }) => this.vine.setReducedMotion(s.reducedMotion)),
       bus.on('xr:sessionEnd', () => this.unlay()),
       // Runs inside RoomSystem's removeComponent, where no circuit breaker reaches: it catches its own.

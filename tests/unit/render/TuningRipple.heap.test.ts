@@ -45,6 +45,7 @@ describe('TuningRipple.update per frame (NFR-PERF-08)', () => {
           bedPose: level(0.74),
           isWanderer: false,
           paletteSeed: 7,
+          reverbRt60: 0.6,
           isReducedMotion: isGlow,
         };
         ripple.start(plan, startMs);

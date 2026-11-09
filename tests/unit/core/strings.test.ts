@@ -14,14 +14,17 @@ describe('core/strings', () => {
     }
   });
 
-  it('holds the four tuning-ripple captions of LLD §5.8, inside their limits and naming their surface', () => {
+  it('holds the six tuning-ripple captions of LLD §5.8, inside their limits and naming their surface', () => {
     const ripple = entries.filter(([key]) => key.startsWith('ripple'));
     expect(ripple.map(([, text]) => text)).toEqual([
       'Table: seeds.',
       'Table: a note.',
       'Walls: a note.',
-      'Ceiling: mood.',
+      'Ceiling: minor mood.', // one per mode (D-071)
+      'Ceiling: major mood.',
+      'Ceiling: open mood.',
     ]);
+    expect(RIPPLE_CAPTION_MAX_CHARS).toBeLessThanOrEqual(29); // ui/Captions.ts: the longest that fits unsqueezed
     for (const [key, text] of ripple) {
       expect(text.length, key).toBeLessThanOrEqual(RIPPLE_CAPTION_MAX_CHARS);
       expect(text.split(' ').length, key).toBeLessThanOrEqual(RIPPLE_CAPTION_MAX_WORDS);

@@ -152,8 +152,8 @@ export class VineRenderer {
    * On `room:signature`: the plants' palette (D-060). It waits until no piece is drawn: a Re-place lets the vine
    * shrink away, and the next placement's signature may come while it still shows. Set-up.
    */
-  setPalette(paletteSeed: number): void {
-    setPalette(this.next, paletteSeed);
+  setPalette(paletteSeed: number, reverbRt60: number): void {
+    setPalette(this.next, paletteSeed, reverbRt60);
     this.isStale = true;
     if (this.mesh.count === 0) this.takePalette();
   }
