@@ -10,7 +10,7 @@
 import { CircleGeometry, Color, InstancedBufferAttribute, InstancedMesh, ShaderMaterial } from 'three';
 
 import { settings } from '../core/index.js';
-import { cellCentre, RINGS, STEPS, UNDO_LIFE_MS } from '../garden/index.js';
+import { cellCentre, kindOf, RINGS, STEPS, UNDO_LIFE_MS } from '../garden/index.js';
 
 import {
   BURST_MS,
@@ -34,7 +34,7 @@ import {
   PLANT_REST_BRIGHTNESS,
 } from './config.js';
 import { CREAM_RGB, glsl } from './outline.js';
-import { newPalette, plantColour, setPalette } from './palette.js';
+import { kindColour, newPalette, setPalette } from './palette.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { Hand, Vec3 } from '../core/index.js';
@@ -195,7 +195,12 @@ export class PetalRenderer {
    * BURST_PETALS - 1 more drift from around it to the cell over BURST_MS, and only the petal stays. Without it the
    * petal is there at once. Reduced motion: no burst and no drift; the petal fades in over PETAL_FADE_IN_MS.
    */
-  show(plantId: string, plant: Pick<Plant, 'cell' | 'hue'>, untilMs: number, from: Vec3 | null = null): void {
+  show(
+    plantId: string,
+    plant: Pick<Plant, 'cell' | 'voice' | 'family'>,
+    untilMs: number,
+    from: Vec3 | null = null,
+  ): void {
     const { ring, step } = plant.cell;
     const isOnBed =
       Number.isInteger(ring) &&
@@ -226,8 +231,8 @@ export class PetalRenderer {
     matrix[slot * 16 + 15] = 1;
     this.widthM[slot] = PETAL_START_DIAMETER_M;
     this.resize(slot);
-    // The plant's own colour at a plant's rest brightness (the palette is written in sRGB, UX §5), fully there.
-    plantColour(colour, plant.hue, PLANT_LIGHTNESS, this.palette).toArray(this.unit, slot * 3);
+    // The colour of the plant's kind at a plant's rest brightness (the palette is written in sRGB, UX §5), fully there.
+    kindColour(colour, kindOf(plant), PLANT_LIGHTNESS, this.palette).toArray(this.unit, slot * 3);
     colour.multiplyScalar(PLANT_REST_BRIGHTNESS).toArray(this.colours.array, slot * 4);
     this.colours.array[slot * 4 + 3] = 1;
     this.colours.needsUpdate = true;

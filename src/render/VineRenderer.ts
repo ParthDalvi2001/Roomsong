@@ -12,6 +12,8 @@ import {
   type Object3D,
 } from 'three';
 
+import { kindOf } from '../garden/index.js';
+
 import {
   PLANT_CAPACITY,
   PLANT_LIGHTNESS,
@@ -24,7 +26,7 @@ import {
   VINE_SWAY_M,
   VINE_WALL_MAX_M,
 } from './config.js';
-import { newPalette, plantColour, setPalette } from './palette.js';
+import { kindColour, newPalette, setPalette } from './palette.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { Mat4 } from '../core/index.js';
@@ -135,14 +137,14 @@ export class VineRenderer {
     this.hasWall = true;
   }
 
-  /** The garden: its plant count sets the vine's length, and its plants' hues colour the pieces in turn. */
+  /** The garden: its plant count sets the vine's length, and its plants' kinds colour the pieces in turn. */
   setPlants(plants: readonly Plant[]): void {
     this.share = Math.min(1, plants.length / PLANT_CAPACITY);
     this.plants = plants;
     if (plants.length === 0) return;
     const colours = this.mesh.instanceColor!;
     for (let i = 0; i < VINE_SEGMENTS; i++) {
-      plantColour(colour, plants[i % plants.length]!.hue, PLANT_LIGHTNESS, this.palette);
+      kindColour(colour, kindOf(plants[i % plants.length]!), PLANT_LIGHTNESS, this.palette);
       colours.setXYZ(i, colour.r, colour.g, colour.b);
     }
     colours.needsUpdate = true;

@@ -29,7 +29,7 @@ describe('PetalRenderer.update per frame (NFR-PERF-08)', () => {
       for (let ring = 0; ring < RINGS; ring++) {
         for (let step = 0; step < STEPS; step++) {
           const id = `p${ring * STEPS + step}`;
-          petals.show(id, { cell: { ring, step }, hue: step / STEPS }, startMs + UNDO_LIFE_MS);
+          petals.show(id, { cell: { ring, step }, voice: 'bell' }, startMs + UNDO_LIFE_MS);
         }
       }
     };
@@ -83,8 +83,8 @@ describe('PetalRenderer.update per frame (NFR-PERF-08)', () => {
           for (let i = 0; i < RINGS * STEPS; i++) {
             const plant = {
               cell: { ring: Math.floor(i / STEPS), step: i % STEPS },
-              hue: (i % STEPS) / STEPS,
-            };
+              voice: 'bell',
+            } as const;
             petals.show(`p${i}`, plant, startMs + UNDO_LIFE_MS, from);
           }
         };

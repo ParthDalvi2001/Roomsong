@@ -24,7 +24,7 @@ import {
   RIM_WARN_ALPHA,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
-import { newPalette, plantColour } from '../../../src/render/palette.js';
+import { kindColour, newPalette } from '../../../src/render/palette.js';
 import { PlantRenderer } from '../../../src/render/PlantRenderer.js';
 import { mulberry32 } from '../audio/prng.js';
 import { plant } from '../garden/fixtures.js';
@@ -38,11 +38,10 @@ const FRAME_MS = 1000 / 72;
 const EXACT_M = 1e-6; // the instance buffers are 32-bit: a micrometre is exact here
 /** Ease-out (UX §5): the share of a glide's way done after `elapsedMs` of REVERT_LERP_MS. */
 const eased = (elapsedMs: number): number => 1 - (1 - Math.min(1, elapsedMs / REVERT_LERP_MS)) ** 2;
-const HUE = 0.25; // the fixture's
 const HELD: readonly [number, number] = [2, 4];
 const GLOWING = PLANT_REST_BRIGHTNESS * (1 + PLANT_HOVER_LIFT);
 const stemOf = (height: number): number => PLANT_STEM_MIN_M + (PLANT_STEM_MAX_M - PLANT_STEM_MIN_M) * height;
-const full = plantColour(new Color(), HUE, PLANT_LIGHTNESS, newPalette()).r;
+const full = kindColour(new Color(), 'bell', PLANT_LIGHTNESS, newPalette()).r; // the fixture's kind
 
 interface Bed {
   renderer: PlantRenderer;

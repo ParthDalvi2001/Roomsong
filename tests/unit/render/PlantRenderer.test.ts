@@ -2,7 +2,7 @@ import { Color, DoubleSide, Group, Matrix4, Vector3 } from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { MS_PER_DAY, settings } from '../../../src/core/index.js';
-import { cellCentre, STEPS } from '../../../src/garden/index.js';
+import { cellCentre, SEED_KINDS, STEPS } from '../../../src/garden/index.js';
 import {
   CREAM,
   FLASH_CAP_PER_S,
@@ -30,18 +30,20 @@ import {
   PLANT_WHORL_LOBE_DEPTH,
 } from '../../../src/render/config.js';
 import { FlashGuard } from '../../../src/render/FlashGuard.js';
-import { newPalette, plantColour, setPalette } from '../../../src/render/palette.js';
+import { kindColour, newPalette, setPalette } from '../../../src/render/palette.js';
 import { PlantRenderer } from '../../../src/render/PlantRenderer.js';
 import { mulberry32 } from '../audio/prng.js';
 import { fullBedExcept, plant } from '../garden/fixtures.js';
 
 import { changeTimes, mostInAnyClip, mostInOneSecond, type Drawn as Sample } from './changes.js';
 
-import type { Plant } from '../../../src/garden/index.js';
+import type { Plant, SeedKind } from '../../../src/garden/index.js';
 
 const FRAME_MS = 1000 / 72;
 
-const SHAPES = ['bell', 'pad', 'pluck', 'bass', 'choir'] as const;
+// The renderer's meshes in their order: the five as built, then the five New kinds (T-193).
+const SHAPES = ['bell', 'pad', 'pluck', 'bass', 'choir', 'bowl', 'chime', 'flute', 'reed', 'hum'] as const;
+const NEW_SHAPES = SHAPES.slice(5);
 type ShapeName = (typeof SHAPES)[number];
 
 /** A silhouette's side outline on a stem of `stemM`, read back from its mesh: radius and height of each row. */
@@ -134,9 +136,9 @@ function at(renderer: PlantRenderer, ring: number, step: number): Drawn | undefi
   return drawn(renderer).find((d) => Math.hypot(d.x - centre.x, d.z - centre.y) < 1e-6);
 }
 
-/** A plant's colour at a brightness, as the renderer should write it: the hue read in sRGB, like the palette. */
-function tint(hue: number, brightness = PLANT_REST_BRIGHTNESS): number[] {
-  return plantColour(new Color(), hue, PLANT_LIGHTNESS, newPalette()).multiplyScalar(brightness).toArray();
+/** A kind's colour at a brightness, as the renderer should write it (T-193); the fixture's plants are bells. */
+function tint(kind: SeedKind = 'bell', brightness = PLANT_REST_BRIGHTNESS): number[] {
+  return kindColour(new Color(), kind, PLANT_LIGHTNESS, newPalette()).multiplyScalar(brightness).toArray();
 }
 
 function expectRgb(actual: number[] | undefined, expected: number[]): void {
@@ -203,55 +205,54 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
     expect(at(renderer, 0, 4)!.stemM).toBeCloseTo(PLANT_STEM_MIN_M);
   });
 
-  it("the colour is the plant's hue on the palette's arc, at its saturation and lightness, at rest brightness", () => {
-    const { renderer } = make([plant('gold', 0, 0, { hue: 0 }), plant('violet', 0, 8, { hue: 1 })]);
-    expectRgb(at(renderer, 0, 0)?.rgb, tint(0));
-    expectRgb(at(renderer, 0, 8)?.rgb, tint(1));
-    expect(at(renderer, 0, 0)!.rgb).not.toEqual(at(renderer, 0, 8)!.rgb);
-    // On screen, at full brightness, the arc's ends and its ice are close to the palette's own gold, ice and violet
-    // (UX §5, ART_PASS_T163 §0 option A): #f4d35e, #48cae4, #9b5de5, within 16 of 255 a channel. Moss (#7dd181,
-    // S 0.48) is drawn greener at the plants' S 0.72, as ART_PASS says, so it is not compared here.
-    const onScreen = (hue: number): number[] =>
+  it("the colour is the kind's (kindColour) at rest brightness, whatever the plant's hue (T-193)", () => {
+    const { renderer } = make([
+      plant('gold', 0, 0, { hue: 0 }),
+      plant('also gold', 0, 8, { hue: 1 }),
+      ...SEED_KINDS.map(({ voice, family }, i) => plant(`k${i}`, 1, i, family ? { voice, family } : { voice })),
+    ]);
+    expectRgb(at(renderer, 0, 0)?.rgb, tint('bell'));
+    expect(at(renderer, 0, 8)!.rgb).toEqual(at(renderer, 0, 0)!.rgb); // two bells, the two ends of the hue
+    SEED_KINDS.forEach(({ kind }, i) => expectRgb(at(renderer, 1, i)?.rgb, tint(kind)));
+    expect(new Set(SEED_KINDS.map((_, i) => at(renderer, 1, i)!.rgb.join())).size).toBe(10);
+    // On screen, at full brightness, the bell and the pad are close to the palette's own gold and ice (UX §5,
+    // ART_PASS_T163 §0 option A): #f4d35e and #48cae4, within 16 and 24 of 255 a channel (ice is L 0.59: drawn at
+    // 0.63, a little lighter).
+    const onScreen = (kind: SeedKind): number[] =>
       new Color()
-        .fromArray(tint(hue, 1))
+        .fromArray(tint(kind, 1))
         .getHexString()
         .match(/../g)!
         .map((pair) => parseInt(pair, 16));
     const near = (actual: number[], palette: number[], within = 16): void =>
       palette.forEach((channel, i) => expect(Math.abs(actual[i]! - channel)).toBeLessThanOrEqual(within));
-    near(onScreen(0), [0xf4, 0xd3, 0x5e]);
-    near(onScreen((190 - 47) / 220), [0x48, 0xca, 0xe4], 24); // ice is L 0.59: drawn at 0.63, a little lighter
-    near(onScreen(1), [0x9b, 0x5d, 0xe5]);
+    near(onScreen('bell'), [0xf4, 0xd3, 0x5e]);
+    near(onScreen('pad'), [0x48, 0xca, 0xe4], 24);
   });
 
-  it('one mesh per silhouette; the five Must voices each have their own, shimmer borrows the pluck', () => {
+  it('one mesh per silhouette, one silhouette per seed kind (T-193); shimmer borrows the pluck', () => {
     const { renderer, parent } = make([
-      plant('a', 0, 0, { voice: 'bell' }),
-      plant('b', 0, 1, { voice: 'pad' }),
-      plant('c', 0, 2, { voice: 'pluck' }),
-      plant('d', 0, 3, { voice: 'bass' }),
-      plant('e', 0, 4, { voice: 'choir' }),
-      plant('f', 0, 5, { voice: 'shimmer' }),
+      ...SEED_KINDS.map(({ voice, family }, i) => plant(`k${i}`, 0, i, family ? { voice, family } : { voice })),
+      plant('f', 0, 10, { voice: 'shimmer' }),
     ]);
     // And the shaping guides (T-147), drawn only while a plant is pulled or dragged off the bed.
     expect(parent.children).toEqual([...renderer.meshes, renderer.whorls, renderer.guides.mesh]);
-    expect(renderer.meshes).toHaveLength(5);
-    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, 1, 2, 1, 1]);
-    expect([0, 1, 2, 3, 4, 5].map((step) => at(renderer, 0, step)!.shape)).toEqual([
-      'bell',
-      'pad',
-      'pluck',
-      'bass',
-      'choir',
-      'pluck',
-    ]);
-    // Five different outlines, each with the head marked for the shader, and one shared material.
+    expect(renderer.meshes).toHaveLength(10);
+    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, 1, 2, 1, 1, 1, 1, 1, 1, 1]);
+    SEED_KINDS.forEach(({ kind }, i) => expect(at(renderer, 0, i)!.shape).toBe(kind));
+    expect(at(renderer, 0, 10)!.shape).toBe('pluck');
+    // Ten different outlines, each with the head marked for the shader, and one shared material.
     const vertexCounts = renderer.meshes.map((mesh) => mesh.geometry.getAttribute('position').count);
-    expect(new Set(vertexCounts).size).toBe(5);
+    expect(new Set(vertexCounts).size).toBe(10);
     for (const mesh of renderer.meshes) {
       expect(mesh.geometry.getAttribute('aHead').count).toBe(mesh.geometry.getAttribute('position').count);
       expect(mesh.material).toBe(renderer.meshes[0]!.material);
     }
+  });
+
+  it("a bass + new plant has the hum's head, whatever the picker hides: HIDDEN_KINDS is not the renderer's (T-193)", () => {
+    const { renderer } = make([plant('h', 0, 0, { voice: 'bass', family: 'new' }), plant('b', 0, 1, { voice: 'bass' })]);
+    expect([at(renderer, 0, 0)!.shape, at(renderer, 0, 1)!.shape]).toEqual(['hum', 'bass']);
   });
 
   it('no plant mesh is culled by the bounds of one plant, and open shapes show their inside', () => {
@@ -268,7 +269,8 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
     // As drawn outside high contrast: the plant half of the index.
     const triangles = (shape: ShapeName): number =>
       renderer.meshes[SHAPES.indexOf(shape)]!.geometry.drawRange.count / 3;
-    expect(SHAPES.map(triangles)).toEqual([240, 200, 112, 216, 252]);
+    expect(SHAPES.map(triangles)).toEqual([240, 200, 112, 216, 252, 192, 144, 240, 80, 224]);
+    for (const shape of NEW_SHAPES) expect(triangles(shape), shape).toBeLessThanOrEqual(252); // API_SPEC §1.8
     const across = (shape: ShapeName): number =>
       2 * Math.max(...outline(renderer, shape, 0.09).map((row) => row.r));
     expect(across('bass')).toBeCloseTo(0.04);
@@ -290,6 +292,33 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
       expect(Math.max(...rows.map((row) => row.y))).toBeCloseTo(stemM + 0.01);
       expect(rows.find((row) => row.y > stemM + 0.009)!.r).toBe(0); // its crown is closed: no hole from above
     }
+  });
+
+  it('the five New heads leave the stem thin where the leaf whorls ride, on every stem (T-193, UX §9.6)', () => {
+    const { renderer } = make();
+    for (const shape of NEW_SHAPES) {
+      for (const stemM of [PLANT_STEM_MIN_M, 0.09, PLANT_STEM_MAX_M]) {
+        for (const share of PLANT_WHORL_AT) {
+          expect(halfWidth(outline(renderer, shape, stemM), share * stemM), `${shape} at ${share}`).toBeLessThanOrEqual(
+            0.004 + 1e-9, // the old stems' radius; the outline is read back from 32-bit buffers
+          );
+        }
+      }
+    }
+  });
+
+  it('by outline alone, no two of the ten shapes are closer than Bell and Pad already are (FR-UI-08, T-193)', () => {
+    const { renderer } = make();
+    const bellAndPad = coincides(renderer, 'bell', 'pad');
+    expect(bellAndPad).toBeCloseTo(0.64, 2);
+    let pairs = 0;
+    for (const [i, one] of SHAPES.entries()) {
+      for (const other of SHAPES.slice(i + 1)) {
+        expect(coincides(renderer, one, other), `${one} and ${other}`).toBeLessThanOrEqual(bellAndPad);
+        pairs++;
+      }
+    }
+    expect(pairs).toBe(45);
   });
 
   it('by outline alone, neither new shape is closer to another than Bell and Pad already are (FR-UI-08)', () => {
@@ -321,7 +350,7 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
 
     show(renderer, [a, b, c]); // add
     expect(drawn(renderer)).toHaveLength(3);
-    expectRgb(at(renderer, 2, 9)?.rgb, tint(0.9));
+    expectRgb(at(renderer, 2, 9)?.rgb, tint());
     expect(at(renderer, 0, 0)).toEqual(before.a);
     expect(at(renderer, 1, 5)).toEqual(before.b);
 
@@ -338,15 +367,17 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
     expect(drawn(renderer)).toHaveLength(1);
     expect(at(renderer, 0, 0)).toBeUndefined();
     expect(at(renderer, 4, 13)).toBeUndefined();
-    expectRgb(at(renderer, 2, 9)?.rgb, tint(0.9));
+    expectRgb(at(renderer, 2, 9)?.rgb, tint());
 
     // A mesh with no plant is hidden (T-165: its program is compiled in the session's first frame anyway).
     const visible = (): boolean[] => [...renderer.meshes, renderer.whorls].map((mesh) => mesh.visible);
-    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, 0, 0, 0, 0]);
-    expect(visible()).toEqual([true, false, false, false, false, renderer.whorls.count > 0]);
+    // So a kind with no plant costs no draw call (T-193: ten kinds, at most 11 draw calls per eye with the whorls).
+    const none = Array.from({ length: 9 }, () => 0);
+    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, ...none]);
+    expect(visible()).toEqual([true, ...none.map(() => false), renderer.whorls.count > 0]);
     show(renderer, []);
-    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([0, 0, 0, 0, 0]);
-    expect(visible()).toEqual([false, false, false, false, false, false]);
+    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([0, ...none]);
+    expect(visible()).toEqual([false, ...none.map(() => false), false]);
   });
 
   it('a full bed is 80 instances, and a bed filled again after it was emptied still is', () => {
@@ -365,10 +396,10 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
     const { renderer } = make(fullBedExcept());
     show(
       renderer,
-      fullBedExcept().map((p) => ({ ...p, id: `new-${p.id}`, hue: 0.9 })),
+      fullBedExcept().map((p) => ({ ...p, id: `new-${p.id}`, voice: 'pad' as const })),
     );
     expect(drawn(renderer)).toHaveLength(PLANT_CAPACITY);
-    for (const instance of drawn(renderer)) expectRgb(instance.rgb, tint(0.9));
+    for (const instance of drawn(renderer)) expectRgb(instance.rgb, tint('pad'));
     // And half of a bed swapped: the 40 that stay keep theirs, the 40 new ones are all drawn.
     const half = fullBedExcept().map((p, i) => (i % 2 ? p : { ...p, id: `swap-${p.id}` }));
     show(renderer, half);
@@ -429,15 +460,15 @@ describe('PlantRenderer.update (FR-UI-07, FR-UI-11)', () => {
     expect(uploads()).toBe(before);
 
     renderer.update(5 / STEPS, 100);
-    expectRgb(at(renderer, 0, 5)?.rgb, tint(0.3, PLANT_FLASH_BRIGHTNESS));
-    expectRgb(at(renderer, 0, 13)?.rgb, tint(0.3));
+    expectRgb(at(renderer, 0, 5)?.rgb, tint('bell', PLANT_FLASH_BRIGHTNESS));
+    expectRgb(at(renderer, 0, 13)?.rgb, tint());
     expect(uploads()).toBe(before + 1);
 
     renderer.update(5 / STEPS, 110); // nothing moved
     expect(uploads()).toBe(before + 1);
 
     renderer.update(Number.NaN, 2000); // the tide stopped: back to rest
-    expectRgb(at(renderer, 0, 5)?.rgb, tint(0.3));
+    expectRgb(at(renderer, 0, 5)?.rgb, tint());
   });
 
   it('a plant keeps its glow and its guard element through setState, also when the plant before it is removed', () => {
@@ -448,23 +479,23 @@ describe('PlantRenderer.update (FR-UI-07, FR-UI-11)', () => {
     // Use up element 0, the first plant's, for this second: three changes, asked for here and not drawn.
     for (const [i, level] of [1, PLANT_REST_BRIGHTNESS, 1].entries()) guard.request(0, level, 1 + i);
     show(renderer, [lit]);
-    expectRgb(at(renderer, 0, 5)?.rgb, tint(0.3, PLANT_FLASH_BRIGHTNESS));
+    expectRgb(at(renderer, 0, 5)?.rgb, tint('bell', PLANT_FLASH_BRIGHTNESS));
     // `lit` is now the first instance of its mesh. Its fade is granted, so it was asked of element 1, its own:
     // asked of element 0, its place in the buffer, it would be refused and the plant would stay bright.
     // (No spy on the guard here: a second kind of guard at update's call site stops V8 inlining it, and the
     // heap test in PlantRenderer.heap.test.ts would then count boxed numbers.)
     renderer.update(Number.NaN, 100);
-    expectRgb(at(renderer, 0, 5)?.rgb, tint(0.3));
+    expectRgb(at(renderer, 0, 5)?.rgb, tint());
   });
 
   it('a new plant on a slot another plant left starts at rest, whatever that plant was doing', () => {
     const { renderer, guard } = make([plant('old', 0, 5, { hue: 0.3 })]);
     renderer.update(5 / STEPS, 0); // the old plant is at full glow
     show(renderer, [plant('new', 2, 13, { hue: 0.6 })]); // gone, and its slot taken at once
-    expectRgb(at(renderer, 2, 13)?.rgb, tint(0.6));
+    expectRgb(at(renderer, 2, 13)?.rgb, tint());
     const uploads = renderer.meshes[0]!.instanceColor!.version;
     renderer.update(5 / STEPS, 10); // the crest is far from step 13: nothing to change, nothing to upload
-    expectRgb(at(renderer, 2, 13)?.rgb, tint(0.6));
+    expectRgb(at(renderer, 2, 13)?.rgb, tint());
     expect(renderer.meshes[0]!.instanceColor!.version).toBe(uploads);
     expect(guard.takePeak()).toBe(1); // only the old plant's rise
   });
@@ -484,8 +515,8 @@ describe('PlantRenderer.update (FR-UI-07, FR-UI-11)', () => {
 });
 
 /** The brightness a plant is drawn at, 0..1: its colour over its colour at full brightness. */
-function level(renderer: PlantRenderer, ring: number, step: number, hue = 0.25): number {
-  return at(renderer, ring, step)!.rgb[0]! / tint(hue, 1)[0]!;
+function level(renderer: PlantRenderer, ring: number, step: number, kind: SeedKind = 'bell'): number {
+  return at(renderer, ring, step)!.rgb[0]! / tint(kind, 1)[0]!;
 }
 
 /** Calls update on every frame of `durationMs` (no tide unless `phase` says so); returns one plant's level per frame. */
@@ -735,7 +766,7 @@ describe('PlantRenderer.setHover (FR-HND-16)', () => {
     expect(fragmentShader).toContain('vShell > 0.5 ? cream : vColour * shade');
     expect(fragmentShader).not.toMatch(/edge|uOutline/); // no blotches on the surface
     show(renderer, [...pair(), plant('pad', 2, 3, { voice: 'pad' })]);
-    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([2, 1, 0, 0, 0]); // the shells follow
+    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([2, 1, 0, 0, 0, 0, 0, 0, 0, 0]); // the shells follow
     expect(drawn()).toEqual(halves.map((half) => 2 * half));
     settings.set({ highContrast: false });
     renderer.update(Number.NaN, 2 * FRAME_MS);
@@ -812,13 +843,13 @@ describe('PlantRenderer look (UX §5, T-163)', () => {
 
 describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
   const DAY = MS_PER_DAY;
-  const HUE = 0.74; // violet: the hue a lighter colour changes most
-  /** A plant of the test's hue, planted at time 0, on ring 2. */
+  const KIND = 'bass'; // indigo: the kind a lighter colour changes most
+  /** A plant of the test's kind, planted at time 0, on ring 2. */
   const aged = (id: string, step: number, over: Partial<Plant> = {}): Plant =>
-    plant(id, 2, step, { plantedAt: 0, hue: HUE, ...over });
+    plant(id, 2, step, { plantedAt: 0, voice: KIND, ...over });
   const STEM_M = (PLANT_STEM_MIN_M + PLANT_STEM_MAX_M) / 2; // the fixture's height is 0.5
-  const colourAt = (lightness: number, brightness: number, hue = HUE): number[] =>
-    plantColour(new Color(), hue, lightness, newPalette()).multiplyScalar(brightness).toArray();
+  const colourAt = (lightness: number, brightness: number, kind: SeedKind = KIND): number[] =>
+    kindColour(new Color(), kind, lightness, newPalette()).multiplyScalar(brightness).toArray();
   const cream = (brightness: number): number[] => new Color(CREAM).multiplyScalar(brightness).toArray();
   const luminance = (rgb: ArrayLike<number>, from = 0): number =>
     0.2126 * rgb[from]! + 0.7152 * rgb[from + 1]! + 0.0722 * rgb[from + 2]!;
@@ -887,7 +918,7 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
       expect.closeTo(PLANT_WHORL_AT[0]),
       expect.closeTo(PLANT_WHORL_AT[1]),
     ]);
-    // Leaves take the plant's hue, lighter than its stem (T-163), and its brightness; blossoms are cream, and their
+    // Leaves take the plant's colour, lighter than its stem (T-163), and its brightness; blossoms are cream, and their
     // plant is lighter.
     expectRgb(whorlsAt(renderer, 2, 2)[1]!.rgb, colourAt(PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     expectRgb(at(renderer, 2, 2)!.rgb, colourAt(PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
@@ -1081,7 +1112,7 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
     const faint = (5 + 2.1) / STEPS;
     let t = 2 * FRAME_MS;
     for (; t < 500; t += FRAME_MS) renderer.update(faint, t);
-    const risen = level(renderer, 2, 5, HUE) - PLANT_REST_BRIGHTNESS;
+    const risen = level(renderer, 2, 5, KIND) - PLANT_REST_BRIGHTNESS;
     expect(risen).toBeGreaterThan(0.08);
     expect(risen).toBeLessThan(FLASH_MIN_DELTA);
     expect(widths(renderer, 5)).toEqual([0, 0]);
@@ -1149,7 +1180,7 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
     // Another garden is restored in which this plant is two days old: one leaf whorl, at once, its own colour.
     show(renderer, [{ ...old, plantedAt: -2 * DAY }], 0);
     expect(widths(renderer, 5)).toEqual([1]);
-    expectRgb(at(renderer, 2, 5)!.rgb, colourAt(PLANT_LIGHTNESS, level(renderer, 2, 5, HUE)));
+    expectRgb(at(renderer, 2, 5)!.rgb, colourAt(PLANT_LIGHTNESS, level(renderer, 2, 5, KIND)));
   });
 
   it('a full bed blooming at once, with a hover and a tint flickering: no plant and no whorl over the cap (FR-UI-11)', () => {
@@ -1163,7 +1194,7 @@ describe('PlantRenderer growth (FR-MUS-09, UX §9.6)', () => {
     // are all bells, so instance i is plant i and its whorls are instances 2i and 2i + 1.
     const plantColours = renderer.meshes[0]!.instanceColor!.array;
     const whorlColours = renderer.whorls.instanceColor!.array;
-    const fullOf = bed.map((p) => luminance(colourAt(PLANT_BLOSSOM_LIGHTNESS, 1, p.hue)));
+    const fullOf = bed.map(() => luminance(colourAt(PLANT_BLOSSOM_LIGHTNESS, 1, 'bell')));
     const seen = Array.from({ length: 80 + 160 }, (): Sample[] => []);
     const look = (t: number): void => {
       for (let i = 0; i < 80; i++) seen[i]!.push({ t, value: luminance(plantColours, i * 3) / fullOf[i]! });
@@ -1251,13 +1282,15 @@ describe('the flash cap, counted second by second from what is drawn (FR-UI-11, 
     let changes = 0;
     for (let seed = 1; seed <= 48; seed++) {
       const random = mulberry32(seed);
-      const hue = random();
-      const plants = [plant('p', 2, Math.floor(random() * STEPS), { plantedAt: 0, hue })];
+      const { kind, voice, family } = SEED_KINDS[Math.floor(random() * SEED_KINDS.length)]!;
+      const plants = [
+        plant('p', 2, Math.floor(random() * STEPS), { plantedAt: 0, voice, ...(family && { family }) }),
+      ];
       const { renderer, guard } = make();
       show(renderer, plants, 3.5 * DAY);
       renderer.update(Number.NaN, 0);
       // The eye's share of the plant's lightest colour: a blossom's colours are part of what is counted.
-      const full = luminance(plantColour(new Color(), hue, PLANT_BLOSSOM_LIGHTNESS, newPalette()).toArray());
+      const full = luminance(kindColour(new Color(), kind, PLANT_BLOSSOM_LIGHTNESS, newPalette()).toArray());
       const drawn: Sample[] = [{ t: 0, value: luminance(at(renderer, 2, plants[0]!.cell.step)!.rgb) / full }];
       const visitMs = random() * 8000;
       const tideFromMs = random() * 4000;
@@ -1285,25 +1318,25 @@ describe('the flash cap, counted second by second from what is drawn (FR-UI-11, 
 
 describe('PlantRenderer.setPalette (UX §5, ART_PASS_T163 §0, D-060)', () => {
   const ROOM = 31 + 25; // with a 1.6 s decay, a room whose signature turns the arc 9° on (render/palette.ts, D-071)
-  const colourIn = (seed: number, hue: number, lightness: number, brightness: number): number[] =>
-    plantColour(new Color(), hue, lightness, setPalette(newPalette(), seed, 1.6))
+  const colourIn = (seed: number, kind: SeedKind, lightness: number, brightness: number): number[] =>
+    kindColour(new Color(), kind, lightness, setPalette(newPalette(), seed, 1.6))
       .multiplyScalar(brightness)
       .toArray();
 
   it("every plant drawn takes the room's colours at once, a blossom's lighter one and its whorls too; so does a new one", () => {
     const { renderer } = make();
     // Two plants a week old: a blossom's colours (and cream whorls) from their first frame.
-    const week = [plant('a', 2, 5, { hue: 0.4, plantedAt: 0 }), plant('b', 1, 3, { hue: 0.9, plantedAt: 0 })];
+    const week = [plant('a', 2, 5, { plantedAt: 0 }), plant('b', 1, 3, { voice: 'pad', family: 'new', plantedAt: 0 })];
     show(renderer, week, 7.5 * MS_PER_DAY);
     renderer.update(Number.NaN, 0);
     renderer.setPalette(ROOM, 1.6);
-    expectRgb(at(renderer, 2, 5)!.rgb, colourIn(ROOM, 0.4, PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
-    expectRgb(at(renderer, 1, 3)!.rgb, colourIn(ROOM, 0.9, PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    expectRgb(at(renderer, 2, 5)!.rgb, colourIn(ROOM, 'bell', PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    expectRgb(at(renderer, 1, 3)!.rgb, colourIn(ROOM, 'reed', PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     show(renderer, [plant('young', 0, 0, { hue: 0.2 })]);
-    expectRgb(at(renderer, 0, 0)!.rgb, colourIn(ROOM, 0.2, PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    expectRgb(at(renderer, 0, 0)!.rgb, colourIn(ROOM, 'bell', PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     // Wanderer again: the plain arc.
     renderer.setPalette(0, 1.6);
-    expectRgb(at(renderer, 0, 0)!.rgb, colourIn(0, 0.2, PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    expectRgb(at(renderer, 0, 0)!.rgb, colourIn(0, 'bell', PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
   });
 });
 

@@ -288,7 +288,7 @@ box('contrast').addEventListener('change', () => {
 });
 box('targets').addEventListener('change', () => {
   const isOn = box('targets').checked;
-  seeds.setSupply(isOn ? [{ id: 'seed', hue: 0.6 }] : []);
+  seeds.setSupply(isOn ? [{ id: 'seed', voice: 'pad' }] : []);
   if (isOn) seeds.follow('seed', SEED_ON_HAND, pageMs, 'jump');
   orb.mesh.visible = isOn;
 });

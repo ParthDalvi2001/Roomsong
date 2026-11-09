@@ -20,7 +20,7 @@ import {
   SUPPLY_ORB_LIFT_M,
   SUPPLY_ORB_RADIUS_M,
 } from '../../../src/render/config.js';
-import { newPalette, plantColour } from '../../../src/render/palette.js';
+import { kindColour, newPalette } from '../../../src/render/palette.js';
 import { SeedRenderer } from '../../../src/render/SeedRenderer.js';
 import { garden, seed } from '../garden/fixtures.js';
 
@@ -231,7 +231,7 @@ describe('SeedSystem: the supply and the seed that is out (API_SPEC §1.10 rule 
 });
 
 describe('SeedSystem: the hover cue on the seed that is out (FR-HND-16, UX §9.1, BUG-007)', () => {
-  const FULL = plantColour(new Color(), 0.4, PLANT_LIGHTNESS, newPalette()); // the fixtures' hue
+  const FULL = kindColour(new Color(), 'pad', PLANT_LIGHTNESS, newPalette()); // the fixtures' kind
   /** The brightness slot 0 (the first seed) is drawn at, from its colour. */
   const brightness = (s: ReturnType<typeof rig>): number => s.mesh.instanceColor!.getX(0) / FULL.r;
   const hover = (hand: Hand, kind: 'seed' | 'plant' | null, id = 's1'): void =>
