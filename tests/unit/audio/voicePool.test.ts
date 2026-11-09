@@ -51,7 +51,14 @@ class TestVoice implements Voice {
   dispose(): void {}
 }
 
-const note = (gain = 1, release = 1000): VoiceParams => ({ hz: 440, gain, release, cutoffMul: 1, detune: 0 });
+const note = (gain = 1, release = 1000): VoiceParams => ({
+  hz: 440,
+  gain,
+  release,
+  cutoffMul: 1,
+  detune: 0,
+  timbre: 0,
+});
 
 function setup(lengthS?: number): {
   ctx: FakeAudioContext;

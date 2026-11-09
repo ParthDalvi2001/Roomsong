@@ -11,6 +11,8 @@ import {
 } from '../config.js';
 import { TODAY, type Recipe } from '../styles.js';
 
+import { playFlute } from './calm.js';
+
 import type { NoteRef, Voice, VoiceParams } from './note.js';
 
 /**
@@ -40,6 +42,7 @@ export class Choir implements Voice {
   ) {}
 
   trigger(time: number, p: VoiceParams, out: AudioNode): void {
+    if (this.r.calmVoices) return playFlute(this.ctx, this.ref.note, time, p, out, this.r);
     const ctx = this.ctx;
     const r = this.r;
     const relTau = p.release / r.choirReleaseTauDiv;

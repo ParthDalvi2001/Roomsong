@@ -36,6 +36,7 @@ const full = (voice: VoiceType, mixDb = MIX_DB) => ({
   release: HEIGHT_RELEASE_S_MAX,
   cutoffMul: 1,
   detune: 0,
+  timbre: 0,
 });
 
 describe('AudioEngine.chordTone (T-142b)', () => {

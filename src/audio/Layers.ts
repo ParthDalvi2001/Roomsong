@@ -161,9 +161,9 @@ function draw(a: number, b: number, c: number): number {
 
 export class Layers {
   /** The plant note `groove` shaped last: the engine plays this one. */
-  readonly note: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 };
+  readonly note: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0 };
   /** The drone or percussion note being played. */
-  private readonly hit: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 };
+  private readonly hit: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0 };
   private readonly breath: BiquadFilterNode;
   private readonly dim: GainNode;
   /** The Listen sweep (§6) is on: the filter breathes its own range, whatever the recipe's. */
@@ -275,6 +275,7 @@ export class Layers {
     n.hz = p.hz;
     n.release = p.release;
     n.detune = p.detune;
+    n.timbre = p.timbre;
     n.cutoffMul =
       r.plant.voice === 'pad'
         ? p.cutoffMul * Math.pow(2, s.padEvolveOctaves * Math.sin((2 * Math.PI * bar) / PAD_EVOLVE_BARS))
@@ -388,6 +389,7 @@ export class Layers {
     h.release = Math.max(HEIGHT_RELEASE_S_MIN, chordS - attack);
     h.cutoffMul = 1;
     h.detune = 0;
+    h.timbre = 0;
     this.hitTime = this.time;
     const v = this.voices as LayerVoices;
     this.atCentre(voice === 'pad' ? v.pad : v.choir);
@@ -461,6 +463,7 @@ export class Layers {
     h.release = p.release;
     h.cutoffMul = p.cutoffMul;
     h.detune = p.detune;
+    h.timbre = p.timbre;
   }
 
   /** Plant `n` (modulo their number) of the engine's lists, step by step; null with no plant. */

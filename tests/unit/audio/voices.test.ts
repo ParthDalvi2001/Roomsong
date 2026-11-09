@@ -61,6 +61,7 @@ const params = (over: Partial<VoiceParams> = {}): VoiceParams => ({
   release: 1,
   cutoffMul: 1,
   detune: 0,
+  timbre: 0,
   ...over,
 });
 
@@ -146,7 +147,7 @@ describe('Note (what the pool compares and steals)', () => {
 describe('Bell (2-operator FM)', () => {
   it('builds two sine oscillators, an index gain and an envelope into `out`, and fills the note', () => {
     const { ctx, ref, out } = setup();
-    new Bell(ctx.audio, ref).trigger(1, params({ hz: 330, detune: 4 }), asNode(out));
+    new Bell(ctx.audio, ref).trigger(1, params({ hz: 330, detune: 4, timbre: 0 }), asNode(out));
 
     const [carrier, mod] = ctx.of('oscillator') as [FakeNode, FakeNode];
     expect(ctx.count('oscillator')).toBe(2);
@@ -228,7 +229,7 @@ describe('Pad (three detuned saws through a low-pass)', () => {
 describe('Pluck (Karplus-Strong strings, cached per pitch and damping step)', () => {
   it('a trigger plays a rendered string through one buffer source and one envelope', () => {
     const { ctx, ref, out } = setup();
-    new Pluck(ctx.audio, ref).trigger(1, params({ detune: 8 }), asNode(out));
+    new Pluck(ctx.audio, ref).trigger(1, params({ detune: 8, timbre: 0 }), asNode(out));
 
     const src = ctx.of('bufferSource')[0] as FakeNode;
     expect(ctx.count('bufferSource')).toBe(1);
@@ -542,7 +543,7 @@ describe('Choir (a pulse through three formant band-passes, with a slow vibrato)
   it('builds the pulse oscillator, three band-passes, a vibrato pair and one envelope into `out`', () => {
     const { ctx, ref, out } = setup();
     const choir = new Choir(ctx.audio, ref);
-    choir.trigger(1, params({ hz: 220, detune: -3 }), asNode(out));
+    choir.trigger(1, params({ hz: 220, detune: -3, timbre: 0 }), asNode(out));
 
     const { source, lfo } = oscillators(ctx);
     const formants = ctx.of('biquad');

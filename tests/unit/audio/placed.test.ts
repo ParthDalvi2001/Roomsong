@@ -203,7 +203,7 @@ describe('preview(plant) (T-147b, UX §3.4)', () => {
         const want = voiceParamsFor(
           at(p, 0.9),
           hzForRing(WANDERER, 2, voice),
-          { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 },
+          { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0 },
           recipe.heightFloorDb,
         );
         expect(note.p.hz).toBeCloseTo(want.hz, 9);

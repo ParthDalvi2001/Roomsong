@@ -84,7 +84,7 @@ describe('voiceParamsFor', () => {
       hue: 0.25,
       plantedAt: 0,
     };
-    const out: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 0, detune: 0 };
+    const out: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 0, detune: 0, timbre: 0 };
     const ret = voiceParamsFor(plant, 329.63, out);
     expect(ret).toBe(out);
     expect(out.hz).toBe(329.63);

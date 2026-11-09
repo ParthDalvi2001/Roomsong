@@ -128,6 +128,8 @@ export interface Recipe {
   counterProbability: number;
   /** §1.8 variations (FR-MUS-11): every VARIATION_BARS bars an octave echo, ghost notes or a swell. */
   variations: boolean;
+  /** Style B's calm voices (voices/calm.ts): synthesized bowls, bansuri and shruti box for the bell, pluck, choir and pad plants. */
+  calmVoices: boolean;
 }
 
 const NO_ACCENTS: readonly number[] = new Array<number>(16).fill(0);
@@ -191,6 +193,7 @@ export const TODAY: Readonly<Recipe> = Object.freeze({
   counterVoice: 'bell',
   counterProbability: 0,
   variations: false,
+  calmVoices: false,
 });
 
 const hits = (kind: PercKind, db: number, steps: readonly number[], everyBars = 1): PercHit[] =>
@@ -273,6 +276,7 @@ export const STYLES: Readonly<Record<SoundStyle, Readonly<Recipe>>> = {
     bellReleaseTauDiv: 3.5,
     stringT60LongS: 3,
     pluckReleaseStartMul: 0.8,
+    calmVoices: true,
     padCutoffOpenMul: 6,
     padFilterQ: 3,
     padDetuneCents: [-10, 0, 10],
@@ -290,13 +294,9 @@ export const STYLES: Readonly<Record<SoundStyle, Readonly<Recipe>>> = {
     breathHighHz: 16000,
     breathBars: 4,
     droneBarsPerChord: 2,
-    droneOctave: 1,
+    droneOctave: -1,
     droneDb: -10,
-    perc: [
-      ...hits('tick', -32, [0, 3, 6, 8, 11, 14]),
-      ...hits('clave', -26, [4, 12]),
-      ...hits('kick', -22, [0]),
-    ],
+    perc: [...hits('kick', -22, [0])],
   },
   /** Deep and ambient: low pads and slow attacks. */
   C: {

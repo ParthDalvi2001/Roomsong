@@ -430,7 +430,7 @@ describe('builds (§1.5) and soft percussion (§1.6)', () => {
 
   it.each([
     ['A', { kick: [0, 8], shaker: [0, 2, 4, 6, 8, 10, 12, 14], tick: [], clave: [], breath: [] }],
-    ['B', { kick: [0], shaker: [], tick: [0, 3, 6, 8, 11, 14], clave: [4, 12], breath: [] }],
+    ['B', { kick: [0], shaker: [], tick: [], clave: [], breath: [] }], // the calm voices' kit: kick only
     ['C', { kick: [0, 2], shaker: [], tick: [], clave: [], breath: [0] }],
   ] as const)('style %s plays its own pattern, from the bed centre', async (style, bar) => {
     const { ctx, run } = await start(style, bells(5));
@@ -441,7 +441,11 @@ describe('builds (§1.5) and soft percussion (§1.6)', () => {
     }
     expect(p.breath).toEqual(bar.breath); // style C's breath: every second bar
     // Every percussion note (the bells are the plants) is placed at the bed's centre: z −0.45 m, x 0.
-    const sources = [...ctx.of('bufferSource'), ...ctx.of('oscillator').filter((o) => o.type === 'custom')];
+    // The kicks by their pitch: style B's calm bowls (the plants here) play custom waves too.
+    const kicks = ctx
+      .of('oscillator')
+      .filter((o) => o.type === 'custom' && o.frequency.last('set')?.value === KICK_START_HZ);
+    const sources = [...ctx.of('bufferSource'), ...kicks];
     const placedAt = (s: FakeNode): number[] => {
       let n = s;
       while (n.kind !== 'panner') n = n.outputs[0] as FakeNode;
@@ -478,11 +482,11 @@ describe('builds (§1.5) and soft percussion (§1.6)', () => {
 
 describe('the styles (§4)', () => {
   it.each(['A', 'B', 'C'] as const)("style %s's recipe reaches every voice's notes", (style) => {
-    const s = STYLES[style];
+    const s = { ...STYLES[style], calmVoices: false }; // B's calm voices: calm.test.ts
     const ctx = new FakeAudioContext();
     const ref = { note: new Note() };
     const out = ctx.createGain() as unknown as AudioNode;
-    const p = { hz: 220, gain: 0.5, release: 1, cutoffMul: 1, detune: 0 };
+    const p = { hz: 220, gain: 0.5, release: 1, cutoffMul: 1, detune: 0, timbre: 0 };
     const made = (fn: () => void): FakeNode[] => {
       const before = ctx.nodes.length;
       fn();

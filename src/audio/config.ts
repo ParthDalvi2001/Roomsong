@@ -388,3 +388,65 @@ export const LISTEN_SEND_ADD = 0.07;
 export const LISTEN_SEND_MAX = 0.35;
 export const LISTEN_GLIDE_IN_S = 1.2;
 export const LISTEN_GLIDE_OUT_S = 0.8;
+
+/**
+ * Style B's calm voices (voices/calm.ts, FR-MUS-04 and FR-MUS-05; Parth and Chinmay, 9 Nov): singing bowls, a bansuri
+ * and a shruti box, all synthesized. Numbers measured on four CC0 recordings (Chinmay's trial, a727b13; none ships):
+ * bowl partials 1 : 2.95 : 5.6 and 1 : 2.86 : 5.4, each mode a doublet a few Hz apart; a bansuri's 2nd harmonic
+ * −22 dB under its first; shruti reeds whose bellows swell over seconds. A plant's `timbre` moves each "U" range.
+ */
+/** Bowl modes 2 and 3 as ratios of the fundamental, and their levels; the large bowl (Bell plant), then the small one (Pluck). */
+export const BOWL_RATIOS: readonly number[] = [2.95, 5.6];
+export const BOWL_AMPS: readonly number[] = [0.5, 0.16];
+export const BOWL2_RATIOS: readonly number[] = [2.86, 5.4];
+export const BOWL2_AMPS: readonly number[] = [0.6, 0.25];
+/** The large bowl sings an octave under the Bell's notes (as the trial's recording did); the small one at them. */
+export const BOWL_OCTAVE_MUL = 0.5;
+/** Each mode is two sines this far apart (the beat, the bowl's slow "wah"): the fundamental's, × (1 + k × this) for mode k. */
+export const BOWL_BEAT_HZ_U: readonly [number, number] = [0.35, 1.25];
+export const BOWL_BEAT_PER_MODE = 0.7;
+/** The second sine of a doublet is this loud against the first: a partial beat, not a tremolo. */
+export const BOWL_PARTNER_LEVEL = 0.45;
+/** Modes 2 and 3 shift together by up to ± this fraction, and are this much louder or quieter (× hue). */
+export const BOWL_RATIO_SPREAD = 0.025;
+export const BOWL_BRIGHT_U: readonly [number, number] = [0.7, 1.3];
+/** Ring: the fundamental's τ = base + release × perS, × U; modes 2 and 3 die this many times faster. */
+export const BOWL_TAU_BASE_S = 0.5;
+export const BOWL_TAU_PER_S = 1;
+export const BOWL_TAU_U: readonly [number, number] = [0.85, 1.15];
+export const BOWL2_TAU_MUL = 0.65;
+export const BOWL_MODE_DECAY: readonly number[] = [1.8, 3];
+/** A soft mallet: this attack, and a high partial at this ratio and level that dies in this τ. */
+export const BOWL_ATTACK_S = 0.006;
+export const BOWL_STRIKE_RATIO = 8.9;
+export const BOWL_STRIKE_LEVEL = 0.25;
+export const BOWL_STRIKE_TAU_S = 0.04;
+export const BOWL_STRIKE_TAIL_TAUS = 8;
+/** The sources stop this many τ after the strike (about −30 dB). */
+export const BOWL_TAIL_TAUS = 3.5;
+/** Levels matched to today's style-B plant of the voice (integrated loudness, the T-144 plant renders). */
+export const BOWL_LEVEL = 0.58;
+export const BOWL2_LEVEL = 0.18;
+/** Bansuri: harmonics 1..4 (cosine terms), a soft attack, delayed vibrato and band-passed breath. */
+export const FLUTE_HARMONICS: readonly number[] = [0, 1, 0.08, 0.035, 0.012];
+export const FLUTE_ATTACK_S = 0.09;
+export const FLUTE_VIBRATO_HZ_U: readonly [number, number] = [4.6, 5.6];
+export const FLUTE_VIBRATO_CENTS_U: readonly [number, number] = [7, 13];
+export const FLUTE_VIBRATO_DELAY_S = 0.35;
+export const FLUTE_VIBRATO_RISE_S = 0.6;
+/** Breath: noise band-passed at × the note (× hue), this Q; louder for the chiff, then the sustained level, × U. */
+export const FLUTE_BREATH_MUL = 3;
+export const FLUTE_BREATH_Q = 0.9;
+export const FLUTE_BREATH_CHIFF = 0.3;
+export const FLUTE_BREATH_LEVEL = 0.08;
+export const FLUTE_BREATH_TAU_S = 0.12;
+export const FLUTE_BREATH_U: readonly [number, number] = [0.8, 1.25];
+export const FLUTE_NOISE_S = 1;
+export const FLUTE_LEVEL = 0.23;
+/** Shruti box: two reeds ± a spread in cents and one an octave up, a soft low-pass, a bellows swell. */
+export const REED_SPREAD_CENTS_U: readonly [number, number] = [2, 6];
+export const REED_CUTOFF_MUL = 5;
+export const REED_ATTACK_S = 0.8;
+export const BELLOWS_HZ_U: readonly [number, number] = [0.15, 0.35];
+export const BELLOWS_DEPTH = 0.12;
+export const REED_LEVEL = 0.5;

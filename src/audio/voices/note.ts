@@ -15,6 +15,8 @@ export interface VoiceParams {
   cutoffMul: number;
   /** Cents, −8..+8 (from hue). */
   detune: number;
+  /** A plant's own 30-bit hash of its id and cell (mapping.ts plantTimbre); 0 for a note that is no plant's. */
+  timbre: number;
 }
 
 /** API_SPEC §1.2. Internal to audio/. `out` is the input of the voice channel the pool assigned (LLD §7.1). */
@@ -33,8 +35,10 @@ export class Note {
   /** Silent from here on: the sources have stopped. 0 = never used. */
   endTime = 0;
   private env: GainNode | null = null;
-  /** Three slots: the most sources a voice has (the Pad's saws). */
-  private readonly sources: (AudioScheduledSourceNode | null)[] = [null, null, null];
+  /** Eight slots: the most sources a voice has (a calm bowl's seven). */
+  private readonly sources: (AudioScheduledSourceNode | null)[] = new Array<AudioScheduledSourceNode | null>(
+    8,
+  ).fill(null);
   private count = 0;
   private peak = 0;
   private decayAt = 0;

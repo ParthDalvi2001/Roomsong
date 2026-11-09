@@ -5,6 +5,8 @@
 import { BELL_FM_INDEX_TAU_S, BELL_TAIL_TAUS } from '../config.js';
 import { TODAY, type Recipe } from '../styles.js';
 
+import { playBowl } from './calm.js';
+
 import type { NoteRef, Voice, VoiceParams } from './note.js';
 
 export class Bell implements Voice {
@@ -15,6 +17,7 @@ export class Bell implements Voice {
   ) {}
 
   trigger(time: number, p: VoiceParams, out: AudioNode): void {
+    if (this.r.calmVoices) return playBowl(this.ctx, this.ref.note, time, p, out, true);
     const ctx = this.ctx;
     const r = this.r;
     const carrier = ctx.createOscillator();
