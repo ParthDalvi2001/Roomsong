@@ -255,7 +255,7 @@ const FLOATING_M = EYE_HEIGHT_M - 0.35; // FR-ROOM-01 level 4 (BUG-053, was 0.25
 const TABLE_CENTRE = { x: 0, y: 0.74, z: -0.5 }; // of the table room
 // The requirement's numbers, spelled out on purpose (room/config.ts holds the module's constants).
 const PLANE_WAIT_MS = 3000;
-const HIT_WAIT_MS = 6000; // D-060 item 12, was 10 s
+const HIT_WAIT_MS = 10000; // D-074, was 6 s (D-060 item 12)
 /** LLD §3.3 D: the one frame of a placement may take this much script time. */
 const PLACED_FRAME_BUDGET_MS = 50;
 
@@ -439,7 +439,7 @@ test('T-128c c2 level 3: the ghost and its caption, a dwell that floats nothing,
   });
   await enterXR(page);
   await heardOf(page, probe, 'room:placementLevel');
-  // Few frames from here to the pinch: under software rendering 6 s of level 3 are not many, and a wait that runs
+  // Few frames from here to the pinch: under software rendering 10 s of level 3 are not many, and a wait that runs
   // out over the table also gives level 3, which would make the pinch a no-op the test could not tell apart.
   await xrFrames(page, 5);
 
@@ -483,7 +483,7 @@ test('T-128c c2 level 3: the ghost and its caption, a dwell that floats nothing,
   const events = await heard(probe);
   expect(typesOf(events).slice(0, 3)).toEqual(['room:placementLevel', 'room:bedPlaced', 'room:features']);
   const placed = only(events, 'room:bedPlaced');
-  // Placed by the pinch: after it, and before the 6 s of level 3 could have run out.
+  // Placed by the pinch: after it, and before the 10 s of level 3 could have run out.
   expect(placed.frame - pinchedAt).toBeGreaterThanOrEqual(1);
   expect(placed.frame - pinchedAt).toBeLessThanOrEqual(2); // the solver's frame, then the placed step
   expect(placed.atMs - start.atMs).toBeLessThan(HIT_WAIT_MS);

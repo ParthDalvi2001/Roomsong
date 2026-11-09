@@ -35,9 +35,10 @@ export const SURFACE_EYE_CLEARANCE_M = 0.25;
 
 /** FR-ROOM-01, LLD §5.5: levels 1 and 2 together wait this long for a plane. The caller passes it to `run()`. */
 export const PLANE_LEVELS_TIMEOUT_MS = 3000;
-/** FR-ROOM-01: level 3 waits this long for the pinch that confirms. 6 s, was 10 s (D-060 item 12): the first-sound
- *  budget is then 5 + 3 + 6 + the planting, under FR-UI-02's 20 s. */
-export const HIT_TEST_TIMEOUT_MS = 6000;
+/** FR-ROOM-01: level 3 waits this long for the pinch that confirms. 10 s again (Parth, 9 Nov, D-074: on a Quest 3 with
+ *  no scan 6 s ran out before players looked at the table and pinched); 6 s from D-060 item 12 to 9 Nov. Worst first
+ *  sound with nobody pinching: about 22 s (5 + 3 + 10 + the planting), over FR-UI-02's 20 s; a pinch ends it at once. */
+export const HIT_TEST_TIMEOUT_MS = 10000;
 /** FR-ROOM-14: how long the no-room notice is asked to stay. It ends as the tutorial's first caption comes
  *  (room:tuned, 4 s after room:features), so neither waits for the other. */
 export const NO_ROOM_NOTICE_MS = 4000;

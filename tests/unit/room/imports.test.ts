@@ -124,7 +124,7 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
       FLOATING_DROP_M: 0.35, // BUG-053, was 0.25
       SURFACE_EYE_CLEARANCE_M: 0.25,
       PLANE_LEVELS_TIMEOUT_MS: 3000,
-      HIT_TEST_TIMEOUT_MS: 6000, // D-060 item 12, was 10 000
+      HIT_TEST_TIMEOUT_MS: 10000, // D-074 (9 Nov), was 6 000 from D-060 item 12
       GHOST_EASE_MS: 100, // UX §9.2
       NO_ROOM_NOTICE_MS: 4000, // FR-ROOM-14, D-068
       NO_ROOM_READ_MS: 500, // BUG-045
