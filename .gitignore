@@ -52,3 +52,7 @@ pids/
 __pycache__/
 # Devpost gallery drafts: kept on disk, not in git (Parth, 9 Nov)
 evidence/gallery/
+# Evidence binaries and screenshots stay off git (screenshots may show an email; the repo is public)
+specs/06-release/evidence/**/*.mov
+specs/06-release/evidence/**/*.tar
+specs/06-release/evidence/**/*.png
