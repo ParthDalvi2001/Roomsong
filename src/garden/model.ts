@@ -2,6 +2,12 @@
 import type { Settings } from '../core/index.js';
 
 export type VoiceType = 'bell' | 'pad' | 'pluck' | 'bass' | 'choir' | 'shimmer'; // shimmer = Should (S5)
+/**
+ * The ten seed kinds (T-193, D-076): a voice in a library, the five as built (Old) and the calm sibling of each (New).
+ * Derived by kindOf (rules.ts) from `voice` and `family`, never stored (D-077).
+ */
+export type SeedKind =
+  'bell' | 'pluck' | 'choir' | 'pad' | 'bass' | 'bowl' | 'chime' | 'flute' | 'reed' | 'hum';
 
 export interface Cell {
   ring: number; // 0..4, 0 = inner ring
@@ -10,12 +16,14 @@ export interface Cell {
 export interface Seed {
   id: string;
   voice: VoiceType;
+  family?: 'new'; // the New library (D-077); an Old seed has no such key, never `undefined`
   hue: number; // 0..1, fixed at creation
   receivedAt: number;
 }
 export interface Plant {
   id: string;
   voice: VoiceType;
+  family?: 'new'; // copied from the seed; absent = Old
   cell: Cell;
   height: number; // 0..1
   hue: number; // copied from the seed; not shapeable (C3)

@@ -4,9 +4,15 @@
 import { Color, SRGBColorSpace } from 'three';
 import { describe, expect, it } from 'vitest';
 
-import { REVERB_RT60_STEPS_S } from '../../../src/garden/index.js';
-import { PALETTE_TURN_DEG, PLANT_LIGHTNESS, PLANT_SATURATION } from '../../../src/render/config.js';
-import { newPalette, plantColour, setPalette } from '../../../src/render/palette.js';
+import { REVERB_RT60_STEPS_S, SEED_KINDS } from '../../../src/garden/index.js';
+import {
+  KIND_HUE_DEG,
+  NEW_KIND_SATURATION_DROP,
+  PALETTE_TURN_DEG,
+  PLANT_LIGHTNESS,
+  PLANT_SATURATION,
+} from '../../../src/render/config.js';
+import { kindColour, kindSwatch, newPalette, plantColour, setPalette } from '../../../src/render/palette.js';
 
 const hueDeg = (colour: Color): number => colour.getHSL({ h: 0, s: 0, l: 0 }, SRGBColorSpace).h * 360;
 const ROOM_SEED = 0x0fe2778b; // the small desk's (LLD §5.8): the middle saturation
@@ -71,5 +77,45 @@ describe('the palette (D-060, D-071)', () => {
     expect(hueDeg(plantColour(colour, 0.5, PLANT_LIGHTNESS, room))).toBeCloseTo(166, 3);
     const hsl = plantColour(colour, 0.5, PLANT_LIGHTNESS, room).getHSL({ h: 0, s: 0, l: 0 }, SRGBColorSpace);
     expect(hsl.l).toBeCloseTo(PLANT_LIGHTNESS, 4);
+  });
+
+  it("the ten kinds are ten colours in every room, on 32°–282°, and a swatch is its kind's colour (T-193)", () => {
+    const colour = new Color();
+    const kinds = SEED_KINDS.map((row) => row.kind);
+    // Wanderer, then the six rooms (one per decay step, so every turn) at each of the hash's three saturations.
+    const rooms: [seed: number, decay: number][] = [[0, 0.9]];
+    for (const decay of REVERB_RT60_STEPS_S)
+      for (const seed of [ROOM_SEED, 0xccfb3565, 2 << 9]) rooms.push([seed, decay]);
+    expect(new Set(rooms.map(([seed]) => setPalette(newPalette(), seed, 0.3).saturation.toFixed(2)))).toEqual(
+      new Set(['0.72', '0.66', '0.78']),
+    );
+    for (const [seed, decay] of rooms) {
+      const room = setPalette(newPalette(), seed, decay);
+      const swatches = kinds.map((kind) => kindSwatch(kind, seed, decay));
+      expect(new Set(swatches).size, `seed ${seed}, decay ${decay}`).toBe(10);
+      for (const [i, kind] of kinds.entries()) {
+        const drawn = kindColour(colour, kind, PLANT_LIGHTNESS, room);
+        expect(swatches[i], kind).toBe(`#${drawn.getHexString(SRGBColorSpace)}`);
+        expect(hueDeg(drawn), kind).toBeGreaterThanOrEqual(32 - 1e-3);
+        expect(hueDeg(drawn), kind).toBeLessThanOrEqual(282 + 1e-3);
+      }
+    }
+    // Wanderer: each kind at its own hue; the Old kinds at the plants' saturation, the New ones softer by the drop.
+    const wanderer = newPalette();
+    for (const row of SEED_KINDS) {
+      const hsl = kindColour(colour, row.kind, PLANT_LIGHTNESS, wanderer).getHSL(
+        { h: 0, s: 0, l: 0 },
+        SRGBColorSpace,
+      );
+      expect(hsl.h * 360, row.kind).toBeCloseTo(KIND_HUE_DEG[row.kind], 3);
+      const drop = row.family === 'new' ? NEW_KIND_SATURATION_DROP : 0;
+      expect(hsl.s, row.kind).toBeCloseTo(PLANT_SATURATION - drop, 4);
+      expect(hsl.l, row.kind).toBeCloseTo(PLANT_LIGHTNESS, 4);
+    }
+    expect(PLANT_SATURATION - NEW_KIND_SATURATION_DROP).toBeCloseTo(0.5, 12);
+    // A room turns all ten together: the hall's +15° on every kind.
+    const hall = setPalette(newPalette(), ROOM_SEED, 2.0);
+    for (const kind of kinds)
+      expect(hueDeg(kindColour(colour, kind, PLANT_LIGHTNESS, hall))).toBeCloseTo(KIND_HUE_DEG[kind] + 15, 3);
   });
 });

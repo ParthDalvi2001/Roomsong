@@ -12,6 +12,8 @@ export {
 export { FlashGuard } from './FlashGuard.js';
 export { BedRenderer } from './BedRenderer.js';
 export { PlantRenderer } from './PlantRenderer.js';
+/** T-193: the seed picker's swatch, the colour render draws that kind in. ui/ reads it; it loads nothing new. */
+export { kindSwatch } from './palette.js';
 export { stepGlow, TideRenderer } from './TideRenderer.js';
 export { PetalRenderer } from './PetalRenderer.js';
 export { createPerfHud, PerfSampler } from './PerfHud.js';

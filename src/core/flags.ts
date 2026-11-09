@@ -15,6 +15,7 @@ const BOOLEAN_FLAGS = [
   'window',
   'timeLapse',
   'handCue', // T-175: read only by dev-build code (render's loadHandCue), so a production build draws nothing
+  'presetSeeds', // T-193: no seed picker; every palm-up hands out the supply's next seed as it is (the browser tests)
 ] as const;
 type BooleanFlag = (typeof BOOLEAN_FLAGS)[number];
 
@@ -46,6 +47,7 @@ export const DEFAULT_FLAGS: Flags = Object.freeze({
   window: false,
   timeLapse: false,
   handCue: false,
+  presetSeeds: false,
   forceLevel: null,
   fakeDay: 0,
   seed: null,

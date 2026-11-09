@@ -1,3 +1,7 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
 import { RIPPLE_CAPTION_MAX_CHARS, RIPPLE_CAPTION_MAX_WORDS } from '../../../src/core/config.js';
@@ -92,7 +96,49 @@ describe('core/strings', () => {
       'putControllersDown',
       'noRoomScan',
     ]; // T-152 and the 23 Oct audit: instructions, each with its gaze or window twin
-    const failures = entries.filter(([k]) => !/^(ripple|place|onboard)/.test(k) && !notices.includes(k));
+    // kind*, lib* and pickSeed*: the seed picker's names and its two lines (T-193).
+    const failures = entries.filter(
+      ([k]) => !/^(ripple|place|onboard|kind|lib|pickSeed)/.test(k) && !notices.includes(k),
+    );
     for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);
+  });
+
+  it('holds the ten kind names and the two library names on twelve adjacent lines, and no other file has a kind name (T-193)', () => {
+    const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+    const read = (file: string): string => readFileSync(join(root, file), 'utf8');
+    const named = entries.filter(([key]) => /^(kind|lib)/.test(key));
+    expect(named.map(([key]) => key)).toEqual([
+      ...['kindBell', 'kindPluck', 'kindChoir', 'kindPad', 'kindBass'],
+      ...['kindBowl', 'kindChime', 'kindFlute', 'kindReed', 'kindHum'],
+      ...['libOld', 'libNew'],
+    ]);
+    expect([STRINGS.libOld, STRINGS.libNew]).toEqual(['Old', 'New']);
+    const kinds = named.slice(0, 10).map(([, text]) => text);
+    expect(new Set(kinds).size).toBe(10);
+    for (const name of kinds) expect(name.length, name).toBeLessThanOrEqual(14); // the board's name column at 50 px
+
+    // One line each and nothing between them: a rename is these twelve lines.
+    const lines = read('src/core/strings.ts').split('\n');
+    const at = named.map(([key, text]) => lines.indexOf(`  ${key}: '${text}',`));
+    expect(at[0]).toBeGreaterThan(0);
+    expect(at).toEqual(at.map((_, i) => at[0]! + i));
+
+    const files = ['src', 'tests']
+      .flatMap((dir) =>
+        readdirSync(join(root, dir), { recursive: true, encoding: 'utf8' }).map((f) => join(dir, f)),
+      )
+      .filter((file) => file.endsWith('.ts') && file !== join('src', 'core', 'strings.ts'));
+    expect(files.length).toBeGreaterThan(100);
+    for (const file of files) {
+      const source = read(file);
+      for (const name of kinds) expect(source.includes(name), `${name} in ${file}`).toBe(false);
+    }
+  });
+
+  it('holds the two lines of the seed picker (T-193, UX §3.6), six words at most', () => {
+    expect(STRINGS.pickSeed).toBe('Pick a seed');
+    expect(STRINGS.pickSeedLookUp).toBe('Look up to pick a seed');
+    expect(STRINGS.pickSeedLookUp.split(' ').length).toBeLessThanOrEqual(6); // FR-UI-01
+    expect(STRINGS.pickSeedLookUp.length).toBeLessThanOrEqual(29); // ui/Captions.ts: the longest that fits unsqueezed
   });
 });

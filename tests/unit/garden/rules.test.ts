@@ -4,20 +4,24 @@ import { NEW_PLANT_HEIGHT } from '../../../src/garden/config.js';
 import {
   cellCentre,
   heightAfterPull,
+  HIDDEN_KINDS,
+  kindOf,
   movePlant,
   nearestFreeCell,
   plantSeed,
   removePlant,
+  SEED_KINDS,
   setAnchor,
   setBedHeightOffset,
   setHeight,
+  setSeedKind,
   snapToCell,
   undoRemove,
 } from '../../../src/garden/index.js';
 
 import { deepFreeze, fullBedExcept, garden, plant, seed } from './fixtures.js';
 
-import type { Cell, GardenState, Result } from '../../../src/garden/index.js';
+import type { Cell, GardenState, Result, SeedKind, VoiceType } from '../../../src/garden/index.js';
 
 const NOW = 1_760_000_000_000;
 // Not cells of the bed: rings 5 and 6 are the old 7-ring layout (TC-PER-04).
@@ -436,5 +440,83 @@ describe('garden/rules and the bed height (TC-GAR-08, FR-UI-10)', () => {
     ];
     for (const next of results)
       expect(next).toMatchObject({ bedHeightOffset: -0.1, bedInner: 0.12, bedOuter: 0.3 });
+  });
+});
+
+describe('garden/rules seed kinds (T-193, D-077)', () => {
+  const VOICES: VoiceType[] = ['bell', 'pad', 'pluck', 'bass', 'choir', 'shimmer'];
+  const KINDS = SEED_KINDS.map((row) => row.kind);
+
+  it('kindOf gives one of the ten kinds for all six voices in both libraries, whatever HIDDEN_KINDS holds', () => {
+    const answers = (): SeedKind[] =>
+      VOICES.flatMap((voice) => [kindOf({ voice }), kindOf({ voice, family: 'new' })]);
+    const shown = answers();
+    for (const kind of shown) expect(KINDS).toContain(kind);
+    expect(new Set(shown).size).toBe(10); // and every kind is some voice's
+    // A rule, not a search of the table: every row is its own kind, shimmer counts as pluck, and what the types
+    // rule out (a save from another build) still gets a kind.
+    for (const row of SEED_KINDS) expect(kindOf(row)).toBe(row.kind);
+    expect([kindOf({ voice: 'shimmer' }), kindOf({ voice: 'shimmer', family: 'new' })]).toEqual([
+      'pluck',
+      'chime',
+    ]);
+    expect(kindOf({ voice: 'bell', family: 'old' as never })).toBe('bell');
+    expect(KINDS).toContain(kindOf({ voice: 'kazoo' as never }));
+
+    // Hiding takes a kind off the picker only: with every kind hidden, and with none, the answers are the same.
+    const hidden = HIDDEN_KINDS as SeedKind[];
+    const before = [...hidden];
+    try {
+      hidden.splice(0, hidden.length, ...KINDS);
+      expect(answers()).toEqual(shown);
+      hidden.length = 0;
+      expect(answers()).toEqual(shown);
+    } finally {
+      hidden.splice(0, hidden.length, ...before);
+    }
+    expect(HIDDEN_KINDS).toEqual(before);
+  });
+
+  it('plantSeed copies the library: a New seed gives a New plant, an Old seed a plant with no family key', () => {
+    const before = garden([], [{ ...seed('s1', 'bell'), family: 'new' }, seed('s2', 'bell')]);
+    const first = value(plantSeed(before, 's1', { ring: 0, step: 0 }, NOW));
+    expect(first.plants[0]).toStrictEqual({
+      id: 's1',
+      voice: 'bell',
+      cell: { ring: 0, step: 0 },
+      height: NEW_PLANT_HEIGHT,
+      hue: 0.4,
+      plantedAt: NOW,
+      family: 'new',
+    });
+    const second = value(plantSeed(first, 's2', { ring: 0, step: 1 }, NOW));
+    expect('family' in second.plants[1]!).toBe(false);
+    expect(second.plants.map(kindOf)).toEqual(['bowl', 'bell']);
+  });
+
+  it('setSeedKind rewrites one seed and never its input; an Old kind leaves no family key', () => {
+    const before = garden([plant('a', 0, 0)], [seed('s1', 'pad'), seed('s2', 'bell')]); // deep-frozen: a write throws
+    const toNew = deepFreeze(setSeedKind(before, 's1', 'chime'));
+    expect(toNew.seeds).toStrictEqual([
+      { id: 's1', voice: 'pluck', family: 'new', hue: 0.4, receivedAt: 500 },
+      seed('s2', 'bell'),
+    ]);
+    expect(toNew.seeds[1]).toBe(before.seeds[1]);
+    expect(toNew.plants).toBe(before.plants);
+    expect(before.seeds[0]).toStrictEqual(seed('s1', 'pad'));
+
+    // New to Old: the key goes (toStrictEqual tells a missing key from an undefined one), or the calm voice would stay.
+    const toOld = setSeedKind(toNew, 's1', 'bass');
+    expect(toOld.seeds[0]).toStrictEqual({ id: 's1', voice: 'bass', hue: 0.4, receivedAt: 500 });
+    expect('family' in toOld.seeds[0]!).toBe(false);
+    expect(toNew.seeds[0]).toHaveProperty('family', 'new');
+    for (const kind of KINDS) expect(kindOf(setSeedKind(toNew, 's1', kind).seeds[0]!)).toBe(kind);
+
+    // Nothing to change: the state itself comes back.
+    expect(setSeedKind(before, 's1', 'pad')).toBe(before);
+    expect(setSeedKind(toNew, 's1', 'chime')).toBe(toNew);
+    expect(setSeedKind(before, 'nope', 'bell')).toBe(before);
+    expect(setSeedKind(before, 'a', 'bell')).toBe(before); // a plant's id is no seed's
+    expect(setSeedKind(before, 's1', 'kazoo' as never)).toBe(before);
   });
 });

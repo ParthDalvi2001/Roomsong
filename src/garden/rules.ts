@@ -1,10 +1,17 @@
 // The pure reducers of planting and shaping (API_SPEC §1.1). None mutates its input, reads a clock or throws
 // on a bad argument. A refusal is a Result; where the contract returns a GardenState, a call that changes
 // nothing returns the state it was given (the same reference), which is how a caller tells.
-import { BED_HEIGHT_OFFSET_MAX_M, NEW_PLANT_HEIGHT, PULL_RANGE_M, RINGS, STEPS } from './config.js';
+import {
+  BED_HEIGHT_OFFSET_MAX_M,
+  NEW_PLANT_HEIGHT,
+  PULL_RANGE_M,
+  RINGS,
+  SEED_KINDS,
+  STEPS,
+} from './config.js';
 import { cellAt } from './snap.js';
 
-import type { Cell, GardenState, PlacementLevel, Plant, Result, UndoToken } from './model.js';
+import type { Cell, GardenState, PlacementLevel, Plant, Result, Seed, SeedKind, UndoToken } from './model.js';
 
 const CELL_COUNT = RINGS * STEPS;
 // Scratch of nearestFreeCell, which runs per frame while a hand hovers and so allocates nothing.
@@ -23,7 +30,44 @@ function withPlant(s: GardenState, old: Plant, next: Plant): GardenState {
 }
 
 /**
- * Plants a seed of the supply in a cell (FR-MUS-01). The plant takes the seed's id, voice and hue, and `now`
+ * The kind of a seed or plant (T-193). A rule, never a search of SEED_KINDS or HIDDEN_KINDS, so it answers for every
+ * voice in both libraries whatever the picker offers. Pluck's branch also takes shimmer (Should S5), which keeps the
+ * pluck's shape (UX §9.5). Creates nothing.
+ */
+export function kindOf(of: Pick<Seed, 'voice' | 'family'>): SeedKind {
+  const isNew = of.family === 'new';
+  switch (of.voice) {
+    case 'bell':
+      return isNew ? 'bowl' : 'bell';
+    case 'choir':
+      return isNew ? 'flute' : 'choir';
+    case 'pad':
+      return isNew ? 'reed' : 'pad';
+    case 'bass':
+      return isNew ? 'hum' : 'bass';
+    default:
+      return isNew ? 'chime' : 'pluck';
+  }
+}
+
+/**
+ * Makes a seed of the supply the given kind (the seed picker, T-193): its voice and library become the kind's row
+ * of SEED_KINDS; id, hue and receivedAt stay. An Old kind leaves no `family` key. `s` itself for an unknown seed or
+ * kind, and when the seed is that voice and library already.
+ */
+export function setSeedKind(s: GardenState, seedId: string, kind: SeedKind): GardenState {
+  const seed = s.seeds.find((x) => x.id === seedId);
+  const row = SEED_KINDS.find((r) => r.kind === kind);
+  if (seed === undefined || row === undefined) return s;
+  if (seed.voice === row.voice && seed.family === row.family) return s;
+  // Built field by field: a spread of a New seed would carry `family` into an Old kind.
+  const next: Seed = { id: seed.id, voice: row.voice, hue: seed.hue, receivedAt: seed.receivedAt };
+  if (row.family === 'new') next.family = 'new';
+  return { ...s, seeds: s.seeds.map((x) => (x === seed ? next : x)) };
+}
+
+/**
+ * Plants a seed of the supply in a cell (FR-MUS-01). The plant takes the seed's id, voice, library and hue, and `now`
  * (ms on core's clock) as plantedAt; seed ids are never reused (D-031).
  * `notFound`: the cell is not on the bed.
  */
@@ -43,6 +87,7 @@ export function plantSeed(s: GardenState, seedId: string, cell: Cell, now: numbe
     hue: seed.hue,
     plantedAt: now,
   };
+  if (seed.family === 'new') plant.family = 'new'; // an Old plant gets no key (D-077): old saves stay as they were
   return {
     ok: true,
     value: { ...s, plants: [...s.plants, plant], seeds: s.seeds.filter((x) => x !== seed) },
