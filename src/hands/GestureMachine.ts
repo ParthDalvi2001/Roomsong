@@ -246,13 +246,18 @@ export class GestureMachine {
       const kept = this.hoverEvent.target;
       this.sight.along = 0;
       let picked = isHeldPlant ? this.held : pickTarget(frame.pinchPos, context.candidates, kept);
-      // D-062, first device run: nothing at the fingertips: the seed resting on this palm is the hover, for everyone.
-      // Players pinch with the hand that holds the seed and carry it down to the bed.
-      if (picked === null && state === 'IDLE') {
-        picked = pickTarget(frame.palmPos, context.candidates, kept, 'seed'); // a plant by the palm does not block it
-      }
-      if (picked === null && context.eye !== undefined && (state === 'IDLE' || state === 'PRESSED')) {
-        picked = pickPastHand(context.eye, frame.pinchPos, context.candidates, kept, this.sight);
+      if (picked === null) {
+        const eye = state === 'IDLE' || state === 'PRESSED' ? context.eye : undefined;
+        const seen = eye === undefined ? null : pickPastHand(eye, frame.pinchPos, context.candidates, kept, this.sight);
+        // D-062, first device run: nothing at the fingertips: the seed resting on this palm is the hover, for everyone.
+        // Players pinch with the hand that holds the seed and carry it down to the bed. BUG-042: a panel control seen
+        // past the hand comes first (Exit, in one-hand mode); a plant or petal seen there does not.
+        const seed =
+          state === 'IDLE' && (seen === null || seen.kind !== 'panel')
+            ? pickTarget(frame.palmPos, context.candidates, kept, 'seed') // a plant by the palm does not block it
+            : null;
+        if (seed !== null) this.sight.along = 0;
+        picked = seed ?? seen;
       }
       this.setHover(picked, null);
       return;

@@ -247,7 +247,8 @@ export class HandSystem extends createSystem({
 
     // The pose is the entity's own transform (LLD §3); an entity without one is not a placed bed.
     this.context.bedPose = this.bed?.object3D?.matrixWorld.elements ?? null;
-    const head = this.player.head.matrixWorld.elements;
+    // BUG-043: outside a session there is no head pose and the camera is the view (the garden window moves it alone).
+    const head = (this.xrManager.isPresenting ? this.player.head : this.camera).matrixWorld.elements;
     this.headAt.x = head[12];
     this.headAt.y = head[13];
     this.headAt.z = head[14];

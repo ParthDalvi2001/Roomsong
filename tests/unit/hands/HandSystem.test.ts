@@ -104,6 +104,7 @@ function rig() {
     frame: {} as XRFrame | null,
     space: {} as XRReferenceSpace | null,
     session: { name: 'the session' } as unknown as XRSession | null,
+    isPresenting: true, // false in the garden window, which never presents
     getFrame: () => xr.frame,
     getReferenceSpace: () => xr.space,
     getSession: () => xr.session,
@@ -111,8 +112,11 @@ function rig() {
   const created: FakeEntity[] = [];
   // A level head at 1.20 m looking down -z (T-148: the Listen poses read it). Column-major.
   const head = { matrixWorld: { elements: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1.2, 0, 1] } };
+  // The camera stands elsewhere than the head: in a session it is the head's pose a frame late, outside it the view.
+  const camera = { matrixWorld: { elements: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1.3, 0.4, 1] } };
   const world = {
     player: { head },
+    camera,
     renderer: { xr },
     createEntity: () => {
       const entity = new FakeEntity();
@@ -883,6 +887,19 @@ describe('HandSystem.useSource: the garden window (T-114b, LLD §11)', () => {
     for (let i = 0; i < 5; i++) r.frame();
     expect(r.pinches).toEqual(['right undefined']); // on open ground: no target
     expect(r.heard).toEqual(['gesture:release right']);
+    r.stopAll();
+  });
+
+  it('the eyes are the camera outside a session, the only thing the window moves, and the head in one (BUG-043)', () => {
+    const r = windowRig();
+    r.xr.frame = null;
+    r.xr.isPresenting = false;
+    r.frame();
+    expect(r.context().eye).toMatchObject({ x: 0, y: 1.3, z: 0.4 });
+    r.xr.frame = {} as XRFrame;
+    r.xr.isPresenting = true;
+    r.frame();
+    expect(r.context().eye).toMatchObject({ x: 0, y: 1.2, z: 0 });
     r.stopAll();
   });
 
