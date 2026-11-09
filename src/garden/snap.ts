@@ -2,7 +2,15 @@
 // Frame (D-029): bed-local +x is the seated user's right and +z points toward the user. A bed-local Vec2 is
 // that horizontal plane, x = x and y = z, so step 0 is at +x and step 4 is nearest the user.
 // All three functions run per frame while a hand hovers: they allocate nothing.
-import { BED_INNER, BED_OUTER, RINGS, STEPS, ZONE_INNER_MARGIN_M, ZONE_OUTER_MARGIN_M } from './config.js';
+import {
+  BED_INNER,
+  BED_OUTER,
+  RINGS,
+  SEED_CATCH_MARGIN_M,
+  STEPS,
+  ZONE_INNER_MARGIN_M,
+  ZONE_OUTER_MARGIN_M,
+} from './config.js';
 
 import type { BedZone, Cell } from './model.js';
 import type { Vec2 } from '../core/index.js';
@@ -38,13 +46,14 @@ export function bedZone(bedLocal: Vec2): BedZone {
 
 /**
  * The nearest cell to a bed-local point (FR-MUS-01); null when bedZone is not 'bed'. It has no memory.
- * `fillsHole` (a carried seed, BUG-055): a point in the inner hole snaps to the innermost ring at its angle, so a
- * seed let go over the middle of the ring is planted and does not fly home. A point that is not finite stays null.
+ * `carriesSeed` (BUG-055): for a carried seed the inner hole snaps to the innermost ring and a point up to
+ * SEED_CATCH_MARGIN_M outside BED_OUTER to the outermost one, at the point's angle, so a seed let go near the
+ * ring is planted and does not fly home. Farther out, and for a point that is not finite, it stays null.
  */
-export function snapToCell(bedLocal: Vec2, fillsHole = false): Cell | null {
-  const zone = bedZone(bedLocal);
+export function snapToCell(bedLocal: Vec2, carriesSeed = false): Cell | null {
   const len = Math.sqrt(bedLocal.x * bedLocal.x + bedLocal.y * bedLocal.y);
-  if (zone === 'outer' || !Number.isFinite(len) || (zone === 'inner' && !fillsHole)) return null;
+  if (!Number.isFinite(len)) return null;
+  if (carriesSeed ? len > BED_OUTER + SEED_CATCH_MARGIN_M : bedZone(bedLocal) !== 'bed') return null;
   const t = (len - BED_INNER) / (BED_OUTER - BED_INNER);
   const ring = Math.round(Math.min(1, Math.max(0, t)) * (RINGS - 1));
   const turn = Math.round(Math.atan2(bedLocal.y, bedLocal.x) / STEP_RAD); // -8..8

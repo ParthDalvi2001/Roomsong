@@ -12,6 +12,12 @@ export const STEPS = 16;
 export const ZONE_INNER_MARGIN_M = 0.03;
 /** FR-HND-11: a point farther out than BED_OUTER plus this is off the bed (zone 'outer'). */
 export const ZONE_OUTER_MARGIN_M = 0.05;
+/**
+ * BUG-055: a carried seed let go up to this far outside BED_OUTER is still planted, on the outermost ring. On the
+ * 10 Nov headset run 17 of 20 seeds that flew home were let go within 0.50 m of the bed centre, most where the
+ * palm was, just outside the ring. Beyond it a seed goes home, which is the way to hand one back.
+ */
+export const SEED_CATCH_MARGIN_M = 0.2;
 
 /** FR-UI-10: the bed is raised or lowered by at most this many metres. persistence/ takes its bound from here.
  *  0.2, was 0.1 (BUG-054: the Height stepper ran out after five presses). */
