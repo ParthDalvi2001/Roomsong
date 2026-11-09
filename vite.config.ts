@@ -166,6 +166,24 @@ const emulatorRoom: Plugin = {
 // &ghost=1 too, tests/tools/headset-ghost.ts, which plays the shaky-hands scenes with pretend hands in the room.
 // Same origin; not in the build (`apply: 'serve'`).
 const SNAP_MAX_BYTES = 4_000_000;
+const REC_MAX_BYTES = 1_000_000;
+/** BUG-048: a `/__rec` body is lines the recorder writes, each a JSON object with a numeric `t` and a string `kind`. */
+export function isRecBody(body: string): boolean {
+  return body.split('\n').every((line) => {
+    try {
+      const value: unknown = JSON.parse(line);
+      return (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        typeof (value as { t?: unknown }).t === 'number' &&
+        typeof (value as { kind?: unknown }).kind === 'string'
+      );
+    } catch {
+      return false;
+    }
+  });
+}
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const headsetRecorder: Plugin = {
   name: 'roomsong-headset-recorder',
@@ -184,14 +202,19 @@ const headsetRecorder: Plugin = {
   configureServer: (server) => {
     const dir = join(ROOT, '.tmp/headset');
     mkdirSync(dir, { recursive: true });
+    // Anyone on the network can post here too: only a POST of recorder lines within the size is written (BUG-048).
     server.middlewares.use('/__rec', (req, res) => {
-      let body = '';
+      const chunks: Buffer[] = [];
+      let size = 0;
       req.on('data', (chunk: Buffer) => {
-        if (body.length < 1_000_000) body += chunk.toString();
+        size += chunk.length;
+        if (size <= REC_MAX_BYTES) chunks.push(chunk);
       });
       req.on('end', () => {
-        appendFileSync(join(dir, 'rec.jsonl'), `${body}\n`);
-        res.statusCode = 204;
+        const body = Buffer.concat(chunks).toString();
+        const isValid = req.method === 'POST' && size <= REC_MAX_BYTES && isRecBody(body);
+        if (isValid) appendFileSync(join(dir, 'rec.jsonl'), `${body}\n`);
+        res.statusCode = isValid ? 204 : 400;
         res.end();
       });
     });
