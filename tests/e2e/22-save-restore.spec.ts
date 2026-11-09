@@ -423,7 +423,7 @@ test('e3 TC-E2E-06 a new day: a reload with fakeDay=+1 gives garden:grown and ex
   await probe.evaluate((p, cells) => cells.forEach((cell) => p.plant(cell)), CELLS);
   await expect.poll(() => probe.evaluate((p) => p.stored()).then((s) => s?.plants.length)).toBe(2);
 
-  await page.goto('/?flags=fakeDay=+1');
+  await page.goto('/?flags=fakeDay=+1,presetSeeds');
   probe = await probeSave(page);
   await enterAndVisit(page, probe, 2);
   const heard = await probe.evaluate((p) => p.heard);

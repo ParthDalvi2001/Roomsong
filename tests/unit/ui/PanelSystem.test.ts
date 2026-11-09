@@ -704,13 +704,13 @@ describe('PanelSystem: the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
     frame();
     expect(system.panel.open).toBe(true);
     expect(mesh('settings-panel').visible).toBe(true);
-    expect(ids()).toEqual(['lib:old', 'lib:new', 'close', 'seed:bowl', 'seed:chime', 'seed:flute', 'seed:reed']);
+    expect(ids()).toEqual(['lib:old', 'lib:new', 'close', 'seed:bowl', 'seed:chime', 'seed:flute', 'seed:reed', 'seed:hum']);
     const bowl = system.panel.controls().find((c) => c.id === 'seed:bowl')!;
     expect(bowl.fill).toMatch(/^#[0-9a-f]{6}$/);
     expect(bowl.fill).toBe(kindSwatch('bowl', WANDERER.paletteSeed, WANDERER.reverbRt60));
     emit('garden:seedAsk', { hand: 'left' }); // while open: nothing
     frame();
-    expect(ids()).toHaveLength(7);
+    expect(ids()).toHaveLength(8);
     press('seed:bowl');
     expect(asked).toEqual(['ui tick', 'pick bowl']);
     expect(system.panel.open).toBe(false);

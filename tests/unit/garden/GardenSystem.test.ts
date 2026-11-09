@@ -1478,6 +1478,14 @@ describe('garden/GardenSystem: the seed picker (T-193, API_SPEC §1.10 rule 8)',
     expect(early.state().seeds).toEqual([seed('s1')]);
   });
 
+  it('BUG-056: with the supply empty a palm-up asks nothing, so no board opens over onboarding\'s "No seeds left"', () => {
+    // OnboardingSystem says it on its own gesture:palmUp listener, whatever the picker (its BUG-056 tests).
+    const s = inSession(saved(bedOf(SEED_PICK_MIN_PLANTS)));
+    s.system.setPicking(true);
+    for (let i = 0; i < 3; i++) s.palmUp(i % 2 === 0 ? 'left' : 'right');
+    expect(s.seen).toEqual([]);
+  });
+
   it('the gaze order: palm-up, pick, palm-up and plant by one hand with no pinch; a palm-up 600 ms later asks', () => {
     const s = picking();
     s.palmUp('right'); // a dwell on a free cell is a palm-up (GazeDwell): the board opens

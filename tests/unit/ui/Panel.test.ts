@@ -825,7 +825,6 @@ const offered = (lib: 'old' | 'new') =>
 describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
   it('shows two library tabs, Close and one swatch per kind on offer, each with its name beside it; no control on the bottom row', () => {
     const panel = seedsOpened();
-    expect(HIDDEN_KINDS).toContain('hum'); // so the New library has a free place
     const check = (lib: 'old' | 'new') => {
       const rows = offered(lib);
       expect(ids(panel)).toEqual(['lib:old', 'lib:new', 'close', ...rows.map((row) => `seed:${row.kind}`)]);

@@ -158,8 +158,8 @@ export const SEED_KINDS: readonly Readonly<{
   { kind: 'reed', voice: 'pad', family: 'new', name: 'kindReed' },
   { kind: 'hum', voice: 'bass', family: 'new', name: 'kindHum' },
 ]);
-/** The kinds the picker does not offer and `pick` refuses. `hum` until its voice is merged and Parth has rated it. */
-export const HIDDEN_KINDS: readonly SeedKind[] = ['hum'];
+/** The kinds the picker does not offer and `pick` refuses. None: `hum` goes back in if Parth rates it under 3 of 5. */
+export const HIDDEN_KINDS: readonly SeedKind[] = [];
 /**
  * FR-UI-02: with picking on, a palm-up asks for a kind once the bed has this many plants; below it the seed comes as
  * it is, so the first sound keeps its time. 3 is the agreed fallback if the timed first loop runs over 90 s.
