@@ -141,6 +141,7 @@ function rig() {
   vi.spyOn(system.hits, 'setFrame').mockImplementation(note('hits.setFrame'));
   const setFrame = vi.spyOn(system.anchors, 'setFrame').mockImplementation(note('anchors.setFrame'));
   vi.spyOn(system.planes, 'supported').mockImplementation(() => room.planes !== 'unsupported');
+  vi.spyOn(system.hits, 'supported').mockReturnValue(true);
   const readPlanes = vi
     .spyOn(system.planes, 'read')
     .mockImplementation(() => (room.planes === 'unsupported' ? [] : room.planes));
@@ -1227,7 +1228,7 @@ describe('RoomSystem: replace() with the real solver, the player chooses the spo
     expect(r.bedNow().pose).toEqual(at(0, 0.74, -0.4));
   });
 
-  it('with no hit-test a replace floats the bed at once: level 4, no ghost and no wait', async () => {
+  it('with no hit-test there is no aim: a replace runs the whole chain and the bed is back on the table, no ghost', async () => {
     const r = rig();
     await r.place();
     withRealSolver(r, { hit: 'unsupported' });
@@ -1237,8 +1238,11 @@ describe('RoomSystem: replace() with the real solver, the player chooses the spo
     expect(r.bedNow()).toMatchObject({ isShown: false, hasHint: false });
     await betweenFrames();
     r.frame();
-    expect(levels(r)).toEqual([{ level: 4 }]);
-    expect(r.events[1]!.payload).toEqual({ placement: FLOATING, restored: false });
+    expect(levels(r)).toEqual([{ level: 1 }]);
+    expect(r.events[1]!.payload).toMatchObject({
+      placement: { level: 1, surfaceId: A_PLANE.id },
+      restored: false,
+    });
   });
 });
 

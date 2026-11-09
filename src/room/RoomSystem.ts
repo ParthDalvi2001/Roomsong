@@ -221,7 +221,8 @@ export class RoomSystem extends createSystem() {
   private clear(stage: Stage): void {
     this.turn++;
     this.stage = stage;
-    this.chainFrom = stage === 'replacing' ? 3 : 1;
+    // No hit-test, no aim: such a replace runs the whole chain and the room places the bed, as before T-194.
+    this.chainFrom = stage === 'replacing' && this.hits.supported() ? 3 : 1;
     this.solver.cancel();
     this.answer = undefined;
     this.placement = this.placed = null;
