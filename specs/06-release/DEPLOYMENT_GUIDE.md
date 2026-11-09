@@ -100,5 +100,5 @@ Tags mark commits on `main`; none of them triggers a deploy (§2).
 - **After the deadline:** no rollback. Only §6.
 
 ## 8. Evidence to keep (contest: "retain a copy of your entry")
-- Per release, under `specs/06-release/evidence/<version>/` (the folder is created at the first release): `version.json` as served by both links, a screenshot of the `deploy` run, and a zip of the published `dist/` (the downloaded `github-pages` artifact). Zips and videos there are git-ignored: keep them on Parth's machine and in one offline copy.
+- Per release, under `specs/06-release/evidence/<version>/` (the index of every item, owner and date: `specs/06-release/evidence/README.md`, T-192): `version.json` as served by both links, a screenshot of the `deploy` run, and a zip of the published `dist/` (the downloaded `github-pages` artifact). Zips and videos there are git-ignored: keep them on Parth's machine and in one offline copy.
 - Submission: Git tag `v1.0.0-submission` + that zip + a `specs/` snapshot + the video file + the Devpost confirmation screenshot → `specs/06-release/evidence/submission/` and the offline copy.

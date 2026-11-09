@@ -1,6 +1,6 @@
 # Freeze and Submit Runbook — Roomsong (T-183, T-185, T-187)
 
-**Status:** Approved for use · **Owner:** devops-engineer · **Written:** 2026-10-27 · **Checked:** 2026-11-09 (T-169 prep)
+**Status:** Approved for use · **Owner:** devops-engineer · **Written:** 2026-10-27 · **Checked:** 2026-11-09 (T-169 prep; evidence steps T-192)
 The click-by-click order for the code freeze (15 Nov) and the submit day (17 Nov). The rules behind each step are in
 [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) (cited as "Guide §n"); this file does not repeat them.
 **Parth** pushes `main`, pushes tags and clicks GitHub, Netlify and Devpost. **Claude** prepares `develop`, checks and
@@ -49,8 +49,8 @@ test pages are out of the release build (T-189). Two headsets exist (Parth's Que
 ### 1.4 Put the same build on Netlify (Parth, the same day: the build is kept for 1 day, Guide §1.2; only with a mirror)
 1. Actions → the green `deploy` run → scroll to **Artifacts** → click **github-pages**. It downloads `github-pages.zip`.
 2. Make a folder `~/Roomsong-release/v1.0.0-rc1/` and move the zip into it. Double-click the zip: it gives
-   `artifact.tar`. Double-click that: it gives a folder (`artifact`) with `index.html`, `assets`, `LICENSES` and
-   `version.json` in it (no `proto` since T-189). That folder is the site.
+   `artifact.tar`. Double-click that: it gives a folder (`artifact`) with `index.html`, `assets`, `LICENSES`, `scenes`
+   and `version.json` in it (no `proto` since T-189). That folder is the site.
    (Terminal instead: `cd ~/Roomsong-release/v1.0.0-rc1 && mkdir site && tar -xf artifact.tar -C site`.)
 3. **First time only:** app.netlify.com → **Add new project** (older screens: "Add new site") → **Deploy manually** →
    drag the site folder onto the box. When it says Published, Project configuration → **Change project name** →
@@ -80,11 +80,12 @@ test pages are out of the release build (T-189). Two headsets exist (Parth's Que
 3. Actions → **uptime** → **Run workflow** → Branch `main` → Run. It goes green and its log shows two lines ending in
    "200, Roomsong", one per link. "no mirror yet" means step 2 is missing.
 
-### 1.7 Evidence (Guide §8)
-1. Parth: a screenshot of the green `deploy` run, and `github-pages.zip`, into `specs/06-release/evidence/v1.0.0-rc1/`
-   (the zip is git-ignored: also copy it to the offline drive).
-2. Claude: both `version.json` files as served into the same folder; the build hash into `RELEASE_NOTES.md`; commit on
-   `develop`.
+### 1.7 Evidence (Guide §8; every item, its file name and owner: `specs/06-release/evidence/README.md`)
+1. Parth: a screenshot of the green `deploy` run (`deploy-run.png`), and a copy of `github-pages.zip` (from Downloads,
+   or from `~/Roomsong-release/v1.0.0-rc1/` if §1.4 ran), into `specs/06-release/evidence/v1.0.0-rc1/`. The zip is
+   git-ignored: also copy it to the offline drive. Do not unpack it there (the `.tar` and the folder are not ignored).
+2. Claude: the `version.json` of each link as served (`version-pages.json`, and `version-mirror.json` only with a
+   mirror) into the same folder; the build hash into `RELEASE_NOTES.md`; commit on `develop`.
 
 ### 1.8 An S1 fix after the freeze (the only change allowed, Guide §5)
 Fix on `develop`, then 1.1 to 1.7 again with `rc2` (then `rc3`…). Both links get the new build; the old rc stays
@@ -103,8 +104,9 @@ tagged. Nothing but S1 fixes is merged after 15 Nov.
 4. Straight after: SUBMISSION_CHECKLIST §5, the post-submission smoke test from a private window on another device
    or network.
 5. Lock (§3) the same evening.
-6. Evidence: Guide §8, the submission row (tag, zip, `specs/` snapshot, video, Devpost confirmation screenshot) into
-   `specs/06-release/evidence/submission/` and the offline drive.
+6. Evidence: Guide §8, the submission row (tag, the last rc's zip, `specs/` snapshot, video as `.mp4`, Devpost
+   confirmation screenshot) and the §5 smoke-test screenshots into `specs/06-release/evidence/submission/` and the
+   offline drive (file names and the snapshot command: `specs/06-release/evidence/README.md` rows 24 to 30).
 
 ## 3. Lock (Parth, 17 Nov after submitting; Guide §5)
 1. Settings → Branches → **Add classic branch protection rule** → Branch name pattern `main` → tick **Lock branch** and
@@ -133,7 +135,7 @@ tagged. Nothing but S1 fixes is merged after 15 Nov.
 | `build` → "Run npm run verify" red on a timing or heap test (`… allocate nothing`, `expected 0.10… to be less than 0.1`) | GitHub's machines are slower than the Mac. **Re-run failed jobs**, once. Red again on the same test: stop, tell Claude (BUG_LOG) |
 | `build` red on anything else | Stop. Nothing was published; the site still serves the last good build. Claude fixes on `develop` (Guide §7, before the deadline) |
 | `deploy` says "Waiting" with a **Review deployments** button | The lock of §3 step 2 is on. Click it → tick github-pages → **Approve and deploy**, only if this deploy is meant |
-| Netlify upload fails, or the mirror's `version.json` differs from Pages' | Drag the same site folder again (§1.4 step 4). The Pages artifact is gone after 1 day: the copy in `evidence/<version>/` is the one to upload |
+| Netlify upload fails, or the mirror's `version.json` differs from Pages' | Drag the same site folder again (§1.4 step 4). The Pages artifact is gone after 1 day: unpack the zip kept in `specs/06-release/evidence/<version>/` (or on the offline drive) into `~/Roomsong-release/<version>/` as in §1.4 step 2 and upload that folder |
 | The artifact is gone and there is no copy | Actions → deploy → **Run workflow** → Branch `main` (a rebuild: the same `commit`, a new `builtAt`, Guide §2), then §1.4 and §1.5 for both links |
 | Pages' `version.json` still shows the old commit | Wait 10 minutes and use a new `nocache=` number; Settings → Pages shows when the site was last deployed |
 | A link is down after the deadline | Guide §6 only: the identical build, Parth's approval, a log entry. Undo §3 step 3 first if `deploy` must run, and redo it after |
