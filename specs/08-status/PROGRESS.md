@@ -10,6 +10,8 @@
 > **Pushed (2026-10-17 12:55 IST):** `develop` is on GitHub up to T-172 (the PM's sound fixes), on Parth's word ("FINSIH THE TASK AND VERIFY FAST AND PUSH THE CODE ASAP"): each push follows a verified merge. Verified before that push: `npm run verify` (1806 unit tests) and the coverage gate green; the browser suite 102 of 106 on a loaded Mac, the 4 load-sensitive misses green 12 of 12 when re-run. `main` is pushed by Parth only (go-live step).
 > **This folder is the master copy.** The PM (Chinmay) works on a copy; his proposals go to `PM_PROPOSALS.md`, never into spec files.
 
+> **HANDOVER 2026-11-09 12:56 IST from the old copy (pid 93506, parent 1 after a VS Code restart): it stopped its agents and does nothing more; the newest session drives. develop 3cc754a, not pushed (about 37 ahead of origin/develop; origin/main 5c676b6 is live). verify 1980 green at c9eac75; the full e2e suite has NOT run on today's merges yet (run it alone, E2E_PORT=8391, in .claude/worktrees/driver-check). Unmerged work to resume by id: (1) BUG-049/050 a30d387f4fd276966: code and tests done in its worktree, uncommitted; left: BUG_LOG rows, API_SPEC v1.2.66, specs 20-window/18-listen/15-shaping, verify, commit. (2) Security hardening BUG-046..048 + check-dist gates a65629688049563cb: in progress, was about to run verify. (3) Plan sweep phase 0-4 aa64d0b19e2b048a8 (scrum-master, status docs only): just started. Keep load low: the Mac has 8 cores; restarts came with load 150+.**
+
 ---
 
 ## Now (what is being worked on / next up)
