@@ -9,7 +9,7 @@
 
 ## 0. In one paragraph
 
-Every Must is built, and the core of each was seen on a headset on 7–8 Nov; each still has parts pending device (TEST_PLAN §4.6 "Still to run"). The Should check passes: S1 (room signature) stays in the build, built and seen tuning both headsets' rooms, with the two-room comparison and the re-tune by ear pending device; S3, S6 and FR-MUS-13 are green; S5 (Shimmer) is not built and stays in "What's next". Code left before 12 Nov: T-147b (the shaping audio preview, building) and the T-168 bug bash. Human items left: the headset checks, a new person playing, the self-score decision, the name, and A or B for the tag.
+Every Must is built, and the core of each was seen on a headset on 7–8 Nov; each still has parts pending device (TEST_PLAN §4.6 "Still to run"). The Should check passes: S1 (room signature) stays in the build, built and seen tuning both headsets' rooms, with the two-room comparison and the re-tune by ear pending device; S3, S6 and FR-MUS-13 are green; S5 (Shimmer) is not built and stays in "What's next". Code left before 12 Nov: the T-168 bug bash (T-147b, the shaping audio preview, merged 9 Nov as f858505). Human items left: the headset checks, a new person playing, the self-score decision, the name, and A or B for the tag.
 
 ## 1. Must items (PRD §6)
 
@@ -52,7 +52,7 @@ Not added: "the room tunes the song" (S1 is in); T-147b if it is cut (a detail o
 
 | Row | What is left | Owner | By | Blocks |
 |---|---|---|---|---|
-| T-147b | The live audio preview while shaping: building (Parth "finish all the tasks"); Parth listens once built | backend-dev; Parth | merged by **11 Nov 23:59 IST**, else cut with a DECISIONS_LOG line | M3's last piece |
+| T-147b | The live audio preview while shaping: **merged 9 Nov (f858505)**; Parth listens and rates it (DECISIONS_PENDING 8) | backend-dev; Parth | done | M3's last piece |
 | T-168 | Bug bash: open S1/S2 = 0 (today 0); the code-review pass over the 7–9 Nov changes; S3 if cheap | all devs | 9–11 Nov | the freeze |
 | Headset checks | DECISIONS_PENDING 4 (8 checks; TEST_PLAN §4.6 "Still to run", 10 items). A check not run by 16 Nov stays in "Emulator only so far" | Parth / Chinmay | before 12 Nov where possible; the rest by T-184 | the Devpost tested list |
 | T-166 | A new person plays the first five minutes unaided (DECISIONS_PENDING 5); the plan wants ≥ 3 strangers in ≥ 3 rooms | Parth (+ Chinmay) | 12 Nov | G3 criterion 3 |
@@ -78,7 +78,7 @@ Suggested verdict for 12 Nov if T-168 is at 0 and the §6 step 1 checks are gree
 ## 6. The v0.5.0 tag steps (12 Nov; Parth tags, or says "go")
 
 A tag is a label: it deploys nothing (DEPLOYMENT_GUIDE §5). Agents never push `main`. `<F>` = the freeze commit of step 2. All commands run in `~/Documents/test-pro/Roomsong`.
-1. **Check (driver, 11 Nov evening to 12 Nov morning):** T-147b merged or cut; T-168 closed, BUG_LOG open S1/S2 = 0. On `develop`'s head: `npm run verify`, then the full `npm run test:e2e` (one browser run machine-wide); only BUG-035 and BUG-039 may be re-run once. The soak inside ±5 % and the worst frame inside 60 / 150k / 6 ms. Results in PROGRESS "Test status" with the commit.
+1. **Check (driver, 11 Nov evening to 12 Nov morning):** T-147b merged (done 9 Nov); T-168 closed, BUG_LOG open S1/S2 = 0. On `develop`'s head: `npm run verify`, then the full `npm run test:e2e` (one browser run machine-wide); only BUG-035 and BUG-039 may be re-run once. The soak inside ±5 % and the worst frame inside 60 / 150k / 6 ms. Results in PROGRESS "Test status" with the commit.
 2. **Prepare (driver, on `develop`):** `npm version 0.5.0 --no-git-tag-version` (`package.json` says 0.1.0 today; `version.json` reports it); fill RELEASE_NOTES "v0.5.0 — Feature freeze" (the date, what is in, what was seen on a headset, the known limitations, the §3 list); commit, `npm run verify`; `git rev-parse develop` is `<F>`, written in PROGRESS. Nothing else merges until step 3 is done.
 3. **Parth's go, in one of two forms:**
    - **A ★ (the freeze build goes live, so Chinmay, the new-person test and the 12–15 Nov headset checks run what is frozen):**
@@ -97,7 +97,7 @@ A tag is a label: it deploys nothing (DEPLOYMENT_GUIDE §5). Agents never push `
 
 **PROGRESS "## Gates", the G3 row (now):**
 
-`| G3 freeze | Nov 12 | — (prep refreshed 9 Nov: FEATURE_FREEZE_PREP_2026-11-12.md; the freeze and the v0.5.0 tag on 12 Nov) | Musts 9 of 9 built, the core of each seen on a headset (7–8 Nov), parts pending device. Should check (9 Nov): S1 stays (built, pending device in part); S3, S6, FR-MUS-13 green; S5 not built (What's next). Open S1/S2 0. Left: T-147b by 11 Nov or cut; T-168; a new person plays (DP 5); the self-score re-score and Parth's decision; the name (DP 2); A or B (DP 6). |`
+`| G3 freeze | Nov 12 | — (prep refreshed 9 Nov: FEATURE_FREEZE_PREP_2026-11-12.md; the freeze and the v0.5.0 tag on 12 Nov) | Musts 9 of 9 built, the core of each seen on a headset (7–8 Nov), parts pending device. Should check (9 Nov): S1 stays (built, pending device in part); S3, S6, FR-MUS-13 green; S5 not built (What's next). Open S1/S2 0. Left: T-168; a new person plays (DP 5); the self-score re-score and Parth's decision; the name (DP 2); A or B (DP 6). |`
 
 **SPRINT_PLAN T-169 status:** `doing (9 Nov: prep refreshed, FEATURE_FREEZE_PREP_2026-11-12.md: the Should check passed (S5 to What's next only), What's next fixed, the 12 Nov steps for A and B; the freeze and the tag on 12 Nov)`
 
