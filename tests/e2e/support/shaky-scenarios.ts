@@ -16,6 +16,7 @@ import {
   PALM_UP_NATURAL,
   PANEL_FINGERS_FROM_HEAD_M,
   PLANT_SHORT_M,
+  UNDER_GRACE_GAP_MS,
 } from './shaky-noise.js';
 import { Rig, SETTLE_MS, type Cell, type Driver, type Hand } from './shaky-rig.js';
 
@@ -30,6 +31,8 @@ const PALM_ICON = 4;
 const SEED_MS = 8000;
 /** The longest a press or a release may take to be heard, on a loaded host. */
 const HEARD_MS = 3000;
+/** A slide is played at most this often: a take the host stalls into a real tracking loss is played again. */
+const SLIDE_TAKES = 3;
 const round = (value: number, digits = 3): number => Number(value.toFixed(digits));
 
 /** The player is seated and has both hands at rest; the room has tuned, so a seed can be asked for. */
@@ -143,18 +146,36 @@ async function takePlant(
 async function slide(rig: Rig, facts: Facts, short: number): Promise<void> {
   await seated(rig);
   rig.dropMode('right', 'underGrace');
-  rig.beat(short > 0 ? `Pinch the head by sight, fingers ${short * 100} cm short` : 'Pinch the head');
-  const { id, head } = await takePlant(rig, 'right', { ring: 2, step: 4 }, short);
-  rig.beat('Slide along the ring');
   const to: Cell = { ring: 2, step: 5 };
-  await carry(rig, 'right', rig.sight(rig.cell(to, head.y - rig.cell(to).y), short), 900);
-  await rig.wait(SETTLE_MS);
-  await rig.open('right');
-  await rig.until(
-    () => rig.count('gesture:release', (e) => e.id === id) > 0,
-    HEARD_MS,
-    'The slide was never released',
-  );
+  let id = '';
+  for (let take = 1; ; take++) {
+    rig.beat(short > 0 ? `Pinch the head by sight, fingers ${short * 100} cm short` : 'Pinch the head');
+    const from = performance.now();
+    const taken = await takePlant(rig, 'right', { ring: 2, step: 4 }, short);
+    id = taken.id;
+    rig.beat('Slide along the ring');
+    await carry(rig, 'right', rig.sight(rig.cell(to, taken.head.y - rig.cell(to).y), short), 900);
+    await rig.wait(SETTLE_MS);
+    await rig.open('right');
+    const reverted = () => rig.last('gesture:trackingLost', (e) => e.hand === 'right' && e.t >= from);
+    await rig.until(
+      () => rig.count('gesture:release', (e) => e.id === id) > 0 || reverted() !== null,
+      HEARD_MS,
+      'The slide was never released',
+    );
+    const revert = reverted();
+    if (revert === null) break;
+    const lost = rig.last('hands:lost', (e) => e.hand === 'right' && e.t <= revert.t);
+    const lossMs = lost === null ? 0 : Math.round(revert.t - lost.t);
+    // BUG-052: the rig keeps a held hand's gaps under UNDER_GRACE_GAP_MS, so a longer loss was a frame the busy host
+    // stalled, which the app rightly reverted (FR-HND-15). That take shows nothing about a slide: it is played again.
+    rig.check(
+      lossMs >= UNDER_GRACE_GAP_MS && take < SLIDE_TAKES,
+      `Take ${take} of the slide was reverted after a tracking loss of ${lossMs} ms`,
+    );
+    facts.stalledTakes = take;
+    await rig.wait(SETTLE_MS); // the plant glides back to its cell
+  }
   const release = rig.last('gesture:release', (e) => e.id === id)!;
   facts.gesture = release.gesture!;
   rig.check(release.gesture === 'drag', `A sideways slide ended as ${release.gesture}`);
