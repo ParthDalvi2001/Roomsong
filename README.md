@@ -1,6 +1,8 @@
-# Roomsong
+# SonicSpace
 
 A hands-first mixed-reality music garden that grows on your real table. You plant glowing seeds with a pinch, a ring of light plays them, and your real room tunes the song.
+
+Play it in the Meta Quest Browser: https://parthdalvi2001.github.io/SonicSpace/ (the working name was Roomsong; saved data and code identifiers keep it).
 
 Entry for the Meta VR Start Developer Competition 2026 (Entertainment track, New Experience division). Built for Meta Quest 3 / 3S in the Meta Quest Browser with the Immersive Web SDK, Three.js, TypeScript and the Web Audio API.
 

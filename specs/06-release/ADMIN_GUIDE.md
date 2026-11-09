@@ -1,4 +1,4 @@
-# Admin / Operator Guide — Roomsong
+# Admin / Operator Guide — SonicSpace
 
 **Status:** Living · **Owner:** devops-engineer
 For whoever operates the hosted app (the team). There is no admin UI; "admin" means hosting, flags, diagnostics and reset.
@@ -6,7 +6,7 @@ For whoever operates the hosted app (the team). There is no admin UI; "admin" me
 ---
 
 ## 1. Hosting at a glance
-- Static site on **GitHub Pages**, the submitted URL: `https://parthdalvi2001.github.io/Roomsong/` (D-022; the path is case-sensitive; live once Parth enables Pages, T-108). A Vercel or Netlify mirror serves the same build (host not chosen yet). There is no staging site (DEPLOYMENT_GUIDE §3). *Superseded (D-022, T-108):* "hosting to be chosen", "staging under `/staging/`".
+- Static site on **GitHub Pages**, the submitted URL: `https://parthdalvi2001.github.io/SonicSpace/` (D-022, D-069; the path is case-sensitive; `/Roomsong/` until Parth renames the repository). A Netlify mirror (project `sonicspace`, T-108) serves the same build. There is no staging site (DEPLOYMENT_GUIDE §3). *Superseded (D-022, T-108):* "hosting to be chosen", "staging under `/staging/`".
 - `version.json` beside `index.html` on each link reports `{ version, commit, builtAt }`. Check it first when debugging: both links must show the same values, and `commit` is the commit of `main` that is live.
 - Device test pages `proto/pinch/` (TC-DEV-00) and `proto/spike/` (TC-DEV-0A): not on the public site (T-189), only on a LAN preview built with `ROOMSONG_PROTO=1 npm run build`. Their numbered scripts are `proto/pinch/README.md` and `proto/spike/README.md`. Device runs are pending: no headset yet.
 - No server, no database, no secrets, no service worker (offline mode *Cut (D-011)*).

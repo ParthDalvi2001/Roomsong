@@ -1,4 +1,4 @@
-# Release & Deployment Guide — Roomsong
+# Release & Deployment Guide — SonicSpace
 
 **Status:** Approved · **Owner:** devops-engineer
 Environments: Local → Production (`main` → GitHub Pages) plus a mirror of the same build (D-022). There is no hosted staging (T-108; §3). `main` = release, pushed only by Parth; `develop` = work. Rollback: §7.
@@ -7,21 +7,21 @@ Environments: Local → Production (`main` → GitHub Pages) plus a mirror of th
 ---
 
 ## 1. Hosting decision (D-022, 2026-10-10; ADR-004)
-- **Submitted URL: GitHub Pages**, `https://parthdalvi2001.github.io/Roomsong/`. It is a sub-path, and Pages paths are case-sensitive: capital `R`. The rule text names a "GitHub page" for WebXR links, and WebXR needs HTTPS, which Pages gives.
-- **Mirror: Vercel or Netlify** (Parth picks; not chosen yet), serving **the same build**, as insurance against an outage or a wrong link. It is named in the Devpost description, not in the build-link field (SUBMISSION_CHECKLIST §2).
+- **Submitted URL: GitHub Pages**, `https://parthdalvi2001.github.io/SonicSpace/` (the repository's name since D-069; `/Roomsong/` before the rename, and 404 after it: Pages does not redirect). It is a sub-path, and Pages paths are case-sensitive: capital `S` twice. The rule text names a "GitHub page" for WebXR links, and WebXR needs HTTPS, which Pages gives.
+- **Mirror: Netlify** (D-060, D-069; project `sonicspace`, address from Parth, T-108), serving **the same build**, as insurance against an outage or a wrong link. It is named in the Devpost description, not in the build-link field (SUBMISSION_CHECKLIST §2).
 - **Branches** (repository on GitHub, D-018): `main` is release, `develop` is work. Every deploy is a push to `main`, published by GitHub Actions (§2). Agents never push `main`.
 - **Same-build proof:** every published build carries `version.json` = `{ version, commit, builtAt }` (`scripts/write-version.mjs`). The same `commit` and `builtAt` on both links prove one build; `commit` equal to `git rev-parse main` proves which one.
-- **No secrets, no server.** Assets use a relative base (`base: './'` in `vite.config.ts`), so one `dist/` works under `/Roomsong/` and at a mirror's root with no per-host setting. There is no service worker (*Cut (D-011)*).
+- **No secrets, no server.** Assets use a relative base (`base: './'` in `vite.config.ts`), so one `dist/` works under `/SonicSpace/` and at a mirror's root with no per-host setting. There is no service worker (*Cut (D-011)*).
 - **PoC D1 (pending go-live):** the build from `main` loads at the Pages URL with no 404 and without `SharedArrayBuffer` (Pages cannot send the COOP/COEP headers that it needs).
 - *Superseded (D-022, T-108):* the comparison of GitHub Pages, Vercel and Netlify that stood here, the `gh-pages` branch, the `/staging/` path, the `v*` tag trigger and `scripts/deploy.mjs`. None of them is in the repository.
 
 ### 1.1 GitHub Pages go-live, first time (T-108; was "Option A")
 The order matters. Step 1 needs Parth's go; steps 2, 3 and 6 are his to do.
 1. Push `develop`; wait for a green `ci` run in the Actions tab. This is the dry run on GitHub's Linux machines.
-2. github.com/ParthDalvi2001/Roomsong → Settings → Pages → Source: **GitHub Actions**. Do this **before** `main` is pushed.
+2. github.com/ParthDalvi2001/SonicSpace → Settings → Pages → Source: **GitHub Actions**. Do this **before** `main` is pushed.
 3. Parth: `git checkout main && git merge --ff-only develop && git push origin main && git checkout develop`.
 4. Actions tab: wait for `ci` and `deploy` to go green.
-5. Open the site and `https://parthdalvi2001.github.io/Roomsong/version.json`: `commit` must equal `git rev-parse main`. `/Roomsong/proto/pinch/` and `/Roomsong/proto/spike/` must not open (404): the device test pages are not published (T-189).
+5. Open the site and `https://parthdalvi2001.github.io/SonicSpace/version.json`: `commit` must equal `git rev-parse main`. `/SonicSpace/proto/pinch/` and `/SonicSpace/proto/spike/` must not open (404): the device test pages are not published (T-189).
 6. If `deploy` says the branch is not allowed: Settings → Environments → `github-pages` → Deployment branches → allow `main`, then Actions → deploy → Run workflow → Branch: `main`. Leave **only** `main` allowed (§2, manual runs).
 
 Do the first push days before the link is needed. Not proven until that first run: the Linux runner (WebGL2 on software rendering, speed) and that the `github-pages` environment accepts `main`.
@@ -30,7 +30,7 @@ Do the first push days before the link is needed. Not proven until that first ru
 1. Parth creates the account and names the host (T-108). No Git link and no build on the host: a mirror that rebuilds has another `builtAt` and is not the same build.
 2. The mirror gets the `dist/` that Pages got: the `github-pages` artifact of the `deploy` run (Actions → the run → Artifacts). The upload action keeps it **1 day** by default and `deploy.yml` does not raise that, so download it the same day.
 3. Unpack it and upload the folder as a static site, with no build step. The host is Netlify (D-060), by hand: the clicks are in `FREEZE_AND_SUBMIT_RUNBOOK.md` §1.4.
-4. Check: `<mirror>/version.json` equals `https://parthdalvi2001.github.io/Roomsong/version.json`, field by field.
+4. Check: `<mirror>/version.json` equals `https://parthdalvi2001.github.io/SonicSpace/version.json`, field by field.
 5. After submission nothing is uploaded again (§5).
 
 ## 2. Workflows (merged with T-108)
@@ -42,7 +42,7 @@ Read the files: they are short and commented. This section says what they do, no
 | `scripts/write-version.mjs` | inside `deploy`, after the build | writes `dist/version.json` = `{ version (from package.json), commit (git rev-parse HEAD), builtAt (ISO time) }`; fails if `dist/index.html` is missing |
 
 - `npm run verify` = typecheck, lint, unit tests, build, `scripts/check-dist.mjs` (page policy and remote URL strings, SECURITY_PLAN §5; licence texts present, no code of `@drawcall/uikitml`) and `scripts/check-size.mjs` (first load ≤ 4000 kB gzip, FR-SYS-06). `npm run audit` = `npm audit --omit=dev --audit-level=high`; CI runs it, verify does not.
-- **Licences in the build (T-171; THIRD_PARTY_LICENSES.md).** `vite.config.ts` swaps `@drawcall/uikitml` (no licence) for `build/stubs/uikitml.js`, a stub whose functions throw `UIKitMLRemovedError`, and writes `dist/LICENSES/`: the licence file of each package whose code ships, read from `node_modules`, plus the texts committed in `LICENSES/`. The site publishes them at `/Roomsong/LICENSES/`.
+- **Licences in the build (T-171; THIRD_PARTY_LICENSES.md).** `vite.config.ts` swaps `@drawcall/uikitml` (no licence) for `build/stubs/uikitml.js`, a stub whose functions throw `UIKitMLRemovedError`, and writes `dist/LICENSES/`: the licence file of each package whose code ships, read from `node_modules`, plus the texts committed in `LICENSES/`. The site publishes them at `/SonicSpace/LICENSES/`.
 - Node comes from `.nvmrc` (`24`). Action pins, majors only, all confirmed to exist on 2026-10-10: `actions/checkout@v5`, `actions/setup-node@v5`, `actions/upload-pages-artifact@v4`, `actions/deploy-pages@v4`, `actions/upload-artifact@v4`. The last two still declare Node 20: bump them if a runner refuses them.
 - Permissions: `contents: read` everywhere; only the `deploy` job has `pages: write` and `id-token: write`. No secrets: Pages uses the built-in token.
 - One deploy at a time; a running one is never cancelled, so the site is not left half published.
@@ -66,7 +66,7 @@ The first hosted copy of any change is production. The device test pages run onl
 2. On `develop`: set `version` in `package.json` (it is what `version.json` reports) and update `RELEASE_NOTES.md` (version, date, changes, known issues).
 3. Human approves: *"Deploy vX.Y.Z to prod"*.
 4. Parth: `git checkout main && git merge --ff-only develop && git push origin main && git checkout develop` → `deploy.yml` publishes.
-5. Verify from a **second device/network**: the URL loads, enters XR (on a headset, when one exists), and `commit` in `/Roomsong/version.json` equals `git rev-parse main`.
+5. Verify from a **second device/network**: the URL loads, enters XR (on a headset, when one exists), and `commit` in `/SonicSpace/version.json` equals `git rev-parse main`.
 6. Tag that commit: `git tag -a vX.Y.Z -m "..." <commit> && git push origin vX.Y.Z`. A tag is a label: it deploys nothing. `v1.0.0*` tags need Parth's explicit approval.
 7. Mirror: §1.2 steps 2–4, the same day.
 8. Record evidence (§8) and write the build hash into `RELEASE_NOTES.md`.
@@ -85,7 +85,7 @@ Tags mark commits on `main`; none of them triggers a deploy (§2).
 - *Superseded (T-108):* protecting `gh-pages`, disabling a tag trigger, and post-contest staging under `/staging/`.
 
 ## 6. Uptime during judging (2026-11-18 → 2026-12-11; T-187)
-- **Both links, daily:** `curl -fsS https://parthdalvi2001.github.io/Roomsong/version.json` and `curl -fsS <mirror>/version.json`. Both answer, and both show the submitted `commit`.
+- **Both links, daily:** `curl -fsS https://parthdalvi2001.github.io/SonicSpace/version.json` and `curl -fsS <mirror>/version.json`. Both answer, and both show the submitted `commit`.
 - `.github/workflows/uptime.yml` is built (`uptime.yml`, 25 Oct): daily, HTTP 200 and the page title on both links, a failed run emails the owner (no issue is opened); it does not compare `version.json`'s `commit`, which stays the by-hand check of bullet 1; the mirror is the repository variable `MIRROR_URL`. GitHub runs schedules from the default branch only, which is `main`: `uptime.yml` must be on `main` before the submission lock.
 - Human also opens the Pages URL on the headset twice a week (when one exists).
 - If the Pages link is down:

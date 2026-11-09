@@ -1,5 +1,5 @@
 # Uptime (T-187): once a day through the judging window (the submission, 17 Nov, to 11 Dec 2026) a GET of each
-# link: HTTP 200 and the page's own <title>Roomsong</title>, else the job fails. A failed run emails the repository
+# link: HTTP 200 and the page's own <title>SonicSpace</title>, else the job fails. A failed run emails the repository
 # owner (GitHub's default notification for a failed workflow run on the default branch), so the outage is seen
 # without opening Actions. No deploy, no checkout, no secrets. GitHub runs schedules from the default branch only:
 # this file must be on main before the submission lock (SPRINT_PLAN T-187). The mirror (D-022) is the repository
@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Both links answer 200 and are Roomsong
+      - name: Both links answer 200 and are SonicSpace
         env:
-          PAGES_URL: https://parthdalvi2001.github.io/Roomsong/
+          PAGES_URL: https://parthdalvi2001.github.io/SonicSpace/
           MIRROR_URL: ${{ vars.MIRROR_URL }}
           EVENT: ${{ github.event_name }}
         run: |
@@ -35,10 +35,10 @@ jobs:
               continue
             fi
             # -f: an HTTP error is a failure; -L: Pages may redirect; an empty body fails the grep too
-            if curl -fsSL --max-time 30 "$url" | grep -q '<title>Roomsong</title>'; then
-              echo "$url: 200, Roomsong"
+            if curl -fsSL --max-time 30 "$url" | grep -q '<title>SonicSpace</title>'; then
+              echo "$url: 200, SonicSpace"
             else
-              echo "::error::$url is down, or not Roomsong"
+              echo "::error::$url is down, or not SonicSpace"
               exit 1
             fi
           done

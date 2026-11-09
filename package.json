@@ -63,6 +63,6 @@
   "engines": {
     "node": ">=20.19.0 <21.0.0-0 || >=22.12.0 <23.0.0-0 || >=24.0.0"
   },
-  "description": "Roomsong: a hands-first mixed-reality music garden for Meta Quest 3 / 3S (WebXR, IWSDK).",
+  "description": "SonicSpace: a hands-first mixed-reality music garden for Meta Quest 3 / 3S (WebXR, IWSDK).",
   "license": "UNLICENSED"
 }

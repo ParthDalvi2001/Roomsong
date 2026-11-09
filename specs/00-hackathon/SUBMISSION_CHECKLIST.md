@@ -29,14 +29,14 @@
 
 | Field | Content (draft; product-owner finalises in T-085) |
 |---|---|
-| **Name** | Roomsong (D-016) |
+| **Name** | SonicSpace (D-069; was Roomsong, D-016) |
 | **Tagline (≤140)** | Plant glowing seeds on your real table with a pinch. Each one sings. Every room gives your garden its own song. *(111 chars; names the input, a pinch, and the place, your real table)* |
 | **Track** | Entertainment |
 | **Division** | New Experience |
-| **Build link** | `https://parthdalvi2001.github.io/Roomsong/` (GitHub Pages, the submitted WebXR link, D-022; live once Parth enables Pages, T-108). The mirror (Vercel or Netlify, the same build hash) is named in the description, not in this field. Both frozen until 2026-12-11 |
+| **Build link** | `https://parthdalvi2001.github.io/SonicSpace/` (GitHub Pages, the submitted WebXR link, D-022; live once Parth renames the repository, D-069). The mirror (Netlify, project `sonicspace`, the same build hash; D-069) is named in the description, not in this field. Both frozen until 2026-12-11 |
 | **Build hash** | The short commit hash of the submitted build, as served in `version.json` on both links; quoted in "How to test" |
 | **Video** | YouTube, public, **60–90 s** (the rule cap is < 3:00); device footage preferred, emulator allowed (see footage note); chapters in the YouTube description |
-| **Target launch** | Q1 2027 on the Meta Horizon Store as a PWA (via the `hz-store-pwa` path) |
+| **Target launch** | Early 2027 on the Meta Horizon Store, as a web app (agreed 9 Nov, D-069; via the `hz-store-pwa` path) |
 | **Team** | Parth · email · Developer; Chinmay · email · Product Manager (Representative). Agents are not team members. |
 
 ### 2.1 Description template (≤500 words). Fill it in with real numbers from the final build.
@@ -57,7 +57,7 @@ Instruments ask for skill before they give back joy. We wanted a song you *grow*
 holds it, your room tunes it.
 
 ## What it does
-Roomsong turns your real table into a glowing ring-shaped garden. Turn your palm up and a seed floats in. Pinch to
+SonicSpace turns your real table into a glowing ring-shaped garden. Turn your palm up and a seed floats in. Pinch to
 plant it: its place around the ring sets *when* it sings, its ring sets *how high*. Five voices, always in tune.
 Pull a plant up to make it louder; drag it to move it, or off the ring to remove it.
 Your room tunes the song: its size sets the key, its ceiling height the scale, its volume the echo. A ripple of
@@ -87,7 +87,7 @@ gets the default song. Very bright or dim light can disturb hand tracking. <Othe
 
 ## What's next
 <Should-haves that missed the cut;> shared gardens (hear a friend's garden in *your* room's key) and
-a Horizon Store launch in Q1 2027.
+a Meta Horizon Store launch in early 2027.
 ```
 
 Separate form field (HACKATHON_RULES §5.3: hand interactions and the future of VR; Chinmay confirms the real field list in T-115).
@@ -151,7 +151,7 @@ so on screen) · no AI-generated footage · no brands, logos or people in frame.
 | 0:22–0:36 | Shape | The hover glow, then pull to grow, drag to move, drag off the ring to remove, undo petal | "Shape every voice with your hands. No controllers." |
 | 0:36–0:52 | Listen | Palms out → Listen mode: lights dim, halo rises, the garden performs in spatial audio | "Then lean back and listen." |
 | 0:52–1:08 | Two rooms | **Two rooms, two songs:** the same garden in a small room and in a large one, heard back to back | "Same garden. Different room. Different song." |
-| 1:08–1:30 | Come back | **Day 1 versus day 3** (via `fakeDay`; only if S3 shipped, else the same garden restored at its spot) → one-hand, gaze dwell, beat ring, floating bed with no table → title card + **hosted URL** (last 4 s) | "It grows while you are away. Built for every pair of hands. Roomsong. Every room has its own song." |
+| 1:08–1:30 | Come back | **Day 1 versus day 3** (via `fakeDay`; only if S3 shipped, else the same garden restored at its spot) → one-hand, gaze dwell, beat ring, floating bed with no table → title card + **hosted URL** (last 4 s) | "It grows while you are away. Built for every pair of hands. SonicSpace. Every room has its own song." |
 
 Chapters go in the YouTube description with these times and names; the first is 0:00 and none is shorter than 10 s.
 The video never shows a feature that is not in the submitted build, and never says "your table set the key" (false in v1).

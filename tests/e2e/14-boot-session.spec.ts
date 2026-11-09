@@ -181,7 +181,7 @@ test('a1 the landing page is on screen and usable before the app chunk, and no S
   const landingAtMs = await timeLandingText(page);
   await openApp(page, readRoom('none'));
 
-  await expect(landing(page).getByRole('heading', { level: 1 })).toHaveText('Roomsong');
+  await expect(landing(page).getByRole('heading', { level: 1 })).toHaveText('SonicSpace');
   console.log(
     `T-128a navigation to the landing text ${(await landingAtMs()).toFixed(0)} ms (dev server, emulator host)`,
   );
@@ -237,7 +237,7 @@ test('a1 built: the page is readable with the files index.html names alone, a fe
   const landingAtMs = await timeLandingText(page);
   await page.goto(BUILT_PAGE_URL);
 
-  await expect(landing(page).getByRole('heading', { level: 1 })).toHaveText('Roomsong');
+  await expect(landing(page).getByRole('heading', { level: 1 })).toHaveText('SonicSpace');
   await expect.poll(() => held.length).toBeGreaterThan(0); // the boot has asked for the app chunk
   await expect(enterButton(page)).toBeDisabled();
   await expect(landing(page).getByLabel('High contrast')).toBeEnabled();

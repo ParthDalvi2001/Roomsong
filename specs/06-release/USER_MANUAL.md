@@ -1,4 +1,4 @@
-# Roomsong: Player Guide
+# SonicSpace: Player Guide
 
 **Status:** Living · **Owner:** product-owner · Checked against `develop` at f1c4d52 on 2026-11-09: D-061 to D-071, API_SPEC v1.2.54 to v1.2.63, BUG-021 to BUG-043 and the headset runs of 7–8 Nov (TEST_PLAN §4.6), plus items an earlier pass missed (D-060: the 6 s placing wait, the floating bed's tuning, Bring back the old garden; BUG-007: the seed's glow; the Mono switch). The full pass before was at dca03de on 2026-10-17, with the 23 Oct features added at 36dc6cc.
 The long form of the landing page's Help lines and the source for the "How to test" text of the submission. No task builds a page of its own for it.
@@ -12,7 +12,7 @@ The long form of the landing page's Help lines and the source for the "How to te
 ---
 
 ## What it is
-Roomsong is a small glowing garden on your real table. Every plant sings. Where you plant decides when a plant plays and how high it sounds. You play with bare hands, sitting down. Ten minutes is plenty for a visit.
+SonicSpace is a small glowing garden on your real table. Every plant sings. Where you plant decides when a plant plays and how high it sounds. You play with bare hands, sitting down. Ten minutes is plenty for a visit.
 
 ## What you need
 - A Meta Quest 3 or 3S with hand tracking on (Settings, Movement tracking, Hand tracking; *names not yet read off a headset*).
@@ -22,16 +22,16 @@ Roomsong is a small glowing garden on your real table. Every plant sings. Where 
 - No headset? A browser on a computer gives you a preview: see **Laptop mode**.
 
 ## How to open it `[app, headset]`
-1. Open the Roomsong link in the headset's browser.
+1. Open the SonicSpace link, https://parthdalvi2001.github.io/SonicSpace/, in the headset's browser.
 2. Wait until "Getting the garden ready." goes away.
 3. If you need one, open the **Accessibility** section (it stays closed until you open it) and tick a box: One hand; No hands: look to select; High contrast; Reduce motion. Each is explained under **Accessibility modes**.
 4. Press **Enter the garden** and say yes when the headset asks to share your hands and your room. Sound starts with this press.
 
-You see your real room and hands. Roomsong draws no hands of its own.
+You see your real room and hands. SonicSpace draws no hands of its own.
 
 To leave, press **Exit** in the settings panel (Garden tab). Your garden is saved, and Enter brings it back `[app, headset]`.
 
-**A link for each mode** `[app]`: add `?access=` and a mode to the Roomsong link: `gaze` (look to select), `onehand`, `contrast` (high contrast) or `reduce` (reduce motion); several with commas, such as `?access=gaze,contrast`. It works like ticking the box: the mode is saved and stays on next time, even from the plain link. A link only turns modes on; turn one off in the panel's Access tab, or untick it on the first page.
+**A link for each mode** `[app]`: add `?access=` and a mode to the SonicSpace link: `gaze` (look to select), `onehand`, `contrast` (high contrast) or `reduce` (reduce motion); several with commas, such as `?access=gaze,contrast`. It works like ticking the box: the mode is saved and stays on next time, even from the plain link. A link only turns modes on; turn one off in the panel's Access tab, or untick it on the first page.
 
 ## Your first minute `[app]`; steps 3 to 7 `[app, headset]`
 A guide walks you through it whenever a visit starts on an empty bed: one short caption or one small picture at a time. The first two steps (palm up, plant) wait for you. From your first plant on, a step you have not done moves on after a minute. A visit that starts with plants on the bed has no guide. On the headsets, three seeds were planted 35 seconds after Enter (Quest 3S) and by 62 seconds (Quest 3); the guide from a brand-new garden has not been run on a headset since the wait was added.
@@ -101,7 +101,7 @@ The settings orb is a small dark disc with three slider lines. It floats over th
 Pinch a control to press it. The panel floats about 55 cm away, so you need not touch it: look at a control past your fingertips and pinch `[app, headset]`. A pinch that starts on a control presses it even if your hand drifts before you let go; New garden is the exception, so you can slide off it to cancel. With a seed on your palm, a pinch aimed at a control presses the control, not the seed `[app]` (not yet tried on a headset).
 - **Sound:** Speed, Volume, Echo (room follows the room; small; off), Mono (the same sound in both ears) and "Tuned to", which shows what your room set.
 - **Access:** One hand; Look to select, with its Look time; High contrast; Reduce motion; Beat ring; Main hand.
-- **Garden:** a line such as "Day 4, Seeds left 2, Key D major (room)". The day counts calendar days, as the daily seed does: a garden made on Monday shows Day 2 on Tuesday, with that day's new seed `[app]` (not yet checked on a headset). Height (10 cm up or down) and **Time-lapse** beside it, a demo of a week of growth, a day every 4 seconds (leaves after 4 s, more after 12, blossoms after 28), nothing of it saved: switch it off, or reload, and your garden is as it was. Place the garden again, if it landed badly, with **Exit** at the end of the same row: one press leaves Roomsong, your garden saved `[app, headset]`. New garden (erases this one), so you hold the pinch for 1.5 seconds; for 10 seconds after, while the new garden is still empty, that row reads "Bring back the old garden" and the same hold brings it back `[app]`.
+- **Garden:** a line such as "Day 4, Seeds left 2, Key D major (room)". The day counts calendar days, as the daily seed does: a garden made on Monday shows Day 2 on Tuesday, with that day's new seed `[app]` (not yet checked on a headset). Height (10 cm up or down) and **Time-lapse** beside it, a demo of a week of growth, a day every 4 seconds (leaves after 4 s, more after 12, blossoms after 28), nothing of it saved: switch it off, or reload, and your garden is as it was. Place the garden again, if it landed badly, with **Exit** at the end of the same row: one press leaves SonicSpace, your garden saved `[app, headset]`. New garden (erases this one), so you hold the pinch for 1.5 seconds; for 10 seconds after, while the new garden is still empty, that row reads "Bring back the old garden" and the same hold brings it back `[app]`.
 
 Laptop mode has no settings panel: the switches on the first page are its settings.
 
@@ -138,7 +138,7 @@ Nothing flashes more than three times a second, in any mode `[app]`.
 
 ## Laptop mode (no headset) `[app]`
 A preview for anyone without a headset: the same garden, sound, guide and save, in a browser tab on a computer. It is not the mixed-reality experience, and it has been tested in one desktop browser only.
-1. Open the Roomsong link in a browser on a computer. The first page says "The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset."
+1. Open the SonicSpace link in a browser on a computer. The first page says "The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset."
 2. If you need them, tick **High contrast** or **Reduce motion**. One hand and look to select are for the headset.
 3. Press **Enter the garden**. Sound starts with this press.
 4. You look down at the bed on a drawn table, as if seated at it. A seed follows your pointer.
@@ -155,15 +155,15 @@ What laptop mode does not have: your real room and table (no passthrough); your 
 | "Getting the garden ready." | The page is loading | Wait a few seconds | `[app]` |
 | "The garden could not load. Reload the page." | The page did not finish loading | Check the connection and reload | `[app]` |
 | "The garden opens in this tab: a click or a tap is a pinch. Height and settings need a headset." | This browser has no mixed reality, so Enter opens laptop mode | Press Enter, or open the link in the headset | `[app]` |
-| "Roomsong is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S." | This browser cannot show virtual things in your real room, and laptop mode did not open here | Open the link in the headset | `[app]` |
+| "SonicSpace is played in a mixed-reality headset. Open this page in the browser of a Meta Quest 3 or 3S." | This browser cannot show virtual things in your real room, and laptop mode did not open here | Open the link in the headset | `[app]` |
 | "The garden did not open. Say yes when the headset asks, and check that hand tracking is on: Settings, Movement tracking, Hand tracking." | The headset refused to start. Hand tracking is off, or you answered no | Switch hand tracking on, press Enter again and say yes | `[app]` |
-| "Roomsong needs JavaScript. Turn it on and reload the page." | The browser blocks scripts | Allow scripts and reload | `[app]` |
+| "SonicSpace needs JavaScript. Turn it on and reload the page." | The browser blocks scripts | Allow scripts and reload | `[app]` |
 | "Table detection: not available." and "Saved position: not available." (under This device) | The headset did not share the room's layout, or cannot remember spots | Nothing. The garden asks you where to put it or floats, and it is placed again on each visit | `[app]` |
 | A palm in a dashed ring (an icon) | The headset lost the hand that held something | Bring the hand back in front of you. What you held goes back to where it was. Nothing is lost | `[app]` |
 | "No sound. Leave and enter again." (5 seconds) | The browser did not start the sound. The garden still works, silent | Check the volume. Leave the garden and press Enter again: sound starts only in that press | `[app]` |
 | "Look at your table, and pinch" (Look to select: "and wait") | No table was found | Look where the garden should go and pinch, or wait | `[app]` |
 | "No room scan: run Space Setup" | The headset has no scan of this room, so the garden plays its "Wanderer" song | Run Space Setup on your Quest, then enter again | `[app]` |
-| "Put the controllers down" | Controllers are in your hands and no hand is seen | Put them down; Roomsong is played with bare hands | `[app]` |
+| "Put the controllers down" | Controllers are in your hands and no hand is seen | Put them down; SonicSpace is played with bare hands | `[app]` |
 | "Table: seeds." "Table: a note." "Walls: a note." "Ceiling: minor mood." (or "major mood.", "open mood.") | Labels of the opening ripple, one for each surface found: what it gives the garden. The ceiling's names the mood its height set. The room's size also turns the colours: a small room warmer, a big room cooler | Nothing | ripple, labels and colour turn `[app]` |
 | "This garden cannot be saved" | The browser cannot store the garden: private browsing, or storage full or blocked. It shows once, during a visit | Keep playing; this visit will not be kept. Leave private browsing or free some space, then reload | `[app]` |
 | "Open your hand, palm up" · "Pinch the seed, drop it here" (look to select: "Look at a cell to plant"; laptop mode: "Click or tap to plant") · "Show your palms to listen" (laptop mode: "Click the orb to listen") · "Turn a hand over for settings" (one hand or look to select: "Look for the settings orb") | The first-minute guide | Do what it says. From your first plant on, a step moves on after a minute | `[app]` |
