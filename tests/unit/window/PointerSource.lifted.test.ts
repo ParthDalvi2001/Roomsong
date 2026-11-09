@@ -8,6 +8,7 @@ import { bus } from '../../../src/core/index.js';
 import { cellCentre } from '../../../src/garden/index.js';
 import { createHandFrame, HIT_RADIUS_M, pickTarget } from '../../../src/hands/index.js';
 import { BED_CENTRE_DEFAULT_M } from '../../../src/room/index.js';
+import { LIFTED_DRAWN_RADIUS_M } from '../../../src/window/config.js';
 import { PointerSource, WindowStage } from '../../../src/window/index.js';
 
 import { at, CANVAS_HEIGHT_PX, CANVAS_WIDTH_PX, fakeCanvas } from './fakeCanvas.js';
@@ -122,6 +123,56 @@ describe('BUG-011: the pointer picks a lifted target where it is drawn', () => {
       canvas.fire('pointermove', at(toPx.x, toPx.y, { buttons: 1 }));
       source.sample(frame.hand, (timeMs += 10), frame);
       expect(Math.hypot(frame.pinchPos.x - to.x, frame.pinchPos.y - to.y, frame.pinchPos.z - to.z)).toBeLessThan(0.001);
+      // And let go there: the drop is where the drag was shown, not the bed point far behind it (BUG-049).
+      canvas.fire('pointerup', at(toPx.x, toPx.y));
+      source.sample(frame.hand, (timeMs += 10), frame);
+      expect(Math.hypot(frame.pinchPos.x - to.x, frame.pinchPos.y - to.y, frame.pinchPos.z - to.z)).toBeLessThan(0.001);
     }
+  });
+
+  it('a plant taken by sight keeps the point on the bed under the pointer while held: a head it passes does not take it (BUG-049)', () => {
+    const { stage, cell, onCanvas } = rig();
+    const taken = cell(4, 12, HEAD_LIFT_M); // the far side: a slanted ray
+    const other = cell(3, 12, HEAD_LIFT_M);
+    const targets: PickCandidate[] = [taken, other].map((pos, i) => ({
+      target: { kind: 'plant', id: `p${i}` },
+      radius: HIT_RADIUS_M,
+      pos,
+    }));
+    const canvas = fakeCanvas();
+    const source = new PointerSource(canvas.element, stage, targets);
+    made.push(source);
+    const frame = createHandFrame(source.hands[0]!);
+    bus.emit('xr:sessionStart', { visible: true });
+    let timeMs = 1000;
+    const onRay = new Vector3();
+    /** The bed point under a canvas point, and how far its ray passes from `head`. */
+    const behind = (px: { x: number; y: number }, head: Vec3) => {
+      const p = { x: 0, y: 0, z: 0 };
+      stage.project((px.x / CANVAS_WIDTH_PX) * 2 - 1, 1 - (px.y / CANVAS_HEIGHT_PX) * 2, p);
+      return { p, offM: stage.closestOnRay(head, onRay) };
+    };
+    const send = (type: string, px: { x: number; y: number }, buttons: number) => {
+      canvas.fire(type, at(px.x, px.y, { buttons }));
+      source.sample(frame.hand, (timeMs += 10), frame);
+      return frame.pinchPos;
+    };
+    const near = (a: Vec3, b: Vec3) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+
+    // Pressed 2.5 cm beside the taken head: past the lifted radius, within the hit radius (the eye line takes it).
+    const press = onCanvas({ x: taken.x + 0.025, y: taken.y, z: taken.z });
+    const atPress = behind(press, taken);
+    expect(atPress.offM).toBeGreaterThan(LIFTED_DRAWN_RADIUS_M);
+    expect(atPress.offM).toBeLessThan(HIT_RADIUS_M);
+    expect(near(send('pointermove', press, 0), atPress.p)).toBeLessThan(0.001);
+    expect(near(send('pointerdown', press, 1), atPress.p)).toBeLessThan(0.001);
+    // A small move right over the other head: the point stays on the bed under the pointer, and so does the release.
+    const over = onCanvas(other);
+    const atOver = behind(over, other);
+    expect(atOver.offM).toBeLessThan(LIFTED_DRAWN_RADIUS_M);
+    expect(near(send('pointermove', over, 1), atOver.p)).toBeLessThan(0.001);
+    expect(frame.pinch).toBe(true);
+    expect(near(send('pointerup', over, 0), atOver.p)).toBeLessThan(0.001);
+    expect(frame.pinch).toBe(false);
   });
 });

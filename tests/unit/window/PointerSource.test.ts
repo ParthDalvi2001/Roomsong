@@ -169,7 +169,8 @@ describe('PointerSource: the latched button (LLD §11)', () => {
     expect(sample()).toMatchObject({ pinch: true, at: { x: -0.5, z: -0.5 } });
     expect(sample().at.y).toBeCloseTo(1.09);
     canvas.fire('pointerup', at(200, 150));
-    expect(sample().at.y).toBe(1); // let go, on open ground: back on the bed
+    expect(sample()).toMatchObject({ pinch: false, at: { y: 1.09 } }); // let go where the drag was shown (BUG-049)
+    expect(sample().at.y).toBe(1); // then, on open ground: back on the bed
   });
 
   it('a press and a drag before the next frame: the press is where it began, the drag after it', () => {
