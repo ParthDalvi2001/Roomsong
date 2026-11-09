@@ -227,8 +227,12 @@ function offEdgeM(plane: RoomPlane, x: number, z: number): number {
  * may be past the plane's edge by the bed's overhang, the far edge less the centre (0.30 m, FR-ROOM-03):
  * placement leaves it that far short of a table that starts beyond its reach (D-034).
  * `placement.surfaceId` is not read: a bed restored from an anchor has none and must get the same surface.
+ * PlacementSolver asks too, for the bed of a Re-place's aim (T-194).
  */
-function bedSurfaceOf(planes: readonly RoomPlane[], { pose, level }: BedPlacement): RoomPlane | undefined {
+export function bedSurfaceOf(
+  planes: readonly RoomPlane[],
+  { pose, level }: BedPlacement,
+): RoomPlane | undefined {
   if (level !== 1 && level !== 2) return undefined;
   let surface: RoomPlane | undefined;
   let leastOffM = Infinity;

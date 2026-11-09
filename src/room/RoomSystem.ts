@@ -103,6 +103,8 @@ export class RoomSystem extends createSystem() {
   private stage: Stage = 'idle';
   /** Counts the placements begun and ended: the continuation of an earlier one finds another number and keeps nothing. */
   private turn = 0;
+  /** Where this placement's chain starts: 3, the aim, for `replace()` (T-194, D-079: the player chooses the spot). */
+  private chainFrom: PlacementLevel = 1;
   /** Placing: the frame time of its first frame, for the wait of a restored bed; Infinity until that frame. */
   private waitFromMs = Infinity;
   /** BUG-011: the frame time of the session's first placing frame, for the head's wait; Infinity until then. */
@@ -168,7 +170,10 @@ export class RoomSystem extends createSystem() {
     );
   }
 
-  /** FR-ROOM-05: places the bed again by the chain; the garden is kept. Nothing outside a session. */
+  /**
+   * FR-ROOM-05: places the bed again, where the player aims: the chain from level 3 (T-194, D-079), so the ghost
+   * shows and a pinch on nothing, or the end of the wait, lands it. The garden is kept. Nothing outside a session.
+   */
   replace(): void {
     if (this.stage === 'idle') return;
     void this.anchors.clear();
@@ -216,6 +221,7 @@ export class RoomSystem extends createSystem() {
   private clear(stage: Stage): void {
     this.turn++;
     this.stage = stage;
+    this.chainFrom = stage === 'replacing' ? 3 : 1;
     this.solver.cancel();
     this.answer = undefined;
     this.placement = this.placed = null;
@@ -296,12 +302,15 @@ export class RoomSystem extends createSystem() {
     });
   }
 
-  /** The chain, from its first level. A second run drops the first, whose promise never settles. */
+  /**
+   * The chain, from this placement's first level: also when a pause begins it again. A second run drops the first,
+   * whose promise never settles.
+   */
   private runChain(): void {
     const turn = this.turn;
     this.stage = 'solving';
     this.hide(); // begun again after a pause, it shows nothing until it is at level 3 again
-    void this.solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS }).then((placement) => {
+    void this.solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS, from: this.chainFrom }).then((placement) => {
       if (turn === this.turn) this.placement = placement;
     });
   }

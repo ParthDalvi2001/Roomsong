@@ -23,8 +23,8 @@ import { heapCost, PROBE_BYTES } from '../hands/heapCost.js';
 
 import { headAt } from './fixtures.js';
 
-import type { EventMap, Mat4 } from '../../../src/core/index.js';
-import type { GardenState, RoomFeatures } from '../../../src/garden/index.js';
+import type { EventMap, Mat4, Vec3 } from '../../../src/core/index.js';
+import type { GardenState, PlacementLevel, RoomFeatures } from '../../../src/garden/index.js';
 import type { BedPlacement, RoomPlane, RoomSurfaces } from '../../../src/room/index.js';
 
 /** As much of an ECS entity as RoomSystem uses. `fail` makes the next call of that name throw, once. */
@@ -145,10 +145,15 @@ function rig() {
     .spyOn(system.planes, 'read')
     .mockImplementation(() => (room.planes === 'unsupported' ? [] : room.planes));
 
-  const runs: { timeoutMs: number; resolve: (placement: BedPlacement) => void }[] = [];
-  vi.spyOn(system.solver, 'run').mockImplementation(({ timeoutMs }) => {
+  type Run = {
+    timeoutMs: number;
+    from: PlacementLevel | undefined;
+    resolve: (placement: BedPlacement) => void;
+  };
+  const runs: Run[] = [];
+  vi.spyOn(system.solver, 'run').mockImplementation(({ timeoutMs, from }) => {
     calls.push('solver.run');
-    return new Promise((resolve) => runs.push({ timeoutMs, resolve }));
+    return new Promise((resolve) => runs.push({ timeoutMs, from, resolve }));
   });
   vi.spyOn(system.solver, 'cancel').mockImplementation(note('solver.cancel'));
   const solverUpdates: { head: number[]; nowMs: number }[] = [];
@@ -1095,6 +1100,40 @@ describe('RoomSystem: replace() (FR-ROOM-05; LLD §3.3 L)', () => {
     r.frame();
     expect(r.types()).not.toContain('room:anchored');
   });
+
+  it('T-194: the chain of a replace starts at the aim, level 3; the first of a session and the one after a failed restore at 1', async () => {
+    const r = rig();
+    await r.place();
+    expect(r.runs[0]!.from).toBe(1); // the session's first placement: the room, at once (first sound in 20 s)
+    r.system.replace();
+    r.frame();
+    expect(r.runs[1]).toMatchObject({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS, from: 3 });
+    r.system.replace(); // a second one while the first aims: the first run is dropped, as before
+    r.frame();
+    expect(r.runs).toHaveLength(3);
+    expect(r.runs[2]!.from).toBe(3);
+    // The next session, with a saved pair that does not come back: the chain from level 1 again.
+    endSession();
+    r.gardenChanged({ anchorHandle: HANDLE, anchorLevel: 1 });
+    startSession();
+    r.frame();
+    r.restores[0]!.resolve(null);
+    await betweenFrames();
+    r.frame();
+    expect(r.runs).toHaveLength(4);
+    expect(r.runs[3]!.from).toBe(1);
+  });
+
+  it('T-194: a replace begun again after a pause still starts at level 3', async () => {
+    const r = rig();
+    await r.place();
+    r.system.replace();
+    r.frame();
+    bus.emit('xr:visibility', { visible: false });
+    bus.emit('xr:visibility', { visible: true });
+    expect(r.runs).toHaveLength(3);
+    expect(r.runs[2]!.from).toBe(3);
+  });
 });
 
 /** A pinch in the air, let go: the machine's release of a pinch that started on nothing. */
@@ -1120,6 +1159,88 @@ function pinch(hand: 'left' | 'right', release: Partial<EventMap['gesture:releas
   bus.emit('gesture:pinchStart', { ...PINCH_ON_NOTHING, hand });
   bus.emit('gesture:release', { ...RELEASE_ON_NOTHING, hand, ...release });
 }
+
+/** The rig's solver made real again, on the rig's planes and the gaze of `look`: a Re-place from end to end. */
+function withRealSolver(r: ReturnType<typeof rig>, look: { hit: Vec3 | null | 'unsupported' }): void {
+  const { solver, hits } = r.system;
+  // spyOn of a method the rig already mocks gives that same mock: its restore brings the real method back.
+  for (const name of ['run', 'cancel', 'update', 'confirm', 'preview'] as const)
+    vi.spyOn(solver, name).mockRestore();
+  vi.spyOn(hits, 'supported').mockImplementation(() => look.hit !== 'unsupported');
+  vi.spyOn(hits, 'hit').mockImplementation(() => (look.hit === 'unsupported' ? null : look.hit));
+}
+
+describe('RoomSystem: replace() with the real solver, the player chooses the spot (T-194, D-079)', () => {
+  const levels = (r: ReturnType<typeof rig>): unknown[] =>
+    r.events.filter((event) => event.type === 'room:placementLevel').map((event) => event.payload);
+
+  it('in a room with a table the first level is 3 and the ghost shows; a pinch on nothing lands the bed where it showed', async () => {
+    const r = rig();
+    await r.place(); // on the table, by the session's own chain
+    withRealSolver(r, { hit: { x: 0, y: 0.74, z: -0.4 } }); // the gaze on the table (A_PLANE), 5 cm nearer than the old spot
+    r.events.length = 0;
+    r.system.replace();
+    r.frame();
+    for (let i = 0; i < 20; i++) r.frame(1000); // 20 s of aiming: the table is in reach, and no bed lands on it
+    expect(r.events.map((event) => [event.type, event.payload])).toEqual([
+      ['room:placementLevel', { level: 3 }],
+    ]);
+    expect(r.bedNow()).toMatchObject({ isPlaced: false, isShown: true, hasHint: true });
+    expect(r.hint.data.get(Caption)).toMatchObject({ key: 'placeLook' });
+    const shown = Array.from(r.system.solver.preview()!.pose);
+    expect(shown).toEqual(at(0, 0.74, -0.4));
+
+    pinch('right');
+    r.frame(); // the solver's frame
+    await betweenFrames();
+    r.take();
+    r.frame(); // the placed step, as for any placement
+    expect(r.take()).toEqual([...SET_FRAMES, 'room:bedPlaced', 'extract', 'room:features', 'anchors.create']);
+    // The table's level and plane, so the room reads as before; the pose is the previewed one.
+    const placement = { pose: shown, level: 1, surfaceId: A_PLANE.id };
+    expect(r.events[r.events.length - 2]!.payload).toEqual({ placement, restored: false });
+    expect(levels(r)).toEqual([{ level: 3 }, { level: 1 }]);
+    expect(r.bedNow()).toMatchObject({ isPlaced: true, isShown: true, hasHint: false, pose: shown });
+    expect(r.creates[r.creates.length - 1]!.pose).toEqual(shown); // the anchor is saved from the new place
+  });
+
+  it('with no pinch the bed lands where the ghost is when the 40 s are over, and not before', async () => {
+    const r = rig();
+    await r.place();
+    withRealSolver(r, { hit: { x: 0, y: 0.74, z: -0.4 } });
+    r.events.length = 0;
+    r.system.replace();
+    r.frame();
+    r.frame(HIT_TEST_TIMEOUT_MS - 100);
+    await betweenFrames();
+    r.frame();
+    expect(r.types()).toEqual(['room:placementLevel']);
+    r.frame(200);
+    await betweenFrames();
+    r.frame();
+    expect(r.types()).toEqual([
+      'room:placementLevel',
+      'room:placementLevel',
+      'room:bedPlaced',
+      'room:features',
+    ]);
+    expect(r.bedNow().pose).toEqual(at(0, 0.74, -0.4));
+  });
+
+  it('with no hit-test a replace floats the bed at once: level 4, no ghost and no wait', async () => {
+    const r = rig();
+    await r.place();
+    withRealSolver(r, { hit: 'unsupported' });
+    r.events.length = 0;
+    r.system.replace();
+    r.frame();
+    expect(r.bedNow()).toMatchObject({ isShown: false, hasHint: false });
+    await betweenFrames();
+    r.frame();
+    expect(levels(r)).toEqual([{ level: 4 }]);
+    expect(r.events[1]!.payload).toEqual({ placement: FLOATING, restored: false });
+  });
+});
 
 describe('RoomSystem: level 3, the ghost and the confirm (UX §9.2; LLD §3.5 c2)', () => {
   const ON_SPOT: BedPlacement = { pose: at(0, 0.7, -0.4), level: 3 };
