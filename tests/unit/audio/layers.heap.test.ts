@@ -33,32 +33,35 @@ type Cost = { gcs: number; grewBytes: number };
 const isClean = (cost: Cost): boolean =>
   cost.gcs === 0 && cost.grewBytes >= 0 && cost.grewBytes < PROBE_BYTES + MOST_BYTES_A_STEP * STEPS_RUN;
 
+// The rig's callbacks, one set for both cases (BUG-051): a closure made per case is a new call target for the code
+// V8 optimised in the case before, and those deopts and the code made again were charged to the second case.
+// The counter-line's notes (style A: on the Pluck, §1.7) and the variations' echoes and ghosts (owned by their
+// plant, §1.8): this loop plays no plant note itself, so an owned note is a variation's.
+const count = { notes: 0, counterNotes: 0, variationNotes: 0, breathGlides: 0, dimGlides: 0 };
+const pluck = {};
+const pool = {
+  ref: { note: null },
+  play: (voice: object, _t: number, _p: object, _x: number, _y: number, _z: number, owner: object | null): boolean => {
+    count.notes++;
+    if (voice === pluck) count.counterNotes++;
+    if (owner !== null) count.variationNotes++;
+    return true;
+  },
+};
+const key = (): typeof WANDERER => WANDERER;
+function countBreath(this: FakeParam): FakeParam {
+  count.breathGlides++;
+  return this;
+}
+function countDim(this: FakeParam): FakeParam {
+  count.dimGlides++;
+  return this;
+}
+
 /** Style A on the fake context, every layer in; the breath's and the dim's parameter events counted, not kept. */
 function make() {
   const ctx = new FakeAudioContext();
-  let notes = 0;
-  // The counter-line's notes (style A: on the Pluck, §1.7) and the variations' echoes and ghosts (owned by their
-  // plant, §1.8): this loop plays no plant note itself, so an owned note is a variation's.
-  let counterNotes = 0;
-  let variationNotes = 0;
-  const pluck = {};
-  const pool = {
-    ref: { note: null },
-    play: (
-      voice: object,
-      _t: number,
-      _p: object,
-      _x: number,
-      _y: number,
-      _z: number,
-      owner: object | null,
-    ): boolean => {
-      notes++;
-      if (voice === pluck) counterNotes++;
-      if (owner !== null) variationNotes++;
-      return true;
-    },
-  };
+  Object.assign(count, { notes: 0, counterNotes: 0, variationNotes: 0, breathGlides: 0, dimGlides: 0 });
   const stepS = Scheduler.stepDurationFor(84);
   const compressor = ctx.createDynamicsCompressor();
   const steps: Grooved[][] = Array.from({ length: STEPS }, () => []);
@@ -74,7 +77,7 @@ function make() {
     master: ctx.createGain() as never,
     compressor: compressor as never,
     bed: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1],
-    key: () => WANDERER,
+    key,
     steps,
     seed: 164,
   });
@@ -83,16 +86,8 @@ function make() {
   // change, and the Listen dim's, are counted instead. The chain is master → breath → dim → compressor.
   const dim = compressor.inputs[0] as FakeNode;
   const breath = (dim.inputs[0] as FakeNode).frequency;
-  let breathGlides = 0;
-  let dimGlides = 0;
-  breath.setTargetAtTime = (): FakeParam => {
-    breathGlides++;
-    return breath;
-  };
-  dim.gain.setTargetAtTime = (): FakeParam => {
-    dimGlides++;
-    return dim.gain;
-  };
+  breath.setTargetAtTime = countBreath;
+  dim.gain.setTargetAtTime = countDim;
   const voices: VoiceType[] = ['bell', 'pad', 'pluck', 'bass', 'choir', 'bell', 'pluck', 'pad'];
   const records: Grooved[] = voices.map((voice, i) => ({
     plant: {
@@ -138,12 +133,12 @@ function make() {
   return {
     layers,
     run,
-    notes: () => notes,
-    counterNotes: () => counterNotes,
-    variationNotes: () => variationNotes,
+    notes: () => count.notes,
+    counterNotes: () => count.counterNotes,
+    variationNotes: () => count.variationNotes,
     sink: () => sink[0]!,
-    breathGlides: () => breathGlides,
-    dimGlides: () => dimGlides,
+    breathGlides: () => count.breathGlides,
+    dimGlides: () => count.dimGlides,
   };
 }
 
