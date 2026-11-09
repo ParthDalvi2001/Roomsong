@@ -73,10 +73,10 @@ afterEach(() => {
 
 describe("a plant's library picks its voice (T-193)", () => {
   /** Sources a note: the voice as built (style B's Pad has three saws), and its calm sibling (calm.test.ts). */
-  const OLD = { bell: 2, pluck: 1, choir: 2, pad: 3 };
-  const CALM = { bell: 7, pluck: 7, choir: 3, pad: 4 };
+  const OLD = { bell: 2, pluck: 1, choir: 2, pad: 3, bass: 1 };
+  const CALM = { bell: 7, pluck: 7, choir: 3, pad: 4, bass: 2 };
 
-  it.each(['bell', 'pluck', 'choir', 'pad'] as const)(
+  it.each(['bell', 'pluck', 'choir', 'pad', 'bass'] as const)(
     'in style B a %s plant without `family` plays the voice as built, one with `family: "new"` its calm sibling',
     async (voice) => {
       const { ctx, engine, run } = await start('B', [
