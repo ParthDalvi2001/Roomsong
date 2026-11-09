@@ -68,7 +68,7 @@ describe('core/strings', () => {
   });
 
   it('holds the two one-time notices onboarding/ raises (UX re-check 23 Oct), at most six words', () => {
-    expect(STRINGS.seedsTomorrow).toBe('More seeds tomorrow');
+    expect(STRINGS.seedsTomorrow).toBe('No seeds left. More tomorrow.'); // BUG-056
     expect(STRINGS.undoHint).toBe('Pinch the petal to undo');
     expect(STRINGS.settingsHint).toBe('Turn a hand over for settings');
     for (const key of ['seedsTomorrow', 'undoHint', 'settingsHint'] as const)

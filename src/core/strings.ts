@@ -17,8 +17,9 @@ export const STRINGS = {
   goodnight: 'Goodnight',
   // A seed let go over a full bed (UX §7): render's SeedSystem raises it (T-127).
   gardenFull: 'Garden full. Remove a plant first.',
-  // The supply is empty at a palm up (UX §3.3; a new seed each day): onboarding/ raises it once a session.
-  seedsTomorrow: 'More seeds tomorrow',
+  // The supply is empty at a palm up (UX §3.3; a new seed each day): onboarding/ says it at every such palm up, at
+  // most once per NO_SEEDS_GAP_MS (BUG-056), and ui/ draws it as a quiet notice.
+  seedsTomorrow: 'No seeds left. More tomorrow.',
   // The session's first removal (UX §7, the undo petal): onboarding/ raises it once, for the petal's 5 s.
   undoHint: 'Pinch the petal to undo',
   undoHintGaze: 'Look at the petal to undo', // gaze mode (Settings.gazeDwell): a dwell on the petal undoes (T-160)

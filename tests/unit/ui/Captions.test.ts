@@ -4,11 +4,12 @@ import { Matrix4, Vector3 } from '@iwsdk/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CAPTION_MIN_MS, createClock, log, STRINGS } from '../../../src/core/index.js';
-import { captionDropM, CaptionQueue } from '../../../src/ui/Captions.js';
+import { captionDropM, CaptionQueue, captionRiseM, isQuietCaption } from '../../../src/ui/Captions.js';
 import {
   CAPTION_DISTANCE_M,
   CAPTION_HEIGHT_M,
   CAPTION_MAX_WORDS,
+  CAPTION_QUIET_SCALE,
   FOV_HALF_V_DEG,
 } from '../../../src/ui/config.js';
 import { clampToFov, fovBoundsDeg } from '../../../src/ui/FovGuard.js';
@@ -197,6 +198,19 @@ describe('where a caption appears (UX §3.3; FR-SYS-07 in the garden window)', (
     expect(captionDropM(false)).toBeGreaterThan(captionDropM(true));
     // The quad's lower edge, in the window: no further down than the box's edge, so the guard never holds it.
     expect(degreesDown(captionDropM(false) + CAPTION_HEIGHT_M / 2)).toBeLessThanOrEqual(FOV_HALF_V_DEG);
+  });
+});
+
+describe('the quiet notice (BUG-056)', () => {
+  it('is "no seeds" only, sits above the gaze line with its upper edge inside the view box, and keeps a 1.4 cm cap height', () => {
+    expect(isQuietCaption('seedsTomorrow')).toBe(true);
+    expect(isQuietCaption('gardenFull')).toBe(false);
+    const degreesUp = (riseM: number) => (Math.atan(riseM / CAPTION_DISTANCE_M) * 180) / Math.PI;
+    const halfM = (CAPTION_HEIGHT_M * CAPTION_QUIET_SCALE) / 2;
+    expect(degreesUp(captionRiseM() - halfM)).toBeGreaterThan(0); // all of it above the gaze line: off the ring below
+    expect(degreesUp(captionRiseM() + halfM)).toBeLessThanOrEqual(FOV_HALF_V_DEG);
+    // FR-UI-04: the font is 0.44 of the quad's height and a capital 0.72 of the font (ui/config.ts).
+    expect(CAPTION_HEIGHT_M * CAPTION_QUIET_SCALE * 0.44 * 0.72).toBeGreaterThanOrEqual(0.0138);
   });
 });
 
