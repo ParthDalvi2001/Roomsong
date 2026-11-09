@@ -55,6 +55,9 @@ Still pinching, pull it slowly up, then down. Should: its own **note follows** y
 Pinch it again, drag it to the hole in the middle of the bed and let go. Should: one low **bump**; the plant goes back to its place. ☐
 Rate the sounds 1–5: ____ ☐ too quiet ☐ right ☐ too loud. What happened: ____________________
 
+**A7b. The music (T-164, listening review #2).** With five or more plants, sit still and listen for one minute.
+Rate the music 1–5: ____ (4 or more passes; 1 = boring or harsh, 5 = I would leave it playing). One sentence: ____________________
+
 **A8. A drag by sight.** Hold your hand 15–20 cm short of a plant. Look at the plant past your fingertips. Pinch.
 Move your hand and let go.
 Should: the plant lights before you pinch; it moves to the place you look at. ☐ Worked first try ____ of 3.
