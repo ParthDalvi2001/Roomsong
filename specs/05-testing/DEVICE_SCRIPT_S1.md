@@ -1,13 +1,13 @@
 # Device script S1 — the sittings with a headset (T-129)
 
-**Status:** the blocks marked "can be run today" are ready to run. Nothing in this script has been tried on a headset. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8; the tuning ripple's look (T-142) added to block 17 on 2026-10-16 against `develop` af94284; the first-minute guide (T-150) added to block 11 and the ripple's notes (T-142b) to block 17 on 2026-10-17 against `develop` dca03de; the PM's headset-week sound checks (Chinmay's 16 Oct update §7, which supersedes PM_PROPOSALS P-020; D-057) added to blocks 5, 11, 12, 14 and 15 on 2026-10-19 against `develop` 079944d; the device checks left open by the work of 23 to 25 Oct (the coffee table after BUG-010, the device half of T-166's room matrix, the chord when the bed lands) added to blocks 10 and 17 on 2026-10-25 against `develop` 93af00a.
+**Status:** the blocks marked "can be run today" are ready to run. First headset runs: 7 Nov 2026 (Parth, Quest 3S) and 8 Nov (Chinmay, Quest 3); what they showed is on the results sheet (T-188), the rest is still to run. · **Owner:** qa-engineer · **Written:** 2026-10-12 against `develop` 32eea00 · **Brought up to date:** 2026-10-13 against `develop` 3ca3392, with the headset notes from the reviews of T-116, T-121, T-123, T-124, T-128a, T-140, T-141, T-143, T-144, T-151 and T-162; the drawing checks of T-119 added against `develop` bbeb0c8; the tuning ripple's look (T-142) added to block 17 on 2026-10-16 against `develop` af94284; the first-minute guide (T-150) added to block 11 and the ripple's notes (T-142b) to block 17 on 2026-10-17 against `develop` dca03de; the PM's headset-week sound checks (Chinmay's 16 Oct update §7, which supersedes PM_PROPOSALS P-020; D-057) added to blocks 5, 11, 12, 14 and 15 on 2026-10-19 against `develop` 079944d; the device checks left open by the work of 23 to 25 Oct (the coffee table after BUG-010, the device half of T-166's room matrix, the chord when the bed lands) added to blocks 10 and 17 on 2026-10-25 against `develop` 93af00a.
 
-This script produces results. It contains none.
+This script produces results. The only ones in it so far are the device facts of 7 and 8 Nov on the results sheet.
 
 How sure each step is:
 
 - **No mark:** a step about our own pages, checked against the page's source code on `develop`.
-- **(unchecked):** a step about the headset's own menus, which nobody on the team has seen yet. If a menu looks different, do the nearest thing and write down what it was called.
+- **(unchecked):** a step about the headset's own menus, which nobody on the team had seen when it was written (the marks were not rechecked after 7 Nov). If a menu looks different, do the nearest thing and write down what it was called.
 - **(from the plan):** a step about a part of the app that is not on `develop` yet. It is written from the plan and the review notes, not from code. When the part lands, Claude checks the step against the code and takes the mark off.
 
 Every block starts with **Can be run today** or **Needs: a task**. "Today" means `develop` at 3ca3392: the test pages, and the app with its landing page, its Enter button, the session and the sound engine started, but no bed, no plants and nothing to hear yet. A block that needs a task can be run as soon as that task is merged and the build on the headset holds it (block 0 tells you the build).
@@ -77,8 +77,8 @@ Write the five answers at the top of your results note.
 | Question | Your answer |
 |---|---|
 | Which room and which table (at least 75 cm deep; round or not)? Is there a second room without Space Setup in reach of the same Wi-Fi? | |
-| Your own headset or a borrowed one? Quest 3 or Quest 3S? | |
-| Will the public site be live before the headset arrives? Only that route gives the real start-up time | |
+| Your own headset or a borrowed one? Quest 3 or Quest 3S? | Parth's Quest 3S (7 Nov); Chinmay's Quest 3 (8 Nov) |
+| Will the public site be live before the headset arrives? Only that route gives the real start-up time | Live: Chinmay used it on 8 Nov (build 4bc6c7c); Parth used the dev server over LAN; no start-up time reported yet |
 | Results back by mail from the headset's browser, or by USB cable? | |
 | Can you keep the headset overnight? Then blocks 6 and 16 are repeated the next day | |
 
@@ -2195,16 +2195,18 @@ Say in the message what was run on a headset and what was not. Claude writes the
 
 One page. Every line is a number or a yes or no that a decision or a task waits for. Copy it into your results note before you start and fill it as you go. A line you could not fill gets "not run" and the reason.
 
+Filled on 9 Nov (T-188) where the headset runs of 7 and 8 Nov answer a line: **D 7 Nov Parth** = Quest 3S, the dev server over LAN with the recorder; **D 8 Nov Chinmay** = Quest 3, the live site. Those runs used the app, so a line from another block holds only what the app showed. A blank line has no device report yet. Device status per TC-DEV row: TEST_PLAN §4.6.
+
 ### Sitting 1 — can be filled today
 
 | # | What | Your answer | From block | Who waits for it |
 |---|---|---|---|---|
-| 1 | Headset model; lighting; route, address and build | | setup, 0 | every result below |
+| 1 | Headset model; lighting; route, address and build | D 7 Nov Parth: Quest 3S, OculusBrowser 156, the dev server over LAN with the recorder (`?rec=1`), not route A or B. D 8 Nov Chinmay: Quest 3, route A, https://parthdalvi2001.github.io/Roomsong/, build 4bc6c7c. Lighting not noted | setup, 0 | every result below |
 | 2 | T1: page load to a usable Enter button (s) | | 0 | TC-DEV-01; PROGRESS item 26b |
 | 3 | T2: Enter pinch to the first sight of the room (s) | | 8 | TC-DEV-01; PROGRESS item 26b |
-| 4 | Does one pinch on Enter start session and sound: "No sound. Leave and enter again." on the first Enter, on the second | | 8 | T-128a (API_SPEC §1.10 rule 2); T-152 |
-| 5 | Room labels: is there a floor, a ceiling, a table or a desk | | 1 | the room signature, gate G1 (T-130); D-028 |
-| 6 | Is the room mesh there, and labelled `global mesh` | | 1 | T-140 |
+| 4 | Does one pinch on Enter start session and sound: "No sound. Leave and enter again." on the first Enter, on the second | D 7 Nov Parth: Enter started immersive-ar with hand tracking and sound (6–9 voices); Exit and re-entry work (D-067). D 8 Nov Chinmay: Exit works | 8 | T-128a (API_SPEC §1.10 rule 2); T-152 |
+| 5 | Room labels: is there a floor, a ceiling, a table or a desk | D 7 Nov Parth (the app): before a Space Setup scan the room data was empty; after it a table (0.56 m), 8 walls and a ceiling (2.18 m). Floor and desk not noted | 1 | the room signature, gate G1 (T-130); D-028 |
+| 6 | Is the room mesh there, and labelled `global mesh` | D 7 Nov Parth (the app): mesh-detection granted, with viewer, plane-detection, layers, hit-test, local-floor, local, anchors, bounded-floor and hand-tracking. The mesh itself not noted | 1 | T-140 |
 | 7 | Does a hand pinch send `selectstart` and `selectend`, and in which order | | 1 | T-124 (then the switch to `XRFrame.fillPoses`) |
 | 8 | First sound step that crackled (8, 16, 24, 32, 48, 64 voices, or none) | | 1 | the voice limit (T-145); TC-PERF-06 |
 | 9 | Saved place back after a reload, after a browser restart, after about an hour (n of 3) | | 1, 6 | anchors as a must-have (D-021, T-162) |
@@ -2215,7 +2217,7 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 14 | Inner ring, unfiltered (n of 10, all runs) | | 2, 3 | 16 or 12 steps (LLD §5.1) |
 | 15 | Lowest beta at which "First try" matches "First try unfiltered" | | 3 | D-028; FR-HND-03 |
 | 16 | Whole ring in view when you look at its middle, head still | | 2, 4 | D-020; Golden Rule 6 |
-| 17 | Table: its label, and how far below your eyes (m) | | 1, 2 | D-034 |
+| 17 | Table: its label, and how far below your eyes (m) | D 7 Nov Parth (the app, after Space Setup): a table at 0.56 m. Distance below the eyes not noted | 1, 2 | D-034 |
 | 18 | Hands lost during the pinch runs (count, and where) | | 2 | D-030; T-116 |
 | 19 | No drawn hands: did aiming suffer | | 2, 8 | D-027 |
 | 20 | Garden preview: `fps` usual and lowest, with 13 plants and with 80 | | 4 | T-165; TC-PERF-01 |
@@ -2241,9 +2243,9 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 
 | # | What | Your answer | From block | Who waits for it |
 |---|---|---|---|---|
-| 38 | (listen) Headset off and back: does the sound return by itself, in time | | 9 | TC-DEV-08; T-152; T-121 |
+| 38 | (listen) Headset off and back: does the sound return by itself, in time | D 7 Nov Parth: resume after taking the headset off works. Open: E_ANCHOR_RESTORE repeats after a resume (BUG-040, being fixed) | 9 | TC-DEV-08; T-152; T-121 |
 | 39 | (listen) Does the sound keep playing under the menu | | 9 | T-128a |
-| 40 | The bed at your table: level; on the table top (cm off); seconds until it showed | | 10 | T-128c; T-123; D-040 |
+| 40 | The bed at your table: level; on the table top (cm off); seconds until it showed | D 7 Nov Parth: level 3 (hit-test); the bed height varied per run: 0.69, 0.81, 0.73 m (open). Cm off and seconds not noted | 10 | T-128c; T-123; D-040 |
 | 41 | Near edge of the table to the ring's middle, and to its far edge (cm) | | 10 | D-020; Golden Rule 2 |
 | 42 | Head over the far edge, facing outward: where the bed landed | | 10 | T-140 |
 | 43 | A low table (height): did the bed land on it; did you want it there | | 10 | D-034 (the limit of 0.5 m) |
@@ -2252,7 +2254,7 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 46 | A pinch held from before Enter: did it place or plant anything | | 10, 11 | T-116 |
 | 47 | First sound (s) and first loop (s) at your table | | 11 | TC-DEV-01; Golden Rule 4 |
 | 48 | Does a plant land where your fingers are (cm off, direction) | | 11 | T-116; API_SPEC §1.10 rule 13 |
-| 49 | The orb: shown by the back of the hand; how often during play | | 12 | T-151 |
+| 49 | The orb: shown by the back of the hand; how often during play | D 7 Nov Parth: the settings orb and its buttons work. How often it shows not noted | 12 | T-151 |
 | 50 | The panel: readable; your hand in front of it; missed pinches on Tempo + and the tabs | | 12 | T-151; T-167 |
 | 51 | New garden: short pinch does nothing; the hold works; by looking it works | | 12 | T-151; T-160 |
 | 52 | A hitch when the panel redraws; the panel after a head tilt; the orb at the very start | | 12 | T-151 |
@@ -2260,22 +2262,22 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 54 | The words: at least 1.2 s, steady or flickering (short loss; menu) | | 13 | T-116 |
 | 55 | Does a grace of 0.2 s suit | | 13 | T-116; D-030 |
 | 56 | An empty hand out of view: no words | | 13 | D-030 |
-| 57 | Ten minutes, 60 plants: `fps` usual and lowest; `ms`; `draws`; `tris` | | 14 | TC-DEV-07; T-165; the numbers in the Devpost text |
+| 57 | Ten minutes, 60 plants: `fps` usual and lowest; `ms`; `draws`; `tris` | Not this test yet (no 10-minute, 60-plant run). D 7 Nov Parth, the dev server with the recorder, not the built page: about 90 fps, low 88 (first run low 67); JS under 2 ms; 11 draws; about 5k tris. D 8 Nov Chinmay, live site: 90 fps | 14 | TC-DEV-07; T-165; the numbers in the Devpost text |
 | 58 | Stutters, gaps or clicks in ten minutes | | 14 | T-121; TC-PERF-06 |
 | 59 | The Bass on the headset's speakers, and the key | | 14 | T-144; T-164 |
 | 60 | A seed planted after minute 5: a hitch | | 14 | T-143 |
 | 61 | Drift of the bed after ten minutes (cm) | | 14 | T-162; TC-DEV-05 |
 | 62 | The key change: ratings (a) to (d) | | 15 | PROGRESS item 27; T-143; T-164 |
 | 63 | A long echo cut short, a jump in loudness, a hitch at the change | | 15 | T-143 (keep the echo swap, or shorten it) |
-| 64 | The garden back after a reload and after closing the browser: returned or placed again; seconds; cm | | 16 | TC-DEV-05; T-162; D-021 |
+| 64 | The garden back after a reload and after closing the browser: returned or placed again; seconds; cm | D 7 Nov Parth: the garden saved and came back after a reload; Exit and re-entry work (D-067). D 8 Nov Chinmay: the garden saved. After closing the browser, seconds and cm: not noted | 16 | TC-DEV-05; T-162; D-021 |
 | 65 | Saved places at every step (stays at 1?); does the list exist; seconds to save a place (under 4?) | | 16 | D-040; T-162 |
 | 66 | Eyes to coin when the bed stayed, and when it was put down again (cm): is 10 cm of slack right | | 16 | D-041 |
 | 67 | Headset off, or the menu, in the first 4 s: is the bed back | | 16 | T-162; T-128c |
 | 68 | A recentre: does the bed stay on the table | | 16 | T-162; T-128c |
 | 69 | Table moved; light changed; headset restarted; Space Setup done again: returned or placed again | | 16 | T-162 |
-| 70 | The next day: returned; exactly one new seed | | 16 | TC-DEV-05; D-037 |
+| 70 | The next day: returned; exactly one new seed | D 8 Nov Chinmay: the daily seed arrived. The Day 2 count: not on a device yet | 16 | TC-DEV-05; D-037 |
 | 71 | Was a new, empty garden ever shown in place of yours | | 16 | D-033; T-128e |
-| 72 | Each room: the app's floor area, ceiling height and volume against your tape; same band? | | 17 | T-140; T-141; gate G1 (T-130) |
+| 72 | Each room: the app's floor area, ceiling height and volume against your tape; same band? | D 7 Nov Parth, after Space Setup: table 0.56 m, 8 walls, ceiling 2.18 m → minorPent, key 2. D 8 Nov Chinmay: the room was read after Space Setup. No tape beside it yet | 17 | T-140; T-141; gate G1 (T-130) |
 | 73 | Two rooms: do they sound different (key, scale or echo) | | 17 | TC-DEV-13 |
 | 74 | Odd rooms (L-shaped, wardrobe, sloped ceiling, mesh only): what the app read | | 17 | T-140; LLD §5.8 |
 | 75 | Site data cleared: do the app's saved places go | | 19 | T-162; D-040 |
@@ -2320,7 +2322,7 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 94 | The captions read to their end from your seat, without leaning | | 11 | FR-UI-04; T-150 |
 | 95 | The little hand over the glowing cell, in your words; the cell on the white sheet | | 11 | T-150; UX §3.3 |
 | 96 | The palm, pull and drag icons named from your seat; a step that waited more than 60 s | | 11 | T-150; D-053; T-163 |
-| 97 | P0: first sound (s), three plants (s), aided or not, where they stopped, what the hand meant | | 11 | TC-DEV-01; UAT-16 (a first look, below sample); T-166 |
+| 97 | P0: first sound (s), three plants (s), aided or not, where they stopped, what the hand meant | Three plants: D 7 Nov Parth 38 s (after the D-062 fix); D 8 Nov Chinmay 62 s. First sound and the rest: not noted | 11 | TC-DEV-01; UAT-16 (a first look, below sample); T-166 |
 
 ### The sound checks (D-057) — blocks 11, 12, 14 and 15
 
@@ -2347,7 +2349,7 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 | 111 | Room matrix `floor`: the same numbers | | 17 | T-166 |
 | 112 | Room matrix `no-walls`: the same numbers, or "not possible" | | 17 | T-166; FR-ROOM-04 |
 | 113 | Room matrix `low-table`: the numbers of 107 | | 10, 17 | T-166; BUG-010 |
-| 114 | Room matrix `none`: the same numbers, unscanned and declined | | 17, 18 | T-166; P2 |
+| 114 | Room matrix `none`: the same numbers, unscanned and declined | Unscanned: D 7 Nov Parth: empty room data, the default song played. D 8 Nov Chinmay: the default song with no message ("No room scan" added since, D-068, not on a device yet). Numbers and declined: not noted | 17, 18 | T-166; P2 |
 | 115 | All six playable; a room over 60 draws or under 60 fps | | 17 | T-166; NFR-PERF-03 |
 | 116 | The landing chord: the first landing in the room's key; the same as Re-place | | 17 | the landing-chord fix; T-164 §6 |
 
