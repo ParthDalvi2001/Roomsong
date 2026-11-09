@@ -30,7 +30,7 @@ With it, the G3 verdict: ★ **conditional pass** (the conditions: the new-perso
 3. **Chinmay, by 12 Nov (T-115):** (a) a screenshot of his Meta Horizon Start membership (the Representative must be a member); (b) open the Devpost "Enter a submission" form without submitting and send a photo of its fields, so the text fits them; (c) if the rules or form ask for prize papers (W-8BEN, bank), start them now.
 4. **Rate the music (T-164).** During the headset run, after A5: the song itself (style B, the app's sound since 25 Oct), 1 to 5 and one sentence. 4 or more closes the sound pass; below 4, say what is worst (fixes only after 12 Nov).
 6. **Devpost (T-180):** the target launch line (★ "early 2027 on the Meta Horizon Store" if you both agree, else it is cut) and "What excites us about VR", two sentences each in your and Chinmay's own words, by 14 Nov.
-(2 and 5 closed 9 Nov: the G2 questions are settled by events or folded into item 5 and item 6; SPRINT_PLAN T-155.)
+(7.2 and 7.5 closed 9 Nov: the G2 questions are settled by events or folded into items 5 and 6 above; SPRINT_PLAN T-155.)
 
 ## 9. Video and final check (Chinmay, with you)
 1. **Dry run on 11 or 12 Nov:** check that the Quest's own capture records the room (passthrough) and the app's sound at 1080p. Plan: `specs/06-release/VIDEO_SCRIPT_V1.md` (88 s, the first minute in one take).
