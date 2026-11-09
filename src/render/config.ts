@@ -86,12 +86,13 @@ export const PLANT_LOBE_DEPTH = 0.3;
 export const PLANT_SATURATION = 0.72;
 export const PLANT_LIGHTNESS = 0.63;
 /** UX §5, ART_PASS_T163 §0 option A (D-060): a plant's hue 0..1 is a place on the arc from gold (47°) through moss
- *  and ice to violet (267°); a room turns the arc by up to ±PALETTE_SHIFT_MAX_DEG and nudges the saturation by
- *  ±PALETTE_SAT_STEP, both from its signature's paletteSeed (render/palette.ts). ±15°, not §0's ±30°: every room
- *  stays on 32°–282°, short of coral (17°) and magenta (297°), the promise of no pinks or reds (D-060 review). */
+ *  and ice to violet (267°). A room turns the arc by PALETTE_TURN_DEG[its decay step] (D-071: small rooms warm toward
+ *  gold, halls cool toward ice and violet) and nudges the saturation by ±PALETTE_SAT_STEP from its paletteSeed
+ *  (render/palette.ts). At most ±15°, not §0's ±30°: every room stays on 32°–282°, short of coral (17°) and magenta
+ *  (297°), the promise of no pinks or reds (D-060 review). */
 export const PALETTE_ARC_START_DEG = 47;
 export const PALETTE_ARC_SPAN_DEG = 220;
-export const PALETTE_SHIFT_MAX_DEG = 15;
+export const PALETTE_TURN_DEG: readonly number[] = [-15, -9, -3, 3, 9, 15]; // one per REVERB_RT60_STEPS_S, 0.3 … 2.0 s
 export const PALETTE_SAT_STEP = 0.06;
 /** Chosen in T-125 (UX §5: glass-like, soft glow): a plant is this dark at its foot, full at its head, and
  *  this much brighter where its surface turns away from the eye. No light is involved (NFR-PERF-09). */

@@ -15,7 +15,7 @@ export const DEFAULT_DWELL_MS = 900;
 export const CAPTION_MIN_MS = 1200;
 /** LLD §5.8 (plan v2.1): the limits of a tuning-ripple caption. */
 export const RIPPLE_CAPTION_MAX_WORDS = 3;
-export const RIPPLE_CAPTION_MAX_CHARS = 16;
+export const RIPPLE_CAPTION_MAX_CHARS = 20; // was 16; 20 for the mood (D-071), 15 characters a second in its 1.3 s
 
 /** LLD §3: BedAnchor defaults. They equal garden's BED_INNER and BED_OUTER (FR-MUS-01); core/ may not import garden/. */
 export const BED_ANCHOR_INNER_M = 0.12;

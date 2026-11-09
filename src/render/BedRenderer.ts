@@ -169,12 +169,12 @@ export class BedRenderer {
 
   /**
    * On `room:signature` (D-060): the ring lines turn by the room's shift of the plants' arc, once, never eased:
-   * the signature comes in the frame the bed is placed (API_SPEC §1.10 rule 4); 0 when the bed leaves, so the
+   * the signature comes in the frame the bed is placed (API_SPEC §1.10 rule 4); seed 0 when the bed leaves, so the
    * level-3 ghost's lines are ICE. Wanderer: ICE. Set-up.
    */
-  setPalette(paletteSeed: number): void {
+  setPalette(paletteSeed: number, reverbRt60: number): void {
     const line = this.base.material.uniforms.uLine!.value as Color;
-    const { shiftDeg } = setPalette(palette, paletteSeed);
+    const { shiftDeg } = setPalette(palette, paletteSeed, reverbRt60);
     if (shiftDeg === 0) line.set(ICE);
     else line.setHSL(ICE_HSL.h + shiftDeg / 360, ICE_HSL.s, ICE_HSL.l, SRGBColorSpace);
   }

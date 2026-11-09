@@ -133,8 +133,8 @@ export class SeedRenderer {
    * in the frame the bed is placed, API_SPEC §1.10 rule 4); one drawn, out on a palm through a Re-place, keeps its
    * colour until it is next not drawn. Set-up.
    */
-  setPalette(paletteSeed: number): void {
-    setPalette(this.palette, paletteSeed);
+  setPalette(paletteSeed: number, reverbRt60: number): void {
+    setPalette(this.palette, paletteSeed, reverbRt60);
     for (let slot = 0; slot < CAPACITY; slot++) {
       if (typeof this.ids[slot] !== 'string') continue;
       if (this.isDrawn[slot]) this.stale[slot] = 1;

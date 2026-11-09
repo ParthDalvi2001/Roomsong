@@ -1,14 +1,17 @@
 // The plants' colours (UX §5, ART_PASS_T163 §0 option A, D-060). A plant's hue (0..1, from its seed; it also sets
 // its sound, FR-MUS-05) is a place on one arc: gold (47°) → moss (123°) → ice (190°) → violet (267°), so no pinks or
-// reds. The room turns the whole arc by ((paletteSeed % 31) − 15)°, so every room stays on 32°–282°, and nudges the
-// saturation by ±0.06 from its signature (LLD §5.8); Wanderer (paletteSeed 0) does neither. Set-up only.
+// reds. The room's size turns the whole arc (D-071): its decay step 0–5 (small to hall) by PALETTE_TURN_DEG, −15° to
+// +15°, so every room stays on 32°–282°, and its hash nudges the saturation by ±0.06 (LLD §5.8); Wanderer (paletteSeed
+// 0) does neither. Set-up only.
 import { SRGBColorSpace, type Color } from 'three';
+
+import { REVERB_RT60_STEPS_S } from '../garden/index.js';
 
 import {
   PALETTE_ARC_SPAN_DEG,
   PALETTE_ARC_START_DEG,
   PALETTE_SAT_STEP,
-  PALETTE_SHIFT_MAX_DEG,
+  PALETTE_TURN_DEG,
   PLANT_SATURATION,
 } from './config.js';
 
@@ -21,14 +24,15 @@ export interface Palette {
 /** Wanderer's, and every renderer's until its room is known. */
 export const newPalette = (): Palette => ({ shiftDeg: 0, saturation: PLANT_SATURATION });
 
-/** Writes the palette of `paletteSeed` (room:signature) into `out`. Seed 0 (Wanderer) or not a number: no tint. */
-export function setPalette(out: Palette, paletteSeed: number): Palette {
+/** Writes the palette of room:signature's `paletteSeed` and `reverbRt60` into `out`. Seed 0 (Wanderer) or not a number:
+ *  no tint; a decay that is not one of REVERB_RT60_STEPS_S: no turn. */
+export function setPalette(out: Palette, paletteSeed: number, reverbRt60: number): Palette {
   if (!(paletteSeed > 0)) {
     out.shiftDeg = 0;
     out.saturation = PLANT_SATURATION;
     return out;
   }
-  out.shiftDeg = (paletteSeed % (2 * PALETTE_SHIFT_MAX_DEG + 1)) - PALETTE_SHIFT_MAX_DEG;
+  out.shiftDeg = PALETTE_TURN_DEG[REVERB_RT60_STEPS_S.indexOf(reverbRt60)] ?? 0;
   out.saturation = PLANT_SATURATION + PALETTE_SAT_STEP * (((paletteSeed >>> 9) % 3) - 1);
   return out;
 }

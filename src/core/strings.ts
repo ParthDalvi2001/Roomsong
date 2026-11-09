@@ -4,7 +4,10 @@ export const STRINGS = {
   rippleTableSeeds: 'Table: seeds.',
   rippleTableNote: 'Table: a note.', // a later session: the table rings the chord's root (LLD §5.8); no room tint is drawn
   rippleWalls: 'Walls: a note.', // the wall rings the chord's middle note
-  rippleCeiling: 'Ceiling: mood.', // the ceiling's height sets the scale (and it rings the fifth)
+  // The ceiling's height sets the mode, which its caption names (D-071), and it rings the fifth.
+  rippleCeilingMinor: 'Ceiling: minor mood.',
+  rippleCeilingMajor: 'Ceiling: major mood.',
+  rippleCeilingOpen: 'Ceiling: open mood.', // susPent
   // The level-3 placement hint (UX §9.2): room/ raises one of the two while the ghost of the bed shows.
   placeLook: 'Look at your table, and pinch',
   placeLookGaze: 'Look at your table, and wait', // gaze mode (Settings.gazeDwell)
