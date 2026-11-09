@@ -434,7 +434,7 @@ test('TC-E2E-03, the edges: off the bed the seed goes home; over a full bed "Gar
   await hands.putLeft(PALM_UP);
 
   // Let go beside the bed: back to the supply (and a bump, engine.ui, which is silent until T-164).
-  const beside = { x: 0.3, y: 1.0, z: -0.25 }; // where the hands were measured: over nothing
+  const beside = { x: 0.75, y: 1.0, z: -0.25 }; // well beside the bed: past the 0.50 m in which a seed is still planted (BUG-055)
   const off = await carry(page, probe, hands, beside, 1);
   expect(off.release).toMatchObject({ gesture: 'carry', cell: null });
   expect(await heard(probe, 'garden:seedBack', { id: off.id })).toMatchObject({ reason: 'offBed' });

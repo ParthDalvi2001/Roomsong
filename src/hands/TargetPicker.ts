@@ -118,10 +118,10 @@ const centre: Vec2 = { x: 0, y: 0 };
  * FR-HND-16: `snapToCell` with the hover memory. `kept`, the cell this returned last, stays until the centre of
  * the newly snapped cell is at least HOVER_DEAD_BAND_M nearer to the point than its own, so a hand resting on the
  * border of two cells does not flicker between them. null off the bed, whatever `kept` is. Creates nothing.
- * `fillsHole` is `snapToCell`'s: a carried seed over the inner hole gets a cell of the innermost ring (BUG-055).
+ * `carriesSeed` is `snapToCell`'s: a carried seed over the hole or just outside the ring still gets a cell (BUG-055).
  */
-export function stickyCell(bedLocal: Vec2, kept: Cell | null, fillsHole = false): Cell | null {
-  const cell = snapToCell(bedLocal, fillsHole);
+export function stickyCell(bedLocal: Vec2, kept: Cell | null, carriesSeed = false): Cell | null {
+  const cell = snapToCell(bedLocal, carriesSeed);
   if (cell === null || kept === null) return cell;
   if (cell.ring === kept.ring && cell.step === kept.step) return kept;
   // Both distances are worked out here: a helper that returned one had V8 box it, 16 bytes a call (measured).

@@ -30,6 +30,7 @@ const BED = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1];
 const ON_BED: Vec3 = { x: 0.2, y: 0.76, z: -0.45 }; // 0.20 m from the centre: on the ring
 const IN_HOLE: Vec3 = { x: 0.05, y: 0.76, z: -0.45 }; // 0.05 m: the centre hole
 const OFF_BED: Vec3 = { x: 0.4, y: 0.76, z: -0.45 }; // 0.40 m: past the outer edge
+const FAR_OFF: Vec3 = { x: 0.6, y: 0.76, z: -0.45 }; // 0.60 m: past the reach of a carried seed too (BUG-055)
 const SEED_AT: Vec3 = { x: -0.25, y: 0.95, z: -0.3 };
 const PLANT_AT: Vec3 = { x: 0.2, y: 0.76, z: -0.45 };
 const ORB_AT: Vec3 = { x: 0, y: 0.76, z: -0.45 };
@@ -188,6 +189,17 @@ describe('GestureMachine: which signal a pinch uses (TC-HND-01)', () => {
     expect(types()).toEqual(['gesture:pinchStart', 'gesture:release']);
   });
 
+  it('BUG-055: an open palm held up takes no seed on the joint distance (a thumb brushing the index), but does on select', () => {
+    const { step } = rig();
+    step({ at: SEED_AT, palmUp: true });
+    step({ pinch: true });
+    step({ pinch: false });
+    expect(seen).toEqual([]);
+    step({ select: true });
+    expect(types()).toEqual(['gesture:pinchStart']);
+    expect(last()).toMatchObject({ target: SEED });
+  });
+
   it('a joint-distance edge alone presses no orb', () => {
     const { step } = rig();
     step({ at: ORB_AT });
@@ -315,8 +327,13 @@ describe('GestureMachine: carry, plant and press (TC-HND-04 subset, TC-HND-05)',
     expect(last()).toMatchObject({ gesture: 'carry', zone: 'bed', cell: { ring: 3, step: 0 } });
   });
 
-  it('a seed released off the bed or over a full bed has no cell: it goes back to the supply', () => {
-    carryTo(OFF_BED);
+  it('BUG-055: a seed let go just outside the ring, where the palm was, is planted on the outermost ring', () => {
+    carryTo(OFF_BED); // 0.40 m from the centre, 5 cm into the outer zone
+    expect(last()).toMatchObject({ gesture: 'carry', target: SEED, zone: 'outer', cell: { ring: 4, step: 0 } });
+  });
+
+  it('a seed released well off the bed or over a full bed has no cell: it goes back to the supply', () => {
+    carryTo(FAR_OFF);
     expect(last()).toMatchObject({ gesture: 'carry', target: SEED, zone: 'outer', cell: null });
     const full = rig();
     full.garden.free = null;
@@ -396,7 +413,7 @@ describe('GestureMachine: carry, plant and press (TC-HND-04 subset, TC-HND-05)',
   it('reuses its payload objects: a handler that keeps one sees the next event in it', () => {
     const kept: unknown[] = [];
     const off = bus.on('gesture:release', (payload) => kept.push(payload));
-    carryTo(ON_BED, carryTo(OFF_BED));
+    carryTo(ON_BED, carryTo(FAR_OFF));
     off();
     expect(kept).toHaveLength(2);
     expect(kept[0]).toBe(kept[1]);
@@ -1025,8 +1042,8 @@ describe('GestureMachine: tracking loss (TC-HND-07, FR-HND-15)', () => {
     step({ at: SEED_AT });
     step({ select: true });
     step({ tracked: false, select: false });
-    step({ tracked: true, at: OFF_BED });
-    expect(last()).toMatchObject({ gesture: 'carry', zone: 'outer', cell: null, pos: OFF_BED });
+    step({ tracked: true, at: FAR_OFF });
+    expect(last()).toMatchObject({ gesture: 'carry', zone: 'outer', cell: null, pos: FAR_OFF });
   });
 
   it('starts nothing for a hand that is not tracked', () => {
@@ -1100,7 +1117,7 @@ describe('GestureMachine: the hover (TC-HND-08, TC-HND-05, FR-HND-16)', () => {
     r.step();
     expect(lastHover()).toMatchObject({ cell: SNAPPED });
     const count = hovers().length;
-    r.step({ at: OFF_BED });
+    r.step({ at: FAR_OFF });
     expect(lastHover()).toMatchObject({ target: null, cell: null });
     r.step({ at: IN_HOLE }); // BUG-055: over the hole a carried seed shows the innermost ring's cell
     expect(lastHover()).toMatchObject({ target: null, cell: { ring: 0, step: 0 } });

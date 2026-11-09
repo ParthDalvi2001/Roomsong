@@ -8,7 +8,7 @@ import { bus } from '../core/index.js';
 import { bedZone } from '../garden/index.js';
 
 import { DRAG_DEAD_ZONE_M, TRACKING_GRACE_MS } from './config.js';
-import { PalmUpHold } from './poses/palmUp.js';
+import { isPalmUp, PalmUpHold } from './poses/palmUp.js';
 import { pickPastHand, pickTarget, stickyCell, toBedLocal } from './TargetPicker.js';
 
 import type { HandFrame } from './InputSource.js';
@@ -273,7 +273,7 @@ export class GestureMachine {
         : stickyCell(
             toBedLocal(context.bedPose, this.point(frame, context.eye), this.local),
             this.snapped,
-            state === 'CARRYING', // BUG-055: a seed over the hole takes the innermost ring; a dragged plant does not
+            state === 'CARRYING', // BUG-055: a seed over the hole or just outside the ring gets a cell; a plant does not
           );
     // Garden is asked on every sample: the other hand may fill the cell while this one hovers it. A dragged
     // plant's own cell counts as free: it may be put back where it stands.
@@ -339,11 +339,18 @@ export class GestureMachine {
     if (pinchRose || selectRose) {
       const target = this.hoverEvent.target;
       // FR-HND-02: a plant is held on the joint distance and a press is tapped on the platform's select. What
-      // is under the hand picks the signal; the other one's edge does nothing. A seed (BUG-055) takes either,
-      // on the edge of the two together: one still closed from the last pinch starts nothing.
+      // is under the hand picks the signal; the other one's edge does nothing. A seed (BUG-055) takes either: a
+      // select edge always, and a joint edge while no select is down (one still down from the last pinch starts
+      // nothing) and the palm is not up. An open palm that holds the seed up brushes thumb on index: on the
+      // 10 Nov run that took the seed off its own palm and dropped it at once, eleven times in a minute.
       const kind = target === null ? null : target.kind;
       const on: HeldOn = kind === 'plant' ? 'pinch' : kind === 'seed' ? 'either' : 'select';
-      const rose = on === 'pinch' ? pinchRose : on === 'select' ? selectRose : !(this.wasPinch || this.wasSelect);
+      const rose =
+        on === 'pinch'
+          ? pinchRose
+          : on === 'select'
+            ? selectRose
+            : selectRose || (pinchRose && !frame.select && !isPalmUp(frame.palmNormal));
       if (rose) {
         this.start(frame, target, on, eye);
         return;
