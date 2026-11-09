@@ -2,7 +2,7 @@
 
 **Status:** Approved · **Source:** https://start-developer-competition-26.devpost.com (Overview, Rules, Judging,
 Special Awards and Resources pages, read 2026-10-09; all of them plus Dates, FAQs and Updates re-read 2026-10-15, T-186:
-rule text unchanged, see §11) · **Owner:** product-owner
+rule text unchanged, see §11; last read live 2026-10-27; 2026-11-08 and 2026-11-09 the site answered HTTP 403, see §12) · **Owner:** product-owner
 
 > These rules are a legal contract. When this digest and the official rules differ, the official rules win.
 > Re-check the Devpost **Updates** and **FAQs** tabs every week (task T-090 in the sprint plan).
@@ -165,3 +165,19 @@ Source: https://start-developer-competition-26.devpost.com/details/faqs (read 20
 - **Check membership:** log in to the Developer Forum (https://communityforums.atmeta.com/category/horizon-developer-forum); a "Start Member" or "Start Partner" flair next to the name confirms it (evidence for C8). "Meta Horizon Start" is the old name of the same program.
 - **Edits before the deadline are allowed:** the app and the form (track, division) may change until 2026-11-18 12:00 PT; no changes from then until the winner announcement (~2026-12-11).
 - **WebXR link:** a URL is required; GitHub Pages or any host (Vercel, Digital Ocean, AWS, Azure). No third-party devices.
+
+## 12. Weekly rule check, 2026-11-09 (T-186)
+**Site unreachable on 9 Nov:** the Overview, `/rules` and `/updates` pages each answered HTTP 403 to one automated fetch (as on 8 Nov); not retried. So there is **no live comparison**: dates, fields, limits, video and hosting rules, hands-first, judging and the special awards stand as read on 27 Oct, and the special award **criteria wording is still not recorded**. The last live read is now 13 days old, past the weekly cadence. **A human (Parth or Chinmay, logged in) reads Rules, Updates, FAQs and the Special Awards page in a browser before the feature freeze on 12 Nov**, records any change here, and copies the award criteria for Best First Five Minutes, Reason to Come Back, Accessibility Forward and Boldest Original Concept into §7.
+
+**The Devpost draft checked against this file and SUBMISSION_CHECKLIST §2 (our files only; `DEVPOST_DRAFT.md` v3, develop 8a525d4).**
+Pass: name; tagline A has 111 characters (limit 140) and names the pinch and the real table; Entertainment / New Experience, first commit 2026-10-10; the description has 498 words of 500 (recounted by the same counting rule as the draft); it covers inspiration, how we built it and future plans, and opens with How to test; How this meets the brief, Known limitations and What's next are all there; "music visualization" and "spatial audio" are in the Listen sentence; the room wording follows v1 (no tempo, no "table sets the key", "not measured acoustics"); there is no "first ever" or "the only" claim; the video is planned at 60 to 90 s on public YouTube (limit: under 3:00); the build link is public HTTPS with no login; Known limitations separates what ran on a headset from what ran only in the emulator.
+Gaps:
+1. **Still open, each with a task:** mirror URL (T-108, DECISIONS_PENDING 7.1), build hash (T-183), video link (T-181), gallery (T-182), team emails (T-185), target launch and "What excites us about VR" (team's words, DECISIONS_PENDING 7.6), the real form field list (T-115, Chinmay).
+2. **"Store launch: early 2027." in What's next has no `[not yet]` marker**, but the launch date is not agreed (DECISIONS_PENDING 7.6), so it could ship unagreed. Mark it, or cut it (−3 words).
+3. **Numbers are not from the final build:** the fps come from the dev build and from live 45518e5, and the first sound from the emulator on 24 Oct. Re-measure at T-183/T-184 (checklist rule "Numbers").
+4. **"one room each" is assumed**; Parth confirms it (checklist rule: say in how many rooms).
+5. **The "first" sentence differs from the checklist rule:** §2.1 wants the antecedents acknowledged ("art and research prototypes"). The draft's sentence from 25 Oct names none and does not acknowledge them. ★ Keep the draft's wording ("no earlier consumer MR instrument") and amend the checklist rule to match.
+6. **Brand-like names in How to test:** "Bluetooth" (a trademark) and "desktop Chromium". The checklist says no brand names anywhere. Low risk (these are instructions, not advertising). ★ "not wireless headphones" (+1 word) and "a desktop browser" (+1 word) bring the description to exactly 500.
+7. **The hands field is 283 words**, and no limit is known for it. If the form has no separate hands field, the text cannot fit in the description (2 words of slack). Settled by T-115.
+8. Minor: "the bed about 0.45 m ahead" is a design value with no "(emulator)" or "by design" tag; the draft's own tag rule asks for one. Accept it as a design value or tag it.
+Affects: `specs/06-release/DEVPOST_DRAFT.md` (gaps 2, 5 to 8) and `SUBMISSION_CHECKLIST.md` §2.1 (gap 5). The video script is unaffected (no new rule text).
