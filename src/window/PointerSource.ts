@@ -36,9 +36,9 @@ export class PointerSource implements InputSource {
   private isSeen = false;
   private readonly pos = new Vector3();
   private readonly onRay = new Vector3();
-  /** How far above the bed the plant under the pointer stands: kept through a press, or a drag would read as a pull. */
+  /** How far above the bed the target under the pointer is met: kept through a press, or a drag would read as a pull. */
   private heldLiftM = 0;
-  /** Whether that plant was taken by its head on the ray (not at its foot): a press then follows the ray (BUG-044). */
+  /** Whether that target was met on the ray (not at a plant's foot): a press then follows the ray (BUG-044). */
   private isHeldByHead = false;
   private readonly lastPos = new Vector3();
   /** The previous sample's time, ms; -1 before the first one. */
@@ -81,12 +81,13 @@ export class PointerSource implements InputSource {
   sample(hand: Hand, timeMs: number, out: HandFrame): void {
     out.tracked = this.inSession && this.isSeen && hand === this.hand;
     if (!out.tracked) return;
+    const wasDown = this.isDown;
     this.takeOne();
     out.pinch = out.select = this.isDown; // no platform classifier: select = pinch
     const pos = this.pos;
     // Sticky: a pointer that has left the bed plane (above the horizon) is reported where it last was on it.
     if (!this.hasPointer) this.stage.restPoint(pos);
-    else if (this.stage.project(this.ndcX, this.ndcY, pos)) this.liftOnto(pos);
+    else if (this.stage.project(this.ndcX, this.ndcY, pos)) this.liftOnto(pos, wasDown);
     copy(out.pinchPos, pos);
     if (this.isNearTarget(pos)) this.stage.restPoint(out.palmPos);
     else copy(out.palmPos, pos);
@@ -147,11 +148,13 @@ export class PointerSource implements InputSource {
 
   /**
    * BUG-011: the Listen orb, the undo petal and a plant's head (D-063) are drawn above the bed, so the bed point behind
-   * one is past its hit radius. A ray that passes within LIFTED_DRAWN_RADIUS_M of one moves `pos` to the ray's point
-   * nearest it (the nearest such target), held or not, so hover, press and release agree. Creates nothing (hot path).
+   * one is past its hit radius. A hover whose ray passes within LIFTED_DRAWN_RADIUS_M of one moves `pos` to the ray's
+   * point nearest it (the nearest such target). From the press to the release, both included, nothing is looked for
+   * again (BUG-049): the point keeps the height it was taken at, so hover, press, drag and release agree. A button
+   * change comes alone at the point already handed out (`takeOne`). Creates nothing (hot path).
    */
-  private liftOnto(pos: Vector3): void {
-    if (this.isDown && this.heldLiftM > 0) {
+  private liftOnto(pos: Vector3, wasDown: boolean): void {
+    if (this.isDown || wasDown) {
       // A slanted ray's bed point lies well beyond a head drawn on it: meet the ray at the head's height instead.
       if (!this.isHeldByHead || !this.stage.project(this.ndcX, this.ndcY, pos, this.heldLiftM)) pos.y += this.heldLiftM;
       return;
@@ -175,7 +178,7 @@ export class PointerSource implements InputSource {
       if (offM > bestM) continue;
       bestM = offM;
       pos.copy(this.onRay);
-      this.heldLiftM = target.kind === 'plant' ? pos.y - bedY : 0;
+      this.heldLiftM = pos.y - bedY;
       this.isHeldByHead = true;
     }
   }
