@@ -6,9 +6,6 @@
 **Use the one sheet: `specs/05-testing/HEADSET_RUN_2026-11-10.md`** (about 25 minutes in five short sessions, plus 2 minutes tomorrow for Day 2; tick boxes; send a photo of it). It covers everything below and items 8.
 1. Open the link over a phone hotspot. 2. "No room scan" message: once unscanned, once after Space Setup. 3. Undo a plant (undo petal). 4. Drag a plant by looking at it. 5. Listen: both palms out 1.5 s. 6. A no-pinch run: the link with `?access=gaze`. 7. Tomorrow: Garden tab says Day 2. 8. A 10 s Quest video with sound. Optional: the voice test (RND_2026-11-08 §1).
 
-## 3. Before 12 Nov: read the Devpost pages in a browser (5 minutes)
-The site refuses automated reads (HTTP 403 on 8 and 9 Nov), so the last check against the live rules is 27 Oct. You or Chinmay: open Rules, Updates, FAQs and Special Awards on https://start-developer-competition-26.devpost.com/ and tell me anything new (deadline, fields, video, awards). HACKATHON_RULES §12.
-
 ## 8. Listen and look (on the headset, after the next push of main)
 1. The sound while shaping (T-147b): pinch a plant (a soft tick), pull it slowly up and down (its own note follows), drop one in the centre hole (one low bump). Rate 1–5; too quiet or too loud? 2. The room colours (T-190): rate the tint 1–5 and read the ceiling caption ("Ceiling: minor mood."). 3. One-hand mode with a seed on the palm: open settings, look at Exit and pinch: the panel closes (BUG-042).
 
@@ -16,10 +13,11 @@ The site refuses automated reads (HTTP 403 on 8 and 9 Nov), so the last check ag
 Someone who has never seen Roomsong plays the first five minutes on a headset while you watch, without help. Tell me what got stuck. This is the evidence for "Best First Five Minutes".
 
 ## 7. Old items of 25 Oct, still open
-1. **Mirror (T-108): Netlify chosen (Parth and Chinmay, 9 Nov, D-069).** Parth: make a free account at app.netlify.com now; the first upload comes after the SonicSpace build is live (runbook §1.4, project name `sonicspace`); send Claude the address.
+1. **Mirror (T-108): Netlify chosen (Parth and Chinmay, 9 Nov, D-069).** Parth: make a free account at app.netlify.com now; the first upload comes after the SonicSpace build is live (runbook §1.4, project name `sonicspace`); send Claude the address. **10 Nov: `sonicspace.netlify.app` is taken** (an unrelated site, "The Sonic Space | Premium Recording Studio"), so ★ `sonicspace-garden`.
 3. **Chinmay, by 12 Nov (T-115):** (a) a screenshot of his Meta Horizon Start membership (the Representative must be a member); (b) open the Devpost "Enter a submission" form without submitting and send a photo of its fields, so the text fits them; (c) if the rules or form ask for prize papers (W-8BEN, bank), start them now.
 4. **Rate the music (T-164).** During the headset run, after A5: the song itself (style B, the app's sound since 25 Oct), 1 to 5 and one sentence. 4 or more closes the sound pass; below 4, say what is worst (fixes only after 12 Nov).
 6. **Devpost (T-180):** the launch line is agreed (9 Nov, D-069: "Early 2027 on the Meta Horizon Store, as a web app"). Still open: "What excites us about VR", two sentences in your own words (Parth: "I will reply shortly").
+7. **The name (10 Nov).** A recording studio called "The Sonic Space" exists; Rules §4.17 bars trademark infringement. ★ Keep SonicSpace (a different field) after a quick name search before the 13 Nov shoot; or rename before the shoot, since the title, link and end card change together.
 (7.2 and 7.5 closed 9 Nov: the G2 questions are settled by events or folded into items 5 and 6 above; SPRINT_PLAN T-155.)
 
 ## 9. Video and final check (Chinmay, with you)
