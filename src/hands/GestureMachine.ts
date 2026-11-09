@@ -58,6 +58,8 @@ export interface GestureContext {
 }
 
 type State = 'IDLE' | 'PRESSED' | 'PINCHED' | 'PULLING' | 'DRAGGING' | 'CARRYING';
+/** The signal a held pinch started on and ends on (FR-HND-02). */
+type HeldOn = 'pinch' | 'select' | 'either';
 
 /** What the release of each state is: the `gesture` column of the release table (API_SPEC §1.4). */
 const ENDS_AS: Readonly<Record<State, HeldGesture>> = {
@@ -87,10 +89,13 @@ function isSame(a: TargetRef | null, b: TargetRef | null): boolean {
 export class GestureMachine {
   private state: State = 'IDLE';
   /**
-   * True: the held pinch started on `pinch` (a plant) and ends on it. False: on `select` (everything else).
-   * So a hand that is not idle holds a plant exactly when this is true.
+   * 'pinch': the held pinch started on the joint distance (a plant) and ends on it, so a hand that is not idle
+   * holds a plant exactly then. 'select': on the platform's select (a press, or nothing). 'either' (a seed,
+   * BUG-055): Quest sends no select for a hand whose palm faces down, the pose over the bed (9 Nov recorder: 285
+   * samples of closed fingers on a seed that started nothing), so a seed is taken on whichever signal closes
+   * first and is held until both are open.
    */
-  private endsOnPinch = false;
+  private heldOn: HeldOn = 'select';
   private wasPinch = false;
   private wasSelect = false;
   private holdsTarget = false;
@@ -160,10 +165,10 @@ export class GestureMachine {
     }
     if (!this.wasTracked) this.find(timeMs);
     // Not on the sample where the pinch opens: opening moves the pinch point, and what commits is what was shown.
-    if (this.state !== 'IDLE' && this.endsOnPinch && frame.pinch) this.shape(frame, context.bedPose);
+    if (this.state !== 'IDLE' && this.heldOn === 'pinch' && frame.pinch) this.shape(frame, context.bedPose);
     this.hover(frame, context);
     if (this.state === 'IDLE') this.idle(frame, timeMs, context.eye);
-    else if (!(this.endsOnPinch ? frame.pinch : frame.select)) this.release(frame, context);
+    else if (!this.isDown(frame)) this.release(frame, context);
     else this.preview(frame, context);
     this.wasPinch = frame.pinch;
     this.wasSelect = frame.select;
@@ -242,7 +247,7 @@ export class GestureMachine {
     if (state !== 'CARRYING' && state !== 'DRAGGING') {
       this.snapped = null;
       // A pinched or pulled plant is its own hover wherever the hand goes: its release acts on it and on no cell.
-      const isHeldPlant = state !== 'IDLE' && this.endsOnPinch;
+      const isHeldPlant = state !== 'IDLE' && this.heldOn === 'pinch';
       const kept = this.hoverEvent.target;
       this.sight.along = 0;
       let picked = isHeldPlant ? this.held : pickTarget(frame.pinchPos, context.candidates, kept);
@@ -333,20 +338,29 @@ export class GestureMachine {
     const selectRose = frame.select && !this.wasSelect;
     if (pinchRose || selectRose) {
       const target = this.hoverEvent.target;
-      // FR-HND-02: a plant is held on the joint distance and everything else is tapped on the platform's
-      // select. What is under the hand picks the signal; the other one's edge does nothing (never OR-ed).
-      const usesPinch = target !== null && target.kind === 'plant';
-      if (usesPinch ? pinchRose : selectRose) {
-        this.start(frame, target, usesPinch, eye);
+      // FR-HND-02: a plant is held on the joint distance and a press is tapped on the platform's select. What
+      // is under the hand picks the signal; the other one's edge does nothing. A seed (BUG-055) takes either,
+      // on the edge of the two together: one still closed from the last pinch starts nothing.
+      const kind = target === null ? null : target.kind;
+      const on: HeldOn = kind === 'plant' ? 'pinch' : kind === 'seed' ? 'either' : 'select';
+      const rose = on === 'pinch' ? pinchRose : on === 'select' ? selectRose : !(this.wasPinch || this.wasSelect);
+      if (rose) {
+        this.start(frame, target, on, eye);
         return;
       }
     }
     if (this.palmUp.update(frame, timeMs)) bus.emit('gesture:palmUp', this.palmUpEvent);
   }
 
-  private start(frame: HandFrame, target: TargetRef | null, usesPinch: boolean, eye: Vec3 | undefined): void {
-    this.endsOnPinch = usesPinch;
-    this.heldAlong = usesPinch ? this.sight.along : 0; // this same sample's hover picked the target
+  /** The held pinch is still closed, on the signal it started on. */
+  private isDown(frame: HandFrame): boolean {
+    const on = this.heldOn;
+    return on === 'pinch' ? frame.pinch : on === 'select' ? frame.select : frame.pinch || frame.select;
+  }
+
+  private start(frame: HandFrame, target: TargetRef | null, on: HeldOn, eye: Vec3 | undefined): void {
+    this.heldOn = on;
+    this.heldAlong = on === 'pinch' ? this.sight.along : 0; // this same sample's hover picked the target
     this.holdsTarget = target !== null;
     this.state = 'PINCHED'; // a plant, or nothing
     if (target !== null) {
