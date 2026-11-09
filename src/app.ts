@@ -15,6 +15,7 @@ import {
   flags,
   log,
   settings,
+  type Flags,
   type Settings,
   type StringKey,
 } from './core/index.js';
@@ -199,7 +200,7 @@ export function keepSaved(
   saver: Pick<PersistenceSystem, 'save' | 'flush' | 'flushNow'>,
   page: SavePage,
   stored: Readonly<Settings>,
-  tabs: Pick<BroadcastChannel, 'postMessage' | 'addEventListener'> | null,
+  tabs: Pick<BroadcastChannel, 'postMessage' | 'addEventListener' | 'removeEventListener'> | null,
   raiseFailed: () => void,
 ): () => void {
   let last = garden.saved;
@@ -233,16 +234,27 @@ export function keepSaved(
     page.document.removeEventListener('visibilitychange', onVisibility);
     page.removeEventListener('pagehide', leave);
   };
-  const onOpened = (): void => {
+  const onOpened = (e: MessageEvent): void => {
+    // BUG-047: the Pages origin is shared by every project of the account, so only this app's own word counts.
+    if (e.data !== 'opened') return;
+    tabs?.removeEventListener('message', onOpened);
     log.warn('app', 'the garden was opened in another tab: this one saves no more');
     stop();
     raiseFailed();
   };
-  tabs?.addEventListener('message', onOpened, { once: true });
+  tabs?.addEventListener('message', onOpened);
   tabs?.postMessage('opened');
   const live = settings.get();
   if (SETTING_KEYS.some((key) => stored[key] !== live[key])) save();
   return stop;
+}
+
+/**
+ * D-072 (BUG-046): a production build's session whose flags fake time (`fakeDay`) or plant (`autoplant`) is not
+ * saved, so a `?dev=1` link cannot leave its garden in the player's; a dev build saves. Exported for its unit test.
+ */
+export function savesGarden(f: Pick<Flags, 'fakeDay' | 'autoplant'>, isDevBuild: boolean): boolean {
+  return isDevBuild || (f.fakeDay === 0 && f.autoplant === 0);
 }
 
 /**
@@ -514,7 +526,9 @@ export async function start(landing: Landing): Promise<void> {
   const failed = inSession(() => raise(saveFailed, SAVE_FAILED));
   const tabs = 'BroadcastChannel' in window ? new BroadcastChannel('roomsong') : null;
   const saver = new PersistenceSystem(store, failed.raise);
-  keepSaved(garden, saver, window, saved?.settings ?? DEFAULT_SETTINGS, tabs, failed.raise);
+  if (savesGarden(flags, import.meta.env.DEV))
+    keepSaved(garden, saver, window, saved?.settings ?? DEFAULT_SETTINGS, tabs, failed.raise);
+  else log.warn('app', 'test flags fake the time or plant: this session saves nothing (D-072)');
 
   const sound: SoundState = { failed: true };
   followSession(world, engine, landing, sound);
