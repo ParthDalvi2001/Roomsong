@@ -1,6 +1,6 @@
 # Submission Checklist, Devpost Copy, and Video Script
 
-**Status:** Living · **Owner:** product-owner (copy), devops-engineer (links), qa-engineer (final verification) · **Version:** 2.1 (2026-10-10, plan v2.1 propagated by T-113: PLAN_AMENDMENT §3/§6, D-021, D-022; v2.0 REPLAN)
+**Status:** Living · **Owner:** product-owner (copy), devops-engineer (links), qa-engineer (final verification) · **Version:** 2.2 (2026-11-09, T-191: §2.1's "first" rule and template sentence matched to DEVPOST_DRAFT v3.1) · 2.1 (2026-10-10, plan v2.1 propagated by T-113: PLAN_AMENDMENT §3/§6, D-021, D-022; v2.0 REPLAN)
 **Target submit time:** 2026-11-17 18:00 IST (about 1.5 days of buffer before 2026-11-18 12:00 PT) · **Representative:** Chinmay
 
 > **Footage note (REPLAN §6):** the rules (HACKATHON_RULES §5.2) allow video "via XR Simulator or an equivalent emulator",
@@ -43,7 +43,7 @@
 
 Sections required by plan v2.1: **How to test**, **How this meets the brief**, **Known limitations**, **What's next**, plus both links
 and the build hash. "How to test" comes first: a judge who cannot start the build reads nothing else.
-The template below is 496 words as written (headings, placeholders and both honesty alternatives counted); count again after filling it in.
+The template below is 477 words as written (headings, placeholders and both honesty alternatives counted; 496 until 9 Nov, when its "first" sentence was matched to the copy rule, −19); count again after filling it in.
 
 ```markdown
 ## How to test
@@ -78,8 +78,7 @@ Immersive Web SDK, Three.js and TypeScript in Meta Quest Browser (WebXR). Plane 
 deterministic, quantised function turns the room's measurements into key, scale and echo; a 4-level placement
 fallback and a default song cover rooms it cannot read. Instanced procedural visuals (<N> draw calls), Web Audio
 synthesis (<N> voices). <Measured N fps on Quest 3 over 10 minutes.>
-To our knowledge it is the first consumer MR instrument, and the first on Quest, in which the room's geometry tunes
-the music; art and research projects (MR4MR, ARCHISCORE, RoomTone) explored the idea before us.
+As far as we know, no earlier consumer MR instrument lets room geometry tune the music.
 
 ## Known limitations
 <"Tested on Quest 3 in N rooms." | "Verified in the Immersive Web Emulator; device testing: N sessions / none.">
@@ -113,10 +112,13 @@ Copy rules (product-owner checks each one before the go/no-go):
   it was measured on a headset; otherwise the sentence is removed and "Known limitations" says the frame rate is unverified.
 - **Emulator versus device:** no sentence may present emulator-only behaviour as device-tested. "Known limitations" states
   what was tested on a headset, in how many rooms, and what was not (Golden Rule 11).
-- **The "first" claim:** only the qualified sentence above ("to our knowledge … first consumer MR instrument … first on
-  Quest"), with the antecedents acknowledged. Never "first musical garden", "first ever", "the only" or "no other app"
-  (WINNING_STRATEGY §0.2). The three antecedents are cited as prior art and research, not as products; if Chinmay judges the
-  names a risk, write "art and research prototypes" instead. No competitor or brand names anywhere.
+- **The "first" claim:** only the qualified sentence above, word for word as in DEVPOST_DRAFT §1.2: "As far as we know, no
+  earlier consumer MR instrument lets room geometry tune the music." It says "as far as we know", uses no "first", and
+  names no earlier project (the art and research antecedents of WINNING_STRATEGY §0.1 are not named in the copy: their
+  names would be third-party names in a judge-facing place). Never "first musical garden", "first ever", "the only" or
+  "no other app" (WINNING_STRATEGY §0.2). It stands only while S1 (the room tuning) ships. No competitor or brand names
+  anywhere. *(Changed 9 Nov by T-191, the ★ of the 9 Nov rule check, HACKATHON_RULES §12 gap 5: until then this rule
+  asked for "to our knowledge … first consumer MR instrument … first on Quest" with the antecedents acknowledged.)*
 - **What the room does (v1):** size → key, ceiling height → scale, volume → echo. Never write that the room sets the tempo,
   that the table sets the key, or that we measure the room's acoustics. Write "the same room gives the same key and scale";
   "always the same song" only if the two-session device check (T-129) passed.
