@@ -81,14 +81,15 @@ export class WindowStage {
   }
 
   /**
-   * Where the camera ray through the screen point (NDC, -1..1, +y up) meets the bed plane, written into `out`.
-   * False, and `out` untouched, when it never does (a point above the horizon). Creates nothing (hot path).
+   * Where the camera ray through the screen point (NDC, -1..1, +y up) meets the bed plane, or the plane `liftM`
+   * above it (BUG-044), written into `out`. False, and `out` untouched, when it never does (a point above the
+   * horizon). Creates nothing (hot path).
    */
-  project(ndcX: number, ndcY: number, out: Vec3): boolean {
+  project(ndcX: number, ndcY: number, out: Vec3, liftM = 0): boolean {
     const pose = this.bed.matrixWorld.elements;
     // The bed's up is the second column of its pose, unit length: a bed has no scale (API_SPEC §1.4 toBedLocal).
     this.up.set(pose[4], pose[5], pose[6]);
-    this.point.set(pose[12], pose[13], pose[14]);
+    this.point.set(pose[12], pose[13], pose[14]).addScaledVector(this.up, liftM);
     this.plane.setFromNormalAndCoplanarPoint(this.up, this.point);
     this.raycaster.setFromCamera(this.ndc.set(ndcX, ndcY), this.camera);
     if (this.raycaster.ray.intersectPlane(this.plane, this.point) === null) return false;

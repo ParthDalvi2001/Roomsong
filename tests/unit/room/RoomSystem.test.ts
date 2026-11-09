@@ -13,6 +13,7 @@ import {
   GHOST_EASE_MS,
   HIT_TEST_TIMEOUT_MS,
   NO_ROOM_NOTICE_MS,
+  NO_ROOM_READ_MS,
   PLANE_LEVELS_TIMEOUT_MS,
   RESTORE_REACH_SLACK_M,
 } from '../../../src/room/config.js';
@@ -1456,10 +1457,14 @@ describe('RoomSystem: the no-room notice (FR-ROOM-14, D-068)', () => {
     const r = rig();
     r.room.planes = [];
     await r.place(FLOATING);
-    r.frame();
+    // BUG-045: a held notice (queued behind putControllersDown, which has no end) reads the planes twice a second,
+    // not in every frame: a read allocates.
+    r.readPlanes.mockClear();
+    for (let i = 0; i < 60; i++) r.frame(); // about a second
+    expect(r.readPlanes.mock.calls.length).toBeLessThanOrEqual(Math.ceil((60 * FRAME_MS) / NO_ROOM_READ_MS));
     expect(r.notice.hasComponent(Caption)).toBe(true);
     r.room.planes = [A_PLANE]; // a scanned room whose planes came late
-    r.frame();
+    r.frame(NO_ROOM_READ_MS);
     expect(r.notice.ops).toEqual(['add', 'remove']);
     for (let i = 0; i < 5; i++) r.frame();
     expect(r.notice.ops).toEqual(['add', 'remove']);

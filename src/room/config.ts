@@ -40,6 +40,9 @@ export const HIT_TEST_TIMEOUT_MS = 6000;
 /** FR-ROOM-14: how long the no-room notice is asked to stay. It ends as the tutorial's first caption comes
  *  (room:tuned, 4 s after room:features), so neither waits for the other. */
 export const NO_ROOM_NOTICE_MS = 4000;
+/** BUG-045: while the notice is held, planes are read this often to take it back (a read allocates; the notice can
+ *  wait behind a caption with no end, such as putControllersDown). */
+export const NO_ROOM_READ_MS = 500;
 /** UX §9.2: the level-3 ghost follows the preview with this ease, so hit-test jitter does not shake it. */
 export const GHOST_EASE_MS = 100;
 

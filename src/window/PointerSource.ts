@@ -38,6 +38,8 @@ export class PointerSource implements InputSource {
   private readonly onRay = new Vector3();
   /** How far above the bed the plant under the pointer stands: kept through a press, or a drag would read as a pull. */
   private heldLiftM = 0;
+  /** Whether that plant was taken by its head on the ray (not at its foot): a press then follows the ray (BUG-044). */
+  private isHeldByHead = false;
   private readonly lastPos = new Vector3();
   /** The previous sample's time, ms; -1 before the first one. */
   private lastMs = -1;
@@ -150,7 +152,8 @@ export class PointerSource implements InputSource {
    */
   private liftOnto(pos: Vector3): void {
     if (this.isDown && this.heldLiftM > 0) {
-      pos.y += this.heldLiftM;
+      // A slanted ray's bed point lies well beyond a head drawn on it: meet the ray at the head's height instead.
+      if (!this.isHeldByHead || !this.stage.project(this.ndcX, this.ndcY, pos, this.heldLiftM)) pos.y += this.heldLiftM;
       return;
     }
     this.heldLiftM = 0;
@@ -165,6 +168,7 @@ export class PointerSource implements InputSource {
       if (target.kind === 'plant' && dx * dx + dz * dz <= radius * radius) {
         pos.y = at.y;
         this.heldLiftM = at.y - bedY;
+        this.isHeldByHead = false;
         return;
       }
       const offM = this.stage.closestOnRay(at, this.onRay);
@@ -172,6 +176,7 @@ export class PointerSource implements InputSource {
       bestM = offM;
       pos.copy(this.onRay);
       this.heldLiftM = target.kind === 'plant' ? pos.y - bedY : 0;
+      this.isHeldByHead = true;
     }
   }
 
