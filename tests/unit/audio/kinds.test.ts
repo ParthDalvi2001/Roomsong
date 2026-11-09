@@ -157,12 +157,16 @@ describe("the notes that are no plant's (T-193)", () => {
     expect(tick[1]?.frequency.value).toBe((tick[0] as FakeNode).frequency.value * STYLES.B.bellFmRatio);
   });
 
+  // Each on its own engine, straight after the preview: the two share one scratch, and the one played second would
+  // pass on what the first wrote, not on its own reset.
   it.each([
-    [null, false],
-    ['B', true],
+    [null, false, 'chordTone', 1],
+    [null, false, 'goodnight', 3],
+    ['B', true, 'chordTone', 1],
+    ['B', true, 'goodnight', 3],
   ] as const)(
-    'style %s: after a preview, chordTone and goodnight have cutoffMul 1, detune 0, timbre 0 and calm %s',
-    async (style, calm) => {
+    'style %s (calm %s): straight after a preview, %s plays %i note(s) with cutoffMul 1, detune 0, timbre 0',
+    async (style, calm, sound, count) => {
       const { ctx, engine, run } = await start(style);
       run(1); // the tide is going
       const p = plant(
@@ -181,11 +185,11 @@ describe("the notes that are no plant's (T-193)", () => {
       expect(preview.detune).not.toBe(0);
       expect(preview.timbre).not.toBe(0);
       expect(preview.calm).toBe(!calm);
-      engine.chordTone(1, ctx.currentTime);
-      engine.ui('goodnight');
+      if (sound === 'chordTone') engine.chordTone(1, ctx.currentTime);
+      else engine.ui('goodnight');
       const after = played.slice(1).map((n) => [n.p.cutoffMul, n.p.detune, n.p.timbre, n.p.calm]);
-      // One ripple note, then the three of the ending chord.
-      expect(after).toEqual(Array.from({ length: 4 }, () => [1, 0, 0, calm]));
+      // One ripple note, or the three of the ending chord.
+      expect(after).toEqual(Array.from({ length: count }, () => [1, 0, 0, calm]));
     },
   );
 });
