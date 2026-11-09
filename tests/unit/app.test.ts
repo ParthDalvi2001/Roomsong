@@ -15,6 +15,7 @@ import {
   keepSaved,
   register,
   restoreSettings,
+  savesGarden,
 } from '../../src/app.js';
 import { bus, clock, DEFAULT_SETTINGS, log, parseAccessLink, settings } from '../../src/core/index.js';
 import { TIME_LAPSE_DAY_MS } from '../../src/garden/config.js';
@@ -175,6 +176,7 @@ describe('the systems start() registers (API_SPEC §1.10, the priorities table)'
       at('keepSaved(garden, saver, window, saved?.settings ?? DEFAULT_SETTINGS, tabs, failed.raise);'),
     ).toBeGreaterThan(at('garden.load('));
     expect(at('keepSaved(')).toBeLessThan(at('landing.ready('));
+    expect(source).toContain('if (savesGarden(flags, import.meta.env.DEV))\n    keepSaved(garden, saver,'); // D-072
     expect(at('window.__roomsong = { world, engine, garden };')).toBeGreaterThan(0); // rule 14, dev only
   });
 });
@@ -630,13 +632,13 @@ function saveRig(
     },
     flushNow: () => void calls.push('flushNow'),
   };
-  const on = new Map<string, () => void>();
+  const on = new Map<string, (e?: { data: unknown }) => void>();
   const listeners = {
     addEventListener: (type: string, handler: () => void) => void on.set(type, handler),
     removeEventListener: (type: string) => void on.delete(type),
   };
   const page = { ...listeners, document: { ...listeners, visibilityState: 'visible' } };
-  const tabs = { postMessage: vi.fn(), addEventListener: listeners.addEventListener };
+  const tabs = { postMessage: vi.fn(), ...listeners };
   const raiseFailed = vi.fn();
   const stop = keepSaved(garden, saver, page as never, stored, tabs as never, raiseFailed);
   stops.push(stop);
@@ -652,8 +654,8 @@ function saveRig(
       on.get('visibilitychange')?.();
     },
     leave: () => on.get('pagehide')?.(),
-    /** Another tab of the garden was opened. */
-    opened: () => on.get('message')?.(),
+    /** A message on the channel: by default the one a newer tab of the garden posts. */
+    opened: (data: unknown = 'opened') => on.get('message')?.({ data }),
   };
 }
 
@@ -726,6 +728,19 @@ describe('saving (LLD §3.3 G; API_SPEC §1.10 rule 9)', () => {
     expect(rig.calls).toEqual([]);
   });
 
+  it('BUG-047: a message that is not exactly "opened" (another Pages project on the origin) stops nothing', () => {
+    const rig = saveRig();
+    const warn = vi.spyOn(log, 'warn').mockImplementation(() => {});
+    for (const data of ['opened ', 'OPENED', { kind: 'opened' }, null, 1]) rig.opened(data);
+    settings.set({ tempo: 100 });
+    expect(rig.saved).toHaveLength(1);
+    expect(rig.raiseFailed).not.toHaveBeenCalled();
+    rig.opened();
+    rig.opened(); // the listener is off after the first: one warning and one caption
+    expect(rig.raiseFailed).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledOnce();
+  });
+
   it('T-174: the demo is never written: the save stays byte for byte, and a setting changed inside it writes the real garden', async () => {
     const subscribed = vi.spyOn(bus, 'on'); // GardenSystem has no way off the bus: the test takes it off
     try {
@@ -779,6 +794,16 @@ describe('saving (LLD §3.3 G; API_SPEC §1.10 rule 9)', () => {
     } finally {
       for (const off of subscribed.mock.results) (off.value as () => void)();
     }
+  });
+});
+
+describe('D-072 (BUG-046): flags that fake time or plant do not save on the live site', () => {
+  it('a production build saves only with fakeDay 0 and autoplant 0; a dev build always saves', () => {
+    expect(savesGarden({ fakeDay: 0, autoplant: 0 }, false)).toBe(true);
+    expect(savesGarden({ fakeDay: 3650, autoplant: 0 }, false)).toBe(false);
+    expect(savesGarden({ fakeDay: -1, autoplant: 0 }, false)).toBe(false);
+    expect(savesGarden({ fakeDay: 0, autoplant: 80 }, false)).toBe(false);
+    expect(savesGarden({ fakeDay: 3650, autoplant: 80 }, true)).toBe(true);
   });
 });
 
