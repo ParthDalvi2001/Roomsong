@@ -18,6 +18,7 @@ import type { PickCandidate } from '../../../src/hands/index.js';
 const FLOATING_DROP_M = 0.25; // room/'s level-4 drop below the eyes, as WindowStage.test.ts has it
 const ORB_LIFT_M = 0.02; // render's LISTEN_ORB_LIFT_M
 const PETAL_LIFT_M = 0.03; // render's PETAL_LIFT_M
+const HEAD_LIFT_M = 0.09; // a grown plant's head over its cell (D-063), as the T-168 review took it
 
 const made: PointerSource[] = [];
 afterEach(() => {
@@ -96,5 +97,31 @@ describe('BUG-011: the pointer picks a lifted target where it is drawn', () => {
     canvas.fire('pointerup', at(orbPx.x, orbPx.y));
     source.sample(frame.hand, (timeMs += 10), frame);
     expect([frame.pinch, pickTarget(frame.pinchPos, targets)?.kind]).toEqual([false, 'orb']);
+  });
+
+  it("a press on a plant's drawn head keeps the pinch on it, on the far ring and the near one; a drag holds its height (BUG-044)", () => {
+    const { stage, cell, onCanvas } = rig();
+    let timeMs = 1000;
+    for (const head of [cell(4, 12, HEAD_LIFT_M), cell(4, 4, HEAD_LIFT_M)]) {
+      const targets: PickCandidate[] = [{ target: { kind: 'plant', id: 'p' }, radius: HIT_RADIUS_M, pos: head }];
+      const canvas = fakeCanvas();
+      const source = new PointerSource(canvas.element, stage, targets);
+      made.push(source);
+      const frame = createHandFrame(source.hands[0]!);
+      bus.emit('xr:sessionStart', { visible: true });
+      const px = onCanvas(head);
+      canvas.fire('pointermove', at(px.x, px.y));
+      source.sample(frame.hand, (timeMs += 10), frame);
+      expect(pickTarget(frame.pinchPos, targets)?.kind).toBe('plant');
+      canvas.fire('pointerdown', at(px.x, px.y, { buttons: 1 }));
+      source.sample(frame.hand, (timeMs += 10), frame);
+      expect([frame.pinch, pickTarget(frame.pinchPos, targets)?.kind]).toEqual([true, 'plant']);
+      // Dragged to where the head of a plant on ring 2 would be drawn: the point is there, at the same height.
+      const to = cell(2, 0, HEAD_LIFT_M);
+      const toPx = onCanvas(to);
+      canvas.fire('pointermove', at(toPx.x, toPx.y, { buttons: 1 }));
+      source.sample(frame.hand, (timeMs += 10), frame);
+      expect(Math.hypot(frame.pinchPos.x - to.x, frame.pinchPos.y - to.y, frame.pinchPos.z - to.z)).toBeLessThan(0.001);
+    }
   });
 });
