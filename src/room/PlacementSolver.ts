@@ -19,6 +19,7 @@ import {
   SURFACE_MIN_HEIGHT_M,
   TABLE_LABELS,
 } from './config.js';
+import { bedSurfaceOf } from './RoomFeatures.js';
 
 import type { BedPlacement, RoomPlane } from './types.js';
 import type { Flags, Mat4, Vec3 } from '../core/index.js';
@@ -192,6 +193,18 @@ function placeOnPlanes(head: Head, planes: readonly RoomPlane[], level: 1 | 2): 
   return best;
 }
 
+/**
+ * T-194 (D-079): the bed of an aim the caller chose (a Re-place), given the level and the plane it rests on when
+ * level 1 or 2 would take that plane from here. The room then reads as it did before the player chose the spot:
+ * RoomFeatures has a table at those levels only. Any other spot stays level 3.
+ */
+function onPlane(head: Head, planes: readonly RoomPlane[], pose: number[]): BedPlacement {
+  // Asked as a plane-level bed: the surface the room read will take for this pose.
+  const plane = bedSurfaceOf(planes, { pose, level: 2 });
+  const level = plane && (spotOn(head, plane, 1) ? 1 : spotOn(head, plane, 2) ? 2 : null);
+  return plane && level ? { pose, level, surfaceId: plane.id } : { pose, level: 3 };
+}
+
 /** The part of PlaneAdapter and HitTestAdapter the chain uses; a test passes stubs. */
 export interface PlaneSource {
   supported(): boolean;
@@ -212,6 +225,8 @@ export interface HitSource {
 export class PlacementSolver {
   private resolve: ((placement: BedPlacement) => void) | null = null;
   private timeoutMs = 0;
+  /** The level this run starts at, unless `flags.forceLevel` says another. */
+  private from: PlacementLevel = 1;
   private level: PlacementLevel | null = null;
   /** When the current level began. */
   private sinceMs = 0;
@@ -233,10 +248,13 @@ export class PlacementSolver {
    * Starts a placement and drops one that was pending. `timeoutMs`: how long levels 1 and 2 together wait for
    * a plane (PLANE_LEVELS_TIMEOUT_MS); a value that is not finite counts as expired. The clock starts at the
    * first `update`. Never rejects. Not to be called from a `room:placementLevel` handler (API_SPEC §1.3).
+   * `from` (default 1): the level the chain starts at. 3 is the aim of a Re-place (T-194, D-079): the player
+   * chooses the spot, and a bed aimed onto a plane level 1 or 2 accepts is of that level and plane.
    */
-  run(opts: { timeoutMs: number }): Promise<BedPlacement> {
+  run(opts: { timeoutMs: number; from?: PlacementLevel }): Promise<BedPlacement> {
     this.cancel();
     this.timeoutMs = Number.isFinite(opts.timeoutMs) ? opts.timeoutMs : 0;
+    this.from = opts.from ?? 1;
     return new Promise((resolve) => {
       this.resolve = resolve;
     });
@@ -261,7 +279,8 @@ export class PlacementSolver {
 
   /**
    * Level 3 only: the pose and the level (3 or 4) a confirm in this frame would give, as of the last `update`.
-   * One reused object: copy what you keep. null at any other level and with no run pending.
+   * One reused object: copy what you keep. null at any other level and with no run pending. A run from 3 may
+   * land a level-3 preview as level 1 or 2 (`run`): the pose is the previewed one all the same.
    */
   preview(): Readonly<BedPlacement> | null {
     return this.level === 3 && this.hasPreview ? this.shown : null;
@@ -277,7 +296,7 @@ export class PlacementSolver {
     if (this.resolve === null) return;
     // A head pose that cannot be used places nothing: the run waits for a real one.
     if (!readHead(headPose, this.head)) return;
-    if (this.level === null) this.enter(this.firstAvailable(this.flags.forceLevel ?? 1), nowMs);
+    if (this.level === null) this.enter(this.firstAvailable(this.flags.forceLevel ?? this.from), nowMs);
     const placement = this.step(nowMs);
     if (placement === null) return;
     this.enter(placement.level, nowMs);
@@ -324,7 +343,12 @@ export class PlacementSolver {
     if (!this.isConfirmed || !this.hasPreview) this.aim();
     const { pose, level } = this.shown;
     const isOver = !this.hits.supported() || !(nowMs - this.sinceMs < HIT_TEST_TIMEOUT_MS);
-    if (this.isConfirmed || (isOver && level === 3)) return { pose: Array.from(pose), level };
+    if (this.isConfirmed || (isOver && level === 3)) {
+      // Read at the landing only, never in the frames of the wait: read() allocates. A forced level stays as forced.
+      const keepsRoom = level === 3 && this.from === 3 && this.flags.forceLevel === null;
+      if (keepsRoom) return onPlane(this.head, this.planes.read(), Array.from(pose));
+      return { pose: Array.from(pose), level };
+    }
     return isOver ? this.fallTo(4, nowMs) : null;
   }
 

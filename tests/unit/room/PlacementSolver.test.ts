@@ -93,9 +93,11 @@ function rig({ planes = 'unsupported', hit = 'unsupported', flags: forced = {} }
 }
 
 /** One run to its end: frames half a second apart until every wait has expired, pinching on each if asked. */
-function place(setup: Setup & { head?: Mat4; pinch?: boolean } = {}): Promise<BedPlacement> {
+function place(
+  setup: Setup & { head?: Mat4; pinch?: boolean; from?: PlacementLevel } = {},
+): Promise<BedPlacement> {
   const { solver } = rig(setup);
-  const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
+  const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS, from: setup.from ?? 1 });
   for (let t = 0; t <= PLANE_LEVELS_TIMEOUT_MS + HIT_TEST_TIMEOUT_MS + 1000; t += 500) {
     if (setup.pinch) solver.confirm();
     solver.update(setup.head ?? HEAD, t);
@@ -682,6 +684,71 @@ describe('PlacementSolver: waits, the level-3 pinch and the level events (FR-ROO
     expect((await place({ ...room, flags: { forceLevel: 4 } })).level).toBe(4);
     expect((await place({ planes: [], flags: { forceLevel: 2 } })).level).toBe(4);
     expect((await place({ planes: [TABLE], flags: { forceLevel: 3 } })).level).toBe(4);
+  });
+
+  it('T-194: a run from 3 starts at the aim although a table is in reach, and places nothing before the pinch or the end of the wait', async () => {
+    const { solver } = rig({ planes: [TABLE], hit: { x: 0, y: 0.74, z: -0.4 } });
+    const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS, from: 3 });
+    solver.update(HEAD, 0);
+    solver.update(HEAD, HIT_TEST_TIMEOUT_MS - 1);
+    expect(levels).toEqual([3]);
+    expect(solver.preview()).toMatchObject({ level: 3 }); // the preview is level 3 for as long as it shows
+    expect(await isSettled(run)).toBe(false);
+    solver.update(HEAD, HIT_TEST_TIMEOUT_MS); // no pinch: it lands where it shows
+    const placed = await run;
+    expectClose(placed.pose, unturnedAt(0, 0.74, -0.4));
+    expect(levels).toEqual([3, 1]); // the last level of a run is the level of its bed
+    expect(log.warn).not.toHaveBeenCalled();
+  });
+
+  it('T-194: a bed aimed by a run from 3 onto a plane level 1 or 2 accepts carries that level and plane; any other spot is level 3', async () => {
+    const onTable = { x: 0.2, y: 0.74, z: -0.35 };
+    const aimed = (setup: Setup): Promise<BedPlacement> => place({ pinch: true, from: 3, ...setup });
+    const table = await aimed({ planes: [COUNTER, TABLE], hit: onTable });
+    expect(table).toMatchObject({ level: 1, surfaceId: TABLE.id });
+    expectClose(centreOf(table.pose), [0.2, 0.74, -0.35]); // where the player aimed, not where level 1 would put it
+    const counter = await aimed({ planes: [COUNTER], hit: { x: 0.2, y: 0.92, z: -0.35 } });
+    expect(counter).toMatchObject({ level: 2, surfaceId: COUNTER.id });
+    // On no plane: a spot 20 cm over the table (a box on it), and a room with no planes at all.
+    for (const setup of [{ planes: [TABLE], hit: { ...onTable, y: 0.94 } }, { hit: onTable }]) {
+      const off = await aimed(setup);
+      expect(off.level).toBe(3);
+      expect(off).not.toHaveProperty('surfaceId');
+    }
+    // On a plane no plane level takes: a shelf top above the 0.5 to 1.1 m band.
+    const shelf = surface('table', [0, 1.2, -0.5], [1.2, 0.8]);
+    expect((await aimed({ planes: [shelf], hit: { ...onTable, y: 1.2 } })).level).toBe(3);
+    // Over no usable spot the aim still floats, and the chain's own level 3 (a run from 1) is as it was.
+    expect((await aimed({ planes: [TABLE], hit: null })).level).toBe(4);
+    const late = rig({ planes: [], hit: onTable });
+    const run = late.solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS });
+    late.solver.update(HEAD, 0);
+    late.solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS);
+    late.room.planes = [TABLE]; // the table turns up after the wait for planes
+    late.solver.confirm();
+    late.solver.update(HEAD, PLANE_LEVELS_TIMEOUT_MS + FRAME_MS);
+    expect(await run).not.toHaveProperty('surfaceId');
+  });
+
+  it('T-194: forceLevel wins over a run from 3, and with no hit-test a run from 3 floats at once', async () => {
+    const room = { planes: [TABLE], hit: { x: 0, y: 0.74, z: -0.4 }, pinch: true, from: 3 as const };
+    expect(await place({ ...room, flags: { forceLevel: 1 } })).toMatchObject({
+      level: 1,
+      surfaceId: TABLE.id,
+    });
+    expect(levels).toEqual([1]);
+    expect((await place({ ...room, flags: { forceLevel: 4 } })).level).toBe(4);
+    const forcedTo3 = await place({ ...room, flags: { forceLevel: 3 } });
+    expect(forcedTo3.level).toBe(3); // a forced level stays as forced: the table under it is not read
+    expect(forcedTo3).not.toHaveProperty('surfaceId');
+
+    levels = [];
+    const { solver } = rig({ planes: [TABLE] }); // no hit-test in this session
+    const run = solver.run({ timeoutMs: PLANE_LEVELS_TIMEOUT_MS, from: 3 });
+    solver.update(HEAD, 0);
+    expect((await run).level).toBe(4);
+    expect(levels).toEqual([4]);
+    expect(log.warn).not.toHaveBeenCalled(); // no wait ran out
   });
 
   it('cancel drops the run: its promise never settles and no level follows', async () => {

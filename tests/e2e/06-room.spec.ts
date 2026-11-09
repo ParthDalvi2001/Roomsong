@@ -385,22 +385,49 @@ for (const { room, flags, levels, level, heightM, source, features } of CASES) {
     expect(perFrameMs).toBeLessThan(0.5);
 
     if (flags === undefined && room === 'table') {
-      // Re-place (FR-ROOM-05): BedAnchor comes off, the chain runs again, and the room is read again.
-      // Read in the same call: with a table in sight the bed is back two frames later.
+      // Re-place (FR-ROOM-05; T-194, D-079): BedAnchor comes off and the chain starts at the aim, level 3. The
+      // player chooses the spot: the ghost shows, and with the table in sight no bed lands by itself.
       const taken = await probe.evaluate((p) => {
         p.room.replace();
         return p.bed();
       });
       expect(taken).toMatchObject({ isPlaced: false, isShown: false });
+      await heardOf(page, probe, 'room:placementLevel', 2);
+      await xrFrames(page, 5);
+      const aiming = await probe.evaluate((p) => ({ heard: p.heard, bed: p.bed() }));
+      expect(levelsOf(aiming.heard)).toEqual([1, 3]);
+      expect(aiming.heard.filter((event) => event.type === 'room:bedPlaced')).toHaveLength(1);
+      expect(aiming.bed).toMatchObject({ isPlaced: false, isShown: true }); // the ghost; its markers fade out
+      // The head turns down to the table and the ghost follows. Then the confirm by hand, as hands/ sends it (the
+      // level-3 tests below use the same): the bed lands where the ghost is, at the table's level, on its plane,
+      // and the room is read again.
+      await (
+        await device(page)
+      ).evaluate((d, target) => d.remote.dispatch('look_at', { device: 'headset', target }), TABLE_CENTRE);
+      await page.waitForFunction((p) => p.bed().isShown && Math.abs(p.bed().pose[13]! - 0.74) < 1e-4, probe);
+      const pinched = await probe.evaluate((p) => {
+        const ghost = p.bed();
+        p.release();
+        return { ghost, frame: p.frame() };
+      });
+      expect(pinched.ghost).toMatchObject({ isPlaced: false, isShown: true });
       await heardOf(page, probe, 'room:features', 2);
       const again = roomEvents(await heard(probe)).slice(4);
-      expect(again.map((event) => event.type).slice(0, 3)).toEqual([
+      expect(again.map((event) => event.type).slice(0, 4)).toEqual([
+        'room:placementLevel',
         'room:placementLevel',
         'room:bedPlaced',
         'room:features',
       ]);
-      expect(placedOf(again[1]!)).toMatchObject({ restored: false, placement: { level: 1 } });
-      expect(again[2]!.frame).toBe(again[1]!.frame);
+      expect(levelsOf(again)).toEqual([3, 1]);
+      const replaced = placedOf(again[2]!);
+      expect(replaced).toMatchObject({ restored: false, placement: { level: 1 } });
+      expect(typeof replaced.placement.surfaceId).toBe('string');
+      expectPose(replaced.placement.pose, pinched.ghost.pose, 1e-4, 'the placed pose is where the ghost was');
+      // Placed by the pinch, not by the 40 s of level 3 running out: the solver's frame, then the placed step.
+      expect(again[2]!.frame - pinched.frame).toBeGreaterThanOrEqual(1);
+      expect(again[2]!.frame - pinched.frame).toBeLessThanOrEqual(2);
+      expect(again[3]!.frame).toBe(again[2]!.frame);
       expect((await probe.evaluate((p) => p.anchorLog)).map((entry) => entry.on)).toEqual([
         true,
         false,
