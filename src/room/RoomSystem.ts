@@ -116,6 +116,8 @@ export class RoomSystem extends createSystem() {
   // Placed.
   private placed: BedPlacement | null = null;
   private isRestored = false;
+  /** BUG-040: a re-read of this bed's anchor gave no pose. It is not read again: the bed stays where it is. */
+  private isAnchorLost = false;
   /** The placed step is still to do, or threw before its events. */
   private isLanding = false;
   /** The level-3 ghost is on screen. */
@@ -211,6 +213,7 @@ export class RoomSystem extends createSystem() {
     this.answer = undefined;
     this.placement = this.placed = null;
     this.madeHandle = null;
+    this.isAnchorLost = false;
     this.isLanding = false;
     this.waitFromMs = Infinity;
     this.hide();
@@ -259,9 +262,11 @@ export class RoomSystem extends createSystem() {
     this.bed.setValue(BedAnchor, 'heightOffset', state.bedHeightOffset);
   }
 
-  /** The session is seen again. The frame time ran on while it was hidden, so a wait would be over at once. */
+  /**
+   * The session is seen again. The frame time ran on while it was hidden, so a wait would be over at once. A placed
+   * bed keeps its place (BUG-040): a pause does not move the reference space, and a move fires its `reset`.
+   */
   private resume(): void {
-    this.readAnchorAgain();
     if (this.stage === 'idle' || this.stage === 'placed') return;
     this.waitFromMs = Infinity;
     // A restore on its way needs nothing: the store pauses its own time-out. A bed already kept is placed.
@@ -269,11 +274,12 @@ export class RoomSystem extends createSystem() {
   }
 
   /**
-   * Placed, after a pause or a recentre: the store reads the anchor's pose again, with no call to the device,
-   * and the next `update` moves the bed there (LLD §5.5).
+   * Placed, after a recentre: the store reads the anchor's pose again, with no call to the device, and the next
+   * `update` moves the bed there (LLD §5.5). Once it gave no pose, never again for this bed (BUG-040).
    */
   private readAnchorAgain(): void {
-    if (this.stage === 'placed' && this.savedHandle !== null) this.restore(this.savedHandle);
+    if (this.stage === 'placed' && this.savedHandle !== null && !this.isAnchorLost)
+      this.restore(this.savedHandle);
   }
 
   private restore(handle: string): void {
@@ -405,9 +411,10 @@ export class RoomSystem extends createSystem() {
       bus.emit('room:anchored', { handle, level: placed.level });
     }
     if (this.answer === undefined) return;
-    // choice: after a pause or a recentre LLD §3.2 says only that "the bed entity moves" to the anchor's pose.
+    // choice: after a recentre LLD §3.2 says only that "the bed entity moves" to the anchor's pose.
     // So no event follows, and a null or a far pose leaves the bed where it is: D-041 is about a session's start.
     if (this.answer !== null) this.poseBed(this.answer);
+    else this.isAnchorLost = true;
     this.answer = undefined;
   }
 
