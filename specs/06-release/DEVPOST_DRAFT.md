@@ -66,13 +66,13 @@ Where each heading comes from:
 
 ```markdown
 ## How to test
-Quest 3 or 3S. Run Space Setup first, or you hear a default song. Sit at a table. Hands only: hand tracking on, controllers down. Headset speakers, not Bluetooth.
+Quest 3 or 3S. Run Space Setup first, or you hear a default song. Sit at a table. Hands only: hand tracking on, controllers down. Headset speakers, not wireless headphones.
 1. In Meta Quest Browser open https://parthdalvi2001.github.io/Roomsong/ (mirror <mirror URL> [not yet: T-108]; build <hash>, /version.json [not yet: T-183]).
 2. Press Enter the garden; allow hands and room.
 3. Follow "Your first minute".
 4. Settings: turn a hand over, pinch its orb. Garden tab: Time-lapse (a week in 30 s), Exit.
 Accessibility links: ?access=gaze (no hands), onehand, contrast or reduce, comma-joined; saved until switched off (settings, Access tab).
-No headset? Watch the video [not yet: T-181]; desktop Chromium opens a laptop preview (a click pinches; no passthrough or room tuning).
+No headset? Watch the video [not yet: T-181]; a desktop browser opens a laptop preview (a click pinches; no passthrough or room tuning).
 
 ## Your first minute
 Press Enter. The ring settles on your table. A ripple crosses table, wall and ceiling, each ringing a note. Hold a palm up: a seed glides in. Pinch it; its landing spot lights up. Let go: a sweep of light makes it sing, 15–18 s after Enter (emulator). Three pinches make a song within 90 s; on our headsets, 35 s (Quest 3S) and 62 s (Quest 3). No account, no controllers.
@@ -93,7 +93,7 @@ Immersive Web SDK (IWSDK, WebXR), Three.js, TypeScript, Web Audio. Plane detecti
 Tested hands-only on Quest 3S and Quest 3, one room each: entering, seeds, planting, sound, pulls, moves, Listen, settings, Exit, save, resume, one-hand mode, daily seed, room tuning. Emulator only so far: undo, drag by sight, hands-free mode, day 2, access links, the "No room scan" notice, the live site on 3S. The echo follows room size, not measured acoustics. A room near a measuring step can change scale between visits.
 
 ## What's next
-A sixth voice. Shared gardens: a friend's garden in your room's key. Store launch: early 2027.
+A sixth voice. Shared gardens: a friend's garden in your room's key. Store launch: early 2027 [not yet: agreed by Parth and Chinmay].
 ```
 
 Conditional rewrites (outside the count; apply only if the condition happens):

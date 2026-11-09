@@ -229,6 +229,7 @@ device, 7–8 Nov: about **90 fps** (Quest 3S on the dev server with the recorde
 - Done: v1 specs, CLAUDE.md, agents, skills. Blockers: approvals. (superseded by v2)
 
 ## Weekly rule check log (T-186)
+- 2026-11-09 — site unreachable (HTTP 403 on the main page, /rules, /updates; also 8 Nov); no live comparison, last live read 27 Oct; the Devpost draft checked against our rules: tagline 111/140, description 498/500, 8 gaps (HACKATHON_RULES §12); brand words and the launch line fixed the same day; a human browser read is due before 12 Nov.
 - 2026-10-09 — Overview/Rules/Judging/Special Awards/Resources read; digest written. No changes since.
 - 2026-10-15 and 2026-10-19 — all pages re-read; no changes (day log).
 - 2026-10-23 — all pages plus the Webinars & Office Hours tab; no rule changes; participants 3,724; Playtest & React 27/29 Oct found (item 42). From now on the Webinars tab is part of the check (Updates lag it).
