@@ -161,9 +161,25 @@ function draw(a: number, b: number, c: number): number {
 
 export class Layers {
   /** The plant note `groove` shaped last: the engine plays this one. */
-  readonly note: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0 };
+  readonly note: VoiceParams = {
+    hz: 0,
+    gain: 0,
+    release: 0,
+    cutoffMul: 1,
+    detune: 0,
+    timbre: 0,
+    calm: false,
+  };
   /** The drone or percussion note being played. */
-  private readonly hit: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0 };
+  private readonly hit: VoiceParams = {
+    hz: 0,
+    gain: 0,
+    release: 0,
+    cutoffMul: 1,
+    detune: 0,
+    timbre: 0,
+    calm: false,
+  };
   private readonly breath: BiquadFilterNode;
   private readonly dim: GainNode;
   /** The Listen sweep (§6) is on: the filter breathes its own range, whatever the recipe's. */
@@ -276,6 +292,7 @@ export class Layers {
     n.release = p.release;
     n.detune = p.detune;
     n.timbre = p.timbre;
+    n.calm = p.calm;
     n.cutoffMul =
       r.plant.voice === 'pad'
         ? p.cutoffMul * Math.pow(2, s.padEvolveOctaves * Math.sin((2 * Math.PI * bar) / PAD_EVOLVE_BARS))
@@ -390,6 +407,7 @@ export class Layers {
     h.cutoffMul = 1;
     h.detune = 0;
     h.timbre = 0;
+    h.calm = r.calmVoices;
     this.hitTime = this.time;
     const v = this.voices as LayerVoices;
     this.atCentre(voice === 'pad' ? v.pad : v.choir);
@@ -417,6 +435,7 @@ export class Layers {
     h.release = CLAVE_RELEASE_S; // the clave is a Bell; the other hits have their own pitch and length
     h.cutoffMul = 1;
     h.detune = 0;
+    h.calm = r.calmVoices; // as before T-193: a clave follows the style, never the last note on this scratch
     this.hitTime = this.time + this.swing(hit.step) + r.humanizeS * draw(GROOVE_SEED, bar, 4 + 2 * i);
     this.atCentre(this.percVoice(hit.kind));
   }
@@ -464,6 +483,7 @@ export class Layers {
     h.cutoffMul = p.cutoffMul;
     h.detune = p.detune;
     h.timbre = p.timbre;
+    h.calm = p.calm;
   }
 
   /** Plant `n` (modulo their number) of the engine's lists, step by step; null with no plant. */

@@ -55,11 +55,12 @@ export function voiceParamsFor(
   out.cutoffMul = hueToCutoffMul(plant.hue);
   out.detune = hueToDetuneCents(plant.hue);
   out.timbre = plantTimbre(plant);
+  out.calm = plant.family === 'new';
   return out;
 }
 
 /**
- * A plant's own tone (style B's calm voices): FNV-1a of its id, then its cell, mixed (mulberry32's finish), 30 bits so
+ * A plant's own tone (the calm voices read it): FNV-1a of its id, then its cell, mixed (mulberry32's finish), 30 bits so
  * V8 keeps it a small integer. The same plant in the same cell always sounds the same; another plant or cell, not.
  */
 export function plantTimbre(plant: Pick<Plant, 'id' | 'cell'>): number {

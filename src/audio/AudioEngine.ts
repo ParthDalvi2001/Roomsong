@@ -203,7 +203,15 @@ export class Engine implements AudioEngine {
   private readonly steps: PlantRecord[][] = Array.from({ length: STEPS }, () => []);
   private readonly centre = { x: 0, y: 0 };
   /** The ending chord's and the ripple's notes, one after the other (a voice reads its params in the trigger). */
-  private readonly chord: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0 };
+  private readonly chord: VoiceParams = {
+    hz: 0,
+    gain: 0,
+    release: 0,
+    cutoffMul: 1,
+    detune: 0,
+    timbre: 0,
+    calm: false,
+  };
   /** T-147b: the owner of the preview notes (one at a time), and the last one's plant, audio time and height. */
   private readonly previewOwner = {};
   private previewId = '';
@@ -352,6 +360,7 @@ export class Engine implements AudioEngine {
     p.hz = hzForRing(this.key, chordDegrees(this.key.mode)[note], voice);
     p.gain = dbToGain(this.recipe.mixDb[voice]);
     p.release = HEIGHT_RELEASE_S_MAX;
+    this.plain(p);
     const b = this.bed;
     const isAt = at !== undefined && Number.isFinite(at.x + at.y + at.z); // NaN or ±Infinity in any one: not finite
     g.pool.play(
@@ -385,6 +394,7 @@ export class Engine implements AudioEngine {
     // fraction handed to it or returned from it is boxed (BUG-036, BUG-051).
     const p = voiceParamsFor(plant, 0, this.chord, this.recipe.heightFloorDb);
     p.hz = r.params.hz;
+    p.calm = r.params.calm; // the synced plant's library: the pulled plant handed in carries no `family`
     p.gain *= Math.pow(10, (this.recipe.mixDb[r.plant.voice] + PREVIEW_DB_RE_NOTE) / 20);
     g.pool.release(this.previewOwner, now);
     g.pool.play(r.voice, now, p, r.x, r.y, r.z, this.previewOwner);
@@ -612,6 +622,7 @@ export class Engine implements AudioEngine {
     const p = this.chord;
     p.gain = dbToGain(this.recipe.mixDb.pad);
     p.release = HEIGHT_RELEASE_S_MAX;
+    this.plain(p);
     const b = this.bed;
     for (const ring of chordDegrees(this.key.mode)) {
       p.hz = hzForRing(this.key, ring, 'pad');
@@ -642,8 +653,20 @@ export class Engine implements AudioEngine {
     p.cutoffMul = own.cutoffMul;
     p.detune = own.detune;
     p.timbre = own.timbre;
+    p.calm = own.calm;
     p.gain = dbToGain(this.recipe.mixDb[r.plant.voice] + PLACED_DB_RE_PLANT);
     g.pool.play(r.voice, now, p, r.x, r.y, r.z, r);
+  }
+
+  /**
+   * T-193: a note of the room chord that is no plant's (the ripple, goodnight) has no tone of its own, and the
+   * style picks its voice. Before, it kept the cutoff, detune and timbre of the last note on the shared scratch.
+   */
+  private plain(p: VoiceParams): void {
+    p.cutoffMul = 1;
+    p.detune = 0;
+    p.timbre = 0;
+    p.calm = this.recipe.calmVoices;
   }
 
   private listen(on: boolean): void {
@@ -665,6 +688,7 @@ export class Engine implements AudioEngine {
     p.cutoffMul = s.cutoffMul;
     p.detune = 0;
     p.timbre = 0;
+    p.calm = false; // the short voices as built, in every style (T-193)
     const now = g.ctx.currentTime;
     const b = this.bed;
     const chord = chordDegrees(this.key.mode);
@@ -753,7 +777,7 @@ export class Engine implements AudioEngine {
         record = {
           plant,
           voice: g.bell,
-          params: { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0 },
+          params: { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0, calm: false },
           seed: grooveSeed(plant.id),
           x: 0,
           y: 0,

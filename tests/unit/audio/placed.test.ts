@@ -203,7 +203,7 @@ describe('preview(plant) (T-147b, UX §3.4)', () => {
         const want = voiceParamsFor(
           at(p, 0.9),
           hzForRing(WANDERER, 2, voice),
-          { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0 },
+          { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0, calm: false },
           recipe.heightFloorDb,
         );
         expect(note.p.hz).toBeCloseTo(want.hz, 9);
@@ -211,6 +211,19 @@ describe('preview(plant) (T-147b, UX §3.4)', () => {
         expect(note.p.cutoffMul).toBe(want.cutoffMul);
         expect(note.p.detune).toBe(want.detune);
         expect(note.p.gain).toBeCloseTo(want.gain * dbToGain(recipe.mixDb[voice] + PREVIEW_DB_RE_NOTE), 12);
+      }
+    },
+  );
+
+  it.each([null, 'B'] as const)(
+    'style %s: the placed note and the preview play the library of the synced plant; the pulled plant handed in has no `family` (T-193)',
+    async (style) => {
+      for (const family of [undefined, 'new'] as const) {
+        const { engine, p, played } = await pulled(style);
+        engine.syncPlants([{ ...p, ...(family && { family }) }], BED);
+        engine.ui('placed', p.id);
+        engine.preview(at(p, 0.9)); // AudioSystem's scratch: id, voice, cell, height and hue only
+        expect(played.map((n) => n.p.calm)).toEqual([family === 'new', family === 'new']);
       }
     },
   );
