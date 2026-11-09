@@ -18,6 +18,7 @@ import { bus, CAPTION_MIN_MS, clock, log, settings, STRINGS, type StringKey } fr
 import {
   CAPTION_BACKDROP,
   CAPTION_BACKDROP_HIGH_CONTRAST,
+  CAPTION_BACKDROP_QUIET,
   CAPTION_BELOW_CAMERA_WINDOW_DEG,
   CAPTION_BELOW_GAZE_DEG,
   CAPTION_CANVAS_H,
@@ -27,6 +28,10 @@ import {
   CAPTION_FONT_PX,
   CAPTION_HEIGHT_M,
   CAPTION_OUTLINE_PX,
+  CAPTION_QUIET_ABOVE_GAZE_DEG,
+  CAPTION_QUIET_EDGE_COLOUR,
+  CAPTION_QUIET_EDGE_PX,
+  CAPTION_QUIET_SCALE,
   CAPTION_RENDER_ORDER,
   CAPTION_TEXT_COLOUR,
   CAPTION_WIDTH_M,
@@ -109,6 +114,15 @@ const CAPTION_ELEMENT: Readonly<FovElement> = {
 export function captionDropM(inSession: boolean): number {
   const degrees = inSession ? CAPTION_BELOW_GAZE_DEG : CAPTION_BELOW_CAMERA_WINDOW_DEG;
   return CAPTION_DISTANCE_M * Math.tan((degrees * Math.PI) / 180);
+}
+/** BUG-056: the captions drawn as a quiet notice (ui/config.ts, CAPTION_BACKDROP_QUIET). */
+const QUIET: ReadonlySet<StringKey> = new Set<StringKey>(['seedsTomorrow']);
+export function isQuietCaption(key: StringKey): boolean {
+  return QUIET.has(key);
+}
+/** How far above the gaze line a quiet notice appears in a session, in metres at CAPTION_DISTANCE_M. */
+export function captionRiseM(): number {
+  return CAPTION_DISTANCE_M * Math.tan((CAPTION_QUIET_ABOVE_GAZE_DEG * Math.PI) / 180);
 }
 /** D-058 polish: the text starts past the pill's rounded end (its radius is half the pill's height) plus a quarter
  *  font, so no letter sits in the curve; 876 px are left for the words, and the longest caption (29 characters at
@@ -197,7 +211,12 @@ export class CaptionSystem extends createSystem({ captions: { required: [Caption
       this.key = key;
       this.mesh.visible = key !== null;
       if (key !== null) {
-        this.wanted.set(0, -captionDropM(inSession), -CAPTION_DISTANCE_M).applyMatrix4(head);
+        // BUG-056: a quiet notice is smaller and, in a session, above the gaze line: clear of the ring below it.
+        // The FoV guard keeps the full-size box for both, which only errs inward.
+        const isQuiet = QUIET.has(key);
+        this.mesh.scale.setScalar(isQuiet ? CAPTION_QUIET_SCALE : 1);
+        const upM = isQuiet && inSession ? captionRiseM() : -captionDropM(inSession);
+        this.wanted.set(0, upM, -CAPTION_DISTANCE_M).applyMatrix4(head);
         this.stale = true;
       }
     }
@@ -233,12 +252,25 @@ export class CaptionSystem extends createSystem({ captions: { required: [Caption
     const height = CAPTION_CANVAS_H - 2 * CAPTION_OUTLINE_PX;
     ctx.beginPath();
     ctx.roundRect((CAPTION_CANVAS_W - width) / 2, CAPTION_OUTLINE_PX, width, height, height / 2);
-    ctx.fillStyle = highContrast ? CAPTION_BACKDROP_HIGH_CONTRAST : CAPTION_BACKDROP;
+    // FR-UI-05 first: in high contrast a quiet notice is as solid as any caption.
+    const isQuiet = QUIET.has(key) && !highContrast;
+    ctx.fillStyle = highContrast
+      ? CAPTION_BACKDROP_HIGH_CONTRAST
+      : isQuiet
+        ? CAPTION_BACKDROP_QUIET
+        : CAPTION_BACKDROP;
     ctx.fill();
     if (highContrast) {
       ctx.lineWidth = CAPTION_OUTLINE_PX;
       ctx.strokeStyle = CAPTION_TEXT_COLOUR;
       ctx.stroke();
+    }
+    if (isQuiet) {
+      // The see-through backdrop cannot carry the contrast alone: a solid edge around each letter does.
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = CAPTION_QUIET_EDGE_PX;
+      ctx.strokeStyle = CAPTION_QUIET_EDGE_COLOUR;
+      ctx.strokeText(text, CAPTION_CANVAS_W / 2, CAPTION_CANVAS_H / 2, TEXT_MAX_PX);
     }
     ctx.fillStyle = CAPTION_TEXT_COLOUR;
     ctx.fillText(text, CAPTION_CANVAS_W / 2, CAPTION_CANVAS_H / 2, TEXT_MAX_PX);
