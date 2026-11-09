@@ -1,8 +1,8 @@
 // The settings panel without its drawing (UX §3.6, T-151): what each tab shows, what a press, a hold or a dwell
 // does, and where the panel and its orb go. No Three.js and no canvas here: ui/PanelSystem.ts draws what this file
 // lists and feeds it the events and the frame. Settings are read from and written through core's store.
-import { settings, validateSettings } from '../core/index.js';
-import { gardenDay, setBedHeightOffset, WANDERER } from '../garden/index.js';
+import { settings, STRINGS, validateSettings } from '../core/index.js';
+import { gardenDay, HIDDEN_KINDS, SEED_KINDS, setBedHeightOffset, WANDERER } from '../garden/index.js';
 import { HIT_RADIUS_M, HOVER_DEAD_BAND_M, ORB_HIDE_FACING, ORB_SHOW_FACING } from '../hands/index.js';
 
 import {
@@ -30,7 +30,7 @@ import { clampToFov, type FovElement } from './FovGuard.js';
 import { PANEL } from './strings.js';
 
 import type { Hand, Mat4, Settings, Vec3 } from '../core/index.js';
-import type { GardenState, RoomFeatures, RoomSignature } from '../garden/index.js';
+import type { GardenState, RoomFeatures, RoomSignature, SeedKind } from '../garden/index.js';
 
 export type PanelTab = keyof typeof PANEL.tabs;
 
@@ -50,6 +50,8 @@ export interface PanelControl {
    * on, because the gaze cannot act on it (a pinch still does).
    */
   dim: boolean;
+  /** T-193: a seed swatch's colour (`kindSwatch`), drawn instead of the on/off fill. */
+  fill?: string;
 }
 
 /** A label or a read-out: its left end at `x`, its middle line at `y`, squeezed into `w` when it is longer. */
@@ -84,6 +86,9 @@ export interface PanelActions {
   exit(): void;
   /** A press or a dwell acted on `id` (ORB_ID for the orb): its sound (T-164 §6), before what it does. */
   pressed(id: string): void;
+  /** T-193: the Seeds page's answer, `GardenSystem.pick`; and a kind's swatch colour in this room (render's `kindSwatch`). */
+  pickSeed(kind: SeedKind): void;
+  swatch(kind: SeedKind, signature: RoomSignature): string;
 }
 
 /** Element `i` of a matrix, of a list of centres or of the panel's timers. */
@@ -155,6 +160,11 @@ const TABS: Readonly<Record<string, PanelTab>> = {
   'tab:access': 'access',
   'tab:garden': 'garden',
 };
+/** T-193: the Seeds page's library tabs and swatches, by control id. */
+type Library = 'old' | 'new';
+type Row = (typeof SEED_KINDS)[number];
+const LIBS: Readonly<Record<string, Library>> = { 'lib:old': 'old', 'lib:new': 'new' };
+const KINDS: Readonly<Record<string, SeedKind>> = Object.fromEntries(SEED_KINDS.map((row) => [`seed:${row.kind}`, row.kind]));
 const REVERBS = ['auto', 'small', 'off'] as const;
 const DWELLS: readonly Settings['dwellMs'][] = [600, 900, 1200];
 
@@ -288,6 +298,16 @@ export class Panel {
 
   private isOpen = false;
   private shownTab: PanelTab = 'sound';
+  /** T-193 (API_SPEC §1.9): the Seeds page is on show (else the settings tabs), and the library it shows. */
+  private isSeeds = false;
+  private lib: Library = 'new';
+  /** The frame after `openSeeds`: the targets are not there yet, and what the gaze rests on when they appear is
+   *  not a choice (decision 1 of SEED_KINDS_T193). */
+  private opening = false;
+  /** The Seeds board has not been in the view box since it was placed: the look-away does not count yet. */
+  private unseenSeeds = false;
+  /** The swatch picked while the gaze mode is on: lit, and the board stays until the gaze leaves it. */
+  private pickedId = '';
   private garden: GardenState | null = null;
   private signature: RoomSignature = WANDERER;
   private features: RoomFeatures | null = null;
@@ -315,10 +335,16 @@ export class Panel {
     return this.shownTab;
   }
 
+  /** T-193: the Seeds page is open and its centre has not been in the view box since it was placed. */
+  get unseen(): boolean {
+    return this.unseenSeeds;
+  }
+
   /** The targets on show: the header and the open tab; none while the panel is closed. A new array: not per frame. */
   controls(): PanelControl[] {
     if (!this.isOpen) return [];
     const s = settings.get();
+    if (this.isSeeds) return this.seedControls();
     const header = [
       ...Object.entries(TABS).map(([id, tab], i) =>
         lit(wide(id, TAB_X[i] ?? 0, HEADER_Y, PANEL.tabs[tab]), tab === this.shownTab),
@@ -334,6 +360,7 @@ export class Panel {
   texts(): PanelText[] {
     if (!this.isOpen) return [];
     const s = settings.get();
+    if (this.isSeeds) return this.seedTexts();
     if (this.shownTab === 'sound') return this.soundTexts(s);
     if (this.shownTab === 'access') return this.accessTexts(s);
     return [
@@ -416,11 +443,20 @@ export class Panel {
     const ms = this.ms;
     const dt = dtMs > 0 ? Math.min(dtMs, PANEL_MAX_FRAME_MS) : 0; // a time that is not a number counts as 0
     if (this.heldId !== '') ms[HELD] = at(ms, HELD) + dt;
-    ms[AWAY] = this.isOpen && away ? at(ms, AWAY) + dt : 0;
+    // The Seeds page's look-up exception (API_SPEC §1.9): its look-away counts once the board has been seen. On the
+    // opening frame `away` is the last board's.
+    if (this.unseenSeeds && !away && !this.opening) this.unseenSeeds = false;
+    ms[AWAY] = this.isOpen && away && !this.unseenSeeds ? at(ms, AWAY) + dt : 0;
     if (at(ms, AWAY) >= PANEL_LOOK_AWAY_MS) this.setOpen(false);
     const s = settings.get();
     const gazing = s.gazeDwell && !this.pinching.left && !this.pinching.right && gazeId !== GAZE_TOGGLE_ID;
     this.dwell(dt, gazing ? gazeId : '', s, isTurning);
+    if (this.opening) {
+      this.opening = false;
+      this.selected = true; // a swatch that appears under a resting gaze is not a choice (decision 1)
+    } else if (this.pickedId !== '' && gazeId !== this.pickedId) {
+      this.setOpen(false); // the gaze has left the picked swatch: one look cannot pick and then plant (§1.6)
+    }
     this.refill();
     // D-060 item 13: the New garden row reads "Bring back the old garden" while that can be done: redraw at the turn.
     const canRestore = this.isOpen && this.shownTab === 'garden' && this.actions.canRestore();
@@ -437,6 +473,15 @@ export class Panel {
 
   close(): void {
     this.setOpen(false);
+  }
+
+  /** T-193 (`garden:seedAsk`): the Seeds page opens where the settings board does; nothing while any page is open. */
+  openSeeds(): void {
+    if (this.isOpen) return;
+    this.isSeeds = true;
+    this.opening = true;
+    this.unseenSeeds = true;
+    this.setOpen(true);
   }
 
   /** FR-HND-12: the gaze rests on `id` ('' = on nothing) for one more frame. */
@@ -479,6 +524,8 @@ export class Panel {
     this.isOpen = open;
     this.ms[AWAY] = 0;
     this.stale = true;
+    this.pickedId = '';
+    if (!open) this.isSeeds = this.opening = this.unseenSeeds = false; // the orb's next press shows the settings board
   }
 
   /** Acts on a control. One that is not on show (another tab's, a closed panel's) or is at its limit does nothing. */
@@ -505,8 +552,16 @@ export class Panel {
 
   /** Close, and the Garden tab, which asks through `actions` and changes nothing itself. */
   private act(id: string): void {
+    const lib = LIBS[id];
+    const kind = KINDS[id];
     if (id === 'close') this.setOpen(false);
-    else if (id === 'height:-') this.actions.setBedHeightOffset(heightAfter(this.garden, -1));
+    else if (lib !== undefined) this.lib = lib;
+    else if (kind !== undefined) {
+      // T-193: the pick. With the gaze mode on the board stays, the swatch lit, until the gaze leaves it (`frame`).
+      this.actions.pickSeed(kind);
+      if (settings.get().gazeDwell) this.pickedId = id;
+      else this.setOpen(false);
+    } else if (id === 'height:-') this.actions.setBedHeightOffset(heightAfter(this.garden, -1));
     else if (id === 'height:+') this.actions.setBedHeightOffset(heightAfter(this.garden, 1));
     else if (id === NEW_GARDEN_ID && this.restoreHeld) this.actions.restoreGarden();
     else if (id === NEW_GARDEN_ID) this.actions.newGarden();
@@ -522,6 +577,39 @@ export class Panel {
       this.setOpen(false);
       this.actions.exit();
     }
+  }
+
+  /**
+   * T-193 (API_SPEC §1.9): the library tabs, Close, and that library's kinds not in HIDDEN_KINDS, a kind and its
+   * sibling in the same place (row index mod 5); none on the bottom row, which holds the page's line of text.
+   */
+  private seedControls(): PanelControl[] {
+    return [
+      lit(wide('lib:old', TAB_X[0], HEADER_Y, STRINGS.libOld), this.lib === 'old'),
+      lit(wide('lib:new', TAB_X[1], HEADER_Y, STRINGS.libNew), this.lib === 'new'),
+      round('close', CLOSE_X, HEADER_Y, PANEL.close),
+      ...this.offered().map(([i, row]) => ({
+        ...round(`seed:${row.kind}`, TOGGLE_X[i % 2] ?? 0, ROW_Y[Math.floor(i / 2)] ?? 0, ''),
+        on: `seed:${row.kind}` === this.pickedId,
+        fill: this.actions.swatch(row.kind, this.signature),
+      })),
+    ];
+  }
+
+  private seedTexts(): PanelText[] {
+    return [
+      ...this.offered().map(([i, row]) =>
+        toggleLabel((i % 2) as 0 | 1, ROW_Y[Math.floor(i / 2)] ?? 0, STRINGS[row.name]),
+      ),
+      label(LEFT_X, ROW_Y[3], FULL_W, STRINGS.pickSeed),
+    ];
+  }
+
+  /** The shown library's rows of SEED_KINDS that are not hidden, each with its place, 0..4. */
+  private offered(): [place: number, row: Row][] {
+    return SEED_KINDS.map((row, i): [number, Row] => [i % 5, row]).filter(
+      ([, row]) => (row.family === 'new' ? 'new' : 'old') === this.lib && !HIDDEN_KINDS.includes(row.kind),
+    );
   }
 
   private soundControls(s: Readonly<Settings>): PanelControl[] {
