@@ -1150,6 +1150,22 @@ describe('GestureMachine: a hand takes the seed off its own palm (UX §9.1, D-04
     expect(lastHover()?.target).toEqual(SEED);
   });
 
+  it('a panel control seen past the fingers wins over the seed on this palm; a plant seen there does not (BUG-042)', () => {
+    const EXIT = { kind: 'panel', id: 'exit' } as const;
+    const r = oneHand(SEED_AT, NOWHERE);
+    r.context.eye = { x: 0, y: 1.2, z: 0 };
+    r.candidates.push({ target: { ...EXIT }, radius: 0.04, pos: { x: -0.2, y: 1.2, z: -0.6 } });
+    r.step({ at: { x: -0.1, y: 1.2, z: -0.3 } }); // halfway from the eyes to Exit, the seed still on the palm
+    expect(lastHover()?.target).toEqual(EXIT);
+    r.step({ select: true });
+    r.step({ select: false });
+    expect(last()).toMatchObject({ type: 'gesture:release', gesture: 'press', target: EXIT });
+    r.step({ at: { x: 0.1, y: 0.98, z: -0.225 } }); // halfway from the eyes to the plant: the seed keeps its turn
+    expect(lastHover()?.target).toEqual(SEED);
+    r.step({ select: true });
+    expect(last()).toMatchObject({ type: 'gesture:pinchStart', target: SEED });
+  });
+
   it('a seed that is not on this palm (on the other hand, 4.1 cm away) is not the hover', () => {
     oneHand(moved(SEED_AT, { x: 0.041 }), NOWHERE);
     expect(hovers()).toEqual([]);
