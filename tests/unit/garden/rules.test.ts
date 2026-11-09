@@ -406,19 +406,19 @@ describe('garden/rules and the bed height (TC-GAR-08, FR-UI-10)', () => {
     expect(setBedHeightOffset(after, -0.06).bedHeightOffset).toBe(-0.06);
   });
 
-  it('setBedHeightOffset clamps to 10 cm up or down', () => {
+  it('setBedHeightOffset clamps to 20 cm up or down (BUG-054)', () => {
     const s = garden();
-    expect(setBedHeightOffset(s, 0.1).bedHeightOffset).toBe(0.1);
-    expect(setBedHeightOffset(s, 0.11).bedHeightOffset).toBe(0.1);
-    expect(setBedHeightOffset(s, 3).bedHeightOffset).toBe(0.1);
-    expect(setBedHeightOffset(s, -0.1).bedHeightOffset).toBe(-0.1);
-    expect(setBedHeightOffset(s, -0.25).bedHeightOffset).toBe(-0.1);
+    expect(setBedHeightOffset(s, 0.2).bedHeightOffset).toBe(0.2);
+    expect(setBedHeightOffset(s, 0.21).bedHeightOffset).toBe(0.2);
+    expect(setBedHeightOffset(s, 3).bedHeightOffset).toBe(0.2);
+    expect(setBedHeightOffset(s, -0.2).bedHeightOffset).toBe(-0.2);
+    expect(setBedHeightOffset(s, -0.25).bedHeightOffset).toBe(-0.2);
   });
 
   it('setBedHeightOffset hands back the same state when nothing changes, or the value is not finite', () => {
-    const s = garden([plant('a', 0, 0)], [], { bedHeightOffset: 0.1 });
-    expect(setBedHeightOffset(s, 0.1)).toBe(s);
-    expect(setBedHeightOffset(s, 0.5)).toBe(s); // clamps to the 0.1 it already has
+    const s = garden([plant('a', 0, 0)], [], { bedHeightOffset: 0.2 });
+    expect(setBedHeightOffset(s, 0.2)).toBe(s);
+    expect(setBedHeightOffset(s, 0.5)).toBe(s); // clamps to the 0.2 it already has
     for (const bad of [NaN, Infinity, -Infinity]) expect(setBedHeightOffset(s, bad)).toBe(s);
     expect(setBedHeightOffset(s, -0).bedHeightOffset).toBe(0); // toBe tells -0 from 0: a new garden has 0
   });

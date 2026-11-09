@@ -13,8 +13,9 @@ export const ZONE_INNER_MARGIN_M = 0.03;
 /** FR-HND-11: a point farther out than BED_OUTER plus this is off the bed (zone 'outer'). */
 export const ZONE_OUTER_MARGIN_M = 0.05;
 
-/** FR-UI-10: the bed is raised or lowered by at most this many metres. persistence/ takes its bound from here. */
-export const BED_HEIGHT_OFFSET_MAX_M = 0.1;
+/** FR-UI-10: the bed is raised or lowered by at most this many metres. persistence/ takes its bound from here.
+ *  0.2, was 0.1 (BUG-054: the Height stepper ran out after five presses). */
+export const BED_HEIGHT_OFFSET_MAX_M = 0.2;
 
 /**
  * FR-HND-08: the vertical hand travel, in metres, that takes a plant's height from 0 to 1: the stem's own travel

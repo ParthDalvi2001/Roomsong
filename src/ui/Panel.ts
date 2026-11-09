@@ -129,7 +129,7 @@ const ACTION_LABEL_X = -0.09;
 const ACTION_LABEL_W = 0.28;
 // The Garden tab's height row (T-167, T-174): "Height" and a narrow stepper on the left, so the Time-lapse switch
 // fits on its right and "Place the garden again" and "New garden (erases this one)" keep whole rows.
-// The read-out is the number only ("+10" is about 0.036 m): "+10 cm" ran into the plus button's ring.
+// The read-out is the number only ("+20" is about 0.036 m): "+10 cm" ran into the plus button's ring.
 const HEIGHT_LABEL_W = 0.065; // "Height" is about 0.06 m
 const HEIGHT_MINUS_X = -0.105;
 const HEIGHT_VALUE_X = -0.08;

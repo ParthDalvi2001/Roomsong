@@ -251,7 +251,7 @@ function expectPose(actual: number[], expected: number[], tolerance = 1e-6, note
 /** A bed straight ahead of the emulator's head (0, 1.6, 0; looking down -z): no turn, 0.45 m forward. */
 const aheadAt = (heightM: number) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, heightM, -0.45, 1];
 const EYE_HEIGHT_M = 1.6;
-const FLOATING_M = EYE_HEIGHT_M - 0.25; // FR-ROOM-01 level 4
+const FLOATING_M = EYE_HEIGHT_M - 0.35; // FR-ROOM-01 level 4 (BUG-053, was 0.25)
 const TABLE_CENTRE = { x: 0, y: 0.74, z: -0.5 }; // of the table room
 // The requirement's numbers, spelled out on purpose (room/config.ts holds the module's constants).
 const PLANE_WAIT_MS = 3000;
@@ -466,8 +466,8 @@ test('T-128c c2 level 3: the ghost and its caption, a dwell that floats nothing,
   // At least one frame drew it between the two places: an ease, not a jump. Read per frame, so a slow emulator
   // frame (software rendering) changes how many such frames there are, not whether there is one.
   const between = await probe.evaluate(
-    (p, low) => p.bedY.filter((y) => y > low && y < 1.35 - 1e-3).length,
-    0.74 + 1e-3,
+    (p, [low, high]) => p.bedY.filter((y) => y > low && y < high - 1e-3).length,
+    [0.74 + 1e-3, FLOATING_M] as const,
   );
   expect(between).toBeGreaterThan(0);
   const ghost = await probe.evaluate((p) => p.bed());

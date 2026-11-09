@@ -1061,7 +1061,7 @@ describe('garden/GardenSystem: newGarden and setBedHeightOffset (FR-PER-03, FR-U
     s.system.setBedHeightOffset(Number.NaN);
     expect(s.seen).toHaveLength(1);
     s.system.setBedHeightOffset(1);
-    expect(s.state().bedHeightOffset).toBe(0.1);
+    expect(s.state().bedHeightOffset).toBe(0.2);
   });
 });
 

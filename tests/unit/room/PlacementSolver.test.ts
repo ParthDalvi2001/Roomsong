@@ -10,6 +10,7 @@ import {
   BED_CENTRE_MIN_M,
   BED_FAR_EDGE_MAX_M,
   FLOATING_DROP_M,
+  SURFACE_EYE_CLEARANCE_M,
   HIT_TEST_TIMEOUT_MS,
   PLANE_LEVELS_TIMEOUT_MS,
 } from '../../../src/room/config.js';
@@ -356,13 +357,13 @@ describe('PlacementSolver: the bed stays in seated reach (TC-ROOM-02)', () => {
     expectReachableAndFacing(pose, head, 'rolled');
   });
 
-  it('level 4 floats 0.45 m forward and 0.25 m below eye height, whatever the pitch', async () => {
-    expect(FLOATING_DROP_M).toBe(0.25);
+  it('level 4 floats 0.45 m forward and 0.35 m below eye height, whatever the pitch (BUG-053)', async () => {
+    expect(FLOATING_DROP_M).toBe(0.35);
     for (const pitchDeg of [-89, -40, 0, 60]) {
       const head = headAt(0.2, 1.15, 0.1, 90, pitchDeg);
       const placement = await place({ head });
       expect(placement.level, `${pitchDeg}`).toBe(4);
-      expectClose(centreOf(placement.pose), [0.2 - BED_CENTRE_DEFAULT_M, 1.15 - 0.25, 0.1], `${pitchDeg}`);
+      expectClose(centreOf(placement.pose), [0.2 - BED_CENTRE_DEFAULT_M, 1.15 - 0.35, 0.1], `${pitchDeg}`);
     }
   });
 
@@ -587,14 +588,22 @@ describe('PlacementSolver: waits, the level-3 pinch and the level events (FR-ROO
     expect(seen).toMatchObject({ level: 3 }); // it did the work, and the wait had not run out
   }, 60_000);
 
-  it('a spot higher than the floating bed would be is not usable: a pinch there gives the floating bed', async () => {
+  it('a spot less than 0.25 m below the eyes is not usable: a pinch there gives the floating bed', async () => {
     const eyeM = HEAD[13]!;
     const wallAtEyeHeight = { x: 0, y: eyeM, z: -2.25 };
-    const justTooHigh = { x: 0, y: eyeM - FLOATING_DROP_M + 0.05, z: -0.4 };
-    const lowEnough = { x: 0, y: eyeM - FLOATING_DROP_M - 0.05, z: -0.4 };
+    const justTooHigh = { x: 0, y: eyeM - SURFACE_EYE_CLEARANCE_M + 0.05, z: -0.4 };
+    const lowEnough = { x: 0, y: eyeM - SURFACE_EYE_CLEARANCE_M - 0.05, z: -0.4 };
     expect((await place({ hit: wallAtEyeHeight, pinch: true })).level).toBe(4);
     expect((await place({ hit: justTooHigh, pinch: true })).level).toBe(4);
     expect((await place({ hit: lowEnough, pinch: true })).level).toBe(3);
+  });
+
+  it('the floating bed is 0.35 m below the eyes, and a surface 0.30 m below them is still used (BUG-053)', async () => {
+    const head = headAt(0, 1.3, 0); // low eyes, so a table 0.30 m under them is in the 0.5..1.1 m band
+    expect(centreOf((await place({ head })).pose)[1]).toBeCloseTo(1.3 - 0.35, 9);
+    const onHigh = await place({ head, planes: [surface('table', [0, 1.0, -0.5], [1.2, 0.8])] });
+    expect([onHigh.level, centreOf(onHigh.pose)[1]]).toEqual([1, 1.0]);
+    expect((await place({ head, hit: { x: 0, y: 1.0, z: -0.4 }, pinch: true })).level).toBe(3);
   });
 
   it('the floor, or anything lower than 0.5 m, is not usable: a pinch there gives the floating bed (D-034)', async () => {

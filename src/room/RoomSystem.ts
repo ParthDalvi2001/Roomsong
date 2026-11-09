@@ -14,13 +14,13 @@ import {
   ANCHOR_RESTORE_TIMEOUT_MS,
   BED_CENTRE_MAX_M,
   EPSILON_M,
-  FLOATING_DROP_M,
   GHOST_EASE_MS,
   HIT_TEST_TIMEOUT_MS,
   NO_ROOM_NOTICE_MS,
   NO_ROOM_READ_MS,
   PLANE_LEVELS_TIMEOUT_MS,
   RESTORE_REACH_SLACK_M,
+  SURFACE_EYE_CLEARANCE_M,
   SURFACE_MIN_HEIGHT_M,
 } from './config.js';
 import { HitTestAdapter } from './HitTestAdapter.js';
@@ -67,7 +67,7 @@ function reachM(pose: Mat4, head: Mat4): number {
   // D-041's slack on the heights too: eyes a little lower than on the day it was placed do not move a floating bed.
   const isAtHeight =
     y >= SURFACE_MIN_HEIGHT_M - RESTORE_REACH_SLACK_M &&
-    y <= head[13]! - FLOATING_DROP_M + RESTORE_REACH_SLACK_M;
+    y <= head[13]! - SURFACE_EYE_CLEARANCE_M + RESTORE_REACH_SLACK_M;
   return ahead > 0 && isAtHeight ? Math.sqrt(dx * dx + dz * dz) : Infinity;
 }
 
@@ -330,7 +330,7 @@ export class RoomSystem extends createSystem() {
   /**
    * BUG-011: whether the solver and the judge may read `head`. IWSDK keeps the head as it was on a frame with no
    * viewer pose, the identity before the first: in the local-floor space a head on the floor, which would float the
-   * bed at y = −0.25 m or give up a saved anchor. So eyes lower than any surface wait for a real pose. IWSDK falls
+   * bed at y = −0.35 m or give up a saved anchor. So eyes lower than any surface wait for a real pose. IWSDK falls
    * back to a 'local' space, where y = 0 is the starting head: after the 3 s of levels 1 and 2 from the session's
    * first frame such eyes are taken, for the rest of the session. The identity itself never is.
    */
