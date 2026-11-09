@@ -86,8 +86,8 @@ Write the five answers at the top of your results note.
 
 A saved garden and a saved place belong to the address they were made on. The public site, the mirror and the Mac are three different places to the headset, and so are two ports of the same Mac: what is saved on one is not seen on the other.
 
-1. Open everything from **one address: the built site.** That is the public address (route A of block 0), or the Mac's preview of the build (route B). Both serve the app at `/` and the test pages at `proto/spike/`, `proto/pinch/` and `proto/bed/`.
-2. If the public site is live, use it: it is the address that will be submitted, and the mirror is not tested in its place (from T-162).
+1. Open everything from **one address: the built site.** That is the public address (route A of block 0), or the Mac's preview of the build (route B). Both serve the app at `/`. Only route B serves the test pages at `proto/spike/`, `proto/pinch/` and `proto/bed/`: they are not in the published build (T-189), so a sitting that runs one of them uses route B.
+2. If the public site is live and the sitting runs no test page, use it: it is the address that will be submitted, and the mirror is not tested in its place (from T-162).
 3. **One exception: the sound page** (block 5). It is not part of the built site. It is opened from the Mac, from its own folder and its own port. It saves nothing, so this does no harm.
 4. **A second exception, for one check only:** the dev server (block 9, last step). A garden saved there is not the garden on the built site.
 
@@ -168,13 +168,13 @@ Some steps say **(console)**. They read lines that the app writes for developers
 
 **Can be run today.**
 
-**Purpose:** open the pages in Meta Quest Browser, and time the very first load of the app page while nothing is stored yet. There are two routes. Use route A if the public site is live and its build holds T-128a (published on 2026-10-13 or later: an older one has another way in and other words on the page). Use route B otherwise. Whichever you choose, it is your one address for the whole sitting (see "One address for the whole sitting"). The sound page (block 5) always comes from the Mac.
+**Purpose:** open the pages in Meta Quest Browser, and time the very first load of the app page while nothing is stored yet. There are two routes. Use route A if the public site is live and its build holds T-128a (published on 2026-10-13 or later: an older one has another way in and other words on the page) and the sitting runs no test page. Use route B otherwise. Whichever you choose, it is your one address for the whole sitting (see "One address for the whole sitting"). The sound page (block 5) always comes from the Mac.
 
 **Answers:** TC-DEV-01 and FR-SYS-06, the first half (time from page load to a usable Enter button) · the two routes of DEPLOYMENT_GUIDE §1 and §3.
 
 **You need:** the headset, the Mac on the same Wi-Fi, and for route B a Terminal window.
 
-**Checked against:** `vite.config.ts` (the build holds the app page, `proto/spike/`, `proto/pinch/` and `proto/bed/`), `package.json` (`preview`), the certificate code of the dev plugin, a local build, `src/ui/Landing.ts` and `src/ui/strings.ts` (the words on the app page), `src/core/flags.ts` (`dev=1`), DEPLOYMENT_GUIDE §1 and §3, ENVIRONMENT_SETUP §3 and §7.
+**Checked against:** `vite.config.ts` (the build holds the app page; `proto/spike/`, `proto/pinch/` and `proto/bed/` only in a `ROOMSONG_PROTO=1` build, T-189), `package.json` (`preview`), the certificate code of the dev plugin, a local build, `src/ui/Landing.ts` and `src/ui/strings.ts` (the words on the app page), `src/core/flags.ts` (`dev=1`), DEPLOYMENT_GUIDE §1 and §3, ENVIRONMENT_SETUP §3 and §7.
 
 ### Route A — the public address (only after you have gone live on GitHub Pages)
 
@@ -182,9 +182,9 @@ Some steps say **(console)**. They read lines that the app writes for developers
 2. Type `https://parthdalvi2001.github.io/Roomsong/` (capital R: the address is case-sensitive). No warning is expected.
 3. Count the seconds from the moment the page starts to load until the line "Getting the garden ready." under the button is gone. Write the count down as T1.
 4. You see "Roomsong", "Grow a song on your table." and a button **Enter the garden**. Do not pinch it yet. Bookmark the page.
-5. Open the same address followed by `proto/spike/`. You see "Roomsong - device capability spike". Bookmark it.
-6. Open the same address followed by `proto/pinch/`. You see "Roomsong - pinch accuracy test". Bookmark it.
-7. Open the same address followed by `proto/bed/?dev=1&flags=perfHud`. You see "Roomsong - bed preview". Bookmark it.
+5. No test page here: `proto/spike/`, `proto/pinch/` and `proto/bed/` are not on the public site (T-189). A sitting that runs one uses route B.
+6. (Left out: see step 5.)
+7. (Left out: see step 5.)
 8. Open the same address followed by `?dev=1&flags=perfHud,eventLog`. It is the app page again, with the developers' read-outs switched on. Bookmark it as "app, dev".
 9. Open the same address followed by `version.json`. Write down the value of `commit`.
 
@@ -192,7 +192,7 @@ Some steps say **(console)**. They read lines that the app writes for developers
 
 1. Mac, Terminal, in the repository folder. Stop old servers, so that no old page is served: `lsof -ti tcp:4173 | xargs kill`. A complaint from `kill` means nothing was running. (This also stops the sound preview Claude keeps running; block 5 starts a new one.)
 2. `git rev-parse --short HEAD`. Write down what it prints.
-3. `npm run build`
+3. `ROOMSONG_PROTO=1 npm run build` (the flag adds the test pages, which the published build leaves out, T-189)
 4. `npm run preview`. It prints a `Network:` line. Write down the address that starts with `https://192.168.`, with its port (4173, or the next free one).
 5. If macOS asks whether to allow incoming connections: allow.
 6. Leave this Terminal window open for the whole sitting.
@@ -2359,7 +2359,7 @@ One page. Every line is a number or a yes or no that a decision or a task waits 
 
 Ask the owner beforehand: headset charged, hand tracking on, Space Setup done in the room with the table added as a table.
 
-1. The address: the public one (route A). Without it, bring the Mac, join the owner's Wi-Fi and use route B: the `Network:` address is a new one there.
+1. The address: route B. Blocks 1 to 4 are test pages, which the public site does not have (T-189): bring the Mac, join the owner's Wi-Fi and use route B. The `Network:` address is a new one there.
 2. To skip typing: on a phone signed in to the Meta Horizon app, open `https://www.oculus.com/open_url/?url=` followed by the page's address in encoded form (`https%3A%2F%2F…`). It sends the page to the headset (Web Launch; it takes `https://` addresses only).
 3. Block 0, the first load of the app page only: T1 (2 min).
 4. Block 1, runs 1 and 2 only (8 min).

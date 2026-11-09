@@ -99,7 +99,7 @@ python3 tracker/server.py        # team tracking page, http://127.0.0.1:4180/ (r
 - **In the emulator (IWER):** the dev server opens a browser with the IWER panel; toggle hands, planes, etc. This is the default way to run the app until a headset exists (§6).
 - **The dev emulator downloads its room** (`living_room`, from unpkg.com) on every dev page load (`dev.emulator.environment` in `iwsdk.config.json`). Offline that is an uncaught "Failed to fetch" and no emulated room. It is dev tooling, not in `dist/` (BUG-002, won't fix).
 - **On the headset (when available):** open Meta Quest Browser → the LAN URL → accept the self-signed cert once → Enter. Not yet tried: no headset.
-- **Device test pages:** `/proto/pinch/` and `/proto/spike/` on the dev server, on the preview and on the hosted site (§5 step 6).
+- **Device test pages:** `/proto/pinch/` and `/proto/spike/` on the dev server, and on the preview of a `ROOMSONG_PROTO=1 npm run build`. Not on the hosted site (T-189; `scripts/check-dist.mjs` fails a build that has them) (§5 step 6).
 - Dev flags: append `?flags=perfHud,fovGuide` (API_SPEC §3); `forceLevel=N`, `forceSignature=wanderer`, `window` (the garden window, FR-SYS-07, arrives with T-114). A built page ignores flags unless the URL also has `dev=1`: `?dev=1&flags=perfHud`. *Superseded (T-104, T-105):* `pinchTest`, `capSpike` "for the test pages": they are pages now.
 
 ## 4. Agent tooling (one-time; also listed in 07-workflow/SKILLS_SETUP.md)
@@ -124,7 +124,7 @@ No headset exists on the team as of 2026-10-10. The day one arrives:
 3. Run **Space Setup** once in your main test room (for L1 placement); also test a room *without* Space Setup (L3/L4).
 4. Quest Browser → Settings → allow WebXR features when prompted.
 5. Optional: `metavr device list` to confirm the dev machine sees the headset (Wi-Fi ADB: `metavr device connect <ip>`).
-6. Run the two Phase-0 pages first and record results in §9: `<site>/proto/spike/` (TC-DEV-0A device capability spike → gates the room signature; script `proto/spike/README.md`, four runs: allow, reload, browser restart, decline) and `<site>/proto/pinch/` (TC-DEV-00 pinch accuracy → sets the cell size and the outer radius, D-020; script `proto/pinch/README.md`, a second run with `?beta=10` is required). `<site>` is `https://parthdalvi2001.github.io/Roomsong` once Pages is live, and the `npm run preview` LAN address before that. *Superseded (T-104, T-105):* `?flags=capSpike` and `?flags=pinchTest`. Then the device script for G1 (TEST_PLAN §4.6).
+6. Run the two Phase-0 pages first and record results in §9: `<site>/proto/spike/` (TC-DEV-0A device capability spike → gates the room signature; script `proto/spike/README.md`, four runs: allow, reload, browser restart, decline) and `<site>/proto/pinch/` (TC-DEV-00 pinch accuracy → sets the cell size and the outer radius, D-020; script `proto/pinch/README.md`, a second run with `?beta=10` is required). `<site>` is the `npm run preview` LAN address of a `ROOMSONG_PROTO=1 npm run build` (the hosted site does not have these pages, T-189). *Superseded (T-104, T-105):* `?flags=capSpike` and `?flags=pinchTest`. Then the device script for G1 (TEST_PLAN §4.6).
 
 ## 6. Emulator-first workflow (default until a headset exists)
 | Tool | What it emulates | When to use |
@@ -148,7 +148,7 @@ What the emulator **cannot** tell you: real fps / JS ms on the Quest, hand-track
 | Prod | push to `main` (Parth) → `.github/workflows/deploy.yml` | `https://parthdalvi2001.github.io/Roomsong/` (case-sensitive; live once Parth enables Pages, T-108) |
 | Mirror | the same `dist/` uploaded to Vercel or Netlify (host not chosen yet) | _tbd_ |
 
-Secrets: none. Every row also serves the device test pages at `…/proto/pinch/` and `…/proto/spike/`.
+Secrets: none. The device test pages (`…/proto/pinch/`, `…/proto/spike/`) are served by the Local row, and by the Local, built row only after `ROOMSONG_PROTO=1 npm run build` (T-189); Prod and the mirror do not have them.
 Hosting = **GitHub Pages as the submitted URL, plus a mirror of the same build** (D-022, ADR-004). `version.json` on both links proves the same build. Procedure, workflows, freeze and uptime: DEPLOYMENT_GUIDE §1–§6.
 *Superseded (D-022):* the comparison of GitHub Pages, Vercel and Netlify that stood here, and "Decision at Phase 1 (G1, Oct 22)". *Superseded (T-108):* staging from `develop`, prod from a `vX.Y.Z` tag, `scripts/deploy.mjs`.
 

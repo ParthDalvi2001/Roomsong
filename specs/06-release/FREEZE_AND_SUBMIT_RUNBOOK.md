@@ -64,7 +64,7 @@ All Terminal commands run in `~/Documents/test-pro/Roomsong`.
    minutes after a deploy; change the number after `nocache=` or wait.
 3. Claude checks the same from the Mac against the tag: `git fetch origin --tags && git rev-parse 'v1.0.0-rc1^{commit}'`
    must print the `commit` of both links. Claude records the result in PROGRESS.md (T-183).
-4. Both landing pages open; `/Roomsong/proto/pinch/` and `/Roomsong/proto/spike/` open too (Guide §1.1 step 5).
+4. Both landing pages open; `/Roomsong/proto/pinch/` and `/Roomsong/proto/spike/` do not (404: the device test pages are not published, T-189; Guide §1.1 step 5).
 
 ### 1.6 Uptime watch (Parth, once; T-187)
 1. `uptime.yml` is on `main` already (it came with the go-live push; Actions → **uptime** lists runs on `main`). It stays

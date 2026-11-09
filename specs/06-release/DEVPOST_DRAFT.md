@@ -228,7 +228,7 @@ State: **done** · **not done** (on track) · **at risk** (a date, a human or a 
 | P0 UAT scenarios from a clean headset | at risk: no headset | T-184 |
 | Zero open S1/S2 bugs | **not done: BUG-007, BUG-008 and BUG-009 are open S2** (the log's own line "Open S1/S2 count: 0" is out of date) | T-168 |
 | The landing page and the app promise only what is built, before a public address | mostly true now: the four switches, saving and Listen are in the app (T-160, T-128e, T-148). Still false: the ripple captions "Table: colour." and "Walls: colour." (nothing tints until item 34). Still missing: the help line that names the settings orb | T-163, T-170 (its go-live rule) |
-| Test pages published with the app (`/proto/spike/`, `/proto/pinch/`, `/proto/bed/`) | open: keep and name them, or drop them from the submission build (PROGRESS item 28) | **no task, add one** |
+| Test pages published with the app (`/proto/spike/`, `/proto/pinch/`, `/proto/bed/`) | done: dropped from the submission build (D-060 (10)); `scripts/check-dist.mjs` fails a build that has them; a LAN preview still builds them with `ROOMSONG_PROTO=1` | T-189 |
 | Every member listed with a role; confirmation screenshot; tag pushed; smoke test | not done | T-185 |
 
 ---

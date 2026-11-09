@@ -3,7 +3,8 @@
 // something the app needs. The build has no emulator: the test adds IWER from node_modules as an init script
 // (init scripts are not subject to the page's policy) and presses the page's own Enter button, the only way in
 // (`xr.offer` is "none", API_SPEC §1.10 rule 2). That click also starts the audio context, under the policy.
-// The same run covers the pinch-test page (T-105), which is built into dist/ beside the app.
+// The same run covers the pinch-test page (T-105), which only this run's build has (ROOMSONG_PROTO=1 in
+// playwright.config.ts).
 // Emulator result: says nothing about a headset.
 import { createRequire } from 'node:module';
 
