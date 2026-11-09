@@ -1,128 +1,149 @@
-# Devpost Submission Draft v1, Judging Scorecard, and Gap List
+# Devpost Submission Draft, Judging Scorecard, and Gap List
 
-**Status:** Draft v2, the final pass of the text (T-180; v1 was 17 Oct at dca03de, v0 15 Oct at cc37db5) · **Owner:** product-owner · **Date:** 2026-10-27 · Checked against `develop` at 0c5de87. §1 is the copy to submit; §2 to §5 are as of 17 Oct and are not submission copy.
+**If the name changes** (undecided; ★ keep Roomsong, RND_2026-11-08 §3, DECISIONS_PENDING 2): change the title here, every link (the `/Roomsong/` path), the in-app title and the video together, so judges see one name.
+
+**Status:** Draft v3 of the text (T-180, 9 Nov; v2 was 27 Oct at 7b3eadc, checked against 0c5de87; v1 17 Oct at dca03de; v0 15 Oct at cc37db5) · **Owner:** product-owner · **Date:** 2026-11-09 · Checked against `develop` at 2ed6cf7; the live site serves `main` 45518e5. §1 is the copy to submit; §2 to §5 are mostly as of 17 Oct and are not submission copy.
 **Feeds:** T-180 (final copy), T-181 (video), T-182 (gallery), T-184 (go/no-go). The rules of copy are SUBMISSION_CHECKLIST §2.1 ("Copy rules"); this file obeys them and does not replace them.
-**Sources read:** HACKATHON_RULES §3, §5, §6, §10, §11 · SUBMISSION_CHECKLIST §2 · WINNING_STRATEGY §0 to §2 · PRD §6 · SPRINT_PLAN v2.1 (status column) · PROGRESS (Blocked on human; stand-ups of 16 Oct, to 18:24 IST) · API_SPEC Changelog v1.2.26 to v1.2.36, §1.6, §1.7 · LLD §11 · DECISIONS_LOG D-050 to D-056 · BUG_LOG · VIDEO_SCRIPT_V0 · the words players see (`src/core/strings.ts`, `src/ui/strings.ts`).
+**Sources read (9 Nov):** RND_2026-11-08 §2 (the target award, Best First Five Minutes, and its wording advice) · HACKATHON_RULES §3, §5.3, §6, §10 · DEVPOST_CLAIMS_CHECK_2026-10-25 (method and verdicts) · SUBMISSION_CHECKLIST §2.1 · PROGRESS (9 Nov 01:45 IST: Now, Test status, Perf) · DECISIONS_LOG D-061 to D-070 · DECISIONS_PENDING (9 Nov) · BUG_LOG (open S1/S2: 0) · the words players see (`src/core/strings.ts`, `src/ui/strings.ts`) · `src/hands/config.ts`.
 
-**Markers.** `[not yet: T-nnn]` follows every claim that is false today and names the task that makes it true. Since the 27 Oct pass only three things carry one, all landing on submission day: the live links and build hash (T-108, T-183), the video link (T-181) and the gallery (T-182). `<...>` is a link or hash filled in on that day. Before submitting, every marker is resolved: the task is done, or the sentence is cut. A sentence with an open marker never ships. Two conditional rewrites sit below the copy, not in it: the room-signature sentences if G2 cuts S1 (T-155), and "Known limitations" if a headset run happens (T-129, T-165).
+**Markers.** `[not yet: T-nnn]` follows every claim that is false today and names the task that makes it true. Open on 9 Nov: the mirror (T-108: Parth sends the Netlify address or says "no mirror", DECISIONS_PENDING 7.1), the freeze build's hash (T-183) and the video link (T-181); outside the description, the gallery (T-182), the target launch line and "What excites us about VR" (Parth and Chinmay, DECISIONS_PENDING 7.6). `<...>` is filled on submission day. A sentence with an open marker never ships: the task is done, or the sentence is cut. With no mirror, step 1's parenthesis becomes "(build <hash>, /version.json)".
 
-**Where the build stands (27 Oct, develop 0c5de87).** No headset; Emergency mode (D-013) since 27 Oct (D-060 (4)); nothing has run on a Quest. In the emulator the whole judge's path runs, as listed for 17 Oct below, plus: the app plays sound style B (D-060 (5): bells and chimes, groove, tempo echo, moving chords, soft percussion; each plant on its own 1, 2, 3 or 5-bar cycle with seeded rests, P-009; a counter-line and variations seeded per local day, T-164 §1.7 to §1.8); plant colours A (an arc from gold to violet, turned ±15° per room, D-060 (6)); the honest ripple captions ("Table: a note.", "Walls: a note.", "Ceiling: mood."); stillness (a still head facing the bed for 8 s lifts the halo, widens the echo and brings out the plant looked at, T-173); the Time-lapse switch on the Garden tab (T-174); the wall vine (C4, T-149, done-pending-device, its look unrated); "Bring back the old garden" for 10 s after a New garden (D-060 (13)); the players' words of T-170 ("Look to select", "Turn a hand over for settings"); a floating bed keeps the room's signature when a wall is known (D-060 (14)); the level-3 wait 6 s (D-060 (12)). Open S1/S2 bugs: 0 (BUG-007 to BUG-010 fixed). GitHub Pages answered 404 on 25 Oct (T-108; Netlify chosen as the mirror, D-060 (2)). Nobody has rated style B or the colours by ear or eye yet (T-164, T-163).
+**Tags.** **D** = seen on a headset: Parth's Quest 3S (7 Nov, development build) or Chinmay's Quest 3 (8 Nov, the live site). **E** = emulator only (IWER in desktop Chromium, the browser tests). The copy writes only D facts as tested; every E number in it carries "(emulator)".
 
-**Where the build stood (17 Oct).** 44 of 72 tasks done at the last stand-up (16 Oct 18:24 IST); since then T-142b and T-160 have merged (not pushed: BUG-009 holds the push) and D-056 added T-172 and T-173. In the emulator the judge's whole path now runs in the app: the landing page; Enter, with sound in the same press; the bed on the table, or a ghost bed and a pinch, or floating; the tuning ripple over table, wall and ceiling with its captions and the room's chord (T-142, T-142b); key, scale and echo set by the room (T-128d); the guided first minute (T-150); palm-up seed, pinch to plant, the tide playing five voices with panning; pull, drag, remove and undo (T-128d); Listen with its dome, halo and 10-minute "Goodnight" (T-148); save, restore and pause (T-128e), with the daily seed and growth; the settings panel; one-hand mode, look-and-hold with a reticle, and the beat ring (T-160). Laptop mode (T-114b) runs the same garden in a plain browser tab, a click as the pinch. Measured in the emulator at test speed: first sound 15.1 s and first loop 34.4 s from Enter (laptop mode 12.1 s and 17.4 s; T-150). Zero network requests after load (TC-E2E-01). First download last measured at 699 kB (13 Oct, before the loop was joined; not measured since). Still open: plant colours (PROGRESS item 34: the captions "Table: colour." and "Walls: colour." promise a tint that nothing draws), the sound style (item 35: until Parth picks A, B or C the app keeps the sound he called "too boring", D-051), BUG-007, BUG-008 and BUG-009 (all S2), GitHub Pages (T-108), a headset (T-000). Nothing has run on a headset, and nobody has listened to the ripple's chord or a re-tune.
+**Where the build stands (9 Nov, develop 2ed6cf7, live 45518e5).** Headsets in hand since 7 Nov; Emergency mode (D-013) no longer applies. The live link https://parthdalvi2001.github.io/Roomsong/ (GitHub Pages) has been up since 8 Nov. New since the 27 Oct pass: a hand may take the seed off its own palm, for every player (D-062); a plant's target at its head and an 11 cm pull (D-063); a pinch that touches nothing takes the panel control or plant in line with the eye and fingers (D-066); Exit on the Garden tab, one press (D-067); "No room scan: run Space Setup", once a session in a room with no plane (D-068); the `?access=` links `gaze`, `onehand`, `contrast`, `reduce`, combinable with commas, saved like a ticked box and switched off on the Access tab (D-070); the Garden tab counts days by calendar day (BUG-037); the guide no longer moves on with nothing planted (D-061, BUG-022). Open S1/S2 bugs: 0.
+
+| Fact | Tag | Source |
+|---|---|---|
+| Entered with hands; palm-up seed; planting with sound; save and reload; pulls and moves; resume after taking the headset off; Listen (how it was started is not recorded; the palms-out pose is DECISIONS_PENDING 4 step 5); settings; Exit and re-entry; room tuning after Space Setup (Parth's room gave a minor pentatonic key) | D (Quest 3S, 7 Nov, dev build) | PROGRESS Now (T-000), Test status "device" |
+| Three seeds planted in 38 s once the palm pick was on (the start of the 38 s is not recorded) | D (Quest 3S, 7 Nov) | D-062, BUG-023 |
+| About 90 fps (low 88), 11 draw calls, about 5k triangles, JS under 2 ms | D (Quest 3S, dev build, with the recorder) | PROGRESS Perf |
+| 90 fps; Exit; save; daily seed; one-hand mode; room read after Space Setup; three seeds planted by 62 s; an unscanned room plays the default song | D (Quest 3, 8 Nov, live site) | PROGRESS Now (T-000), Perf; D-068 |
+| First sound 15.0–17.8 s from Enter; first loop 34.4 s (test-speed hands) | E | G1, 24 Oct; T-150 |
+| Worst frame 48 draws (both eyes), 103,972 triangles, JS 2.03 ms; download 743.6 kB gzip | E | PROGRESS Perf (23 and 25 Oct) |
+| Not yet on a headset: the undo petal, a drag by sight, a hands-free (look-to-select) run, Day 2, the built page's cold start and frame rate on Quest 3S, the "No room scan" message, the access links | E | PROGRESS Test status; DECISIONS_PENDING 4 |
+| In neither list, so never written as tested: stillness, Time-lapse, high contrast, reduce motion, the beat ring, the ripple and its captions, a bed restored to its saved place, the laptop preview | E | — |
+| No stranger has played it yet; a new person's first five minutes is the evidence that counts for the award | — | DECISIONS_PENDING 5; RND §2 |
 
 ---
 
-## 1. The submission text, draft v1
+## 1. The submission text, draft v3
 
 ### 1.1 Form fields (HACKATHON_RULES §5.3; field list to be confirmed by Chinmay in T-115)
 
 | Field | Draft | State |
 |---|---|---|
-| Name | Roomsong | done (D-016; a quick search, not a trademark search) |
-| Tagline (≤140) | **A:** "Plant glowing seeds on your real table with a pinch. Each one sings. Every room gives your garden its own song." (111 characters) · fallback B, only if G2 cuts S1: "Plant glowing seeds on your real table with a pinch. Each one sings, and your garden grows every day you return." (112 characters) | A chosen 27 Oct: the room signature stays in, GO by default (D-060 (16), G1); both are true of the emulator build |
+| Name | Roomsong | done (D-016; a quick search, not a trademark search); a rename is open (DECISIONS_PENDING 2, ★ keep): see the line at the top |
+| Tagline (≤140) | **A:** "Plant glowing seeds on your real table with a pinch. Each one sings. Every room gives your garden its own song." (111 characters) · fallback B, only if S1 is cut: "Plant glowing seeds on your real table with a pinch. Each one sings, and your garden grows every day you return." (112 characters) | A chosen 27 Oct (D-060 (16)); room tuning seen on both headsets after Space Setup (D). "Every room" assumes a scan: an unscanned room plays the default song, which "How to test" says |
 | Track | Entertainment | done (D-001) |
 | Division | New Experience (first commit 2026-10-10, 4c831aa) | done |
-| Build link | `https://parthdalvi2001.github.io/Roomsong/` `[not yet: T-108, T-183]` | 404 on 25 Oct; Parth's go-live steps; the submitted build is the code-freeze build (T-183) |
-| Mirror and build hash | named in "How to test", not in the link field `[not yet: T-108, T-183]` | Netlify (D-060 (2)), not live |
-| Video | public YouTube, 60 to 90 s `[not yet: T-181]` | the emulator capture (`npm run video:capture`), the hand cue (T-175) and the rough-cut pipeline (T-153) are built; the final cut is T-181 |
-| Target launch | "Early 2027 on the Quest store, as a web app." (the checklist's draft, "Q1 2027 … as a PWA") | proposed by product-owner; **needs Parth's and Chinmay's yes** |
-| Team | Parth · `<email>` · Developer; Chinmay · `<email>` · Product Manager (Representative). Agents are not team members | emails from the humans (T-185); Chinmay's Start Member screenshot asked by 31 Oct (D-060 (19)) |
-| Gallery | 6 images, §3.4 of this file `[not yet: T-182]` | six emulator shots exist (`npm run gallery`, 23 Oct; before colours A, so re-shoot), each captioned "captured in the Immersive Web Emulator"; device shots only with a headset |
+| Build link | `https://parthdalvi2001.github.io/Roomsong/` | live since 8 Nov (serves 45518e5 on 9 Nov); the submitted build is the code-freeze build on the same link (T-183) |
+| Mirror and build hash | named in "How to test", not in the link field `[not yet: T-108, T-183]` | Netlify (D-060 (2)) is not live: Parth sends the address or says "no mirror" (DECISIONS_PENDING 7.1); the hash at T-183 |
+| Video | public YouTube, 60 to 90 s `[not yet: T-181]` | Chinmay records 13–14 Nov (DECISIONS_PENDING, Dates); device footage is possible now, but a Quest recording with sound is untried (DECISIONS_PENDING 4 step 8). For the award: the first 60 s without cuts (RND §2) |
+| Target launch | "Early 2027 on the Quest store, as a web app." (the checklist's draft, "Q1 2027 … as a PWA") | proposed by product-owner; **needs Parth's and Chinmay's yes** (DECISIONS_PENDING 7.6) |
+| Team | Parth · `<email>` · Developer; Chinmay · `<email>` · Product Manager (Representative). Agents are not team members | emails from the humans (T-185); Chinmay's Start Member screenshot still open (DECISIONS_PENDING 7.3) |
+| Gallery | 6 images, §3.4 of this file `[not yet: T-182]` | six emulator shots exist (23 Oct, before colours A): re-shoot; on a headset if a recording shows passthrough, else captioned "captured in the Immersive Web Emulator" |
 
 ### 1.2 Description (≤500 words)
 
 Where each heading comes from:
 
-| Heading | Source of the heading | Words (headings and placeholders counted, markers not) |
+| Heading | Source of the heading | Words |
 |---|---|---|
-| How to test | SUBMISSION_CHECKLIST §2.1 (a required section; it comes first) | 105 |
-| What it is | HACKATHON_RULES §5.3 "inspiration"; SUBMISSION_CHECKLIST §2.1 "Inspiration" and "What it does", merged to save words | 72 |
-| Your first minute | the brief for this draft; PRD §3.1 (the First Five Minutes flow); its steps are the judge's path, so "How to test" points to it | 62 |
-| After that | SUBMISSION_CHECKLIST §2.1 "What it does" (shaping, Listen, coming back) | 59 |
-| How this meets the brief | SUBMISSION_CHECKLIST §2.1 (required); HACKATHON_RULES §3 (the theme and the design tests); the weekly rule check of 23 Oct (IWSDK named) | 58 |
-| How we built it | HACKATHON_RULES §5.3 "how we built it"; SUBMISSION_CHECKLIST §2.1 | 68 |
-| Known limitations | SUBMISSION_CHECKLIST §2.1 (required); CLAUDE.md Golden Rule 11; HACKATHON_RULES §10 C1, C5, C7 | 56 |
+| How to test | SUBMISSION_CHECKLIST §2.1 (required; it comes first); the T-180 brief of 9 Nov (Space Setup first, a table, hands only, the access links) | 113 |
+| Your first minute | RND_2026-11-08 §2 (second, with times, for Best First Five Minutes); PRD §3.1; "How to test" points to it | 76 |
+| What it is | HACKATHON_RULES §5.3 "inspiration"; SUBMISSION_CHECKLIST §2.1 "Inspiration" and "What it does", merged | 62 |
+| After that | SUBMISSION_CHECKLIST §2.1 "What it does" (shaping, Listen, coming back) | 52 |
+| How this meets the brief | SUBMISSION_CHECKLIST §2.1 (required); HACKATHON_RULES §3 (the theme and the design tests) | 37 |
+| How we built it | HACKATHON_RULES §5.3 "how we built it"; SUBMISSION_CHECKLIST §2.1; IWSDK named (rule check 23 Oct) | 65 |
+| Known limitations | SUBMISSION_CHECKLIST §2.1 (required: what was tested on a headset, in how many rooms, and what was not); CLAUDE.md Golden Rule 11; HACKATHON_RULES §10 C1, C5 | 74 |
 | What's next | HACKATHON_RULES §5.3 "future plans"; SUBMISSION_CHECKLIST §2.1 (required) | 19 |
 
-**Total on 27 Oct: 499 words** (the same count as before: the block's whitespace-separated tokens, headings with their `##` and placeholders counted, `[not yet: …]` markers and list markers not). Filling the three placeholders on submission day cannot add words: `<GitHub Pages URL>` and `<hash>` stay one token each and `<mirror URL>` goes from two to one, so the submitted text is 498. **The 27 Oct pass (T-180) against develop 0c5de87,** from v1's 491 (its one limitations line true today) to 499, each change with its reason: (1) "Known limitations" opens with that line, "No headset: tested only in the Immersive Web Emulator." (Emergency mode since 27 Oct, D-060 (4); "video included" dropped, "Watch the video" already says it, −2), and "saved places" joins the unverified list (claims check row 26: anchors have never restored on a Quest, +2); (2) "A room with no Space Setup gets the default tuning." for "A room where no table is found …": since D-060 (14) a floating bed keeps the signature when a wall is known, so the old line became wrong (−1); (3) "spatial audio panned from each plant" for "stereo sound placed round the ring": SUBMISSION_CHECKLIST §2.1 needs the track's words and "panned" says what it is (equal-power panning, no HRTF), 0; (4) "never quite repeating" (style B: each plant on its own 1, 2, 3 or 5-bar cycle with seeded rests, so a judge who sees a plant skip a pass reads it as design), +3; (5) "plants grow and the melody varies" (the counter-line and variations are seeded per local day, a reason to come back), +3; (6) "Sit still eight seconds, facing the garden: it opens." (stillness needs the bed's centre in view, claims check row 8), +2; (7) the laptop line names "Chromium" (the only desktop browser tested) and "settings" (laptop mode has no panel, so no Time-lapse), +2; (8) "about 0.45 m" (a restored bed may sit 0.10 m further, D-041) and "first sound in 15–18 s (emulator)" (G1, 24 Oct: 15.0–17.8 s from Enter at test speed), +2; (9) "headset speakers, not Bluetooth" for "the headset's own speakers (Bluetooth adds delay)" (the claims check's fix: the delay is not measured by the team), −3; (10) "What's next": "A sixth voice." (S5, the Shimmer voice, cut in T-164) and "Store launch: early 2027." (the checklist's target, needs the humans' yes), 0; (11) every `[not yet: T-155]`, `[not yet: T-129, T-165]` marker removed (S1 stays in by D-060 (16); with no headset the limitations line is final). Not named, on purpose: the wall vine (a Could, its look unrated, no words left), "Bring back the old garden" (in the hands field instead), plant colours by room (subtle, ±15°; the gallery shows them). The history before 27 Oct follows (counted on 23 Oct by script with the markers removed and list markers not counted; the rows above are by that count; recounted on 25 Oct the same way). Later on 25 Oct (D-060 (11): laptop mode offered to judges as a labelled preview) the laptop sentence became its own line, "**Laptop preview:** in a desktop browser, a click pinches; no passthrough, room tuning, poses or pull. The headset is the real experience." (+4), paid for by "Quest 3/3S" (−2), "only" (Hands-first, −1) and "earlier" for "before this" with "room geometry" for "the room's geometry" (How we built it, −2): 499 and 491. On 25 Oct the claims check (`DEVPOST_CLAIMS_CHECK_2026-10-25.md`) changed seven sentences: the speakers line ("the headset's own speakers (Bluetooth adds delay)", +3), "stereo sound placed round the ring" for "in spatial audio" (+3), the measured "48 draw calls in the worst frame (emulator, both eyes)" and "0.75 MB", the "first" sentence without the three names (−4 together), "A room where no table is found gets the default tuning." (0), and in the hands field "pinch and pull for louder"; "it" (After that) and "a" (Entertainment) went to stay at 500. On 23 Oct the stillness and Time-lapse sentences (16 words) went into "How to test" and 16 were cut across five sections ("ring-shaped", "to make it", "drag it", "it is", "in which the room's", "explored the idea", "maps … musically; it does", "no table", "palm", "one", two "and" commas). The same day the weekly rule check (an open Devpost question: may plain WebXR apps submit by URL) put "Built with the Immersive Web SDK (IWSDK)." into "How this meets the brief" (7 words); "How we built it" opens "IWSDK (WebXR), …" (4 fewer) and three words went ("path", "sits", "a"). Laptop mode added 21 words to "How to test"; 12 were cut elsewhere (the fallback list, "built and", two short rewrites). The speakers note (D-057, 19 Oct) added 4 more, "built-in speakers (Bluetooth lags)", and "a click is the pinch" became "a click pinches" (2 fewer). About 8 words of slack: every placeholder filled with a real number or name must replace words, not add them. If the form has no separate hands field (T-115), the hands text of §1.3 (205 words since 27 Oct) cannot fit: the description has 1 word of slack, so it would shrink to its first sentence and cost words elsewhere.
+**Total on 9 Nov: 498 words of 500** (counted by script: every whitespace-separated token, headings with their `##` and placeholders as written; `[not yet: …]` markers and list numbers not). This count is stricter than the 27 Oct one, which took `<GitHub Pages URL>` as one token: by this one the 27 Oct text was 502. A filled `<mirror URL>` takes 1 word off (497); no mirror takes 2 off. Any word added later must replace one.
 
-**The no-headset path.** The rules ask for a build that launches in Quest Browser (HACKATHON_RULES §5.1) and allow emulator video (§5.2); the FAQ says judges play on a Quest 3 or 3S (§11). Since T-114b anyone without a headset can try the garden: on a browser with no mixed reality the landing page says "The garden opens in this tab: a click or a tap is a pinch." and Enter opens laptop mode. What it is: the same garden, sound, guide and save, seen from a fixed seat over a drawn table; the seed follows the pointer and a click on a free cell plants it; a press and drag moves a plant, or removes it off the ring; a click on the petal undoes; a click on the centre orb starts Listen and a click ends it. What it is not: mixed reality (no passthrough, no real table), the room signature (always the default "Wanderer" tuning), hand poses (no palm up, no palms out), pull (a plant cannot be made taller or shorter), the settings panel (the landing page's switches stand in) or look-and-hold. It is tested only in desktop Chromium by the browser tests (TC-E2E-14 and the laptop timing of T-150). PRD §6 calls S6 "never the judged path", so the copy offers it as a preview after the headset steps, beside the video. The weekly rule check of 27 Oct (T-186) found the rules unchanged; a Devpost manager sent the open "plain Three.js by URL?" question to the Meta developer forum without a ruling, so "Built with the Immersive Web SDK (IWSDK)" stays in the copy (the Rules' link route names apps "built with IWSDK (WebXR)").
+**What changed on 9 Nov, and why.** (1) "Your first minute" is second, with times (RND §2): first sound "15–18 s after Enter (emulator)" (E); "within 90 s; on our headsets, 38 s (Quest 3S) and 62 s (Quest 3)" (D); "No account, no controllers." ("no menus" left out: the settings panel exists, though the first minute never needs it). "Pinch it with your other hand" is "Pinch it" (D-062: either hand). "the sweep" is "a sweep of light" (the section now comes before "What it is"). The no-table fallback went (−7). (2) "How to test": Space Setup first with its reason, "or you hear a default song" (D on the Quest 3); hands only; the live link, no marker; Settings, Time-lapse and Exit in one step (D-067); the four access links (D-070). Cut: the stillness step (no device result, and whether a seated head holds under 8°/s is a device question) and "then hold both palms out" ("After that" has it). The laptop line is shorter; the preview stays (D-060 (11)). (3) "Known limitations" opens with what ran on which headset, in how many rooms, hands only, and what is emulator only (the checklist's copy rule, Golden Rule 11); "A room with no Space Setup gets the default tuning" is now in "How to test". (4) "How we built it": fps only as measured on a headset (checklist rule "Numbers"); the emulator's 48 draws and the 0.75 MB went; the device's 11 draws and 5k triangles stay out of the copy because they were taken with a small garden and would read against the emulator's worst frame; "A fixed mapping …" cut ("What it is" says what the room sets). (5) "How this meets the brief" is one paragraph; "Built with the Immersive Web SDK (IWSDK)" now opens "How we built it" (the name stays); "first sound …" moved to "Your first minute"; "ten-minute visits" cut. (6) "After that": "Saved, it returns to its spot" became "It saves" (a restored bed place has no device result); "the lights dim" cut. (7) "always in scale" cut. Not said, on purpose: anything about voice (RND §1); the wall vine; "Bring back the old garden" (in the hands field). History before 9 Nov: this file's git log (v2 is d96f479).
+
+**The laptop preview (for a reader with no headset; as of 27 Oct, still true).** The rules ask for a build that launches in Quest Browser (HACKATHON_RULES §5.1) and allow emulator video (§5.2); the FAQ says judges play on a Quest 3 or 3S (§11). Since T-114b anyone without a headset can try the garden: on a browser with no mixed reality the landing page says "The garden opens in this tab: a click or a tap is a pinch." and Enter opens laptop mode. What it is: the same garden, sound, guide and save, seen from a fixed seat over a drawn table; the seed follows the pointer and a click on a free cell plants it; a press and drag moves a plant, or removes it off the ring; a click on the petal undoes; a click on the centre orb starts Listen and a click ends it. What it is not: mixed reality (no passthrough, no real table), the room signature (always the default "Wanderer" tuning), hand poses (no palm up, no palms out), pull (a plant cannot be made taller or shorter), the settings panel (the landing page's switches stand in) or look-and-hold. It is tested only in desktop Chromium by the browser tests (TC-E2E-14 and the laptop timing of T-150). PRD §6 calls S6 "never the judged path", so the copy offers it as a preview after the headset steps, beside the video. The weekly rule check of 27 Oct (T-186) found the rules unchanged; a Devpost manager sent the open "plain Three.js by URL?" question to the Meta developer forum without a ruling, so "Built with the Immersive Web SDK (IWSDK)" stays in the copy (the Rules' link route names apps "built with IWSDK (WebXR)").
 
 ```markdown
 ## How to test
-Quest 3/3S, hand tracking on, controllers down, seated at a table, headset speakers, not Bluetooth. Space Setup lets your room tune the song.
-1. In Meta Quest Browser open <GitHub Pages URL> [not yet: T-108, T-183]. Mirror: <mirror URL>. Build <hash> (/version.json) [not yet: T-183].
+Quest 3 or 3S. Run Space Setup first, or you hear a default song. Sit at a table. Hands only: hand tracking on, controllers down. Headset speakers, not Bluetooth.
+1. In Meta Quest Browser open https://parthdalvi2001.github.io/Roomsong/ (mirror <mirror URL> [not yet: T-108]; build <hash>, /version.json [not yet: T-183]).
 2. Press Enter the garden; allow hands and room.
-3. Follow "Your first minute", then hold both palms out.
-4. Sit still eight seconds, facing the garden: it opens. Time-lapse (Garden tab): a week in 30 seconds, unsaved.
-No headset? Watch the video [not yet: T-181].
-**Laptop preview:** in a Chromium desktop browser, a click pinches; no passthrough, room tuning, poses, pull or settings. The headset is the real experience.
-
-## What it is
-Instruments ask for skill before they give joy. We wanted a song you grow. Roomsong turns your real table into a glowing ring garden where every plant sings. Where you plant sets when it plays and how high. A sweep of light plays each plant, always in scale, never quite repeating. Your room tunes it: floor size sets the key, ceiling height the scale, room volume the echo.
+3. Follow "Your first minute".
+4. Settings: turn a hand over, pinch its orb. Garden tab: Time-lapse (a week in 30 s), Exit.
+Accessibility links: ?access=gaze (no hands), onehand, contrast or reduce, comma-joined; saved until switched off (settings, Access tab).
+No headset? Watch the video [not yet: T-181]; desktop Chromium opens a laptop preview (a click pinches; no passthrough or room tuning).
 
 ## Your first minute
-The ring settles on your table (none: look at a surface and pinch). A ripple crosses table, wall and ceiling, each ringing a note. Hold a palm up: a seed glides in. Pinch it with your other hand; its landing spot lights up. Let go: the sweep makes it sing. Three plants make a song within 90 seconds.
+Press Enter. The ring settles on your table. A ripple crosses table, wall and ceiling, each ringing a note. Hold a palm up: a seed glides in. Pinch it; its landing spot lights up. Let go: a sweep of light makes it sing, 15–18 s after Enter (emulator). Three pinches make a song within 90 s; on our headsets, 38 s (Quest 3S) and 62 s (Quest 3). No account, no controllers.
+
+## What it is
+Instruments ask for skill before they give joy. We wanted a song you grow. Roomsong turns your real table into a glowing ring garden where every plant sings, never quite repeating. Where you plant sets when it plays and how high. Your room tunes it: floor size sets the key, ceiling height the scale, room volume the echo.
 
 ## After that
-Pull a plant up for louder, drag to move it, off the ring to remove; 5 seconds to undo. Palms out: the lights dim, a halo rises and the garden performs: music visualization, spatial audio panned from each plant. Saved, it returns to its spot; each day brings a seed, plants grow and the melody varies.
+Pull a plant up for louder, drag to move it, off the ring to remove; 5 seconds to undo. Palms out: a halo rises and the garden performs: music visualization, spatial audio panned from each plant. It saves; each day brings a seed, plants grow and the melody varies.
 
 ## How this meets the brief
-- Entertainment: lean-back Listen mode.
-- Hands-first: bare hands, no controllers.
-- Seated: the bed about 0.45 m ahead, within reach; first sound in 15–18 s (emulator); ten-minute visits.
-- Purposeful MR: the table is the stage, the room the tuning.
-- Original: synthesized sound, procedural visuals, offline after loading.
-- Built with the Immersive Web SDK (IWSDK).
+Entertainment: lean-back Listen mode. Hands-first, seated: bare hands, the bed about 0.45 m ahead. Purposeful MR: the table is the stage, the room the tuning. Original: synthesized sound, procedural visuals, offline.
 
 ## How we built it
-IWSDK (WebXR), Three.js, TypeScript and Web Audio. Plane detection finds the table; a four-step fallback ends in a floating bed. A fixed mapping turns room measurements into key, scale and echo. 48 draw calls in the worst frame (emulator, both eyes), 24 pooled voices, 0.75 MB download. As far as we know, no earlier consumer MR instrument lets room geometry tune the music.
+Immersive Web SDK (IWSDK, WebXR), Three.js, TypeScript, Web Audio. Plane detection finds the table; a four-step fallback ends in a floating bed. Measured: 90 fps on Quest 3 (live site); on Quest 3S (development build) about 90 fps, JavaScript under 2 ms a frame. As far as we know, no earlier consumer MR instrument lets room geometry tune the music.
 
 ## Known limitations
-No headset: tested only in the Immersive Web Emulator.
-Frame rate, hand feel, target sizes, room readings and saved places are unverified on Quest. The echo follows room size, not measured acoustics. A room with no Space Setup gets the default tuning. A room near a measuring step can change scale between visits.
+Tested hands-only on Quest 3S and Quest 3, one room each: entering, seeds, planting, sound, pulls, moves, Listen, settings, Exit, save, resume, one-hand mode, daily seed, room tuning. Emulator only so far: undo, drag by sight, hands-free mode, day 2, access links, the "No room scan" notice, the live site on 3S. The echo follows room size, not measured acoustics. A room near a measuring step can change scale between visits.
 
 ## What's next
 A sixth voice. Shared gardens: a friend's garden in your room's key. Store launch: early 2027.
 ```
 
 Conditional rewrites (outside the count; apply only if the condition happens):
-- **If G2 (3 Nov) cuts S1 (T-155):** tagline B; cut "Space Setup lets your room tune the song.", "Your room tunes it: … the echo.", "A ripple crosses … a note.", "A fixed mapping … echo.", "As far as we know, … music." and "A room with no Space Setup … tuning."; "Purposeful MR: the table is the stage." Frees about 60 words.
-- **If a headset run happens (T-129, T-165):** the first limitations line becomes "Tested on Quest <3/3S> in <N> rooms."; drop from the unverified list what was measured; add the fps only if measured on the headset (checklist rule "Numbers").
-- **On the final build (T-183):** re-measure the draws (48, 25 Oct), the download (0.75 MB = 743.6 kB gzip, 23 Oct) and the first sound (15–18 s, 24 Oct); change a number only if it moved.
+- **If S1 is cut (G2 answers still open, DECISIONS_PENDING 7.5; unlikely now that both headsets tuned to their rooms):** tagline B; cut "Run Space Setup first, or you hear a default song.", "A ripple crosses … a note.", "Your room tunes it: … the echo.", "As far as we know, … music.", "room tuning" from the tested list and "A room near a measuring step …"; "Purposeful MR: the table is the stage." Frees about 55 words.
+- **As the headset checks pass (DECISIONS_PENDING 4):** move each item from "Emulator only so far" to the tested list (the same words, so the count holds); a check that fails stays in "Emulator only" or goes to "Known limitations" in plain words.
+- **On the freeze build (T-183, T-184):** re-measure fps on both headsets on the live freeze build; if the Quest 3S runs it, "(development build)" becomes "(live site)" and the two clauses merge; re-measure the first sound (15–18 s, 24 Oct) and change it only if it moved. A stranger's first five minutes (DECISIONS_PENDING 5) may give a third seed time: add it only as measured, in place of a word.
 
-Claims that hang on a human decision, not a task:
+Claims, tagged D (seen on a headset) or E (emulator only):
 
-| Claim in the copy | Depends on | Today |
+| Claim in the copy | Tag | Backing, and what would change it |
 |---|---|---|
-| "the bed about 0.45 m ahead, within reach" | D-041: a restored bed may sit 0.10 m further, its far edge up to 0.85 m (PROGRESS item 31) | "about" covers the restore; a new placement is 0.45 m |
-| "first sound in 15–18 s (emulator)" | PROGRESS items 23 and 26c; D-060 (12) cut the level-3 wait to 6 s | G1 (24 Oct): 15.0–17.8 s from Enter at test speed with a table; a room with no table was 23.5 s before D-060 (12), about 18 s by the plan's sum after it, not re-measured; real hands are slower than the test's |
-| "Store launch: early 2027." (and the Target launch field) | Parth and Chinmay | proposed from SUBMISSION_CHECKLIST §2 ("Q1 2027 … as a PWA"); not agreed |
-| "A sixth voice." | T-164 cut the Shimmer voice (S5); PRD §6 scope rule: a Should not green by 10 Nov goes to "What's next" | true of the build (five voices) |
-| ~~The three named antecedents~~ | ~~PROGRESS item 16a~~ | dropped 25 Oct (claims check): the sentence names no project and claims no "first"; it stands only if S1 ships |
-| "A room near a measuring step can change scale between visits" | PROGRESS item 21 and T-129: the real drift is unmeasured | keep the sentence until the device check |
-| Any "same room, same song" line | T-129 two-session check | not written anywhere above, on purpose |
-| "bare hands only; no controllers" | HACKATHON_RULES §10 C1, UAT-01 on device or, in Emergency mode, in the emulator | true by design; the whole loop runs hands-only in the emulator (TC-E2E-03, and TC-E2E-07 for one hand and look-and-hold); proven only at T-184 |
-| "headset speakers, not Bluetooth" (was "the headset's own speakers (Bluetooth adds delay)", before that "built-in speakers (Bluetooth lags)") | D-057; DEVICE_SCRIPT_S1 block 14, "speakers against headphones" (is the Bass there on the speakers) | an instruction with no reason given (claims check row 2): the Bluetooth lag is reported, not measured by the team; the app is tested on no speaker yet |
-| "Laptop preview" (laptop mode) | decided: offered to judges as a labelled preview (D-060 (11), 25 Oct); PRD §6 keeps it "never the judged path", so the line says the headset is the real experience | true in the build (TC-E2E-14); the line says what it lacks; to check on the hosted build (T-183) |
+| "Run Space Setup first, or you hear a default song." | D | Chinmay's Quest 3: an unscanned room played the default song; both headsets tuned to the room after Space Setup |
+| "Hands only", "bare hands", "Tested hands-only" | D | both headsets, 7–8 Nov; UAT-01 on the freeze build at T-184 (C1) |
+| Step 4: settings by turning a hand over; Time-lapse; Exit | D for settings and Exit; E for Time-lapse | PROGRESS device row; Time-lapse has no device result (`26-time-lapse`) |
+| Access links, "saved until switched off (settings, Access tab)" | E | D-070, `08-landing`; DECISIONS_PENDING 4 step 6 tries `?access=gaze` |
+| "15–18 s after Enter (emulator)" | E | G1, 24 Oct, test-speed hands; real hands are slower |
+| "within 90 s; on our headsets, 38 s (Quest 3S) and 62 s (Quest 3)" | D | D-062, RND §2; 90 s is the design bound (PRD M6). The start of the 38 s is not recorded (the 62 s is "by 62 s"): **Parth to confirm both count from Enter**, else write "three seeds took 38 s and 62 s" |
+| "No account, no controllers." | D | — |
+| "spatial audio panned from each plant" | E | equal-power panning, no HRTF (claims check row 25); the track's words (checklist rule "Track words") |
+| "Measured: 90 fps on Quest 3 (live site); on Quest 3S (development build) about 90 fps, JavaScript under 2 ms a frame" | D | PROGRESS Perf; a 10-minute sustained run on the freeze build is C5 at T-184 |
+| "one room each" | D, assumed | the records name one room for each headset (Parth's, Chinmay's); **Parth to confirm** |
+| The "Emulator only so far" list | E | PROGRESS device row "Not yet"; DECISIONS_PENDING 4 |
+| "the bed about 0.45 m ahead" | E | `BED_CENTRE_DEFAULT_M` 0.45; "about" covers a restored bed (D-041); not measured on a headset |
+| "Store launch: early 2027." (and the Target launch field) | — | Parth and Chinmay (DECISIONS_PENDING 7.6); not agreed |
+| "A sixth voice." | — | true of the build (five voices; T-164 cut Shimmer, S5) |
+| "A room near a measuring step can change scale between visits" | E | the T-129 drift check never ran; keep the sentence |
+| "As far as we know, no earlier consumer MR instrument lets room geometry tune the music." | — | claims check row 42: no names, no "first"; stands only while S1 ships |
+| "Headset speakers, not Bluetooth" | — | D-057; an instruction with no reason given (claims check row 2) |
+| Laptop preview | E | D-060 (11); TC-E2E-14, desktop Chromium only |
+| Any "same room, same song" line | — | not written, on purpose (T-129) |
 
 ### 1.3 Hand interactions and the future of VR (HACKATHON_RULES §5.3, optional field we fill; SUBMISSION_CHECKLIST §2.1)
 
 ```markdown
 ## How hands are used
-Hands only; no controller is ever needed. Palm up to receive a seed; pinch to plant; pinch and pull for louder; pinch and drag to move; drag off the ring to remove. Palms out, or a pinch on the Listen orb, to listen; a palm turned to your face, or any pinch, to come back. Turn a hand over and pinch the small orb on its back for settings. You see your own hands in passthrough; the app draws none. What a pinch will act on lights up first, and every action commits when you let go. A removal can be undone for 5 seconds; New garden needs a 1.5-second hold and can be brought back for 10. Targets are 2.5 cm wide with a 4 cm hit radius, pinch hysteresis and smoothing, all provisional: none is tuned on a headset yet. A hand that leaves the headset's view loses nothing: what it held goes back. Accessibility: high contrast, voices told apart by shape, and nothing changes brightness more than 3 times a second; one-hand mode, a visual beat ring, reduced motion, and head-aimed "Look to select", which places the garden, plants, undoes, listens and works the settings but cannot move or remove a plant.
+Hands only; no controller is ever needed. Palm up to receive a seed; pinch it with either hand to plant; pinch and pull for louder; pinch and drag to move; drag off the ring to remove. Palms out, or a pinch on the Listen orb, to listen; a palm turned to your face, or any pinch, to come back. Turn a hand over and pinch the small orb on its back for settings; Exit is one pinch on its Garden tab, and Enter brings the same garden back. You see your own hands in passthrough; the app draws none. What a pinch will act on lights up first, and every action commits when you let go. Targets are 2.5 cm wide with a 4 cm hit radius, pinch hysteresis and smoothing. Our first headset runs changed two things: a plant's target now sits at its head, where you see it, and a pinch that touches nothing takes the control or plant in line with your eye and fingers, so the settings panel works without reaching. A removal can be undone for 5 seconds; New garden needs a 1.5-second hold and can be brought back for 10. A hand that leaves the headset's view loses nothing: what it held goes back. Accessibility: high contrast, voices told apart by shape, and nothing changes brightness more than 3 times a second; one-hand mode (tried on a Quest 3), a visual beat ring, reduced motion, and head-aimed "Look to select", which places the garden, plants, undoes, listens and works the settings but cannot move or remove a plant. Four of these can be switched on by a link (see How to test).
 
 ## What excites us about VR
 <The team writes this in its own words. A starting point for Parth and Chinmay to rewrite: "A headset can see the room you are in. Most apps treat the room as a backdrop. We wanted the room to take part: your table holds the garden and your room tunes it, so the same garden can sound different in another room.">
 ```
 
-Changed on 27 Oct (T-180): the BUG-007, BUG-008 and T-129 markers went (both bugs fixed 17 Oct; with no headset "provisional" is the final word, now "none is tuned on a headset yet", from `hands/config.ts`); the settings orb sentence (the in-app hint "Turn a hand over for settings"; a judge needs the panel for Time-lapse); the two undos (`UNDO_LIFE_MS` 5 s; `NEW_GARDEN_HOLD_MS` 1.5 s and `RESTORE_WINDOW_MS` 10 s, D-060 (13)); "Look to select", the panel's own label since T-170, for "look-and-hold", and that it works the settings (claims check row 56). 205 words; no limit is known for this field (T-115).
+Changed on 9 Nov (T-180): "pinch it with either hand" (D-062); Exit and coming back (D-067); "none is tuned on a headset yet" replaced by the two changes the headset runs made (D-063, D-066; the values in `hands/config.ts` are unchanged and its header still calls them provisional, so the text does not say "tuned"); one-hand mode marked as tried on a Quest 3 (D); the link sentence (D-070). Undo and Look to select are described, not claimed as tested ("Known limitations" says so). 283 words by the same script; no limit is known for this field (T-115). If the form has no separate hands field, this text cannot fit: the description has 2 words of slack.
 
-Changed from v0 besides the markers: "voices told apart by shape and colour" is now "by shape", because a plant's colour follows its place in the seed sequence, not its voice (ART_PASS_T163 §0), and no colour option on the table (item 34) makes colour name the voice.
+Changed from v0: "voices told apart by shape and colour" is now "by shape", because a plant's colour follows its place in the seed sequence, not its voice (ART_PASS_T163 §0).
 
 ---
 
 ## 2. Judging-criteria scorecard (HACKATHON_RULES §6; 25 % each)
+
+**Superseded on 9 Nov; kept as the 17 Oct record.** Since 7–8 Nov two headsets have run the build (the D rows at the top), so "zero device runs", "fps unmeasured" and "no hand has tried any of it" no longer hold, and the "no headset" column below is moot. The current self-score is the one in PROGRESS, re-scored at the next sprint review.
 
 Scored harshly, as a judge would score the build at `develop` on 17 Oct, with no headset. "Nov 12" is a guess at feature freeze if the plan lands and no headset arrives; with a headset and the device script run, add about 1 to Technical and Polish. The 15 Oct column is draft v0's.
 
@@ -142,17 +163,17 @@ For the self-score table in PROGRESS (the driver copies it): 17 Oct, product-own
 
 ## 3. Gap list against SUBMISSION_CHECKLIST
 
-State: **done** · **not done** (on track) · **at risk** (a date, a human or a headset stands in the way).
+State: **done** · **not done** (on track) · **at risk** (a date, a human or a headset stands in the way). Rows the headsets or the live site changed are as of 9 Nov; the rest are as of 17 to 27 Oct and are re-checked at T-184.
 
 ### 3.1 Timeline (§1)
 | Item | State | Task |
 |---|---|---|
 | First rough video cut, 3 Nov (G2) | at risk: the loop and Listen are in the app now (T-128d, T-148), but emulator footage needs a visible hand and nobody owns the capture rig (PROGRESS items 32 (7), 33 (4)) | T-153; capture rig: **no task, add one** |
 | Feature freeze, 12 Nov | not done | T-169 |
-| Video capture, 13 Nov | at risk: no headset | T-181 (T-000) |
+| Video capture, 13 Nov | not done; headsets in hand (Chinmay records 13–14 Nov); a Quest recording with sound is untried (DECISIONS_PENDING 4 step 8) | T-181 |
 | Video edit, screenshots, gallery, 14 Nov | not done | T-181, T-182 |
-| Code freeze, 15 Nov: tag rc1, deploy to Pages and the mirror, same hash | at risk: Pages not live, mirror not chosen | T-183 (T-108) |
-| Clean UAT, 16 Nov | at risk: no headset (Emergency mode allows emulator UAT, marked as such) | T-184 |
+| Code freeze, 15 Nov: tag rc1, deploy to Pages and the mirror, same hash | not done; Pages live since 8 Nov; the mirror waits on Parth (DECISIONS_PENDING 7.1) | T-183 (T-108) |
+| Clean UAT, 16 Nov | not done; on a headset now (Emergency mode no longer applies) | T-184 |
 | Tag `v1.0.0-submission`, lock `main`, review on the `github-pages` environment, 17 Nov 12:00 | not done | T-185 |
 | Submit, 17 Nov 18:00 IST; confirmation screenshot | not done; `specs/06-release/evidence/` does not exist yet | T-185 |
 | Post-submission smoke test | not done | T-185 |
@@ -162,10 +183,10 @@ State: **done** · **not done** (on track) · **at risk** (a date, a human or a 
 | Item | State | Task |
 |---|---|---|
 | Name | done | D-016 |
-| Tagline ≤140, naming a pinch and the real table | done as two variants (§1.1), both true of the emulator build; the choice waits for G2 | T-155, T-180 |
+| Tagline ≤140, naming a pinch and the real table | done: A chosen (D-060 (16)), room tuning seen on both headsets after Space Setup; B only if S1 is cut | T-155, T-180 |
 | Track, division | done | D-001 |
-| Build link (Pages URL) | at risk: Parth's go-live steps (PROGRESS item 3; the PM's P-008 asks the same); the workflows have never run a deploy on GitHub | T-108 |
-| Mirror named in the description | at risk: Vercel or Netlify not chosen | T-108, T-183 |
+| Build link (Pages URL) | done: live since 8 Nov, deploy green (45518e5 on 9 Nov); the freeze build replaces it at T-183 | T-108, T-183 |
+| Mirror named in the description | at risk: Netlify chosen (D-060 (2)) but not live; Parth sends the address or says "no mirror" (DECISIONS_PENDING 7.1) | T-108, T-183 |
 | Build hash in "How to test" | not done; the build stamp `version.json` exists (T-108 prep) | T-183 |
 | Video link | not done | T-181 |
 | Target launch | not done: a human decision | **no task, add it to T-180** |
@@ -175,26 +196,26 @@ State: **done** · **not done** (on track) · **at risk** (a date, a human or a 
 ### 3.3 Description (§2.1) and its copy rules
 | Item | State | Task |
 |---|---|---|
-| The four required sections, both links, the hash | draft v1 here (§1.2); links and hash are placeholders | T-180 |
-| ≤500 words | at risk: draft v1 is 492 with the one limitations line true today, about 8 words of slack after laptop mode and the speakers note joined "How to test"; the hands text does not fit if the form has no field for it | T-180, T-115 |
-| Numbers measured on the final build (first sound, draw calls, fps only if measured on a headset) | not done; emulator figures at test speed exist (first sound 15.1 s, first loop 34.4 s, T-150), not the final build's | T-165, T-183 |
-| What was device-tested and what was emulator-only | drafted, both alternatives | T-184 |
+| The four required sections, both links, the hash | draft v3 here (§1.2, 9 Nov); the Pages link is real; the mirror and hash are placeholders | T-180, T-183 |
+| ≤500 words | done at 498 (9 Nov, by the stricter count); 2 words of slack; the hands text does not fit if the form has no field for it | T-180, T-115 |
+| Numbers measured on the final build (first sound, fps only if measured on a headset) | not done: fps measured on headsets on 7–8 Nov (Quest 3 live site, Quest 3S dev build), first sound in the emulator (24 Oct); the freeze build's not yet | T-183, T-184 |
+| What was device-tested and what was emulator-only | drafted 9 Nov in "Known limitations" (two headsets, one room each, tested and emulator-only lists) | T-184 |
 | The one qualified sentence on the room signature | "As far as we know, no earlier consumer MR instrument lets room geometry tune the music" (25 Oct, no names, no "first"); true only if S1 ships | T-155, T-180 |
 | Room wording v1 (size, ceiling, volume; no tempo; no "your table set the key"; no measured acoustics) | done in the draft; the echo stays a mapping of room size (P-017, which would have measured it, was skipped by D-056) | T-180 |
 | Should-haves not green by 10 Nov moved to "What's next"; unbuilt Could-haves never named | not done; the draft names no Could. S3 (daily seed, growth) and S6 (laptop mode) are built now | T-169 |
-| "Music visualization" in the Listen sentence; "spatial audio" | "music visualization" kept; "spatial audio" became "stereo sound placed round the ring" on 25 Oct, since the app pans each voice equal-power with no HRTF (`audio/Spatializer.ts`); if the checklist needs the term, it can return only with that caveat | T-180 |
-| Laptop mode in "How to test" | drafted with what it lacks; offering it to judges at all needs a human yes (§1.2 claims table) | T-180 |
-| Hands field | drafted (§1.3); BUG-007 and BUG-008 fixed 17 Oct, so its two claims now hold (emulator) | T-180 |
+| "Music visualization" in the Listen sentence; "spatial audio" | both in: "music visualization, spatial audio panned from each plant" (27 Oct), the caveat "panned" in the words, since the app pans each voice equal-power with no HRTF (`audio/Spatializer.ts`) | T-180 |
+| Laptop mode in "How to test" | done: offered as a labelled preview (D-060 (11)), shortened 9 Nov | T-180 |
+| Hands field | drafted (§1.3), updated 9 Nov with the headset changes (D-062, D-063, D-066, D-067) | T-180 |
 | "What excites us about VR" | not done: must be the team's own words | **no task, add it to T-180 as a human step** |
 | A no-room-signature version of pitch, tagline and video, ready for G2 | done 27 Oct: tagline B, the video's version (VIDEO_SCRIPT_V0 §2) and the description's cut list ("Conditional rewrites" under the copy, §1.2) | T-155 |
 
 ### 3.4 Gallery (§2.2: 6 images, 1920×1080, real captures)
 | Item | State | Task |
 |---|---|---|
-| 1 Hero on a real table, halo | at risk: a real table needs passthrough, so a headset; the halo is built (T-148) | T-182 (T-000) |
+| 1 Hero on a real table, halo | not done; headsets in hand; whether a Quest capture shows passthrough is untried (DECISIONS_PENDING 4 step 8) | T-182 |
 | 2 Tuning ripple with its captions | not done; the ripple and its captions are in the app (T-142) | T-182 |
 | 3 Palm-up seed arriving | not done; in the app (T-128d) | T-182 |
-| 4 Pinch-planting close-up | at risk: the app draws no hands (D-027); an emulator capture shows no pinch | T-182; capture rig: **no task, add one** |
+| 4 Pinch-planting close-up | at risk: the app draws no hands (D-027), so only a headset capture with passthrough shows the pinch (untried) | T-182; capture rig: **no task, add one** |
 | 5 Two rooms, two songs | at risk: needs S1 and two rooms (or two emulator rooms with `forceSignature`, captioned); until the plant colours are chosen (item 34) the two rooms look alike | T-182 (T-155, T-163) |
 | 6 Settings panel, high contrast | not done; the panel is in the app (T-128d); high contrast leaves the seed, orb and petal without an outline (BUG-008) | T-182 |
 | Icon | not done | T-182 |
@@ -205,9 +226,9 @@ State: **done** · **not done** (on track) · **at risk** (a date, a human or a 
 | The loop in the first 10 s | not done: the loop plays in the app (T-128d); the capture needs a visible hand | T-153, T-181 |
 | The room signature in two rooms | at risk: S1 is gated at G2; the ripple and its chord are built (T-142, T-142b) | T-155, T-181 |
 | Day 1 against day 3 (`fakeDay`) | not done; possible now: growth is drawn (T-119) and saved across days (T-128e, TC-E2E-06) | T-181 |
-| Hosted URL in the last 4 s | at risk: T-108 | T-181 |
+| Hosted URL in the last 4 s | not done; the URL is live (8 Nov) | T-181 |
 | Chapters in the YouTube description | not done | T-181 |
-| Device footage, else emulator footage captioned "captured in the Immersive Web Emulator" | at risk: no headset | T-000, T-181 |
+| Device footage, else emulator footage captioned "captured in the Immersive Web Emulator" | not done; device footage possible now; a 10 s Quest recording with sound is the first check (DECISIONS_PENDING 4 step 8). For Best First Five Minutes, show the first 60 s without cuts (RND §2) | T-181 |
 | A visible hand in emulator footage ("settle this before any emulator capture") | **not done and owned by nobody** (PROGRESS items 32 (7), 33 (4)) | **no task, add one** |
 | The app's own sound in the video is the chosen style | at risk: no style picked (item 35); the sound in the app today was called "too boring" (D-051) | T-164 |
 | No AI footage; no brands, logos or people in frame; music only from the app; burned-in captions | not done | T-181 (TC-POL-05) |
@@ -215,18 +236,18 @@ State: **done** · **not done** (on track) · **at risk** (a date, a human or a 
 ### 3.6 Go/no-go (§4), with the compliance gate (HACKATHON_RULES §10)
 | Item | State | Task |
 |---|---|---|
-| C1 whole flow hands-only (device, or emulator in Emergency mode with the description saying so) | at risk: no headset; the flow is joined and runs hands-only in the emulator (TC-E2E-03; one hand and look-and-hold, TC-E2E-07) | T-184 |
+| C1 whole flow hands-only (device, or emulator in Emergency mode with the description saying so) | partly: hands only on Quest 3S and Quest 3 (7–8 Nov, D: enter, plant, shape, Listen, settings, Exit, save); undo, a hands-free run and Day 2 not yet on a headset; UAT-01 on the freeze build | T-184 |
 | C2 first commit on or after 24 Sep | **done**: 4c831aa, 2026-10-10 | — |
 | C3 every third-party item licensed and listed | done for what ships (§0 closed by T-171; 63 of 65 packages permissive, the other two not built in); no package added since 15 Oct (package files unchanged from cc37db5 to dca03de); one dangling scaffold licence pointer left (§3 of that file) | T-170 |
 | C4 no brands, logos or people (app, video, images) | done for the app's words (T-167 sweep); the words added since (the first-minute hints, laptop mode, look-and-hold) read for this draft on 17 Oct: no brand, no person; video and images not made | T-181, T-182 |
-| C5 ≥60 fps over 10 minutes on Quest 3 (Emergency: emulator budgets, fps "unverified") | at risk: no headset | T-129, T-165 |
-| C6 public HTTPS, no login | not done | T-108, T-183, T-184 |
+| C5 ≥60 fps over 10 minutes on Quest 3 | partly: 90 fps on Quest 3 (live site, 8 Nov) and about 90 on Quest 3S (dev build, 7 Nov), not over a timed 10 minutes; the freeze build on both | T-184 |
+| C6 public HTTPS, no login | partly: the Pages link is public HTTPS with no login since 8 Nov; UAT-02 on a clean headset with the freeze build | T-183, T-184 |
 | C7 video under 3:00, public, real footage | not done | T-181 |
 | C8 the Representative is a Start member; everyone 18+ and eligible | **at risk: unconfirmed since 10 Oct** (PROGRESS items 5 and 32 (13)) | T-115 |
 | C9 all text in English | done for the app (T-167; the words added since read on 17 Oct); final sweep | T-184 |
 | C10 submitted on time | not done | T-185 |
-| P0 UAT scenarios from a clean headset | at risk: no headset | T-184 |
-| Zero open S1/S2 bugs | **not done: BUG-007, BUG-008 and BUG-009 are open S2** (the log's own line "Open S1/S2 count: 0" is out of date) | T-168 |
+| P0 UAT scenarios from a clean headset | not done; headsets in hand | T-184 |
+| Zero open S1/S2 bugs | done on 9 Nov: BUG_LOG "Open S1/S2 count: 0" (BUG-032 and BUG-033 fixed in the emulator, device check pending) | T-168 |
 | The landing page and the app promise only what is built, before a public address | mostly true now: the four switches, saving and Listen are in the app (T-160, T-128e, T-148). Still false: the ripple captions "Table: colour." and "Walls: colour." (nothing tints until item 34). Still missing: the help line that names the settings orb | T-163, T-170 (its go-live rule) |
 | Test pages published with the app (`/proto/spike/`, `/proto/pinch/`, `/proto/bed/`) | open: keep and name them, or drop them from the submission build (PROGRESS item 28) | **no task, add one** |
 | Every member listed with a role; confirmation screenshot; tag pushed; smoke test | not done | T-185 |
