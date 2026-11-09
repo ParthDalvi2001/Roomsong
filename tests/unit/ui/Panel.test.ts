@@ -3,8 +3,8 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from '@iwsdk/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { bus, DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
-import { WANDERER } from '../../../src/garden/index.js';
+import { bus, DEFAULT_SETTINGS, settings, STRINGS } from '../../../src/core/index.js';
+import { HIDDEN_KINDS, SEED_KINDS, WANDERER } from '../../../src/garden/index.js';
 import {
   HIT_RADIUS_M,
   HOVER_DEAD_BAND_M,
@@ -45,7 +45,7 @@ import { garden, seed } from '../garden/fixtures.js';
 import { heapCost, PROBE_BYTES } from '../hands/heapCost.js';
 
 import type { EventMap, Hand, Mat4, Settings } from '../../../src/core/index.js';
-import type { RoomSignature } from '../../../src/garden/index.js';
+import type { RoomSignature, SeedKind } from '../../../src/garden/index.js';
 
 const D_MAJOR_ROOM: RoomSignature = { ...WANDERER, keyRoot: 2, reverbRt60: 0.6, paletteSeed: 7 };
 
@@ -58,6 +58,7 @@ const calls = {
   timeLapse: [] as boolean[],
   exit: [] as object[],
   pressed: [] as string[],
+  pickSeed: [] as SeedKind[],
 };
 /** The garden's time-lapse demo, as the stand-in garden has it; and whether its old garden can come back. */
 let isTimeLapse = false;
@@ -75,6 +76,8 @@ const actions: PanelActions = {
   },
   exit: () => calls.exit.push({}),
   pressed: (id) => calls.pressed.push(id),
+  pickSeed: (kind) => calls.pickSeed.push(kind),
+  swatch: (kind, sig) => `#${kind}-${sig.paletteSeed}`, // a stand-in for render's kindSwatch
 };
 
 /** A pinch that starts and ends on the same control: what hands/ reports as a press. */
@@ -807,10 +810,168 @@ describe('settings panel: the cue (UX §3.6: a control lights up on hover)', () 
   });
 });
 
+/** The Seeds page as `garden:seedAsk` opens it, one frame on, with the gaze on nothing; `lib` pressed first if given. */
+function seedsOpened(lib?: 'old' | 'new'): Panel {
+  const panel = new Panel(actions);
+  panel.openSeeds();
+  panel.frame(0, '', false);
+  if (lib !== undefined) press(panel, `lib:${lib}`);
+  return panel;
+}
+/** The rows of SEED_KINDS on offer in `lib`: its kinds that are not hidden. */
+const offered = (lib: 'old' | 'new') =>
+  SEED_KINDS.filter((row) => (row.family === 'new' ? 'new' : 'old') === lib && !HIDDEN_KINDS.includes(row.kind));
+
+describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
+  it('shows two library tabs, Close and one swatch per kind on offer, each with its name beside it; no control on the bottom row', () => {
+    const panel = seedsOpened();
+    expect(HIDDEN_KINDS).toContain('hum'); // so the New library has a free place
+    const check = (lib: 'old' | 'new') => {
+      const rows = offered(lib);
+      expect(ids(panel)).toEqual(['lib:old', 'lib:new', 'close', ...rows.map((row) => `seed:${row.kind}`)]);
+      expect(control(panel, `lib:${lib}`)?.on).toBe(true);
+      expect(control(panel, lib === 'old' ? 'lib:new' : 'lib:old')?.on).toBe(false);
+      for (const row of rows) {
+        const swatch = control(panel, `seed:${row.kind}`)!;
+        expect(swatch).toMatchObject({ w: PANEL_TARGET_M, on: false, dim: false, text: '' });
+        expect(swatch.fill).toBe(`#${row.kind}-${WANDERER.paletteSeed}`);
+        const name = panel.texts().find((t) => t.text === STRINGS[row.name])!;
+        expect(name.y).toBe(swatch.y);
+        expect(name.x).toBeGreaterThan(swatch.x + swatch.w / 2); // to its right
+        expect(swatch.y).toBeGreaterThan(-2 * PANEL_TARGET_PITCH_M + 1e-9); // never on the bottom row
+      }
+      expect(panel.texts().find((t) => t.text === STRINGS.pickSeed)?.y).toBeCloseTo(-2 * PANEL_TARGET_PITCH_M, 9);
+      expect(panel.controls().filter((c) => c.y < -PANEL_TARGET_PITCH_M - 1e-9)).toEqual([]);
+    };
+    check('new'); // New first
+    press(panel, 'lib:old');
+    check('old');
+    // siblings share a place
+    const place = (id: string) => [control(panel, id)?.x, control(panel, id)?.y];
+    const bellAt = place('seed:bell');
+    press(panel, 'lib:new');
+    expect(place('seed:bowl')).toEqual(bellAt);
+    // then the library last shown
+    press(panel, 'lib:old');
+    press(panel, 'close');
+    panel.openSeeds();
+    expect(control(panel, 'lib:old')?.on).toBe(true);
+    expect(calls.pickSeed).toEqual([]);
+  });
+
+  it('opened with the gaze on no control, the first swatch looked at picks after one dwell; one under the gaze at opening waits for the gaze to leave', () => {
+    settings.set({ gazeDwell: true, dwellMs: 600 });
+    const panel = seedsOpened();
+    lookAt(panel, ''); // the targets appear (PanelSystem: frame, show, redraw), with the gaze on none of them
+    lookAt(panel, 'seed:bowl');
+    run(panel, 600, 'seed:bowl');
+    expect(calls.pickSeed).toEqual(['bowl']);
+
+    const second = new Panel(actions);
+    second.openSeeds();
+    second.frame(0, '', false); // the opening frame: the targets are not there yet
+    second.frame(0, 'seed:chime', false); // they appear under a resting gaze
+    run(second, 5000, 'seed:chime');
+    expect(calls.pickSeed).toEqual(['bowl']);
+    expect(second.fill[0]).toBe(0);
+    lookAt(second, '');
+    lookAt(second, 'seed:chime');
+    run(second, 600, 'seed:chime');
+    expect(calls.pickSeed).toEqual(['bowl', 'chime']);
+  });
+
+  it('with the gaze mode on, a pick lights the swatch and keeps the board until the gaze id changes; off, a press closes at once; Close and the look-away pick nothing', () => {
+    settings.set({ gazeDwell: true, dwellMs: 600 });
+    const byDwell = seedsOpened();
+    lookAt(byDwell, ''); // the targets appear with the gaze on none
+    lookAt(byDwell, 'seed:bowl');
+    run(byDwell, 600, 'seed:bowl');
+    expect(calls.pickSeed).toEqual(['bowl']);
+    expect(byDwell.open).toBe(true);
+    expect(control(byDwell, 'seed:bowl')?.on).toBe(true);
+    run(byDwell, 5000, 'seed:bowl');
+    expect(byDwell.open).toBe(true);
+    expect(calls.pickSeed).toEqual(['bowl']); // once
+    byDwell.frame(0, '', false);
+    expect(byDwell.open).toBe(false);
+
+    const byPinch = seedsOpened();
+    press(byPinch, 'seed:chime'); // a pinch by sight: the gaze is on the swatch too
+    expect(calls.pickSeed).toEqual(['bowl', 'chime']);
+    expect(byPinch.open).toBe(true);
+    expect(control(byPinch, 'seed:chime')?.on).toBe(true);
+    byPinch.frame(0, 'seed:chime', false);
+    expect(byPinch.open).toBe(true);
+    byPinch.frame(0, 'close', false);
+    expect(byPinch.open).toBe(false);
+    expect(calls.pickSeed).toEqual(['bowl', 'chime']);
+
+    settings.set({ gazeDwell: false });
+    const byHand = seedsOpened();
+    press(byHand, 'seed:reed');
+    expect(byHand.open).toBe(false);
+    expect(calls.pickSeed).toEqual(['bowl', 'chime', 'reed']);
+    expect(calls.pressed).toContain('seed:reed'); // it ticks like any press
+
+    calls.pickSeed.length = 0;
+    const closed = seedsOpened();
+    press(closed, 'close');
+    expect(closed.open).toBe(false);
+    const lookedAway = seedsOpened();
+    lookedAway.frame(0, '', false); // seen
+    run(lookedAway, PANEL_LOOK_AWAY_MS, '', true);
+    expect(lookedAway.open).toBe(false);
+    expect(calls.pickSeed).toEqual([]);
+  });
+
+  it('counts the look-away only once the board has been seen; the settings tabs keep theirs', () => {
+    const panel = seedsOpened();
+    expect(panel.unseen).toBe(true); // the opening frame's `away` is the last board's: it does not count
+    run(panel, 6000, '', true);
+    expect(panel.open).toBe(true);
+    expect(panel.unseen).toBe(true);
+    panel.frame(0, '', false); // in the box once
+    expect(panel.unseen).toBe(false);
+    run(panel, PANEL_LOOK_AWAY_MS - 1, '', true);
+    expect(panel.open).toBe(true);
+    run(panel, 1, '', true);
+    expect(panel.open).toBe(false);
+    expect(panel.unseen).toBe(false);
+
+    const tabs = opened('sound');
+    expect(tabs.unseen).toBe(false);
+    run(tabs, PANEL_LOOK_AWAY_MS, '', true); // never in the box: today's rule
+    expect(tabs.open).toBe(false);
+  });
+
+  it('openSeeds while any page is open changes nothing', () => {
+    const tabs = opened('access');
+    const before = tabs.controls();
+    tabs.stale = false;
+    tabs.openSeeds();
+    expect(tabs.controls()).toEqual(before);
+    expect(tabs.stale).toBe(false);
+    expect(tabs.unseen).toBe(false);
+    const seeds = seedsOpened('old');
+    seeds.stale = false;
+    seeds.openSeeds();
+    expect(ids(seeds)).toContain('seed:bell');
+    expect(seeds.stale).toBe(false);
+    // and the orb's panel, after a Seeds page, is the settings board again
+    press(seeds, 'close');
+    press(seeds, ORB_ID);
+    expect(ids(seeds)).toContain('tab:sound');
+    expect(ids(seeds)).not.toContain('lib:old');
+  });
+});
+
 describe('settings panel: targets of at least 4 cm with clear gaps (T-151, Golden Rule 3)', () => {
   const layouts = (): [name: string, panel: Panel][] => {
     settings.set({ gazeDwell: true }); // the fullest Access tab: the hold times are on show
-    return (['sound', 'access', 'garden'] as const).map((tab) => [tab, opened(tab)]);
+    return [
+      ...(['sound', 'access', 'garden'] as const).map((tab): [string, Panel] => [tab, opened(tab)]),
+      ...(['old', 'new'] as const).map((lib): [string, Panel] => [`seeds ${lib}`, seedsOpened(lib)]),
+    ];
   };
 
   it('every control is 4 cm or more, inside the panel, and covered by its hit sphere', () => {
@@ -958,6 +1119,24 @@ describe('settings panel: where it opens (UX §3.6, FR-UI-03)', () => {
       expect((Math.atan2(-centre.x, -centre.z) * 180) / Math.PI).toBeCloseTo(35, 6);
     },
   );
+
+  // T-193, the look-up exception (API_SPEC §1.9, UX §3.6): the Seeds page opens for a head that looks at its palm, and
+  // its three swatch rows stand this far above that head's gaze line. The top two are above the 20 degree box.
+  it.each([
+    [44, [25.8, 20.3, 14.5]],
+    [47, [28.8, 23.3, 17.5]],
+    [66, [47.8, 42.3, 36.5]],
+  ] as const)('the swatch rows of a Seeds page seen by a head %i degrees down', (down, degrees) => {
+    const head = headAt(SEATED, 0, -down);
+    const { pose, centre } = placed(head);
+    const up = (i: number) => pose[4 + i] as number;
+    [1, 0, -1].forEach((row, i) => {
+      const y = row * PANEL_TARGET_PITCH_M; // ROW_Y[0..2]: the swatch rows
+      const point = new Vector3(centre.x + up(0) * y, centre.y + up(1) * y, centre.z + up(2) * y);
+      const local = seenFrom(head, point);
+      expect((Math.atan2(local.y, local.z) * 180) / Math.PI, `row ${i}`).toBeCloseTo(degrees[i] as number, 0);
+    });
+  });
 });
 
 describe('hasPose', () => {
@@ -1189,6 +1368,25 @@ describe('what the open panel costs per frame (CODING_GUIDELINES §5)', () => {
     expect(settings.get()).toEqual({ ...DEFAULT_SETTINGS, gazeDwell: true }); // idle: nothing was selected
     expect(panel.open).toBe(true);
     expect(keeper.kept).not.toBeNull();
+  });
+
+  it('the Seeds page, unseen and looked away from, with the gaze sweeping its swatches: nothing on the heap', () => {
+    const ROUNDS = 20_000;
+    settings.set({ gazeDwell: true });
+    const panel = seedsOpened();
+    const idList = ['', 'seed:bowl', '', 'seed:chime', '', 'close'];
+    const frames = (): void => {
+      // The gaze moves on before any dwell completes; the board is never in the box, so it stays open and unseen.
+      for (let i = 0; i < ROUNDS; i++) panel.frame(14, idList[Math.floor(i / 20) % idList.length] ?? '', true);
+    };
+    frames();
+    frames();
+    const costs = [heapCost(frames), heapCost(frames), heapCost(frames)];
+    const clean = costs.filter((cost) => cost.gcs === 0 && cost.grewBytes < PROBE_BYTES);
+    expect(clean.length, JSON.stringify(costs)).toBeGreaterThan(0);
+    expect(panel.open).toBe(true);
+    expect(panel.unseen).toBe(true);
+    expect(calls.pickSeed).toEqual([]);
   });
 });
 
