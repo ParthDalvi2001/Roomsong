@@ -1,6 +1,6 @@
 # Decisions waiting for Parth
 
-**The one file for every open decision** (updated 9 Nov 04:00 IST). Reply with the number and your answer, or "done". Answered ones go to DECISIONS_LOG.
+**The one file for every open decision** (updated 9 Nov 13:00 IST). Reply with the number and your answer, or "done". Answered ones go to DECISIONS_LOG.
 
 ## 1. Push main (one line, for the live site)
 `develop` is pushed (5c676b6, 9 Nov) and local `main` is ready. In Terminal: `cd /Users/parth_baller/Documents/test-pro/Roomsong && git push origin main`. Then the live site gets the BUG-040 fix and drops the test pages (T-189).
@@ -10,6 +10,12 @@
 
 ## 4. Headset checks (you or Chinmay, on the live link)
 1. Open the link over a phone hotspot. 2. "No room scan" message: once unscanned, once after Space Setup. 3. Undo a plant (undo petal). 4. Drag a plant by looking at it. 5. Listen: both palms out 1.5 s. 6. A no-pinch run: the link with `?access=gaze`. 7. Tomorrow: Garden tab says Day 2. 8. A 10 s Quest video with sound. Optional: the voice test (RND_2026-11-08 §1).
+
+## 3. Before 12 Nov: read the Devpost pages in a browser (5 minutes)
+The site refuses automated reads (HTTP 403 on 8 and 9 Nov), so the last check against the live rules is 27 Oct. You or Chinmay: open Rules, Updates, FAQs and Special Awards on https://start-developer-competition-26.devpost.com/ and tell me anything new (deadline, fields, video, awards). HACKATHON_RULES §12.
+
+## 8. Listen and look (on the headset, after the next push of main)
+1. The sound while shaping (T-147b): pinch a plant (a soft tick), pull it slowly up and down (its own note follows), drop one in the centre hole (one low bump). Rate 1–5; too quiet or too loud? 2. The room colours (T-190): rate the tint 1–5 and read the ceiling caption ("Ceiling: minor mood."). 3. One-hand mode with a seed on the palm: open settings, look at Exit and pinch: the panel closes (BUG-042).
 
 ## 5. Before 12 Nov: a new person plays it
 Someone who has never seen Roomsong plays the first five minutes on a headset while you watch, without help. Tell me what got stuck. This is the evidence for "Best First Five Minutes".

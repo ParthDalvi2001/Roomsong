@@ -10,7 +10,7 @@ On demand: commands `.claude/QUICK_START.md` · where things live `.claude/ARCHI
 - **Deadline 2026-11-18 12:00 PT.** Feature freeze Nov 12 · code freeze Nov 15 · submit Nov 17 ≤18:00 IST.
 
 ## 2. Reality
-- **No Quest headset** (T-000 is the top priority; H1 Oct 20, Emergency mode Oct 27). Emulator-first (IWER + Playwright); device-dependent work is `done-pending-device`.
+- **Headsets since 7 Nov:** Parth's Quest 3S (dev server with `?rec=1`) and Chinmay's Quest 3 (live site); results in `specs/05-testing/TEST_PLAN.md` §4.6. Emulator-first stays (IWER + Playwright); work not yet seen on a device is `done-pending-device`.
 - Repo `github.com/ParthDalvi2001/Roomsong`: `main` = release (never pushed by agents), `develop` = work.
 - Humans: Parth (developer, plan owner, this Mac) and Chinmay (PM, Devpost Representative). Chinmay's Claude only proposes via `specs/08-status/PM_PROPOSALS.md`; only this Claude edits specs.
 
