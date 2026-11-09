@@ -41,7 +41,9 @@ import type { Plant, SeedKind } from '../../../src/garden/index.js';
 
 const FRAME_MS = 1000 / 72;
 
-const SHAPES = ['bell', 'pad', 'pluck', 'bass', 'choir'] as const;
+// The renderer's meshes in their order: the five as built, then the five New kinds (T-193).
+const SHAPES = ['bell', 'pad', 'pluck', 'bass', 'choir', 'bowl', 'chime', 'flute', 'reed', 'hum'] as const;
+const NEW_SHAPES = SHAPES.slice(5);
 type ShapeName = (typeof SHAPES)[number];
 
 /** A silhouette's side outline on a stem of `stemM`, read back from its mesh: radius and height of each row. */
@@ -228,34 +230,29 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
     near(onScreen('pad'), [0x48, 0xca, 0xe4], 24);
   });
 
-  it('one mesh per silhouette; the five Must voices each have their own, shimmer borrows the pluck', () => {
+  it('one mesh per silhouette, one silhouette per seed kind (T-193); shimmer borrows the pluck', () => {
     const { renderer, parent } = make([
-      plant('a', 0, 0, { voice: 'bell' }),
-      plant('b', 0, 1, { voice: 'pad' }),
-      plant('c', 0, 2, { voice: 'pluck' }),
-      plant('d', 0, 3, { voice: 'bass' }),
-      plant('e', 0, 4, { voice: 'choir' }),
-      plant('f', 0, 5, { voice: 'shimmer' }),
+      ...SEED_KINDS.map(({ voice, family }, i) => plant(`k${i}`, 0, i, family ? { voice, family } : { voice })),
+      plant('f', 0, 10, { voice: 'shimmer' }),
     ]);
     // And the shaping guides (T-147), drawn only while a plant is pulled or dragged off the bed.
     expect(parent.children).toEqual([...renderer.meshes, renderer.whorls, renderer.guides.mesh]);
-    expect(renderer.meshes).toHaveLength(5);
-    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, 1, 2, 1, 1]);
-    expect([0, 1, 2, 3, 4, 5].map((step) => at(renderer, 0, step)!.shape)).toEqual([
-      'bell',
-      'pad',
-      'pluck',
-      'bass',
-      'choir',
-      'pluck',
-    ]);
-    // Five different outlines, each with the head marked for the shader, and one shared material.
+    expect(renderer.meshes).toHaveLength(10);
+    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, 1, 2, 1, 1, 1, 1, 1, 1, 1]);
+    SEED_KINDS.forEach(({ kind }, i) => expect(at(renderer, 0, i)!.shape).toBe(kind));
+    expect(at(renderer, 0, 10)!.shape).toBe('pluck');
+    // Ten different outlines, each with the head marked for the shader, and one shared material.
     const vertexCounts = renderer.meshes.map((mesh) => mesh.geometry.getAttribute('position').count);
-    expect(new Set(vertexCounts).size).toBe(5);
+    expect(new Set(vertexCounts).size).toBe(10);
     for (const mesh of renderer.meshes) {
       expect(mesh.geometry.getAttribute('aHead').count).toBe(mesh.geometry.getAttribute('position').count);
       expect(mesh.material).toBe(renderer.meshes[0]!.material);
     }
+  });
+
+  it("a bass + new plant has the hum's head, whatever the picker hides: HIDDEN_KINDS is not the renderer's (T-193)", () => {
+    const { renderer } = make([plant('h', 0, 0, { voice: 'bass', family: 'new' }), plant('b', 0, 1, { voice: 'bass' })]);
+    expect([at(renderer, 0, 0)!.shape, at(renderer, 0, 1)!.shape]).toEqual(['hum', 'bass']);
   });
 
   it('no plant mesh is culled by the bounds of one plant, and open shapes show their inside', () => {
@@ -272,7 +269,8 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
     // As drawn outside high contrast: the plant half of the index.
     const triangles = (shape: ShapeName): number =>
       renderer.meshes[SHAPES.indexOf(shape)]!.geometry.drawRange.count / 3;
-    expect(SHAPES.map(triangles)).toEqual([240, 200, 112, 216, 252]);
+    expect(SHAPES.map(triangles)).toEqual([240, 200, 112, 216, 252, 192, 144, 240, 80, 224]);
+    for (const shape of NEW_SHAPES) expect(triangles(shape), shape).toBeLessThanOrEqual(252); // API_SPEC §1.8
     const across = (shape: ShapeName): number =>
       2 * Math.max(...outline(renderer, shape, 0.09).map((row) => row.r));
     expect(across('bass')).toBeCloseTo(0.04);
@@ -294,6 +292,33 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
       expect(Math.max(...rows.map((row) => row.y))).toBeCloseTo(stemM + 0.01);
       expect(rows.find((row) => row.y > stemM + 0.009)!.r).toBe(0); // its crown is closed: no hole from above
     }
+  });
+
+  it('the five New heads leave the stem thin where the leaf whorls ride, on every stem (T-193, UX §9.6)', () => {
+    const { renderer } = make();
+    for (const shape of NEW_SHAPES) {
+      for (const stemM of [PLANT_STEM_MIN_M, 0.09, PLANT_STEM_MAX_M]) {
+        for (const share of PLANT_WHORL_AT) {
+          expect(halfWidth(outline(renderer, shape, stemM), share * stemM), `${shape} at ${share}`).toBeLessThanOrEqual(
+            0.004 + 1e-9, // the old stems' radius; the outline is read back from 32-bit buffers
+          );
+        }
+      }
+    }
+  });
+
+  it('by outline alone, no two of the ten shapes are closer than Bell and Pad already are (FR-UI-08, T-193)', () => {
+    const { renderer } = make();
+    const bellAndPad = coincides(renderer, 'bell', 'pad');
+    expect(bellAndPad).toBeCloseTo(0.64, 2);
+    let pairs = 0;
+    for (const [i, one] of SHAPES.entries()) {
+      for (const other of SHAPES.slice(i + 1)) {
+        expect(coincides(renderer, one, other), `${one} and ${other}`).toBeLessThanOrEqual(bellAndPad);
+        pairs++;
+      }
+    }
+    expect(pairs).toBe(45);
   });
 
   it('by outline alone, neither new shape is closer to another than Bell and Pad already are (FR-UI-08)', () => {
@@ -346,11 +371,13 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
 
     // A mesh with no plant is hidden (T-165: its program is compiled in the session's first frame anyway).
     const visible = (): boolean[] => [...renderer.meshes, renderer.whorls].map((mesh) => mesh.visible);
-    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, 0, 0, 0, 0]);
-    expect(visible()).toEqual([true, false, false, false, false, renderer.whorls.count > 0]);
+    // So a kind with no plant costs no draw call (T-193: ten kinds, at most 11 draw calls per eye with the whorls).
+    const none = Array.from({ length: 9 }, () => 0);
+    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([1, ...none]);
+    expect(visible()).toEqual([true, ...none.map(() => false), renderer.whorls.count > 0]);
     show(renderer, []);
-    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([0, 0, 0, 0, 0]);
-    expect(visible()).toEqual([false, false, false, false, false, false]);
+    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([0, ...none]);
+    expect(visible()).toEqual([false, ...none.map(() => false), false]);
   });
 
   it('a full bed is 80 instances, and a bed filled again after it was emptied still is', () => {
@@ -739,7 +766,7 @@ describe('PlantRenderer.setHover (FR-HND-16)', () => {
     expect(fragmentShader).toContain('vShell > 0.5 ? cream : vColour * shade');
     expect(fragmentShader).not.toMatch(/edge|uOutline/); // no blotches on the surface
     show(renderer, [...pair(), plant('pad', 2, 3, { voice: 'pad' })]);
-    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([2, 1, 0, 0, 0]); // the shells follow
+    expect(renderer.meshes.map((mesh) => mesh.count)).toEqual([2, 1, 0, 0, 0, 0, 0, 0, 0, 0]); // the shells follow
     expect(drawn()).toEqual(halves.map((half) => 2 * half));
     settings.set({ highContrast: false });
     renderer.update(Number.NaN, 2 * FRAME_MS);

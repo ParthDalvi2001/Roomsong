@@ -222,10 +222,10 @@ describe('the rendering rules (NFR-PERF-09, TC-PERF-08)', () => {
       expect(object.castShadow || object.receiveShadow).toBe(false);
       if ((object as Mesh).isMesh) meshes.push(object as Mesh);
     });
-    // Bed 2, the five silhouettes (each with its outline shell in its own geometry, T-165), the whorls, the shaping
-    // guides (T-147), the tide: one draw call each at most, per eye; a hidden mesh (no plant of its voice, the
-    // guides while nothing is shaped) makes none.
-    expect(meshes).toHaveLength(10);
+    // Bed 2, the ten silhouettes (one per seed kind since T-193, each with its outline shell in its own geometry,
+    // T-165), the whorls, the shaping guides (T-147), the tide: one draw call each at most, per eye; a hidden mesh
+    // (no plant of its kind, the guides while nothing is shaped) makes none.
+    expect(meshes).toHaveLength(15);
     for (const mesh of meshes) expect(mesh.matrixAutoUpdate).toBe(false);
     // No material is lit (none needs a light), and none samples a texture.
     for (const mesh of meshes) {

@@ -95,9 +95,9 @@ function rig() {
 }
 
 const three = (): Plant[] => [plant('a', 0, 0), plant('b', 2, 5), plant('c', 4, 15)];
-/** How many plants PlantRenderer draws: the instances of its five silhouettes, the bed's children 2 to 6. */
+/** How many plants PlantRenderer draws: the instances of its ten silhouettes (T-193), the bed's children 2 to 11. */
 const drawn = (bed: Group): number =>
-  bed.children.slice(2, 7).reduce((sum, mesh) => sum + (mesh as InstancedMesh).count, 0);
+  bed.children.slice(2, 12).reduce((sum, mesh) => sum + (mesh as InstancedMesh).count, 0);
 
 describe('the plants and their targets (LLD §3.5 d1; API_SPEC §1.10 rule 7)', () => {
   it('placed: every plant drawn, and one plant target each at its cell centre, in world space, with the hit radius', () => {

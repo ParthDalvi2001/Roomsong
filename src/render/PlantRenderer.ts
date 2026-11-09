@@ -1,6 +1,7 @@
 // The plants (LLD §1, UX §5): one InstancedMesh per silhouette, 80 instances each at most, and one more for the
-// leaf whorls that count a plant's age (UX §9.6), all with one shared unlit material: six draw calls at most,
-// whatever grows, in high contrast too, where the same draws add the cream outline shells (FR-UI-05). A plant's cell
+// leaf whorls that count a plant's age (UX §9.6), all with one shared unlit material. A seed kind has its own
+// silhouette (T-193): eleven draw calls at most, none for a kind with no plant, whatever grows, in high contrast
+// too, where the same draws add the cream outline shells (FR-UI-05). A plant's cell
 // gives the instance its place, its height the stem, its kind the colour (T-193); the brightness of the colour is whatever
 // the FlashGuard hands out.
 // setState runs when the garden changes and rewrites the instances; update runs per frame and allocates nothing.
@@ -76,9 +77,12 @@ interface Shape {
   lobeDepth?: number;
 }
 
-// The five silhouettes of LLD §7: three from T-125, the jug and the umbrella from UX §9.5. Every foot is 2.5 cm
-// across (FR-HND-04) and no head is wider than the 4.5 cm between two rings (FR-MUS-01). These tables are the
-// shapes themselves, data like a model file would be, so they stay here and not in config.ts (T-125 review).
+// The five silhouettes of LLD §7: three from T-125, the jug and the umbrella from UX §9.5; then the five New kinds'
+// (T-193, D-076). Every foot is 2.5 cm across (FR-HND-04) and no head is wider than the 4.5 cm between two rings
+// (FR-MUS-01). A New kind's stem is thin where the leaf whorls ride (PLANT_WHORL_AT), has at most 252 triangles, and
+// by its side outline is no closer to any other shape than Bell and Pad are (FR-UI-08; PlantRenderer.test.ts). These
+// tables are the shapes themselves, data like a model file would be, so they stay here and not in config.ts (T-125
+// review).
 const SHAPES: readonly Shape[] = [
   {
     // Bell: a tall bulb with a drooping cap.
@@ -159,6 +163,93 @@ const SHAPES: readonly Shape[] = [
     segments: 18,
     lobes: 3,
   },
+  {
+    // Bowl (the bell's New sibling): a wide shallow dish on a thin stem, open, its rim rolled in.
+    profile: [
+      [0.0125, 0, 0],
+      [0.0025, 0.06, 0],
+      [0.0025, 1, 0],
+      [0.015, 0.001, 1],
+      [0.021, 0.005, 1],
+      [0.022, 0.01, 1],
+      [0.019, 0.013, 1],
+    ],
+    segments: 16,
+    lobes: 0,
+  },
+  {
+    // Chime (the pluck's): a deep cup on a pin; from above a six-point star, a tip and a valley in turn.
+    profile: [
+      [0.0125, 0, 0],
+      [0.002, 0.05, 0],
+      [0.002, 1, 0],
+      [0.005, 0.004, 1],
+      [0.011, 0.01, 1],
+      [0.015, 0.02, 1],
+      [0.016, 0.028, 1],
+    ],
+    segments: 12,
+    lobes: 6,
+    lobeDepth: 0.45,
+  },
+  {
+    // Flute (the choir's): a spire of three beads, each smaller than the one below, ending in an open mouth.
+    profile: [
+      [0.0125, 0, 0],
+      [0.0025, 0.06, 0],
+      [0.0025, 1, 0],
+      [0.007, 0.004, 1],
+      [0.009, 0.009, 1],
+      [0.005, 0.014, 1],
+      [0.0025, 0.016, 1],
+      [0.006, 0.02, 1],
+      [0.0075, 0.025, 1],
+      [0.0045, 0.03, 1],
+      [0.0025, 0.032, 1],
+      [0.005, 0.036, 1],
+      [0.006, 0.041, 1],
+      [0.004, 0.046, 1],
+      [0.003, 0.048, 1],
+      [0.005, 0.053, 1],
+    ],
+    segments: 8,
+    lobes: 0,
+  },
+  {
+    // Reed (the pad's): a square box of three pleats, a bellows. It is the top 30 % of the stem, above the whorls,
+    // so it stretches with the stem as the jug's bulb does; a flat lid closes it.
+    profile: [
+      [0.0125, 0, 0],
+      [0.003, 0.08, 0],
+      [0.003, 0.66, 0],
+      [0.012, 0.7, 0],
+      [0.008, 0.76, 0],
+      [0.012, 0.82, 0],
+      [0.008, 0.88, 0],
+      [0.012, 0.94, 0],
+      [0.008, 1, 0],
+      [0.012, 0.003, 1],
+      [0, 0.006, 1],
+    ],
+    segments: 4,
+    lobes: 0,
+  },
+  {
+    // Hum (the bass's): a stout base, and a low pod across the top of the stem, pressed into two wings.
+    profile: [
+      [0.0125, 0, 0],
+      [0.009, 0.12, 0],
+      [0.003, 0.3, 0],
+      [0.003, 1, 0],
+      [0.01, -0.006, 1],
+      [0.022, -0.001, 1],
+      [0.014, 0.005, 1],
+      [0, 0.008, 1],
+    ],
+    segments: 16,
+    lobes: 2,
+    lobeDepth: 0.6,
+  },
 ];
 // A leaf whorl (UX §9.6): a flat ring of four rounded leaves round the stem, 2.4 cm across and 0.3 cm thick, 64
 // triangles (T-163: 16 segments, so a leaf is round, not a point). Its rows are head rows, so it rides at the top
@@ -177,14 +268,28 @@ const WHORL: Shape = {
 const BLOSSOM_STAGE = 3;
 const UNSEEN = 255;
 const NO_WHORL = 255;
-/** The mesh a voice is drawn in. Shimmer (Should, S5) borrows the pluck's until it has its own (UX §9.5). */
-const SHAPE_OF: Readonly<Record<VoiceType, number>> = {
+/** The mesh a seed kind is drawn in (T-193): its place in SHAPES. */
+const SHAPE_OF: Readonly<Record<SeedKind, number>> = {
   bell: 0,
   pad: 1,
   pluck: 2,
   bass: 3,
   choir: 4,
-  shimmer: 2,
+  bowl: 5,
+  chime: 6,
+  flute: 7,
+  reed: 8,
+  hum: 9,
+};
+/** The voices that are drawn. kindOf is total: without this a voice that is none of them would stand as a pluck,
+ *  as shimmer (Should, S5) does until it has a shape of its own (UX §9.5). */
+const VOICES: Readonly<Record<VoiceType, true>> = {
+  bell: true,
+  pad: true,
+  pluck: true,
+  bass: true,
+  choir: true,
+  shimmer: true,
 };
 /** A number as a GLSL float literal. */
 const glsl = (value: number): string => value.toFixed(5);
@@ -332,8 +437,9 @@ export const stemFor = (height: number): number =>
   PLANT_STEM_MIN_M + (PLANT_STEM_MAX_M - PLANT_STEM_MIN_M) * height;
 
 export class PlantRenderer {
-  /** One per silhouette: bell, pad, pluck, bass, choir. Each geometry holds its cream outline shell too, drawn by
-   *  the second half of its index in high contrast only (FR-UI-05); whorls have none. */
+  /** One per silhouette, so one per seed kind: bell, pad, pluck, bass, choir, bowl, chime, flute, reed, hum. Each
+   *  geometry holds its cream outline shell too, drawn by the second half of its index in high contrast only
+   *  (FR-UI-05); whorls have none. */
   readonly meshes: readonly InstancedMesh<LatheGeometry, ShaderMaterial>[];
   /** The leaf whorls and blossoms of every plant: two per plant at most (UX §9.6). */
   readonly whorls: InstancedMesh<LatheGeometry, ShaderMaterial>;
@@ -471,13 +577,14 @@ export class PlantRenderer {
     for (const mesh of this.meshes) mesh.count = 0;
     this.whorls.count = 0;
     for (const plant of plants) {
-      const shape = SHAPE_OF[plant.voice];
-      if (typeof shape !== 'number' || !onBed(plant.cell)) continue;
+      if (VOICES[plant.voice] !== true || !onBed(plant.cell)) continue;
+      const kind = kindOf(plant);
+      const shape = SHAPE_OF[kind];
       const slot = this.slotFor(plant.id);
       if (slot === undefined) continue; // more plants than cells: the garden rules never produce that
       this.step[slot] = plant.cell.step;
       this.age(slot, stageFor(lastVisitAt - plant.plantedAt));
-      this.kinds[slot] = kindOf(plant);
+      this.kinds[slot] = kind;
       this.colourFor(slot);
 
       const mesh = this.meshes[shape]!;
