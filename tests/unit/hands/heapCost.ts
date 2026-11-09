@@ -11,6 +11,12 @@ export const PROBE_BYTES = 4096;
 setFlagsFromString('--expose-gc');
 const gc = runInNewContext('gc') as (options: { type: 'minor' }) => void;
 const collect = (): void => gc({ type: 'minor' });
+// BUG-051: V8 optimises on background threads, and on a loaded host the optimised code lands rounds later than on
+// a quiet one, so a test's rounds ran out in code that boxes every number. Each reading waits for the compiles the
+// last round asked for and installs them first: the rounds tier up after the same work, however busy the host.
+// The flag stays on (a lazily parsed body needs it at its first call); it changes no valid program.
+setFlagsFromString('--allow-natives-syntax');
+const finishCompiles = runInNewContext('() => %FinalizeOptimization()') as () => void;
 
 /**
  * What `run` cost the heap: the collections V8 ran (as in tests/unit/core/events.test.ts) and the bytes the heap
@@ -27,6 +33,7 @@ export function heapCost(run: () => void): { gcs: number; grewBytes: number } {
 }
 
 function measure(run: () => void): { gcs: number; grewBytes: number } {
+  finishCompiles();
   collect();
   const profiler = new GCProfiler();
   profiler.start();
