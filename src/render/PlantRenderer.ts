@@ -1,7 +1,7 @@
 // The plants (LLD §1, UX §5): one InstancedMesh per silhouette, 80 instances each at most, and one more for the
 // leaf whorls that count a plant's age (UX §9.6), all with one shared unlit material: six draw calls at most,
 // whatever grows, in high contrast too, where the same draws add the cream outline shells (FR-UI-05). A plant's cell
-// gives the instance its place, its height the stem, its hue the colour; the brightness of the colour is whatever
+// gives the instance its place, its height the stem, its kind the colour (T-193); the brightness of the colour is whatever
 // the FlashGuard hands out.
 // setState runs when the garden changes and rewrites the instances; update runs per frame and allocates nothing.
 import {
@@ -17,7 +17,7 @@ import {
 } from 'three';
 
 import { settings } from '../core/index.js';
-import { cellCentre, heightAfterPull, stageFor, STEPS } from '../garden/index.js';
+import { cellCentre, heightAfterPull, kindOf, stageFor, STEPS } from '../garden/index.js';
 import { REVERT_LERP_MS } from '../hands/index.js';
 
 import { onBed } from './BedRenderer.js';
@@ -54,13 +54,13 @@ import {
   PLANT_WHORL_LOBE_DEPTH,
   PLANT_WHORL_TURN_RAD,
 } from './config.js';
-import { newPalette, plantColour, setPalette } from './palette.js';
+import { kindColour, newPalette, setPalette } from './palette.js';
 import { ShapingGuides } from './ShapingGuides.js';
 import { stepGlow } from './TideRenderer.js';
 
 import type { FlashGuard } from './FlashGuard.js';
 import type { EventMap, Hand, Vec3 } from '../core/index.js';
-import type { GardenState, VoiceType } from '../garden/index.js';
+import type { GardenState, SeedKind, VoiceType } from '../garden/index.js';
 import type { Object3D } from 'three';
 
 /** One row of a silhouette's outline: radius in metres, height, and whether the row is part of the head. */
@@ -368,9 +368,9 @@ export class PlantRenderer {
   private readonly waitFrom = new Float64Array(PLANT_CAPACITY);
   private readonly bloomFrom = new Float64Array(PLANT_CAPACITY).fill(Number.NEGATIVE_INFINITY);
   private readonly pale = new Float32Array(PLANT_CAPACITY * 3);
-  /** The room's palette (render/palette.ts, D-060), and each slot's plant hue, for a recolour. */
+  /** The room's palette (render/palette.ts, D-060), and each slot's plant kind, for a recolour. */
   private readonly palette = newPalette();
-  private readonly hueOf = new Float32Array(PLANT_CAPACITY);
+  private readonly kinds = new Array<SeedKind>(PLANT_CAPACITY).fill('bell');
   /** The instance index of each slot's first whorl. */
   private readonly whorlOf = new Uint8Array(PLANT_CAPACITY).fill(NO_WHORL);
   private isWhorlPaintDue = false;
@@ -477,7 +477,7 @@ export class PlantRenderer {
       if (slot === undefined) continue; // more plants than cells: the garden rules never produce that
       this.step[slot] = plant.cell.step;
       this.age(slot, stageFor(lastVisitAt - plant.plantedAt));
-      this.hueOf[slot] = plant.hue;
+      this.kinds[slot] = kindOf(plant);
       this.colourFor(slot);
 
       const mesh = this.meshes[shape]!;
@@ -995,15 +995,15 @@ export class PlantRenderer {
    * blossom's colours (`lit`) takes from the lighter one (UX §5, §9.6). Set-up.
    */
   private colourFor(slot: number): void {
-    const hue = this.hueOf[slot]!;
-    plantColour(colour, hue, PLANT_BLOSSOM_LIGHTNESS, this.palette).toArray(this.pale, slot * 3);
-    if (!this.lit[slot]) plantColour(colour, hue, PLANT_LIGHTNESS, this.palette);
+    const kind = this.kinds[slot]!;
+    kindColour(colour, kind, PLANT_BLOSSOM_LIGHTNESS, this.palette).toArray(this.pale, slot * 3);
+    if (!this.lit[slot]) kindColour(colour, kind, PLANT_LIGHTNESS, this.palette);
     colour.toArray(this.tint, slot * 3);
   }
 
   /**
    * Writes an instance's colour, and its whorls': the plant's tint at the brightness the guard last handed out.
-   * A whorl has no element of its own (UX §9.6): it takes its plant's brightness. A leaf whorl is the plant's hue
+   * A whorl has no element of its own (UX §9.6): it takes its plant's brightness. A leaf whorl is the plant's colour
    * at a blossom's lightness, lighter than its stem (T-163); a blossom is cream.
    */
   private paint(mesh: InstancedMesh, index: number, slot: number): void {

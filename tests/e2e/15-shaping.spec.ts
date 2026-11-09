@@ -431,7 +431,7 @@ test('T-146 the undo petal is drawn by the app renderer: its draw call while it 
 
   const before = await nextSample();
   await stage.evaluate((s) =>
-    s.petals.show('p', { cell: { ring: 2, step: 0 }, hue: 0.3 }, s.clock.nowMs + 4000),
+    s.petals.show('p', { cell: { ring: 2, step: 0 }, voice: 'bell' }, s.clock.nowMs + 4000),
   );
   const during = await nextSample();
   await page.waitForFunction((s) => !s.petals.has('p'), stage); // by its own time
