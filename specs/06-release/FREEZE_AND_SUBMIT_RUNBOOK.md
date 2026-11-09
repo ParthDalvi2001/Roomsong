@@ -78,7 +78,7 @@ test pages are out of the release build (T-189). Two headsets exist (Parth's Que
 2. Settings → Secrets and variables → Actions → **Variables** tab → **New repository variable** → Name `MIRROR_URL`,
    Value `<mirror>/` → Add variable.
 3. Actions → **uptime** → **Run workflow** → Branch `main` → Run. It goes green and its log shows two lines ending in
-   "200, Roomsong", one per link. "no mirror yet" means step 2 is missing.
+   "200, SonicSpace", one per link. "no mirror yet" means step 2 is missing.
 
 ### 1.7 Evidence (Guide §8; every item, its file name and owner: `specs/06-release/evidence/README.md`)
 1. Parth: a screenshot of the green `deploy` run (`deploy-run.png`), and a copy of `github-pages.zip` (from Downloads,
