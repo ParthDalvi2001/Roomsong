@@ -1,22 +1,30 @@
 // P-012: a plant just set into its cell sounds its own note at once, quietly, by the UI-sound rules (P-025, T-172):
 // at the audio clock's now, its voice and pitch, −10…+3 dB against a full-height plant of its voice; in every style,
-// today's too, because it is the feedback of the planting. Its own step note never doubles it. On the fake
+// today's too, because it is the feedback of the planting. Its own step note never doubles it. And T-147b, UX
+// §3.4: a plant being pulled previews its own note at the pulled height, quietly and throttled. On the fake
 // AudioContext and the fake 25 ms tick: the notes the pool is asked for are read, nothing is heard.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Engine } from '../../../src/audio/AudioEngine.js';
-import { TICK_MS, UI_LEVEL_DB_RE_PLANT } from '../../../src/audio/config.js';
+import {
+  PREVIEW_DB_RE_NOTE,
+  PREVIEW_MIN_GAP_S,
+  PREVIEW_MIN_HEIGHT_STEP,
+  TICK_MS,
+  UI_LEVEL_DB_RE_PLANT,
+} from '../../../src/audio/config.js';
 import { grooveSeed } from '../../../src/audio/Layers.js';
-import { dbToGain, hueToDetuneCents } from '../../../src/audio/mapping.js';
+import { dbToGain, hueToDetuneCents, voiceParamsFor } from '../../../src/audio/mapping.js';
 import { Scheduler } from '../../../src/audio/Scheduler.js';
 import { STYLES, TODAY, type SoundStyle } from '../../../src/audio/styles.js';
 import { hzForRing } from '../../../src/audio/theory.js';
 import { STEPS, WANDERER } from '../../../src/garden/index.js';
 
 import { FakeAudioContext } from './fakeAudio.js';
-import { watchPool } from './uiRules.js';
+import { watchPool, type Played } from './uiRules.js';
 
 import type { Layers } from '../../../src/audio/Layers.js';
+import type { VoicePool } from '../../../src/audio/VoicePool.js';
 import type { Plant, VoiceType } from '../../../src/garden/index.js';
 
 const BPM = 84;
@@ -61,8 +69,16 @@ async function start(style: SoundStyle | null) {
     }
   };
   run(1); // the tide is going
-  const g = (engine as unknown as { g: { scheduler: Scheduler; layers: Layers } }).g;
-  return { ctx, engine, run, scheduler: g.scheduler, layers: g.layers, played: watchPool(engine) };
+  const g = (engine as unknown as { g: { scheduler: Scheduler; layers: Layers; pool: VoicePool } }).g;
+  return {
+    ctx,
+    engine,
+    run,
+    scheduler: g.scheduler,
+    layers: g.layers,
+    pool: g.pool,
+    played: watchPool(engine),
+  };
 }
 
 describe('ui("placed", id) (P-012)', () => {
@@ -157,6 +173,80 @@ describe('ui("placed", id) (P-012)', () => {
     ctx.state = 'suspended';
     engine.syncPlants([plant('b', 'bell', 0, (engine.clock.stepIndex() + 8) % STEPS)], BED);
     engine.ui('placed', 'b');
+    expect(played).toEqual([]);
+  });
+});
+
+describe('preview(plant) (T-147b, UX §3.4)', () => {
+  const at = (p: Plant, height: number): Plant => ({ ...p, height });
+  /** A plant half a bar from the tide, so no note of its own is due while a test runs. */
+  async function pulled(style: SoundStyle | null, voice: VoiceType = 'bell') {
+    const rig = await start(style);
+    const p = plant('a', voice, 2, (rig.engine.clock.stepIndex() + STEPS / 2) % STEPS);
+    rig.engine.syncPlants([p], BED);
+    return { ...rig, p };
+  }
+
+  it.each([null, 'B'] as const)(
+    'style %s: the plant’s own voice, pitch and place, now, at the pulled height, PREVIEW_DB_RE_NOTE under that note',
+    async (style) => {
+      const recipe = style === null ? TODAY : STYLES[style];
+      for (const voice of ['bell', 'pad', 'pluck', 'bass', 'choir', 'shimmer'] as const) {
+        const { ctx, engine, p, played } = await pulled(style, voice);
+        engine.ui('placed', p.id); // its own note, from its own place: the place to match
+        engine.preview(at(p, 0.9));
+        expect(played, voice).toHaveLength(2);
+        const [own, note] = played as [Played, Played];
+        expect(note.voice).toBe(VOICES[voice]);
+        expect(note.time).toBe(ctx.currentTime);
+        expect(note.at).toEqual(own.at);
+        const want = voiceParamsFor(
+          at(p, 0.9),
+          hzForRing(WANDERER, 2, voice),
+          { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 },
+          recipe.heightFloorDb,
+        );
+        expect(note.p.hz).toBeCloseTo(want.hz, 9);
+        expect(note.p.release).toBe(want.release);
+        expect(note.p.cutoffMul).toBe(want.cutoffMul);
+        expect(note.p.detune).toBe(want.detune);
+        expect(note.p.gain).toBeCloseTo(want.gain * dbToGain(recipe.mixDb[voice] + PREVIEW_DB_RE_NOTE), 12);
+      }
+    },
+  );
+
+  it('throttled: one note per PREVIEW_MIN_GAP_S at most, none while the height is within PREVIEW_MIN_HEIGHT_STEP of the last, one note at a time', async () => {
+    const { ctx, engine, p, pool, played } = await pulled(null);
+    const t0 = ctx.currentTime;
+    engine.preview(at(p, 0.2));
+    engine.preview(at(p, 0.6)); // too soon
+    ctx.currentTime = t0 + PREVIEW_MIN_GAP_S * 0.9;
+    engine.preview(at(p, 0.6)); // too soon still
+    ctx.currentTime = t0 + PREVIEW_MIN_GAP_S * 1.1;
+    engine.preview(at(p, 0.2 + PREVIEW_MIN_HEIGHT_STEP * 0.9)); // as good as the same note
+    const t1 = ctx.currentTime;
+    engine.preview(at(p, 0.6));
+    expect(pool.active(t1 + 0.05)).toBe(1); // the first note faded out as the second began
+    ctx.currentTime = t1 + PREVIEW_MIN_GAP_S * 1.1;
+    engine.preview(at(p, 0.6)); // the hand held still
+    const t2 = ctx.currentTime;
+    engine.preview(at(p, 0.6 - PREVIEW_MIN_HEIGHT_STEP * 1.1)); // a step down
+    expect(played.map((n) => n.time)).toEqual([t0, t1, t2]);
+    expect(played[1]!.p.release).toBeGreaterThan(played[0]!.p.release); // a taller plant rings longer
+  });
+
+  it('nothing before init(), for a plant the engine does not have, at volume 0, while the context is not running or while a pause fades', async () => {
+    expect(() => new Engine().preview(plant('a', 'bell', 0, 0))).not.toThrow();
+    const { ctx, engine, p, played } = await pulled(null);
+    engine.preview({ ...p, id: 'nobody' });
+    engine.setVolume(0);
+    engine.preview(at(p, 0.9));
+    engine.setVolume(1);
+    ctx.state = 'suspended';
+    engine.preview(at(p, 0.9));
+    ctx.state = 'running';
+    void engine.suspend(); // the master fades out over SUSPEND_FADE_S
+    engine.preview(at(p, 0.9));
     expect(played).toEqual([]);
   });
 });

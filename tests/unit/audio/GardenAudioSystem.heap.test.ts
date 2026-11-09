@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { Engine } from '../../../src/audio/AudioEngine.js';
 import { GardenAudioSystem } from '../../../src/audio/AudioSystem.js';
+import { PREVIEW_MIN_GAP_S } from '../../../src/audio/config.js';
 import { Scheduler } from '../../../src/audio/Scheduler.js';
 import { bus } from '../../../src/core/index.js';
 import { STEPS, WANDERER } from '../../../src/garden/index.js';
@@ -156,5 +157,72 @@ describe('GardenAudioSystem.update per frame (NFR-PERF-08)', () => {
     expect(gazedOpen).toBeGreaterThan(0);
     expect(gazedClosed).toBeGreaterThan(0);
     expect(engine.stats.triggers).toBeGreaterThan(STEPS_RUN);
+  }, 120_000);
+
+  // T-147b: a pull sample every frame at 72 Hz, the height sweeping past both ends, through GardenAudioSystem into
+  // the real engine's preview: the throttle's skips and the notes it lets through allocate nothing. The pool takes
+  // each note and builds nothing, as above; the frame times and the travel exist before the loop, already on the heap.
+  it('a plant pulled every frame, its preview throttled: nothing allocated', async () => {
+    const engine = new Engine();
+    const ctx = new FakeAudioContext();
+    await engine.init(ctx.audio);
+    const world = {
+      renderer: { xr: { isPresenting: true } },
+      player: { head: new Object3D() },
+      camera: new Object3D(),
+    };
+    const system = new GardenAudioSystem(world as never, {} as never, 40);
+    system.queries = { beds: new FakeQuery() } as never;
+    system.config.engine.value = engine;
+    system.init();
+    const full = garden(fullBedExcept([12]));
+    bus.emit('garden:changed', { state: full, diff: { added: [], removed: [], changed: [] } });
+    bus.emit('room:signature', { signature: WANDERER, starterSeeds: false });
+    let notes = 0;
+    (engine as unknown as { g: { pool: { play(): boolean } } }).g.pool.play = (): boolean => {
+      notes++;
+      return true;
+    };
+    const target = { kind: 'plant' as const, id: full.plants[0]!.id };
+    bus.emit('gesture:pinchStart', {
+      type: 'gesture:pinchStart',
+      hand: 'right',
+      target,
+      pos: { x: 0, y: 0, z: 0 },
+    });
+    const TIMES: unknown[] = [null];
+    const DY: unknown[] = [null];
+    for (let i = 1; i <= FRAMES * (MOST_ROUNDS + 1); i++) {
+      TIMES.push(1 + i / 72);
+      DY.push(0.06 * Math.sin(i * 0.05)); // ±0.55 of the height around 0.5, about 1.7 s a sweep
+    }
+    const pull = { type: 'gesture:pull' as const, hand: 'right' as const, target, dy: 0.01 };
+    let k = 0;
+    const run = (): void => {
+      for (let i = 0; i < FRAMES; i++) {
+        const n = ++k;
+        ctx.currentTime = TIMES[n] as number;
+        pull.dy = DY[n] as number;
+        bus.emit('gesture:pull', pull);
+      }
+    };
+    const isClean = (cost: { gcs: number; grewBytes: number }): boolean =>
+      cost.gcs === 0 && cost.grewBytes >= 0 && cost.grewBytes < PROBE_BYTES;
+    run(); // warm up
+    const rounds: { gcs: number; grewBytes: number }[] = [];
+    for (let i = 0; i < MOST_ROUNDS; i++) {
+      const cost = heapCost(run);
+      rounds.push(cost);
+      if (isClean(cost)) break;
+    }
+    console.log(
+      `T-147b preview, a pull every frame: heap ${JSON.stringify(rounds[rounds.length - 1])} per ${FRAMES} ` +
+        `frames, ${notes} notes in ${k} frames, after ${rounds.length} rounds (Node)`,
+    );
+    expect(isClean(rounds[rounds.length - 1]!), JSON.stringify(rounds)).toBe(true);
+    // It did the work, throttled: notes all along, never more than one per PREVIEW_MIN_GAP_S.
+    expect(notes).toBeGreaterThan(k / 72 / PREVIEW_MIN_GAP_S / 4);
+    expect(notes).toBeLessThanOrEqual(Math.ceil(k / 72 / PREVIEW_MIN_GAP_S));
+    system.destroy();
   }, 120_000);
 });
