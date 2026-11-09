@@ -95,7 +95,8 @@ device, 7–8 Nov: about **90 fps** (Quest 3S on the dev server with the recorde
 ## Judging self-scores (/10)
 | Gate | Innovation | Experience | Technical | Polish | By |
 |---|---|---|---|---|---|
-| Today, 15 Oct (product-owner guess, no headset; Nov 12 guess 6 / 6 / 5 / 5; see DEVPOST_DRAFT §2) | 4 | 3 | 5 | 2 | product-owner |
+| 15 Oct (product-owner guess, no headset; Nov 12 guess 6 / 6 / 5 / 5; see DEVPOST_DRAFT §2; superseded 9 Nov) | 4 | 3 | 5 | 2 | product-owner |
+| **9 Nov, G3 re-score** (strict, develop e3af64b; headsets 7–8 Nov, one room each; no headset video, no stranger, the freeze build not yet on a headset; Best First Five Minutes 5; Stage 1 fails until the video exists; evidence and the four ★ accept-with-actions decisions for Parth: FEATURE_FREEZE_PREP_2026-11-12 §5.1) | 6 | 6 | 6 | 4 | product-owner |
 
 ## Stand-ups
 ### 2026-11-09
