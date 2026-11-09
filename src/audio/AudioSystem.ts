@@ -6,6 +6,7 @@ import { createSystem, Types, type Entity } from '@iwsdk/core';
 
 import { BedAnchor } from '../core/components.js';
 import { bus, clock, flags, log, MS_PER_DAY, settings } from '../core/index.js';
+import { PULL_RANGE_M } from '../garden/index.js';
 
 import { Engine, type AudioEngine } from './AudioEngine.js';
 import { MS_PER_MINUTE } from './config.js';
@@ -91,6 +92,17 @@ export class GardenAudioSystem extends createSystem(
   private readonly removed = new Set<string>();
   /** Per hand (left 0, right 2) the ring and step a carried seed or dragged plant would land in; −1 = none. */
   private readonly hoverCell = new Int16Array(4).fill(-1);
+  /** T-147b: per hand (left 0, right 1) the plant its pinch took, as it was then; null for none. */
+  private readonly held: (Plant | null)[] = [null, null];
+  /** T-147b: the pulled plant the engine previews, one object written on every pull sample. */
+  private readonly pulled: Plant = {
+    id: '',
+    voice: 'bell',
+    cell: { ring: 0, step: 0 },
+    height: 0.5,
+    hue: 0.5,
+    plantedAt: 0,
+  };
 
   override init(): void {
     this.engine = this.config.engine.value as AudioEngine;
@@ -141,6 +153,38 @@ export class GardenAudioSystem extends createSystem(
           this.engine.ui('tick');
         kept[i] = ring;
         kept[i + 1] = step;
+      }),
+      // T-147b, UX §3.4: a pinch on a plant ticks. Its cell is the hand's last, so a drag that starts there does not
+      // tick again.
+      bus.on('gesture:pinchStart', ({ hand, target }) => {
+        const id = target?.kind === 'plant' ? target.id : null;
+        let plant: Plant | null = null;
+        for (let k = 0; k < this.plants.length; k++)
+          if ((this.plants[k] as Plant).id === id) plant = this.plants[k] as Plant;
+        this.held[hand === 'left' ? 0 : 1] = plant;
+        if (plant === null) return;
+        this.engine.ui('tick');
+        this.hoverCell[hand === 'left' ? 0 : 2] = plant.cell.ring;
+        this.hoverCell[hand === 'left' ? 1 : 3] = plant.cell.step;
+      }),
+      // The pulled plant at the height its release would save; the engine throttles. heightAfterPull, inline: a
+      // fraction returned through a call is boxed (BUG-036), and this runs every frame of a pull.
+      bus.on('gesture:pull', ({ hand, dy }) => {
+        const from = this.held[hand === 'left' ? 0 : 1] ?? null;
+        if (from === null) return;
+        const p = this.pulled;
+        p.id = from.id;
+        p.voice = from.voice;
+        p.cell = from.cell;
+        p.hue = from.hue;
+        p.plantedAt = from.plantedAt;
+        const h = Number.isNaN(dy) ? from.height : from.height + dy / PULL_RANGE_M;
+        p.height = h > 0 ? (h < 1 ? h : 1) : 0;
+        this.engine.preview(p);
+      }),
+      // A dragged plant let go where it does not land (the hole, or no cell) goes back: the one "no" sound.
+      bus.on('gesture:release', ({ gesture, zone, cell }) => {
+        if (gesture === 'drag' && zone !== 'outer' && cell === null) this.engine.ui('bump');
       }),
       // §6: the bed landed (a restore too): its chord, from the bed, once the signature that follows has tuned the
       // engine (chordDue). Before the signature the engine gets the bed with no plant, so the chord is at the bed

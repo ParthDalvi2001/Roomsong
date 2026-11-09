@@ -40,6 +40,9 @@ import {
   PARAM_SMOOTH_S,
   PLACED_DB_RE_PLANT,
   PLUCK_STRINGS_PER_TICK,
+  PREVIEW_DB_RE_NOTE,
+  PREVIEW_MIN_GAP_S,
+  PREVIEW_MIN_HEIGHT_STEP,
   REVERB_HPF_HZ,
   REVERB_SMALL_RT60_S,
   REVERB_SWAP_DELAY_S,
@@ -103,6 +106,7 @@ export interface AudioEngine {
   chordTone(note: 0 | 1 | 2, time: number, at?: Vec3): void;
   /** Idempotent and diff-based; plants sound at their world position, equal-power panned. */
   syncPlants(plants: readonly Plant[], bedPose: Mat4): void;
+  /** T-147b: the synced plant `plant.id` at the height `plant.height`, quietly, now; throttled in the engine. */
   preview(plant: Plant): void;
   ui(sound: Exclude<UiSound, 'placed'>): void;
   /** P-012: the plant `plantId`, synced and just set into its cell, sounds its own note now, quietly. */
@@ -200,6 +204,11 @@ export class Engine implements AudioEngine {
   private readonly centre = { x: 0, y: 0 };
   /** The ending chord's and the ripple's notes, one after the other (a voice reads its params in the trigger). */
   private readonly chord: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 };
+  /** T-147b: the owner of the preview notes (one at a time), and the last one's plant, audio time and height. */
+  private readonly previewOwner = {};
+  private previewId = '';
+  private previewAt = -Infinity;
+  private previewHeight = 0.5;
 
   private reverbMode: 'auto' | 'small' | 'off' = 'auto';
   /** In Listen (§6): the sweep is on and the reverb send lifted. */
@@ -356,7 +365,27 @@ export class Engine implements AudioEngine {
     );
   }
 
-  preview(): void {} // T-147: waits for its task; silent and safe to call until then
+  /**
+   * T-147b, UX §3.4: the plant being pulled, its own note at the pulled height, quietly, now. A pull sample comes every
+   * frame: at most one note per PREVIEW_MIN_GAP_S, none for a height near the last note's, and a new note ends the last.
+   */
+  preview(plant: Plant): void {
+    const g = this.g;
+    const r = this.records.get(plant.id);
+    if (g === null || r === undefined || g.ctx.state !== 'running' || this.suspending !== null) return;
+    const now = g.ctx.currentTime;
+    const h = plant.height;
+    const isNear = plant.id === this.previewId && Math.abs(h - this.previewHeight) < PREVIEW_MIN_HEIGHT_STEP;
+    if (this.volume === 0 || now - this.previewAt < PREVIEW_MIN_GAP_S || isNear) return;
+    this.previewId = plant.id;
+    this.previewAt = now;
+    this.previewHeight = h;
+    // The record's pitch and place, and so a Pluck's string is the record's: height changes neither pitch nor hue.
+    const p = voiceParamsFor(plant, r.params.hz, this.chord, this.recipe.heightFloorDb);
+    p.gain *= dbToGain(this.recipe.mixDb[r.plant.voice] + PREVIEW_DB_RE_NOTE);
+    g.pool.release(this.previewOwner, now);
+    g.pool.play(r.voice, now, p, r.x, r.y, r.z, this.previewOwner);
+  }
 
   ui(sound: UiSound, plantId = ''): void {
     if (sound === 'goodnight') this.goodnight();

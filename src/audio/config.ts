@@ -169,6 +169,12 @@ export const UI_LEVEL_DB_RE_PLANT: readonly [number, number] = [-10, 3];
  * inside UI_LEVEL_DB_RE_PLANT. A new plant's own notes are −10.8 dB with today's sound and −5.4 dB with a style.
  */
 export const PLACED_DB_RE_PLANT = -9;
+/** T-147b, UX §3.4 "quiet": a pulled plant's preview note, in dB under its own note at the pulled height. */
+export const PREVIEW_DB_RE_NOTE = -6;
+/** T-147b: at most one preview note per this many seconds of audio clock: a pull sample comes every frame. */
+export const PREVIEW_MIN_GAP_S = 0.15;
+/** T-147b: no new preview note while the height is less than this far from the last one's (0..1). */
+export const PREVIEW_MIN_HEIGHT_STEP = 0.05;
 
 /** Weight of the newest tick in the moving average behind `stats.cpuEstimate`. */
 export const TICK_EMA = 0.05;

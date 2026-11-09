@@ -11,7 +11,10 @@ import { WANDERER } from '../../../src/garden/index.js';
 import { garden, plant, seed } from '../garden/fixtures.js';
 import { FakeEntity, FakeQuery } from '../render/seedRig.js';
 
-import type { GardenState } from '../../../src/garden/index.js';
+import type { EventMap } from '../../../src/core/index.js';
+import type { GardenState, Plant } from '../../../src/garden/index.js';
+
+type Release = EventMap['gesture:release'];
 
 const NO_DIFF = { added: [], removed: [], changed: [] };
 const PLACEMENT = { pose: new Matrix4().elements, level: 1 as const };
@@ -31,6 +34,8 @@ function rig() {
     },
     setListenerPose: (head: ArrayLike<number>) => listener.push(Array.from(head)),
     ui: (sound: string, plantId?: string) => calls.push(['ui', sound, plantId].filter(Boolean).join(' ')),
+    preview: (p: Plant) =>
+      calls.push(`preview ${p.id} ${p.voice} ${p.cell.ring},${p.cell.step} ${p.hue} ${p.height.toFixed(2)}`),
   };
   const head = new Object3D();
   head.matrixWorld.makeTranslation(0, 1.2, 0);
@@ -191,6 +196,64 @@ describe('the UI sounds of the garden (T-164 §6)', () => {
     hover('right', { ring: 1, step: 3 }); // back over the bed
     hover('right', { ring: 2, step: 0 }, { kind: 'plant', id: 'p' } as never); // a hover, not a drag
     expect(r.calls).toEqual(['ui tick', 'ui tick', 'ui tick', 'ui tick']);
+  });
+
+  // T-147b, UX §3.4: the sounds of shaping a plant.
+  const ORIGIN = { x: 0, y: 0, z: 0 };
+  const pinch = (hand: 'left' | 'right', target: { kind: 'plant' | 'seed'; id: string } | null): void =>
+    bus.emit('gesture:pinchStart', { type: 'gesture:pinchStart', hand, target, pos: ORIGIN });
+  const pull = (hand: 'left' | 'right', dy: number): void =>
+    bus.emit('gesture:pull', { type: 'gesture:pull', hand, target: { kind: 'plant', id: '' }, dy });
+
+  it('a pinch on a plant ticks; a drag from it then ticks at each new cell, not at its own cell first; a pinch on a seed or on nothing does not tick', () => {
+    const r = rig();
+    r.changed(garden([plant('a', 1, 2)]));
+    pinch('right', { kind: 'plant', id: 'a' });
+    pinch('left', { kind: 'seed', id: 's' });
+    pinch('left', null);
+    expect(r.calls).toEqual(['ui tick']);
+    bus.emit('target:hover', { hand: 'right', target: null, cell: { ring: 1, step: 2 } }); // the drag starts at home
+    bus.emit('target:hover', { hand: 'right', target: null, cell: { ring: 1, step: 3 } });
+    expect(r.calls).toEqual(['ui tick', 'ui tick']);
+  });
+
+  it('each pull sample previews the pinched plant at the pulled height (heightAfterPull), per hand; the engine throttles', () => {
+    const r = rig();
+    r.changed(garden([plant('a', 1, 2), plant('b', 3, 7, { voice: 'pad', height: 0.9 })]));
+    pinch('right', { kind: 'plant', id: 'a' });
+    pinch('left', { kind: 'plant', id: 'b' });
+    r.calls.length = 0;
+    pull('right', 0.033); // 0.3 of PULL_RANGE_M up
+    pull('right', -0.2); // past the bottom
+    pull('left', 0.033); // past the top
+    expect(r.calls).toEqual([
+      'preview a bell 1,2 0.25 0.80',
+      'preview a bell 1,2 0.25 0.00',
+      'preview b pad 3,7 0.25 1.00',
+    ]);
+  });
+
+  it('a drag let go where it does not land (the hole, the rim) bumps; a drag that lands or is removed, a pull, a carry or a still pinch does not', () => {
+    const r = rig();
+    const release = (gesture: Release['gesture'], zone: Release['zone'], cell: Release['cell']): void =>
+      bus.emit('gesture:release', {
+        type: 'gesture:release',
+        hand: 'right',
+        gesture,
+        target: { kind: gesture === 'carry' ? 'seed' : 'plant', id: 'a' },
+        pos: ORIGIN,
+        zone,
+        cell,
+        dy: gesture === 'pull' ? 0.01 : null,
+      });
+    release('drag', 'inner', null);
+    release('drag', 'bed', null);
+    release('drag', 'bed', { ring: 1, step: 3 });
+    release('drag', 'outer', null); // removed: garden:removed plays removeRev
+    release('pull', 'bed', null);
+    release('carry', 'inner', null); // garden:seedBack bumps for it
+    release('none', 'inner', null);
+    expect(r.calls).toEqual(['ui bump', 'ui bump']);
   });
 
   it('with the gaze mode on, a cell the gaze crosses does not tick: its dwell ring is the cue there (FR-HND-12)', () => {

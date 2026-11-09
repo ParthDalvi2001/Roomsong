@@ -1470,12 +1470,11 @@ describe('the AudioContext (NFR-PERF-10, FR-SYS-05)', () => {
 });
 
 describe('what later tasks fill in', () => {
-  it('preview is silent and safe to call until then; Listen mode makes no node (uiSounds.test.ts has the sweep)', async () => {
+  it('Listen mode makes no node (uiSounds.test.ts has the sweep; placed.test.ts has preview, T-147b)', async () => {
     const { ctx, engine } = await start();
     const api: AudioEngine = engine; // the contract's signatures (API_SPEC §1.2)
     const fixed = ctx.nodes.length;
     expect(() => {
-      api.preview(plant('a', 'bell', 0, 0));
       api.enterListen();
       api.exitListen();
     }).not.toThrow();
