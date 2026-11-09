@@ -6,7 +6,7 @@ import { createSystem, type Entity } from '@iwsdk/core';
 import { Caption } from '../core/components.js';
 import { bus, clock, flags, log, settings, type StringKey } from '../core/index.js';
 
-import { ONBOARD_CAPTION_MS } from './config.js';
+import { NO_SEEDS_GAP_MS, NO_SEEDS_SHOW_MS, ONBOARD_CAPTION_MS } from './config.js';
 import { Onboarding, type OnboardingStep } from './Onboarding.js';
 
 /** UX §3.3: the steps that have a caption, in a headset and in the garden window. */
@@ -19,7 +19,8 @@ const CAPTIONS: Partial<Record<OnboardingStep, readonly [xr: StringKey, window: 
 /** The plant step's caption in gaze mode (T-160). */
 const GAZE_PLANT: StringKey = 'onboardPlantGaze';
 /** The notices said once a session, on their own entity so a step's caption and a notice do not take each other
- *  back: a palm up with no seed left (UX §3.3; a new seed each day), the first removal (UX §7, the undo petal). */
+ *  back: the first removal (UX §7, the undo petal), and in the garden window a palm up with no seed left. In a
+ *  headset that one is said at every such palm up, on an entity of its own (BUG-056, `sayNoSeeds`). */
 const SEEDS_TOMORROW: StringKey = 'seedsTomorrow';
 /** The undo hint, as the step captions: for a headset, the garden window (a click), and gaze mode (a dwell). */
 const UNDO_HINT: readonly [xr: StringKey, window: StringKey, gaze: StringKey] = [
@@ -38,6 +39,12 @@ export class OnboardingSystem extends createSystem({}) {
   );
   private caption!: Entity;
   private notice!: Entity;
+  /** BUG-056: the "no seeds" notice's own entity, so its repeats never take another notice back. */
+  private noSeeds!: Entity;
+  /** When that notice was last raised, on core's clock. */
+  private noSeedsAt = -Infinity;
+  /** A bed is placed: between a Re-place and its bed there is no garden to be out of seeds in. */
+  private isPlaced = false;
   /** The notices raised this session: each is said once. */
   private readonly noticed = new Set<StringKey>();
   /** The seeds of the supply at the latest `garden:changed`: none, and a palm up gets "More seeds tomorrow". */
@@ -61,6 +68,7 @@ export class OnboardingSystem extends createSystem({}) {
   override init(): void {
     this.caption = this.createEntity();
     this.notice = this.createEntity();
+    this.noSeeds = this.createEntity();
     const machine = this.machine;
     this.cleanupFuncs.push(
       // D-053: whenever a session begins on an empty bed, not only on the visit with the starter seeds, so a player
@@ -92,7 +100,14 @@ export class OnboardingSystem extends createSystem({}) {
       }),
       // The supply is empty (day 1 has 3 seeds; the next comes tomorrow): the garden hands out nothing, so say why.
       bus.on('gesture:palmUp', () => {
-        if (this.seeds === 0) this.raiseNotice(SEEDS_TOMORROW);
+        if (this.seeds === 0) this.sayNoSeeds();
+      }),
+      bus.on('room:placementLevel', () => {
+        this.isPlaced = false; // a placement runs: the old bed is gone
+        this.takeNoSeeds();
+      }),
+      bus.on('room:bedPlaced', () => {
+        this.isPlaced = true;
       }),
       // The first removal of the session: the undo petal is a target (UX §7), one hint while it is there.
       bus.on('garden:removed', () => {
@@ -107,6 +122,7 @@ export class OnboardingSystem extends createSystem({}) {
       bus.on('listen:enter', () => {
         this.isListening = true;
         this.takeCaption(); // Listen dims the room: no instruction over it
+        this.takeNoSeeds();
         machine.listened();
         this.sync();
       }),
@@ -129,6 +145,9 @@ export class OnboardingSystem extends createSystem({}) {
         this.noticed.clear();
         this.isListening = false;
         if (this.notice.hasComponent(Caption)) this.notice.removeComponent(Caption);
+        this.isPlaced = false;
+        this.noSeedsAt = -Infinity;
+        this.takeNoSeeds();
         this.sync();
       }),
     );
@@ -173,6 +192,25 @@ export class OnboardingSystem extends createSystem({}) {
     this.noticed.add(id);
     if (this.notice.hasComponent(Caption)) this.notice.removeComponent(Caption); // one live caption per raiser
     this.notice.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });
+  }
+
+  /**
+   * BUG-056: a palm up with the supply empty. In a headset, every time, at most once per NO_SEEDS_GAP_MS and for
+   * NO_SEEDS_SHOW_MS; never in Listen and never before a bed is placed. In the garden window the pointer is always
+   * palm up (LLD §11), so it stays one of the once-a-session notices there.
+   */
+  private sayNoSeeds(): void {
+    if (this.inWindow) return this.raiseNotice(SEEDS_TOMORROW);
+    const now = clock.now();
+    // `!(... >= gap)`: a clock that stepped back (core's is wall time) says it again rather than never.
+    if (this.isListening || !this.isPlaced || (now >= this.noSeedsAt && now - this.noSeedsAt < NO_SEEDS_GAP_MS)) return;
+    this.noSeedsAt = now;
+    this.takeNoSeeds(); // one live caption per raiser: an entity that still has one would not qualify again
+    this.noSeeds.addComponent(Caption, { key: SEEDS_TOMORROW, expiresAt: now + NO_SEEDS_SHOW_MS });
+  }
+
+  private takeNoSeeds(): void {
+    if (this.noSeeds.hasComponent(Caption)) this.noSeeds.removeComponent(Caption);
   }
 
   private takeCaption(): void {

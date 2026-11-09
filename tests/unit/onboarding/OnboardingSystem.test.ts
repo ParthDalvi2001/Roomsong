@@ -6,7 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Caption } from '../../../src/core/components.js';
 import { bus, DEFAULT_SETTINGS, log, settings } from '../../../src/core/index.js';
-import { ONBOARD_CAPTION_MS, STEP_STALL_MS } from '../../../src/onboarding/config.js';
+import {
+  NO_SEEDS_GAP_MS,
+  NO_SEEDS_SHOW_MS,
+  ONBOARD_CAPTION_MS,
+  STEP_STALL_MS,
+} from '../../../src/onboarding/config.js';
 import { OnboardingSystem } from '../../../src/onboarding/OnboardingSystem.js';
 import { garden, plant, seed as supplySeed } from '../garden/fixtures.js';
 import { FakeEntity } from '../render/seedRig.js';
@@ -19,6 +24,7 @@ afterEach(() => {
   settings.set({ ...DEFAULT_SETTINGS });
   bus.emit('xr:sessionEnd', { visible: false });
   vi.restoreAllMocks();
+  vi.useRealTimers(); // the BUG-056 test fakes the clock: back even when one of its expects throws
 });
 
 function rig() {
@@ -37,6 +43,7 @@ function rig() {
   live.push(system);
   const caption = created[0]!;
   const notice = created[1]!;
+  const noSeeds = created[2]!;
   const steps: string[] = [];
   const off = bus.on('onboarding:step', ({ step }) => steps.push(step));
   live.push({ destroy: off } as never);
@@ -52,6 +59,10 @@ function rig() {
     /** Every notice it raised, in order; and the one up now. */
     notices: () => notice.added.filter(([c]) => c === Caption).map(([, v]) => v.key as string),
     notice: () => (notice.hasComponent(Caption) ? (notice.getValue(Caption, 'key') as string) : null),
+    /** BUG-056: how often "no seeds" was raised, whether it is up now, and when the last one is asked to end. */
+    noSeedsCount: () => noSeeds.added.filter(([c]) => c === Caption).length,
+    noSeedsUp: () => noSeeds.hasComponent(Caption),
+    noSeedsEnds: () => noSeeds.getValue(Caption, 'expiresAt') as number,
     frame: (seconds = 0.014) => system.update(seconds, (timeS += seconds)),
   };
 }
@@ -269,24 +280,62 @@ describe('OnboardingSystem: Listen, the hints setting, the session', () => {
 });
 
 describe('OnboardingSystem: the one-time notices (UX re-check 23 Oct)', () => {
-  it('"More seeds tomorrow" at a palm up with an empty supply, once a session, not while seeds are left', () => {
+  it('BUG-056: in a headset every palm up with an empty supply says "no seeds", again after 4 s and not more often', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_800_000_000_000);
     const r = rig();
     started();
+    bus.emit('room:bedPlaced', {} as EventMap['room:bedPlaced']);
     bus.emit('garden:changed', changed(2, 2, 1)); // one seed left
     bus.emit('gesture:palmUp', palmUp);
-    expect(r.notices()).toEqual([]);
+    expect(r.noSeedsCount()).toBe(0);
     bus.emit('garden:changed', changed(3, 1, 0)); // the last one planted
     bus.emit('gesture:palmUp', palmUp);
-    expect(r.notice()).toBe('seedsTomorrow');
+    expect(r.noSeedsCount()).toBe(1);
+    expect(r.noSeedsEnds() - Date.now()).toBe(NO_SEEDS_SHOW_MS); // asked to stay 2 s
+    for (let ms = 400; ms < NO_SEEDS_GAP_MS; ms += 400) {
+      vi.advanceTimersByTime(400); // the palm stays up: a palm up every 400 ms
+      bus.emit('gesture:palmUp', palmUp);
+    }
+    expect(r.noSeedsCount()).toBe(1); // 3.6 s on: not again
+    vi.advanceTimersByTime(400);
     bus.emit('gesture:palmUp', palmUp);
-    expect(r.notices()).toEqual(['seedsTomorrow']);
-    expect(r.shown()).toBeNull(); // the step's caption entity is not touched
-    bus.emit('xr:sessionEnd', { visible: false });
-    expect(r.notice()).toBeNull();
+    expect(r.noSeedsCount()).toBe(2); // 4 s on: again
+    expect(r.notices()).toEqual([]); // the once-a-session notices and the step's caption are not touched
+    expect(r.shown()).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('BUG-056: "no seeds" is not said in Listen, before a bed is placed or while one is placed again', () => {
+    const r = rig();
     started();
     bus.emit('garden:changed', changed(3, 0, 0));
     bus.emit('gesture:palmUp', palmUp);
-    expect(r.notices()).toEqual(['seedsTomorrow', 'seedsTomorrow']); // the next session says it again
+    expect(r.noSeedsCount()).toBe(0); // no bed yet
+    bus.emit('room:bedPlaced', {} as EventMap['room:bedPlaced']);
+    bus.emit('listen:enter', {});
+    bus.emit('gesture:palmUp', palmUp);
+    expect(r.noSeedsCount()).toBe(0); // Listen
+    bus.emit('listen:exit', { timedOut: false });
+    bus.emit('gesture:palmUp', palmUp);
+    expect(r.noSeedsCount()).toBe(1);
+    bus.emit('room:placementLevel', { level: 3 }); // "Place the garden again": the notice goes with the bed
+    expect(r.noSeedsUp()).toBe(false);
+    bus.emit('gesture:palmUp', palmUp);
+    expect(r.noSeedsCount()).toBe(1);
+    bus.emit('xr:sessionEnd', { visible: false });
+    expect(r.noSeedsUp()).toBe(false);
+  });
+
+  it('in the garden window, where the pointer is always palm up, "no seeds" stays a once-a-session notice', () => {
+    const r = rig();
+    r.xr.isPresenting = false;
+    started();
+    bus.emit('garden:changed', changed(3, 0, 0));
+    bus.emit('gesture:palmUp', palmUp);
+    bus.emit('gesture:palmUp', palmUp);
+    expect(r.notices()).toEqual(['seedsTomorrow']);
+    expect(r.noSeedsCount()).toBe(0);
   });
 
   it('"Pinch the petal to undo" on the first removal of the session, once; not in Listen; not with hints off', () => {

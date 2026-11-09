@@ -38,6 +38,19 @@ export const CAPTION_BACKDROP = 'rgba(20, 26, 31, 0.9)';
 /** FR-UI-05: high contrast is cream on opaque black (19:1; at least 7:1) with an outline. */
 export const CAPTION_BACKDROP_HIGH_CONTRAST = '#000000';
 export const CAPTION_OUTLINE_PX = 4;
+/**
+ * BUG-056, the quiet notice ("No seeds left. More tomorrow."): a smaller pill whose backdrop lets 60 % of the room
+ * through. The words stay solid, with a charcoal edge around each letter, because cream on that glass over a white
+ * wall is 1.3:1 and the edge is what keeps NFR-ACC-01's 4.5:1 (cream on charcoal, 17:1). 0.875 is the smallest
+ * FR-UI-04 allows: a 1.4 cm cap height at 0.6 m. In high contrast it is drawn as every caption is: opaque black.
+ * It sits above the gaze line, at the top of the view box (16 degrees up, its upper edge at 18.1 of NFR-FOV-01's
+ * 20), not below it where the ring and its plants are. None of this was seen on a headset.
+ */
+export const CAPTION_BACKDROP_QUIET = 'rgba(20, 26, 31, 0.4)';
+export const CAPTION_QUIET_SCALE = 0.875;
+export const CAPTION_QUIET_ABOVE_GAZE_DEG = 16;
+export const CAPTION_QUIET_EDGE_COLOUR = '#141A1F';
+export const CAPTION_QUIET_EDGE_PX = 8;
 /** Drawn after the garden and without a depth test: a caption is never hidden inside a plant. */
 export const CAPTION_RENDER_ORDER = 1000;
 
