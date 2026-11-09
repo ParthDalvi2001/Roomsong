@@ -7,6 +7,10 @@
 // 3. Licences (T-171, THIRD_PARTY_LICENSES.md): dist/LICENSES/ holds licence texts, and no file holds the code of
 //    @drawcall/uikitml, which has no licence (vite.config.ts swaps it for build/stubs/uikitml.js).
 // 4. No device test page (proto/) is in the build (T-189, D-060 (10)): only a ROOMSONG_PROTO=1 build has them.
+//    No file at all under dist/proto/.
+// 5. Dev-only and unsafe code (security check 9 Nov §5): no headset recorder (its endpoints, its module, the ghost
+//    switch), no source map, and no `eval(` or `new Function` in shipped JS. The policy blocks both, so the code
+//    would only fail on the headset. Today's build holds none, so there is no allowed third-party string.
 // shortcut: a host joined from pieces inside SDK code shows only as its fixed head (down to a bare "https://"),
 // upgrade if the policy ever allows a remote host; until then the browser blocks the request itself.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -25,6 +29,9 @@ const EXPECTED_POLICY =
   "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' data:; style-src-attr 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'";
 
 const LICENSE_TEXT = /^LICENSES[/\\][^/\\]+\.txt$/; // a text the licenseTexts plugin in vite.config.ts writes
+// tests/tools/headset-recorder.ts and headset-ghost.ts and vite.config.ts's dev endpoints (apply: 'serve').
+const RECORDER_CODE = ['__snap', '__rec', 'headset-recorder', 'ghost='];
+const DYNAMIC_CODE = /\beval\s*\(|\bnew\s+Function\b/;
 // shortcut: two messages of @drawcall/uikitml 0.1.8 (parse.js, css.js), re-read them if IWSDK pins another version.
 const UNLICENSED_CODE = [
   'UIKitML requires exactly one root component.',
@@ -52,9 +59,14 @@ for (const file of files) {
   // T-175 (API_SPEC §3): the capture rig's hand cue is for dev builds only; its mesh name marks its code.
   if (!LICENSE_TEXT.test(file) && text.includes('hand-cue'))
     failures.push(`${file}: the hand cue (render/HandCue.ts) is in a production build`);
-  if (!file.endsWith('.html')) continue;
+  for (const marker of LICENSE_TEXT.test(file) ? [] : RECORDER_CODE)
+    if (text.includes(marker)) failures.push(`${file}: the dev headset recorder ("${marker}") is in the build`);
+  if (file.endsWith('.map')) failures.push(`${file}: a source map is in the build: it ships the source`);
+  if (file.endsWith('.js') && DYNAMIC_CODE.test(text))
+    failures.push(`${file}: eval( or new Function, which the policy blocks: the code would fail on the headset`);
   if (/^proto[/\\]/.test(file))
-    failures.push(`${file}: a device test page is in the build: build without ROOMSONG_PROTO=1`);
+    failures.push(`${file}: a device test page's file is in the build: build without ROOMSONG_PROTO=1`);
+  if (!file.endsWith('.html')) continue;
   pages += 1;
   const policy = CSP_META.exec(text)?.[1].replaceAll('&#39;', "'"); // Vite writes ' as &#39;
   if (policy === undefined) failures.push(`${file}: no Content-Security-Policy meta tag`);
