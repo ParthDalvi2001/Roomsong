@@ -61,7 +61,7 @@ interface Asked {
 function record(i: number, voice: VoiceType, step: number, hz: number, gain: number): Grooved {
   return {
     plant: { id: `p${i}`, voice, cell: { ring: i % 5, step }, height: 0.55, hue: 0.5, plantedAt: 0 },
-    params: { hz, gain, release: 1, cutoffMul: 1, detune: 0, timbre: 0 },
+    params: { hz, gain, release: 1, cutoffMul: 1, detune: 0, timbre: 0, calm: false },
     seed: i * 7919,
     voice: { name: `${voice}${i}` } as never,
     x: i,

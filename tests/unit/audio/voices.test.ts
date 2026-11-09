@@ -62,6 +62,7 @@ const params = (over: Partial<VoiceParams> = {}): VoiceParams => ({
   cutoffMul: 1,
   detune: 0,
   timbre: 0,
+  calm: false,
   ...over,
 });
 

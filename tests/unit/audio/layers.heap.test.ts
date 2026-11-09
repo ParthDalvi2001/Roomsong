@@ -106,7 +106,7 @@ function make() {
       hue: 0.5,
       plantedAt: 0,
     },
-    params: { hz: 220, gain: 0.3, release: 1, cutoffMul: 1, detune: 0, timbre: 0 },
+    params: { hz: 220, gain: 0.3, release: 1, cutoffMul: 1, detune: 0, timbre: 0, calm: false },
     seed: i * 7919,
     voice: {} as never,
     x: 0,

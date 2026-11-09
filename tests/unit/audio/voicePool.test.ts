@@ -58,6 +58,7 @@ const note = (gain = 1, release = 1000): VoiceParams => ({
   cutoffMul: 1,
   detune: 0,
   timbre: 0,
+  calm: false,
 });
 
 function setup(lengthS?: number): {

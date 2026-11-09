@@ -1,5 +1,6 @@
-// Style B's calm voices (voices/calm.ts): each plant's own tone is deterministic, inside its ranges, and differs
-// from its neighbours'; the notes stay small (≤ 8 sources) and fill the note record the pool steals by.
+// The calm voices (voices/calm.ts), a note's with `calm` (T-193: a New plant's, in every style): each plant's own
+// tone is deterministic, inside its ranges, and differs from its neighbours'; the notes stay small (≤ 8 sources) and
+// fill the note record the pool steals by.
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -21,18 +22,18 @@ import { FakeAudioContext, type FakeNode } from './fakeAudio.js';
 
 const B = STYLES.B;
 
-function play(voice: 'bell' | 'pluck' | 'choir' | 'pad', timbre: number): FakeNode[] {
+function play(voice: 'bell' | 'pluck' | 'choir' | 'pad', timbre: number, calm = true): FakeNode[] {
   const ctx = new FakeAudioContext();
   const ref = { note: new Note() };
-  const p: VoiceParams = { hz: 440, gain: 0.5, release: 1, cutoffMul: 1, detune: 0, timbre };
+  const p: VoiceParams = { hz: 440, gain: 0.5, release: 1, cutoffMul: 1, detune: 0, timbre, calm };
   const make = { bell: Bell, pluck: Pluck, choir: Choir, pad: Pad }[voice];
   new make(ctx.audio, ref, B).trigger(1, p, ctx.createGain() as unknown as AudioNode);
   expect(ref.note.endTime).toBeGreaterThan(1); // the pool can steal it
   return ctx.nodes.filter((n) => n.kind === 'oscillator' || n.kind === 'bufferSource');
 }
 
-describe('calm voices (style B)', () => {
-  it('only style B has them; its percussion is the kick and its drone an octave down', () => {
+describe('calm voices (`calm`: a New plant; the drone, ripple and goodnight of style B)', () => {
+  it('only style B has them for the notes that are no plant’s; its percussion is the kick and its drone an octave down', () => {
     expect([TODAY.calmVoices, STYLES.A.calmVoices, B.calmVoices, STYLES.C.calmVoices]).toEqual([
       false,
       false,
@@ -81,5 +82,11 @@ describe('calm voices (style B)', () => {
     expect(play('pluck', 5)).toHaveLength(7);
     expect(play('choir', 5)).toHaveLength(3);
     expect(play('pad', 5)).toHaveLength(4);
+  });
+
+  it('with `calm` false the same four voices, on style B’s recipe, play as built', () => {
+    expect((['bell', 'pluck', 'choir', 'pad'] as const).map((v) => play(v, 5, false).length)).toEqual([
+      2, 1, 2, 3,
+    ]);
   });
 });

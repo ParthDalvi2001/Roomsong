@@ -1,4 +1,5 @@
-// Style B's calm voices (Parth and Chinmay, 9 Nov): every tone worked out here, no recording.
+// The calm voices (Parth and Chinmay, 9 Nov): every tone worked out here, no recording. A note plays one when its
+// `calm` is set (T-193): a plant of the New library in every style, and style B's drone, ripple and goodnight.
 //   Bell plant → a large singing bowl · Pluck → a small bowl · Choir → bansuri · Pad (and the drone) → shruti box.
 // The garden and its notes are unchanged: only the tone behind each seed. Numbers and their sources: audio/config.ts.
 // Each plant sounds its own: `p.timbre` (its id and cell, mapping.ts) moves the bowl's modes, beat and brightness,

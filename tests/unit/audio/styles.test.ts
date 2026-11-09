@@ -482,11 +482,11 @@ describe('builds (§1.5) and soft percussion (§1.6)', () => {
 
 describe('the styles (§4)', () => {
   it.each(['A', 'B', 'C'] as const)("style %s's recipe reaches every voice's notes", (style) => {
-    const s = { ...STYLES[style], calmVoices: false }; // B's calm voices: calm.test.ts
+    const s = STYLES[style]; // the voices as built (`calm` false); the calm ones: calm.test.ts
     const ctx = new FakeAudioContext();
     const ref = { note: new Note() };
     const out = ctx.createGain() as unknown as AudioNode;
-    const p = { hz: 220, gain: 0.5, release: 1, cutoffMul: 1, detune: 0, timbre: 0 };
+    const p = { hz: 220, gain: 0.5, release: 1, cutoffMul: 1, detune: 0, timbre: 0, calm: false };
     const made = (fn: () => void): FakeNode[] => {
       const before = ctx.nodes.length;
       fn();
