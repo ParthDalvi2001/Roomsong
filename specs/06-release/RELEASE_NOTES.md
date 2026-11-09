@@ -1,4 +1,4 @@
-# Release Notes — Roomsong
+# Release Notes — SonicSpace
 
 **Status:** Living · **Owner:** devops-engineer (format) / product-owner (content)
 Format per version: Version · Date · Build hash · Highlights · Changes (feat/fix/perf) · Known issues · Device/browser tested (or "emulator only").

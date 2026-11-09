@@ -1,4 +1,4 @@
-# Freeze and Submit Runbook — Roomsong (T-183, T-185, T-187)
+# Freeze and Submit Runbook — SonicSpace (T-183, T-185, T-187)
 
 **Status:** Approved for use · **Owner:** devops-engineer · **Written:** 2026-10-27 · **Checked:** 2026-11-09 (T-169 prep; evidence steps T-192)
 The click-by-click order for the code freeze (15 Nov) and the submit day (17 Nov). The rules behind each step are in
@@ -13,11 +13,14 @@ records. Claude never pushes `main` and never creates or pushes a `v1.0.0*` tag 
 | 17 Nov, by 12:00 IST | Tag `v1.0.0-submission`; Chinmay submits by 18:00 IST; lock | T-185 |
 | 18 Nov 12:00 PT (19 Nov 01:30 IST) → 11 Dec | Deadline, then judging: no change to either link | T-187 |
 
-`<mirror>` below is the Netlify address, for example `https://roomsong.netlify.app` (Guide §1.2; D-060).
+`<mirror>` below is the Netlify address, for example `https://sonicspace.netlify.app` (Guide §1.2; D-060, D-069).
 All Terminal commands run in `~/Documents/test-pro/Roomsong`.
 
 **State on 9 Nov:** Pages is live from `main` (`https://parthdalvi2001.github.io/Roomsong/`, `main` = 5c676b6). The
-Netlify mirror is **not set up** (Parth sends the address or says "no mirror", DECISIONS_PENDING 7.1). With no mirror:
+product is now SonicSpace (D-069): once Parth renames the repository to `SonicSpace` the link is
+`https://parthdalvi2001.github.io/SonicSpace/`, as below; the old `/Roomsong/` path then answers 404 (Pages does not
+redirect a renamed repository; saved gardens stay, the origin is the same). Netlify is chosen for the mirror (project
+`sonicspace`), **not set up** yet: Parth sends the address (T-108). With no mirror:
 skip §1.4 and §1.6 step 2, check Pages alone in §1.5, and leave `<mirror>` out of the Devpost (§2 step 3). The device
 test pages are out of the release build (T-189). Two headsets exist (Parth's Quest 3S, Chinmay's Quest 3; TEST_PLAN
 §4.6), so the UAT and the smoke tests are run on one.
@@ -38,9 +41,9 @@ test pages are out of the release build (T-189). Two headsets exist (Parth's Que
 
 ### 1.2 Publish to Pages (Parth)
 1. Terminal: `git fetch origin && git checkout main && git merge --ff-only <C> && git push origin main && git checkout develop`
-2. github.com/ParthDalvi2001/Roomsong → **Actions**. Wait for the `deploy` run of `<C>` to go green (about 3 minutes;
+2. github.com/ParthDalvi2001/SonicSpace → **Actions**. Wait for the `deploy` run of `<C>` to go green (about 3 minutes;
    `ci` runs beside it). Red: §5.
-3. Open `https://parthdalvi2001.github.io/Roomsong/` and check the landing page shows.
+3. Open `https://parthdalvi2001.github.io/SonicSpace/` and check the landing page shows.
 
 ### 1.3 Tag the freeze (Parth)
 1. Terminal: `git tag -a v1.0.0-rc1 -m "Code freeze" <C> && git push origin v1.0.0-rc1`
@@ -48,13 +51,13 @@ test pages are out of the release build (T-189). Two headsets exist (Parth's Que
 
 ### 1.4 Put the same build on Netlify (Parth, the same day: the build is kept for 1 day, Guide §1.2; only with a mirror)
 1. Actions → the green `deploy` run → scroll to **Artifacts** → click **github-pages**. It downloads `github-pages.zip`.
-2. Make a folder `~/Roomsong-release/v1.0.0-rc1/` and move the zip into it. Double-click the zip: it gives
+2. Make a folder `~/SonicSpace-release/v1.0.0-rc1/` and move the zip into it. Double-click the zip: it gives
    `artifact.tar`. Double-click that: it gives a folder (`artifact`) with `index.html`, `assets`, `LICENSES`, `scenes`
    and `version.json` in it (no `proto` since T-189). That folder is the site.
-   (Terminal instead: `cd ~/Roomsong-release/v1.0.0-rc1 && mkdir site && tar -xf artifact.tar -C site`.)
+   (Terminal instead: `cd ~/SonicSpace-release/v1.0.0-rc1 && mkdir site && tar -xf artifact.tar -C site`.)
 3. **First time only:** app.netlify.com → **Add new project** (older screens: "Add new site") → **Deploy manually** →
    drag the site folder onto the box. When it says Published, Project configuration → **Change project name** →
-   `roomsong` (or the nearest free name). Send Claude the address.
+   `sonicspace` (or the nearest free name). Send Claude the address.
    *Never use "Import from Git":* Netlify would build on its own, with no `version.json` and another `builtAt`, so it is
    not the same build (Guide §1.2 step 1). If a project was made that way already: Project configuration → General →
    Danger zone → **Delete project**, then do this step.
@@ -64,13 +67,13 @@ test pages are out of the release build (T-189). Two headsets exist (Parth's Que
 
 ### 1.5 The same build on both links (Parth, from his phone on mobile data, Wi-Fi off; Claude repeats from the Mac)
 1. Open both, on the phone:
-   - `https://parthdalvi2001.github.io/Roomsong/version.json?nocache=1`
+   - `https://parthdalvi2001.github.io/SonicSpace/version.json?nocache=1`
    - `<mirror>/version.json?nocache=1`
 2. Both show the same `commit` and the same `builtAt`, and `commit` = `<C>`. Pages may show the old file for about 10
    minutes after a deploy; change the number after `nocache=` or wait.
 3. Claude checks the same from the Mac against the tag: `git fetch origin --tags && git rev-parse 'v1.0.0-rc1^{commit}'`
    must print the `commit` of both links. Claude records the result in PROGRESS.md (T-183).
-4. Both landing pages open; `/Roomsong/proto/pinch/`, `/Roomsong/proto/spike/` and `/Roomsong/proto/bed/` do not (404: the device test pages are not published, T-189; Guide §1.1 step 5).
+4. Both landing pages open; `/SonicSpace/proto/pinch/`, `/SonicSpace/proto/spike/` and `/SonicSpace/proto/bed/` do not (404: the device test pages are not published, T-189; Guide §1.1 step 5).
 
 ### 1.6 Uptime watch (Parth, once; T-187)
 1. `uptime.yml` is on `main` already (it came with the go-live push; Actions → **uptime** lists runs on `main`). It stays
@@ -82,7 +85,7 @@ test pages are out of the release build (T-189). Two headsets exist (Parth's Que
 
 ### 1.7 Evidence (Guide §8; every item, its file name and owner: `specs/06-release/evidence/README.md`)
 1. Parth: a screenshot of the green `deploy` run (`deploy-run.png`), and a copy of `github-pages.zip` (from Downloads,
-   or from `~/Roomsong-release/v1.0.0-rc1/` if §1.4 ran), into `specs/06-release/evidence/v1.0.0-rc1/`. The zip is
+   or from `~/SonicSpace-release/v1.0.0-rc1/` if §1.4 ran), into `specs/06-release/evidence/v1.0.0-rc1/`. The zip is
    git-ignored: also copy it to the offline drive. Do not unpack it there (the `.tar` and the folder are not ignored).
 2. Claude: the `version.json` of each link as served (`version-pages.json`, and `version-mirror.json` only with a
    mirror) into the same folder; the build hash into `RELEASE_NOTES.md`; commit on `develop`.
@@ -135,7 +138,7 @@ tagged. Nothing but S1 fixes is merged after 15 Nov.
 | `build` → "Run npm run verify" red on a timing or heap test (`… allocate nothing`, `expected 0.10… to be less than 0.1`) | GitHub's machines are slower than the Mac. **Re-run failed jobs**, once. Red again on the same test: stop, tell Claude (BUG_LOG) |
 | `build` red on anything else | Stop. Nothing was published; the site still serves the last good build. Claude fixes on `develop` (Guide §7, before the deadline) |
 | `deploy` says "Waiting" with a **Review deployments** button | The lock of §3 step 2 is on. Click it → tick github-pages → **Approve and deploy**, only if this deploy is meant |
-| Netlify upload fails, or the mirror's `version.json` differs from Pages' | Drag the same site folder again (§1.4 step 4). The Pages artifact is gone after 1 day: unpack the zip kept in `specs/06-release/evidence/<version>/` (or on the offline drive) into `~/Roomsong-release/<version>/` as in §1.4 step 2 and upload that folder |
+| Netlify upload fails, or the mirror's `version.json` differs from Pages' | Drag the same site folder again (§1.4 step 4). The Pages artifact is gone after 1 day: unpack the zip kept in `specs/06-release/evidence/<version>/` (or on the offline drive) into `~/SonicSpace-release/<version>/` as in §1.4 step 2 and upload that folder |
 | The artifact is gone and there is no copy | Actions → deploy → **Run workflow** → Branch `main` (a rebuild: the same `commit`, a new `builtAt`, Guide §2), then §1.4 and §1.5 for both links |
 | Pages' `version.json` still shows the old commit | Wait 10 minutes and use a new `nocache=` number; Settings → Pages shows when the site was last deployed |
 | A link is down after the deadline | Guide §6 only: the identical build, Parth's approval, a log entry. Undo §3 step 3 first if `deploy` must run, and redo it after |

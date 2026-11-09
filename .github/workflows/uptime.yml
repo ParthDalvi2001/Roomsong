@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Both links answer 200 and are SonicSpace
         env:
-          PAGES_URL: https://parthdalvi2001.github.io/Roomsong/
+          PAGES_URL: https://parthdalvi2001.github.io/SonicSpace/
           MIRROR_URL: ${{ vars.MIRROR_URL }}
           EVENT: ${{ github.event_name }}
         run: |

@@ -1,4 +1,4 @@
-# User Acceptance Testing (UAT) Plan — Roomsong
+# User Acceptance Testing (UAT) Plan — SonicSpace
 
 **Status:** Approved · **Owner:** qa-engineer · **Sign-off:** the human (Representative) and product-owner · **Version:** 1.3 (2026-11-09: checked against the build and facts of 9 Nov; 1.2 of 2026-10-10 propagated plan v2.1, T-113)
 UAT mirrors **how judges will test**: an unknown room, a clean headset, ≤10 minutes, hands only, then the video and the Devpost page.
@@ -9,7 +9,7 @@ UAT mirrors **how judges will test**: an unknown room, a clean headset, ≤10 mi
 
 ## 1. When
 - UAT-dry-run: end of Phase 3 (2026-11-11, before the G3 feature freeze) on the live site once `main` carries the `develop` build, or on a preview of the `develop` build opened on the headset over Wi-Fi (`npm run build`, `npm run preview`). On 7 Nov the dev server over LAN worked on the Quest 3S (`?rec=1`); the preview route is not yet checked on a headset. *"On staging": replaced; the site is published from `main` only (D-022).*
-- UAT-final (T-184): 2026-11-16 (clean-headset UAT, REPLAN §6 Phase 4) on the **production URL** after code freeze: GitHub Pages, `https://parthdalvi2001.github.io/Roomsong/` (D-022); `version.json?nocache=1` must name the release commit. UAT-01 once more on the mirror only if one is set up: there is no Netlify mirror today (DECISIONS_PENDING 7.1; FREEZE_AND_SUBMIT_RUNBOOK, State on 9 Nov). Only S1 fixes allowed afterwards (re-run affected scenarios).
+- UAT-final (T-184): 2026-11-16 (clean-headset UAT, REPLAN §6 Phase 4) on the **production URL** after code freeze: GitHub Pages, `https://parthdalvi2001.github.io/SonicSpace/` (D-022; the path since the rename, D-069); `version.json?nocache=1` must name the release commit. UAT-01 once more on the mirror only if one is set up: Netlify is chosen (project `sonicspace`, D-069) but not live; Parth sends the address (T-108; FREEZE_AND_SUBMIT_RUNBOOK, State on 9 Nov). Only S1 fixes allowed afterwards (re-run affected scenarios).
 - Stranger tests UAT-16 and UAT-17 (T-166): during Phase 3 (Nov 4–11), before the G3 feature freeze, so that a missed threshold can still change the build.
 
 ## 2. Setup for every UAT run
@@ -53,7 +53,7 @@ Everything else (flows, timings with emulated input, save/restore, accessibility
 ### 3.1 Stranger tests (UAT-16, UAT-17; T-166; hypotheses H12 and H13 of plan v2.1)
 *Requires a headset and people from outside the team: unverified until run.*
 
-- **Participants.** Five per test; the same five may do both, UAT-16 first. A first-time user has never seen Roomsong, its video or its page and is not on the team. At least three are strangers to the team; the others may be friends or family who know nothing about it. A person is a first-time user once: a re-test after a fix needs new people. A participant is a code (P1..P5): no name, photo, voice or video of a person is kept, and nobody appears in the submission video (Golden Rule 8).
+- **Participants.** Five per test; the same five may do both, UAT-16 first. A first-time user has never seen SonicSpace, its video or its page and is not on the team. At least three are strangers to the team; the others may be friends or family who know nothing about it. A person is a first-time user once: a re-test after a fix needs new people. A participant is a code (P1..P5): no name, photo, voice or video of a person is kept, and nobody appears in the submission video (Golden Rule 8).
 - **Rooms.** At least three different rooms over the five sessions, none of them a room the team tuned in: one bright and one dim; at least one with no scanned table; at least one session with the room permission declined (T-166). The tester sets these up beforehand and does not mention them.
 - **Setup for every participant.** §2 steps 1–2 (controllers out of reach, site data cleared, so each starts a new garden). Note the build hash from `version.json`. The tester may fit the headset and bring up the page with the Enter button. From the tap on Enter the tester says nothing and points at nothing; the one allowed answer to any question is "do what feels right". Any other help makes the run "aided".
 
