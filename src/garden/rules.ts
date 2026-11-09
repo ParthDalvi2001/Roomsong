@@ -122,7 +122,7 @@ export function setAnchor(
 }
 
 /**
- * Sets how far the bed is raised or lowered, in metres, clamped to 10 cm either way (FR-UI-10). No plant moves:
+ * Sets how far the bed is raised or lowered, in metres, clamped to 20 cm either way (FR-UI-10). No plant moves:
  * a cell is a place on the bed, whatever its height. A value that is not finite changes nothing.
  */
 export function setBedHeightOffset(s: GardenState, metres: number): GardenState {

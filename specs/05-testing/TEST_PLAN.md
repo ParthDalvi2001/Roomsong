@@ -53,7 +53,7 @@ S1 = blocks the core loop or crashes · S2 = major feature broken, workaround ex
 | TC-GAR-05 | FR-MUS-09 (Should S3) | `stageFor` boundaries at 0/1/3/7 days; offline growth deltas computed |
 | TC-GAR-06 | FR-MUS-10 | *Cut (D-011)* — weekly seasons removed; mode now comes from the room signature (TC-SIG-*) |
 | TC-GAR-07 | FR-PER-02 | reducers never mutate inputs (deep-freeze inputs in tests) |
-| TC-GAR-08 | FR-UI-10 | bed **height** changes (±10 cm) keep all plants' cells valid; bed radius options *Cut (D-011)* — single 0.12–0.30 m bed, `bedInner`/`bedOuter` constants asserted |
+| TC-GAR-08 | FR-UI-10 | bed **height** changes (±20 cm, BUG-054) keep all plants' cells valid; bed radius options *Cut (D-011)* — single 0.12–0.30 m bed, `bedInner`/`bedOuter` constants asserted |
 
 ### 4.2 Unit — audio/
 | ID | Covers | Case |

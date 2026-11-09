@@ -121,7 +121,8 @@ describe('room/ dependency direction (API_SPEC §1)', () => {
       SURFACE_MIN_HEIGHT_M: 0.5,
       SURFACE_MAX_HEIGHT_M: 1.1,
       LEVEL_MIN_COS: 0.996, // 5.1 degrees
-      FLOATING_DROP_M: 0.25,
+      FLOATING_DROP_M: 0.35, // BUG-053, was 0.25
+      SURFACE_EYE_CLEARANCE_M: 0.25,
       PLANE_LEVELS_TIMEOUT_MS: 3000,
       HIT_TEST_TIMEOUT_MS: 6000, // D-060 item 12, was 10 000
       GHOST_EASE_MS: 100, // UX §9.2

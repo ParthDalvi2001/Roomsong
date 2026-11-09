@@ -91,7 +91,7 @@ export const CUE_SEGMENTS = 48;
 /** UX §3.6: one press moves the tempo by 4 BPM and the volume by 10 %. */
 export const TEMPO_STEP_BPM = 4;
 export const VOLUME_STEP = 0.1;
-/** FR-UI-10: one press moves the bed by 2 cm, ten presses from end to end. No requirement fixes the step. */
+/** FR-UI-10: one press moves the bed by 2 cm, twenty presses from end to end. No requirement fixes the step. */
 export const BED_HEIGHT_STEP_M = 0.02;
 /**
  * T-151: New garden acts only when the pinch was held on it this long (in gaze mode: the look, after the dwell).

@@ -11,7 +11,7 @@ import { REST_SPOT_X_M, WINDOW_EYE_HEIGHT_M, WINDOW_FOV_DEG } from '../../../src
 import { WindowStage } from '../../../src/window/index.js';
 
 /** room/'s FLOATING_DROP_M (FR-ROOM-01 level 4), which room/ does not export: the floating bed is this far below the eyes. */
-const FLOATING_DROP_M = 0.25;
+const FLOATING_DROP_M = 0.35;
 
 /** A camera under a player at the origin, as IWSDK has it, and a bed where level 4 puts it from that camera. */
 function rig(aspect = 16 / 9) {

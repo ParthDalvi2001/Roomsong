@@ -14,6 +14,7 @@ import {
   FLOATING_DROP_M,
   HIT_TEST_TIMEOUT_MS,
   LEVEL_MIN_COS,
+  SURFACE_EYE_CLEARANCE_M,
   SURFACE_MAX_HEIGHT_M,
   SURFACE_MIN_HEIGHT_M,
   TABLE_LABELS,
@@ -104,7 +105,7 @@ function poseAt(head: Head, pose: number[]): number[] | null {
   return Number.isFinite(ux + uz + cx + pose[13]! + cz) ? pose : null;
 }
 
-/** FR-ROOM-01 level 4, the floating bed, written into `pose`: 0.45 m forward of the head, 0.25 m below eye height. */
+/** FR-ROOM-01 level 4, the floating bed, written into `pose`: 0.45 m forward of the head, 0.35 m below eye height. */
 function floatAt(head: Head, pose: number[]): number[] | null {
   pose[12] = head.x + BED_CENTRE_DEFAULT_M * head.fx;
   pose[13] = head.y - FLOATING_DROP_M;
@@ -143,8 +144,7 @@ function spotOn(head: Head, plane: RoomPlane, level: 1 | 2): Spot | null {
   // BUG-010: the band holds at level 1 too: a labelled 0.42 m coffee table put the bed 1.18 m under the eyes.
   const isInBand = cy >= SURFACE_MIN_HEIGHT_M && cy <= SURFACE_MAX_HEIGHT_M;
   const fits = isInBand && (level === 2 || TABLE_LABELS.includes(plane.label));
-  // no bed higher than the floating one would be
-  if (!fits || cy > head.y - FLOATING_DROP_M) return null;
+  if (!fits || cy > head.y - SURFACE_EYE_CLEARANCE_M) return null;
 
   // From here on in the plane's own x-z, where the surface is the rectangle -half..half; h = the head, f = forward.
   // The slight skew of a plane that is not quite level is ignored (LEVEL_MIN_COS).
@@ -206,7 +206,7 @@ export interface HitSource {
  * The placement chain (API_SPEC §1.3): `run()` starts it, `update()` moves it on, and the promise resolves with
  * the bed of the first level that can place one: 1 a table plane, 2 a level plane 0.5..1.1 m high, 3 the point
  * the gaze is on when the user pinches (`confirm()`) or the wait runs out, at least 0.25 m below the eyes and
- * 0.5 m above the floor, 4 the floating bed, which always works (FR-ROOM-02).
+ * 0.5 m above the floor, 4 the floating bed (0.35 m below the eyes), which always works (FR-ROOM-02).
  * `room:placementLevel` is emitted for each level tried; the last one of a run is the level of its bed.
  */
 export class PlacementSolver {
@@ -333,9 +333,10 @@ export class PlacementSolver {
     const head = this.head;
     const shown = this.shown;
     const point = this.hits.hit();
-    // FR-ROOM-01 (D-034): a wall at eye height and the floor are no place for the bed. No bed is higher than the
-    // floating one would be, and none lower than a level-2 surface may be.
-    const isUsable = point !== null && point.y <= head.y - FLOATING_DROP_M && point.y >= SURFACE_MIN_HEIGHT_M;
+    // FR-ROOM-01 (D-034): a wall at eye height and the floor are no place for the bed. No bed is less than 0.25 m
+    // below the eyes, and none lower than a level-2 surface may be.
+    const isUsable =
+      point !== null && point.y <= head.y - SURFACE_EYE_CLEARANCE_M && point.y >= SURFACE_MIN_HEIGHT_M;
     if (isUsable) {
       shown.pose[12] = point.x;
       shown.pose[13] = point.y;

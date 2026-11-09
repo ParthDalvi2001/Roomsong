@@ -14,7 +14,7 @@ export const BedAnchor = createComponent('BedAnchor', {
   // Float64: a Float32 would read 0.12 back as 0.11999999731779099
   inner: { type: Types.Float64, default: BED_ANCHOR_INNER_M },
   outer: { type: Types.Float64, default: BED_ANCHOR_OUTER_M },
-  heightOffset: { type: Types.Float32, default: 0 }, // metres, ±0.10 (FR-UI-10)
+  heightOffset: { type: Types.Float32, default: 0 }, // metres, ±0.20 (FR-UI-10)
   source: {
     type: Types.Enum,
     enum: { table: 'table', surface: 'surface', hittest: 'hittest', floating: 'floating' },

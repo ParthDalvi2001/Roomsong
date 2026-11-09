@@ -29,7 +29,7 @@ export interface GardenState {
   version: 1;
   bedInner: 0.12;
   bedOuter: 0.3;
-  bedHeightOffset: number; // metres; ±0.10
+  bedHeightOffset: number; // metres; ±0.20
   plants: Plant[];
   seeds: Seed[];
   lastSeedDate: string; // YYYY-MM-DD local

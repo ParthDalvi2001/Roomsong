@@ -4,16 +4,16 @@ import { TARGET_VISIBLE_DIAMETER_M } from '../hands/index.js';
 
 /**
  * FR-SYS-07: the fixed camera stands at a seated eye point, in metres above the floor (y = 0). The floating bed
- * (room/, FR-ROOM-01 level 4) is placed from it as from a head: 0.45 m ahead and 0.25 m below.
+ * (room/, FR-ROOM-01 level 4) is placed from it as from a head: 0.45 m ahead and 0.35 m below.
  */
 export const WINDOW_EYE_HEIGHT_M = 1.2;
 /**
- * FR-SYS-07: how far the camera looks down, in radians. The floating bed's near edge is 59 degrees below level and
- * its far edge 18; a plant of height 1 on the far rim lifts its head to about 6, and the beat ring's near ticks lie
- * at 62. D-058 polish: at 39 with a 60 degree view (9 to 69) the tall far plants ran off the top; 34 with
- * WINDOW_FOV_DEG 64 shows 2 to 66, four degrees clear of both (tests/unit/window/WindowStage.test.ts).
+ * FR-SYS-07: how far the camera looks down, in radians. The floating bed's near edge is 67 degrees below level and
+ * its far edge 25; a plant of height 1 on the far rim lifts its head to about 13, and the beat ring's near ticks lie
+ * at 69. 41 with WINDOW_FOV_DEG 64 shows 9 to 73, four degrees clear of both (tests/unit/window/WindowStage.test.ts).
+ * Was 34 (2 to 66, D-058 polish) with the bed 0.25 m below the eye; BUG-053 dropped it to 0.35.
  */
-export const WINDOW_PITCH_RAD = (34 * Math.PI) / 180;
+export const WINDOW_PITCH_RAD = (41 * Math.PI) / 180;
 /**
  * FR-SYS-07: the camera's vertical field of view, degrees. Not the project's 50: at 50 a 4:3 tab cuts the bed's
  * sides off, and the seed's rest spot beside the bed is out of view at 16:9. 64, from 60, with WINDOW_PITCH_RAD.
@@ -47,7 +47,7 @@ export const TABLE_COLOUR = 0x3b2f27;
 /**
  * D-058 polish: a floor under the table, so the window shows a room and not a slab in the void. A square this wide,
  * this far under the bed plane (a seated table's height), in the landing page's charcoal family (sRGB). From the
- * eye its far edge lies 1.4 degrees below level, above the view's top (2 degrees, WINDOW_PITCH_RAD): no void shows.
+ * eye its far edge lies 1.5 degrees below level, above the view's top (9 degrees, WINDOW_PITCH_RAD): no void shows.
  */
 export const FLOOR_SIZE_M = 80;
 export const FLOOR_BELOW_BED_M = 0.7;

@@ -32,12 +32,17 @@ describe('persistence/schema validateState', () => {
     expect(validateState(raw)).toBeNull();
   });
 
-  it('accepts the limits: offset ±0.10 m, height and hue 0 and 1, an empty garden, visits 0', () => {
+  it('accepts the limits: offset ±0.20 m, height and hue 0 and 1, an empty garden, visits 0', () => {
     const edge = plant('e', 4, 0, { height: 0, hue: 1 });
-    expect(validateState(savedGarden({ bedHeightOffset: 0.1, plants: [edge] }))?.plants).toEqual([edge]);
-    expect(validateState(savedGarden({ bedHeightOffset: -0.1 }))?.bedHeightOffset).toBe(-0.1);
+    expect(validateState(savedGarden({ bedHeightOffset: 0.2, plants: [edge] }))?.plants).toEqual([edge]);
+    expect(validateState(savedGarden({ bedHeightOffset: -0.2 }))?.bedHeightOffset).toBe(-0.2);
     const empty = savedGarden({ plants: [], seeds: [], visits: 0, codex: { discovered: [] } });
     expect(validateState(empty)).toEqual(empty);
+  });
+
+  it('accepts a saved offset of 0.15 m, past the old ±0.10, and still the old range (BUG-054)', () => {
+    expect(validateState(savedGarden({ bedHeightOffset: 0.15 }))?.bedHeightOffset).toBe(0.15);
+    expect(validateState(savedGarden({ bedHeightOffset: -0.1 }))?.bedHeightOffset).toBe(-0.1);
   });
 
   it('accepts the size limits: 5 seeds, ids of 64 characters, every voice discovered once', () => {

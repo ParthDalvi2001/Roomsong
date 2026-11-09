@@ -26,11 +26,12 @@ export const SURFACE_MAX_HEIGHT_M = 1.1;
  * surface cannot carry a level bed. The cosine is 5.1 degrees, so 5.0 passes and 5.2 does not.
  */
 export const LEVEL_MIN_COS = 0.996;
-/**
- * FR-ROOM-01 level 4: the floating bed is this far below eye height. Also (D-034) no plane and no level-3 hit
- * less than this far below the eyes is used: no bed sits higher than the floating one would.
- */
-export const FLOATING_DROP_M = 0.25;
+/** FR-ROOM-01 level 4: the floating bed is this far below eye height. 0.35, was 0.25 (BUG-053: too high on a
+ *  Quest 3). */
+export const FLOATING_DROP_M = 0.35;
+/** FR-ROOM-01 (D-034): no plane and no level-3 hit less than this far below the eyes is used (a level gaze meets a
+ *  wall at eye height). The floating bed's old drop, kept when that moved (BUG-053). */
+export const SURFACE_EYE_CLEARANCE_M = 0.25;
 
 /** FR-ROOM-01, LLD §5.5: levels 1 and 2 together wait this long for a plane. The caller passes it to `run()`. */
 export const PLANE_LEVELS_TIMEOUT_MS = 3000;

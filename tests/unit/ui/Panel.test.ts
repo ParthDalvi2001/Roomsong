@@ -433,21 +433,23 @@ describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () =
     expect(words(panel)).toContain('-4');
   });
 
-  it('stops the bed height at 10 cm up or down', () => {
+  it('stops the bed height at 20 cm up or down (BUG-054)', () => {
     const panel = opened('garden');
     const asked = calls.bedHeight;
-    panel.setGarden(garden([], [], { bedHeightOffset: 0.1 }));
+    panel.setGarden(garden([], [], { bedHeightOffset: 0.1 })); // the old end: one more press goes up
+    expect(control(panel, 'height:+')?.dim).toBe(false);
+    panel.setGarden(garden([], [], { bedHeightOffset: 0.2 }));
     expect(control(panel, 'height:+')?.dim).toBe(true);
     expect(control(panel, 'height:-')?.dim).toBe(false);
     press(panel, 'height:+');
     expect(asked).toEqual([]);
-    expect(words(panel)).toContain('+10');
-    panel.setGarden(garden([], [], { bedHeightOffset: -0.1 }));
+    expect(words(panel)).toContain('+20');
+    panel.setGarden(garden([], [], { bedHeightOffset: -0.2 }));
     expect(control(panel, 'height:-')?.dim).toBe(true);
     press(panel, 'height:-');
     expect(asked).toEqual([]);
     press(panel, 'height:+');
-    expect(asked).toEqual([{ metres: -0.08 }]);
+    expect(asked).toEqual([{ metres: -0.18 }]);
   });
 });
 
@@ -840,9 +842,9 @@ describe('settings panel: targets of at least 4 cm with clear gaps (T-151, Golde
 
   it("the height read-out ends 1 cm or more before the plus button's ring, at its widest value", () => {
     const panel = opened('garden');
-    panel.setGarden(garden([], [], { bedHeightOffset: 0.1 })); // "+10", the widest read-out
+    panel.setGarden(garden([], [], { bedHeightOffset: 0.2 })); // "+20", the widest read-out
     const plus = control(panel, 'height:+')!;
-    const readout = panel.texts().find((t) => t.text === '+10')!;
+    const readout = panel.texts().find((t) => t.text === '+20')!;
     expect(plus.x - plus.w / 2 - (readout.x + readout.w)).toBeGreaterThanOrEqual(0.01 - 1e-9);
   });
 

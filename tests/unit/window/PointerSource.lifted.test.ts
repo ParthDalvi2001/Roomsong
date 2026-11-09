@@ -16,7 +16,7 @@ import { at, CANVAS_HEIGHT_PX, CANVAS_WIDTH_PX, fakeCanvas } from './fakeCanvas.
 import type { Vec3 } from '../../../src/core/index.js';
 import type { PickCandidate } from '../../../src/hands/index.js';
 
-const FLOATING_DROP_M = 0.25; // room/'s level-4 drop below the eyes, as WindowStage.test.ts has it
+const FLOATING_DROP_M = 0.35; // room/'s level-4 drop below the eyes, as WindowStage.test.ts has it
 const ORB_LIFT_M = 0.02; // render's LISTEN_ORB_LIFT_M
 const PETAL_LIFT_M = 0.03; // render's PETAL_LIFT_M
 const HEAD_LIFT_M = 0.09; // a grown plant's head over its cell (D-063), as the T-168 review took it
@@ -79,11 +79,14 @@ describe('BUG-011: the pointer picks a lifted target where it is drawn', () => {
       return pickTarget(frame.pinchPos, targets)?.kind ?? null;
     };
 
-    // The bug: the bed point behind the drawn orb is past its hit radius.
+    // The bug: the bed point behind the drawn petal is past its hit radius (behind the orb it no longer is since the
+    // floating bed sits 0.35 m under the eye, BUG-053: a steeper view).
     const behind = { x: 0, y: 0, z: 0 };
-    const px = onCanvas(orb);
+    const px = onCanvas(petal);
     stage.project((px.x / CANVAS_WIDTH_PX) * 2 - 1, 1 - (px.y / CANVAS_HEIGHT_PX) * 2, behind);
-    expect(Math.hypot(behind.x - orb.x, behind.y - orb.y, behind.z - orb.z)).toBeGreaterThan(HIT_RADIUS_M);
+    expect(Math.hypot(behind.x - petal.x, behind.y - petal.y, behind.z - petal.z)).toBeGreaterThan(
+      HIT_RADIUS_M,
+    );
 
     expect(pickAt(orb)).toBe('orb');
     expect(pickAt(petal)).toBe('undo');

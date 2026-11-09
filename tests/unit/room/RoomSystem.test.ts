@@ -61,7 +61,7 @@ class FakeEntity {
 const at = (x: number, y: number, z: number): number[] => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1];
 const EYE_M = 1.6;
 const ON_TABLE: BedPlacement = { pose: at(0, 0.74, -0.45), level: 1, surfaceId: 'plane-0' };
-const FLOATING: BedPlacement = { pose: at(0, EYE_M - 0.25, -0.45), level: 4 };
+const FLOATING: BedPlacement = { pose: at(0, EYE_M - 0.35, -0.45), level: 4 };
 const FEATURES: RoomFeatures = { level: 1, tableHeight: 0.74, floorArea: 18, ceilingHeight: 2.5 };
 const SURFACES: RoomSurfaces = {
   table: { id: 'plane-0', pose: at(0, 0.74, -0.5), extents: { x: 1.2, y: 0.8 } },
@@ -441,7 +441,7 @@ describe('RoomSystem: placing, the decision of the first update (LLD §3.2, §5.
       ['on the floor, however near', at(0, 0.1, -0.4), false],
       ['just under 0.4 m', at(0, 0.39, -0.4), false],
       ['at 0.4 m', at(0, 0.4, -0.4), true],
-      ['0.25 m below the eyes: the floating bed', at(0, EYE_M - 0.25, -0.45), true],
+      ['0.25 m below the eyes: the highest surface', at(0, EYE_M - 0.25, -0.45), true],
       ['0.15 m below the eyes', at(0, EYE_M - 0.15, -0.45), true],
       ['less than 0.15 m below the eyes', at(0, EYE_M - 0.14, -0.45), false],
     ];
@@ -481,7 +481,7 @@ describe('RoomSystem: placing, the decision of the first update (LLD §3.2, §5.
     r.gardenChanged({ anchorHandle: HANDLE, anchorLevel: 4 });
     startSession();
     r.frame();
-    r.restores[0]!.resolve(FLOATING.pose); // placed 0.25 m below eyes at EYE_M
+    r.restores[0]!.resolve(FLOATING.pose); // placed 0.35 m below eyes at EYE_M
     await betweenFrames();
     r.frame();
     expect(r.events.find((event) => event.type === 'room:bedPlaced')?.payload).toEqual({
