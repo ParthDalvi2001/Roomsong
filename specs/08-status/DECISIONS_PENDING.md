@@ -1,6 +1,6 @@
 # Decisions waiting for Parth
 
-**The one file for every open decision** (updated 9 Nov 13:00 IST). Reply with the number and your answer, or "done". Answered ones go to DECISIONS_LOG.
+**The one file for every open decision** (updated 9 Nov 13:15 IST). Reply with the number and your answer, or "done". Answered ones go to DECISIONS_LOG.
 
 ## 1. Push main (one line, for the live site)
 `develop` is pushed (5c676b6, 9 Nov) and local `main` is ready. In Terminal: `cd /Users/parth_baller/Documents/test-pro/Roomsong && git push origin main`. Then the live site gets the BUG-040 fix and drops the test pages (T-189).
@@ -9,6 +9,7 @@
 ★ **Keep Roomsong.** The name check (RND_2026-11-08 §3) found no SonicSpace app or registered mark, but "Sonic" reads as SEGA's game in a games contest, and the name drops "room", the core idea. If SonicSpace: the rename branch is ready (title, landing page); the video, gallery and the `/Roomsong/` link must change too.
 
 ## 4. Headset checks (you or Chinmay, on the live link)
+**Use the one sheet: `specs/05-testing/HEADSET_RUN_2026-11-10.md`** (about 25 minutes in five short sessions, plus 2 minutes tomorrow for Day 2; tick boxes; send a photo of it). It covers everything below and items 8.
 1. Open the link over a phone hotspot. 2. "No room scan" message: once unscanned, once after Space Setup. 3. Undo a plant (undo petal). 4. Drag a plant by looking at it. 5. Listen: both palms out 1.5 s. 6. A no-pinch run: the link with `?access=gaze`. 7. Tomorrow: Garden tab says Day 2. 8. A 10 s Quest video with sound. Optional: the voice test (RND_2026-11-08 §1).
 
 ## 3. Before 12 Nov: read the Devpost pages in a browser (5 minutes)
@@ -25,6 +26,11 @@ Someone who has never seen Roomsong plays the first five minutes on a headset wh
 
 ## 7. Old items of 25 Oct: tell me which are done
 1. Netlify mirror: send the address, or say "no mirror". 2. Playtest & React (29 Oct): did Chinmay attend? 3. Chinmay's "Start Member" screenshot. 4. Listen to sound style B. 5. G2 review, six questions (G2_REVIEW_2026-11-03 §6). 6. Devpost: target launch line and "What excites us about VR" (your and Chinmay's own words).
+
+## 9. Video and final check (Chinmay, with you)
+1. **Dry run on 11 or 12 Nov:** check that the Quest's own capture records the room (passthrough) and the app's sound at 1080p. Plan: `specs/06-release/VIDEO_SCRIPT_V1.md` (88 s, the first minute in one take).
+2. **End-card link:** ★ the GitHub Pages address (it shows your GitHub name), or the mirror if one exists by 14 Nov.
+3. **Final check on 16 Nov:** ★ Chinmay runs it on his Quest 3 (two checks need a Quest 3). The cold-start rule "in XR within 5 s": ★ count from pressing Enter.
 
 ## Dates
 - 13–14 Nov: video (Chinmay). Devpost text: I draft it, aimed at Best First Five Minutes.
