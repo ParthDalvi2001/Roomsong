@@ -1,6 +1,6 @@
 # Freeze and Submit Runbook — Roomsong (T-183, T-185, T-187)
 
-**Status:** Approved for use · **Owner:** devops-engineer · **Written:** 2026-10-27
+**Status:** Approved for use · **Owner:** devops-engineer · **Written:** 2026-10-27 · **Checked:** 2026-11-09 (T-169 prep)
 The click-by-click order for the code freeze (15 Nov) and the submit day (17 Nov). The rules behind each step are in
 [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) (cited as "Guide §n"); this file does not repeat them.
 **Parth** pushes `main`, pushes tags and clicks GitHub, Netlify and Devpost. **Claude** prepares `develop`, checks and
@@ -8,13 +8,19 @@ records. Claude never pushes `main` and never creates or pushes a `v1.0.0*` tag 
 
 | When | What | Task |
 |---|---|---|
-| 15 Nov, by 23:59 IST | Code freeze: `v1.0.0-rc1` on Pages and Netlify, the same build on both | T-183 |
-| 16 Nov | UAT on the live link, go/no-go (SUBMISSION_CHECKLIST §4) | T-184 |
+| 15 Nov, by 23:59 IST | Code freeze: `v1.0.0-rc1` on Pages (and Netlify, if the mirror is set up), the same build on both | T-183 |
+| 16 Nov | UAT on the live link on a Quest 3 / 3S, go/no-go (SUBMISSION_CHECKLIST §4) | T-184 |
 | 17 Nov, by 12:00 IST | Tag `v1.0.0-submission`; Chinmay submits by 18:00 IST; lock | T-185 |
 | 18 Nov 12:00 PT (19 Nov 01:30 IST) → 11 Dec | Deadline, then judging: no change to either link | T-187 |
 
 `<mirror>` below is the Netlify address, for example `https://roomsong.netlify.app` (Guide §1.2; D-060).
 All Terminal commands run in `~/Documents/test-pro/Roomsong`.
+
+**State on 9 Nov:** Pages is live from `main` (`https://parthdalvi2001.github.io/Roomsong/`, `main` = 5c676b6). The
+Netlify mirror is **not set up** (Parth sends the address or says "no mirror", DECISIONS_PENDING 7.1). With no mirror:
+skip §1.4 and §1.6 step 2, check Pages alone in §1.5, and leave `<mirror>` out of the Devpost (§2 step 3). The device
+test pages are out of the release build (T-189). Two headsets exist (Parth's Quest 3S, Chinmay's Quest 3; TEST_PLAN
+§4.6), so the UAT and the smoke tests are run on one.
 
 ---
 
@@ -40,11 +46,11 @@ All Terminal commands run in `~/Documents/test-pro/Roomsong`.
 1. Terminal: `git tag -a v1.0.0-rc1 -m "Code freeze" <C> && git push origin v1.0.0-rc1`
    A tag is a label: it publishes nothing (Guide §5).
 
-### 1.4 Put the same build on Netlify (Parth, the same day: the build is kept for 1 day, Guide §1.2)
+### 1.4 Put the same build on Netlify (Parth, the same day: the build is kept for 1 day, Guide §1.2; only with a mirror)
 1. Actions → the green `deploy` run → scroll to **Artifacts** → click **github-pages**. It downloads `github-pages.zip`.
 2. Make a folder `~/Roomsong-release/v1.0.0-rc1/` and move the zip into it. Double-click the zip: it gives
-   `artifact.tar`. Double-click that: it gives a folder (`artifact`) with `index.html`, `assets`, `proto`, `LICENSES`
-   and `version.json` in it. That folder is the site.
+   `artifact.tar`. Double-click that: it gives a folder (`artifact`) with `index.html`, `assets`, `LICENSES` and
+   `version.json` in it (no `proto` since T-189). That folder is the site.
    (Terminal instead: `cd ~/Roomsong-release/v1.0.0-rc1 && mkdir site && tar -xf artifact.tar -C site`.)
 3. **First time only:** app.netlify.com → **Add new project** (older screens: "Add new site") → **Deploy manually** →
    drag the site folder onto the box. When it says Published, Project configuration → **Change project name** →
@@ -64,7 +70,7 @@ All Terminal commands run in `~/Documents/test-pro/Roomsong`.
    minutes after a deploy; change the number after `nocache=` or wait.
 3. Claude checks the same from the Mac against the tag: `git fetch origin --tags && git rev-parse 'v1.0.0-rc1^{commit}'`
    must print the `commit` of both links. Claude records the result in PROGRESS.md (T-183).
-4. Both landing pages open; `/Roomsong/proto/pinch/` and `/Roomsong/proto/spike/` do not (404: the device test pages are not published, T-189; Guide §1.1 step 5).
+4. Both landing pages open; `/Roomsong/proto/pinch/`, `/Roomsong/proto/spike/` and `/Roomsong/proto/bed/` do not (404: the device test pages are not published, T-189; Guide §1.1 step 5).
 
 ### 1.6 Uptime watch (Parth, once; T-187)
 1. `uptime.yml` is on `main` already (it came with the go-live push; Actions → **uptime** lists runs on `main`). It stays
