@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS, log } from '../../../src/core/index.js';
 import { cellCentre, newGarden, snapToCell } from '../../../src/garden/index.js';
 import { IDB_OPEN_TIMEOUT_MS } from '../../../src/persistence/config.js';
 import { createStore, openStore, webStorageBackend } from '../../../src/persistence/Store.js';
-import { plant } from '../garden/fixtures.js';
+import { plant, seed } from '../garden/fixtures.js';
 
 import { CORRUPT, memoryBackend, omit, savedGarden } from './fixtures.js';
 
@@ -57,6 +57,19 @@ describe('persistence/Store save and load (TC-PER-01)', () => {
     const made = newGarden(NOW, DEFAULT_SETTINGS);
     await store.save(made);
     expect(await store.load()).toEqual(made);
+  });
+
+  it('round-trips the New library of a plant and of a seed (T-193, D-077)', async () => {
+    const store = createStore([memoryBackend()]);
+    const made = savedGarden({
+      plants: [plant('b', 0, 0, { family: 'new' }), plant('o', 1, 1)],
+      seeds: [{ ...seed('n'), family: 'new' }],
+    });
+    await store.save(made);
+    const loaded = await store.load();
+    expect(loaded).toEqual(made);
+    expect(loaded?.plants[0]?.family).toBe('new');
+    expect(loaded?.seeds[0]?.family).toBe('new');
   });
 
   it('loads null and writes nothing when nothing was saved', async () => {
