@@ -22,6 +22,7 @@ The site refuses automated reads (HTTP 403 on 8 and 9 Nov), so the last check ag
 Someone who has never seen Roomsong plays the first five minutes on a headset while you watch, without help. Tell me what got stuck. This is the evidence for "Best First Five Minutes".
 
 ## 6. 12 Nov feature freeze: how to tag
+**Answered 9 Nov 13:10 IST: A** (Parth: "a"), and move the freeze forward to today since the driver's side is done (Parth: "move to next stage"). Steps run once the full check passes.
 ★ **A:** you push `main` and tag v0.5.0 (the freeze build is the live one). **B:** say "go", I tag `develop`, no deploy. FEATURE_FREEZE_PREP_2026-11-12 §5–§6. After the freeze: only bug fixes.
 With it, the G3 verdict: ★ **conditional pass** (the conditions: the new-person test, item 5, and your call on any self-score below 8). It also closes G2, never held on 3 Nov.
 
