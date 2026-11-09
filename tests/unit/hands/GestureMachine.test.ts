@@ -292,15 +292,24 @@ describe('GestureMachine: carry, plant and press (TC-HND-04 subset, TC-HND-05)',
     expect(last()).toMatchObject({ gesture: 'carry', zone: 'bed', cell: { ring: 3, step: 0 } });
   });
 
-  it('a seed released off the bed, in the hole or over a full bed has no cell: it goes back to the supply', () => {
+  it('a seed released off the bed or over a full bed has no cell: it goes back to the supply', () => {
     carryTo(OFF_BED);
     expect(last()).toMatchObject({ gesture: 'carry', target: SEED, zone: 'outer', cell: null });
-    carryTo(IN_HOLE);
-    expect(last()).toMatchObject({ gesture: 'carry', target: SEED, zone: 'inner', cell: null });
     const full = rig();
     full.garden.free = null;
     carryTo(ON_BED, full);
     expect(last()).toMatchObject({ gesture: 'carry', target: SEED, zone: 'bed', cell: null });
+  });
+
+  it('BUG-055: a seed released over the hole takes the innermost ring at that angle, and is planted', () => {
+    carryTo(IN_HOLE); // 5 cm to the right of the centre: ring 0, step 0
+    expect(last()).toMatchObject({ gesture: 'carry', target: SEED, zone: 'inner', cell: { ring: 0, step: 0 } });
+    carryTo({ x: 0, y: 0.76, z: -0.45 }); // the very centre, over the Listen orb: still a cell, never NaN
+    expect(last()).toMatchObject({ gesture: 'carry', zone: 'inner', cell: { ring: 0, step: 0 } });
+    const full = rig();
+    full.garden.free = null;
+    carryTo(IN_HOLE, full);
+    expect(last()).toMatchObject({ gesture: 'carry', zone: 'inner', cell: null });
   });
 
   it('with no bed placed yet a release is in the zone where nothing commits', () => {
@@ -1070,13 +1079,14 @@ describe('GestureMachine: the hover (TC-HND-08, TC-HND-05, FR-HND-16)', () => {
     const count = hovers().length;
     r.step({ at: OFF_BED });
     expect(lastHover()).toMatchObject({ target: null, cell: null });
-    r.step({ at: IN_HOLE }); // still no cell: no second event
-    expect(hovers()).toHaveLength(count + 1);
+    r.step({ at: IN_HOLE }); // BUG-055: over the hole a carried seed shows the innermost ring's cell
+    expect(lastHover()).toMatchObject({ target: null, cell: { ring: 0, step: 0 } });
+    expect(hovers()).toHaveLength(count + 2);
     r.step({ at: ON_BED });
     r.context.bedPose = null; // the bed is taken away under the hand
     r.step();
     expect(lastHover()).toMatchObject({ target: null, cell: null });
-    expect(hovers()).toHaveLength(count + 3);
+    expect(hovers()).toHaveLength(count + 4);
   });
 
   it('at the border of two cells the cue does not flicker, and it follows a real move', () => {

@@ -9,9 +9,13 @@ export const PINCH_DEBOUNCE_FRAMES = 2;
 /** FR-HND-02: no new pinch, and no new select, for this long after a release. */
 export const PINCH_LOCKOUT_MS = 130;
 
-/** FR-HND-03: 1-euro filter on the pinch point. Beta is in Hz per m/s and is the value to tune on device (LLD §5.7). */
+/**
+ * FR-HND-03: 1-euro filter on the pinch point. Beta is in Hz per m/s (LLD §5.7). BUG-055: with beta 0 a carried seed
+ * trailed the hand (about 8 cm at 0.5 m/s, seen on the Quest 3 on 9 Nov); at 30 the cutoff is 7 Hz at 0.2 m/s and
+ * 16 Hz at 0.5 m/s, a trail of about 5 mm, and a still hand keeps the 1 Hz cutoff. Set by arithmetic, then device.
+ */
 export const ONE_EURO_MIN_CUTOFF_HZ = 1.0;
-export const ONE_EURO_BETA = 0.0;
+export const ONE_EURO_BETA = 30;
 export const ONE_EURO_D_CUTOFF_HZ = 1.0;
 
 /** FR-HND-04: drawn size of a target, and the pick radius around it (tunable 0.035..0.040; nearest wins). */
@@ -29,8 +33,11 @@ export const CONTROLLER_HINT_AFTER_MS = 2000;
 /** FR-HND-08/10: a pinched plant does not react inside this; then the dominant axis decides pull or drag. */
 export const DRAG_DEAD_ZONE_M = 0.02;
 
-/** FR-HND-05: the palm normal within this angle of world up, held this long, asks for a seed. */
-export const PALM_UP_MAX_ANGLE_DEG = 35;
+/**
+ * FR-HND-05: the palm normal within this angle of world up, held this long, asks for a seed. BUG-055: 35 until the
+ * 9 Nov headset run, where palms shown to the player's own eyes sat 40 to 50 degrees off up and waited for seconds.
+ */
+export const PALM_UP_MAX_ANGLE_DEG = 50;
 export const PALM_UP_HOLD_MS = 400;
 /** FR-HND-06: each open palm's normal within this angle of the head's forward, held this long, asks for Listen. */
 export const PALMS_OUT_MAX_ANGLE_DEG = 40;
