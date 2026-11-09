@@ -69,6 +69,15 @@ describe('garden/snap snapToCell (TC-GAR-01)', () => {
     expect(snapToCell(at(5, 3))).toBeNull();
   });
 
+  it('BUG-055, a carried seed (fillsHole): the hole snaps to the innermost ring at its angle; the rest is unchanged', () => {
+    expect(snapToCell({ x: 0, y: 0 }, true)).toEqual({ ring: 0, step: 0 });
+    expect(snapToCell(at(0.05, 4 * STEP_RAD), true)).toEqual({ ring: 0, step: 4 });
+    expect(snapToCell(at(0.09 - EPS, 9 * STEP_RAD), true)).toEqual({ ring: 0, step: 9 });
+    expect(snapToCell(at(0.21, 2 * STEP_RAD), true)).toEqual(snapToCell(at(0.21, 2 * STEP_RAD)));
+    expect(snapToCell(at(0.35 + EPS), true)).toBeNull(); // past the outer edge a seed still goes home
+    for (const point of HOSTILE) expect(snapToCell(point, true)).toBeNull();
+  });
+
   it('is null exactly when bedZone is not bed, hostile points included', () => {
     const points = [...HOSTILE];
     for (let len = 0; len < 0.5; len += 0.013) points.push(at(len, len * 40));

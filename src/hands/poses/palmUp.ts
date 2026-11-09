@@ -6,7 +6,7 @@ import type { HandFrame } from '../InputSource.js';
 
 const MIN_UP = Math.cos((PALM_UP_MAX_ANGLE_DEG * Math.PI) / 180);
 
-/** FR-HND-05: a unit palm normal within 35 degrees of world up. */
+/** FR-HND-05: a unit palm normal within PALM_UP_MAX_ANGLE_DEG (50 degrees) of world up. */
 export function isPalmUp(palmNormal: Vec3): boolean {
   return palmNormal.y >= MIN_UP;
 }

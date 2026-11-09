@@ -1,4 +1,4 @@
-// TC-HND-03, the palm-up part (FR-HND-05): within 35 degrees of world up, held 400 ms, and again every 400 ms
+// TC-HND-03, the palm-up part (FR-HND-05): within 50 degrees of world up (35 until BUG-055), held 400 ms, and again every 400 ms
 // while it holds (T-127); a dropout restarts the hold.
 import { describe, expect, it } from 'vitest';
 
@@ -30,12 +30,13 @@ function hold(pose: PalmUpHold, frame: ReturnType<typeof hand>, fromMs: number, 
 }
 
 describe('isPalmUp', () => {
-  it('is true within 35 degrees of world up, on either side, and false beyond', () => {
-    expect([PALM_UP_MAX_ANGLE_DEG, PALM_UP_HOLD_MS]).toEqual([35, 400]);
+  it('is true within 50 degrees of world up, on either side, and false beyond', () => {
+    expect([PALM_UP_MAX_ANGLE_DEG, PALM_UP_HOLD_MS]).toEqual([50, 400]);
     expect(isPalmUp(tilted(0))).toBe(true);
-    expect(isPalmUp(tilted(34))).toBe(true);
-    expect(isPalmUp(tilted(-34))).toBe(true);
-    expect(isPalmUp(tilted(36))).toBe(false);
+    expect(isPalmUp(tilted(45))).toBe(true); // BUG-055: a palm shown to its owner's eyes, as the headset saw it
+    expect(isPalmUp(tilted(49))).toBe(true);
+    expect(isPalmUp(tilted(-49))).toBe(true);
+    expect(isPalmUp(tilted(51))).toBe(false);
     expect(isPalmUp(tilted(90))).toBe(false); // palm to the side
     expect(isPalmUp(tilted(180))).toBe(false); // palm down
     expect(isPalmUp({ x: 0, y: 0, z: 0 })).toBe(false); // a frame that was never sampled

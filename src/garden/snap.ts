@@ -36,11 +36,16 @@ export function bedZone(bedLocal: Vec2): BedZone {
   return len > BED_OUTER + ZONE_OUTER_MARGIN_M ? 'outer' : 'bed';
 }
 
-/** The nearest cell to a bed-local point (FR-MUS-01); null when bedZone is not 'bed'. It has no memory. */
-export function snapToCell(bedLocal: Vec2): Cell | null {
-  if (bedZone(bedLocal) !== 'bed') return null;
-  const t =
-    (Math.sqrt(bedLocal.x * bedLocal.x + bedLocal.y * bedLocal.y) - BED_INNER) / (BED_OUTER - BED_INNER);
+/**
+ * The nearest cell to a bed-local point (FR-MUS-01); null when bedZone is not 'bed'. It has no memory.
+ * `fillsHole` (a carried seed, BUG-055): a point in the inner hole snaps to the innermost ring at its angle, so a
+ * seed let go over the middle of the ring is planted and does not fly home. A point that is not finite stays null.
+ */
+export function snapToCell(bedLocal: Vec2, fillsHole = false): Cell | null {
+  const zone = bedZone(bedLocal);
+  const len = Math.sqrt(bedLocal.x * bedLocal.x + bedLocal.y * bedLocal.y);
+  if (zone === 'outer' || !Number.isFinite(len) || (zone === 'inner' && !fillsHole)) return null;
+  const t = (len - BED_INNER) / (BED_OUTER - BED_INNER);
   const ring = Math.round(Math.min(1, Math.max(0, t)) * (RINGS - 1));
   const turn = Math.round(Math.atan2(bedLocal.y, bedLocal.x) / STEP_RAD); // -8..8
   return cellAt(ring, (turn + STEPS) % STEPS);
