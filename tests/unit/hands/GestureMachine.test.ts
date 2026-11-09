@@ -150,7 +150,7 @@ const UP_5CM = moved(PLANT_AT, { y: 0.05 });
 const ALONG_5CM = moved(PLANT_AT, { x: 0.05 }); // 0.25 m from the bed centre: ring 3, step 0
 
 describe('GestureMachine: which signal a pinch uses (TC-HND-01)', () => {
-  it('a seed starts and ends on select, whatever the joint distance does meanwhile', () => {
+  it('a seed taken on select is held while either signal is closed, and let go when both are open', () => {
     const { step } = rig();
     step({ at: SEED_AT });
     step({ select: true });
@@ -158,16 +158,38 @@ describe('GestureMachine: which signal a pinch uses (TC-HND-01)', () => {
     step({ pinch: true });
     step({ pinch: false }); // the joint distance opens: the seed is still carried
     expect(types()).toEqual(['gesture:pinchStart']);
-    step({ select: false });
+    step({ pinch: true });
+    step({ select: false }); // the platform lets go first: the fingers still hold the seed
+    expect(types()).toEqual(['gesture:pinchStart']);
+    step({ pinch: false });
     expect(types()).toEqual(['gesture:pinchStart', 'gesture:release']);
     expect(last()).toMatchObject({ gesture: 'carry', target: SEED });
   });
 
-  it('a joint-distance edge alone picks up no seed and presses no orb', () => {
+  it('BUG-055: with no select at all (a palm facing down on Quest) the joint distance takes a seed and plants it', () => {
     const { step } = rig();
     step({ at: SEED_AT });
     step({ pinch: true });
+    expect(seen).toEqual([{ type: 'gesture:pinchStart', hand: 'right', target: SEED, pos: SEED_AT }]);
+    step({ at: ON_BED });
     step({ pinch: false });
+    expect(last()).toMatchObject({ gesture: 'carry', target: SEED, zone: 'bed', cell: { ring: 2, step: 0 } });
+  });
+
+  it('a seed is taken once: the second signal closing later, or still closed from the last pinch, starts nothing', () => {
+    const { step } = rig();
+    step({ at: PLANT_AT });
+    step({ pinch: true }); // holds a plant on the joint distance
+    step({ select: true });
+    step({ pinch: false }); // lets the plant go; the platform still says select
+    step({ at: SEED_AT }); // and moves onto the seed like that
+    step();
+    step({ pinch: true }); // one of the two was still closed: no edge of the two together
+    expect(types()).toEqual(['gesture:pinchStart', 'gesture:release']);
+  });
+
+  it('a joint-distance edge alone presses no orb', () => {
+    const { step } = rig();
     step({ at: ORB_AT });
     step({ pinch: true });
     step({ pinch: false });
@@ -234,7 +256,8 @@ describe('GestureMachine: which signal a pinch uses (TC-HND-01)', () => {
   it('only a rising edge starts a pinch: joints still closed from the last one do not grab a plant', () => {
     const { step } = rig();
     step({ at: SEED_AT });
-    step({ pinch: true, select: true }); // picks the seed up, on select
+    step({ at: ORB_AT });
+    step({ pinch: true, select: true }); // presses the orb, on select
     step({ select: false }); // lets it go on select; the joints are still closed
     step({ at: PLANT_AT }); // and moves onto a plant like that
     step();
