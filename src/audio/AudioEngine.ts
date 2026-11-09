@@ -203,7 +203,7 @@ export class Engine implements AudioEngine {
   private readonly steps: PlantRecord[][] = Array.from({ length: STEPS }, () => []);
   private readonly centre = { x: 0, y: 0 };
   /** The ending chord's and the ripple's notes, one after the other (a voice reads its params in the trigger). */
-  private readonly chord: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 };
+  private readonly chord: VoiceParams = { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0 };
   /** T-147b: the owner of the preview notes (one at a time), and the last one's plant, audio time and height. */
   private readonly previewOwner = {};
   private previewId = '';
@@ -641,6 +641,7 @@ export class Engine implements AudioEngine {
     p.release = own.release;
     p.cutoffMul = own.cutoffMul;
     p.detune = own.detune;
+    p.timbre = own.timbre;
     p.gain = dbToGain(this.recipe.mixDb[r.plant.voice] + PLACED_DB_RE_PLANT);
     g.pool.play(r.voice, now, p, r.x, r.y, r.z, r);
   }
@@ -663,6 +664,7 @@ export class Engine implements AudioEngine {
     p.release = s.releaseS;
     p.cutoffMul = s.cutoffMul;
     p.detune = 0;
+    p.timbre = 0;
     const now = g.ctx.currentTime;
     const b = this.bed;
     const chord = chordDegrees(this.key.mode);
@@ -751,7 +753,7 @@ export class Engine implements AudioEngine {
         record = {
           plant,
           voice: g.bell,
-          params: { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0 },
+          params: { hz: 0, gain: 0, release: 0, cutoffMul: 1, detune: 0, timbre: 0 },
           seed: grooveSeed(plant.id),
           x: 0,
           y: 0,

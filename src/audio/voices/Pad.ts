@@ -11,6 +11,8 @@ import {
 } from '../config.js';
 import { TODAY, type Recipe } from '../styles.js';
 
+import { playReeds } from './calm.js';
+
 import type { NoteRef, Voice, VoiceParams } from './note.js';
 
 function clamp(x: number, lo: number, hi: number): number {
@@ -25,6 +27,7 @@ export class Pad implements Voice {
   ) {}
 
   trigger(time: number, p: VoiceParams, out: AudioNode): void {
+    if (this.r.calmVoices) return playReeds(this.ctx, this.ref.note, time, p, out, this.r);
     const ctx = this.ctx;
     const r = this.r;
     const attack = r.padAttackS;

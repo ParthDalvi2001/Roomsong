@@ -23,6 +23,8 @@ import {
 import { renderKarplusStrong } from '../karplus.js';
 import { TODAY, type Recipe } from '../styles.js';
 
+import { playBowl } from './calm.js';
+
 import type { Note, NoteRef, Voice, VoiceParams } from './note.js';
 
 /** String damping 0..1 for a cutoff multiplier: a brighter hue is damped less. */
@@ -114,6 +116,7 @@ export class Pluck implements Voice {
    * renders it makes no object (NFR-PERF-08).
    */
   prepare(p: VoiceParams): void {
+    if (this.r.calmVoices) return; // a calm bowl has no string
     const b = bucketOf(p.cutoffMul);
     if (this.readyAt(p.hz, b) >= 0 || this.waitingAt(p.hz, b) >= 0) return;
     const sr = this.ctx.sampleRate;
@@ -140,6 +143,7 @@ export class Pluck implements Voice {
   }
 
   trigger(time: number, p: VoiceParams, out: AudioNode): void {
+    if (this.r.calmVoices) return playBowl(this.ctx, this.ref.note, time, p, out, false);
     const b = bucketOf(p.cutoffMul);
     let i = this.readyAt(p.hz, b);
     // Not rendered yet: the nearest ready string, which playString re-pitches to the note (LLD §7). None is ready

@@ -1,4 +1,6 @@
 // Plant → voice parameter mappings (FR-MUS-05): monotonic, clamped, allocation-free.
+import { STEPS } from '../garden/index.js';
+
 import {
   HEIGHT_GAIN_DB_MAX,
   HEIGHT_GAIN_DB_MIN,
@@ -52,5 +54,19 @@ export function voiceParamsFor(
   out.release = heightToReleaseS(plant.height);
   out.cutoffMul = hueToCutoffMul(plant.hue);
   out.detune = hueToDetuneCents(plant.hue);
+  out.timbre = plantTimbre(plant);
   return out;
+}
+
+/**
+ * A plant's own tone (style B's calm voices): FNV-1a of its id, then its cell, mixed (mulberry32's finish), 30 bits so
+ * V8 keeps it a small integer. The same plant in the same cell always sounds the same; another plant or cell, not.
+ */
+export function plantTimbre(plant: Pick<Plant, 'id' | 'cell'>): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < plant.id.length; i++) h = Math.imul(h ^ plant.id.charCodeAt(i), 0x01000193);
+  h = Math.imul(h ^ (plant.cell.ring * STEPS + plant.cell.step + 1), 0x01000193);
+  h = Math.imul(h ^ (h >>> 15), h | 1);
+  h ^= h + Math.imul(h ^ (h >>> 7), h | 61);
+  return (h ^ (h >>> 14)) & 0x3fffffff;
 }

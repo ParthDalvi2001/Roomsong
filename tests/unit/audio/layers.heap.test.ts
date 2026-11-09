@@ -41,7 +41,15 @@ const count = { notes: 0, counterNotes: 0, variationNotes: 0, breathGlides: 0, d
 const pluck = {};
 const pool = {
   ref: { note: null },
-  play: (voice: object, _t: number, _p: object, _x: number, _y: number, _z: number, owner: object | null): boolean => {
+  play: (
+    voice: object,
+    _t: number,
+    _p: object,
+    _x: number,
+    _y: number,
+    _z: number,
+    owner: object | null,
+  ): boolean => {
     count.notes++;
     if (voice === pluck) count.counterNotes++;
     if (owner !== null) count.variationNotes++;
@@ -98,7 +106,7 @@ function make() {
       hue: 0.5,
       plantedAt: 0,
     },
-    params: { hz: 220, gain: 0.3, release: 1, cutoffMul: 1, detune: 0 },
+    params: { hz: 220, gain: 0.3, release: 1, cutoffMul: 1, detune: 0, timbre: 0 },
     seed: i * 7919,
     voice: {} as never,
     x: 0,
