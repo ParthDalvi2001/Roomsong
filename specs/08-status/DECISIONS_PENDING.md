@@ -2,8 +2,11 @@
 
 **The one file for every open decision** (updated 9 Nov, after the plan sweep). Reply with the number and your answer, or "done". Answered ones go to DECISIONS_LOG.
 
-## 1. Push main again before the headset run (one line, for the live site)
-Done once: `main` 5c676b6 went live on 9 Nov 10:48 (the BUG-040 fix, the test pages out). The headset sheet (items 4 and 8) checks the afternoon's work too: the room colours (T-190), the shaping sounds (T-147b), BUG-042 to 045. When Claude says local `main` is ready (after one full browser run on today's merges), say "push", then in Terminal: `cd /Users/parth_baller/Documents/test-pro/Roomsong && git push origin main`.
+## 1. Put the freeze live (two commands, after develop's CI is green)
+In Terminal:
+1. `cd /Users/parth_baller/Documents/test-pro/Roomsong && git push origin main` (local `main` is already the freeze commit b9109fe)
+2. When Actions → `deploy` is green: `git tag -a v0.5.0 -m "Feature freeze 2026-11-09" b9109fe && git push origin v0.5.0`
+Then the live site has v0.5.0 for this evening's headset run.
 
 ## 2. The name: Roomsong or SonicSpace (Parth, 9 Nov: "wait, I will tell")
 ★ **Keep Roomsong.** The name check (RND_2026-11-08 §3) found no SonicSpace app or registered mark, but "Sonic" reads as SEGA's game in a games contest, and the name drops "room", the core idea. If SonicSpace: the rename branch is ready (title, landing page); the video, gallery and the `/Roomsong/` link must change too.
@@ -20,12 +23,6 @@ The site refuses automated reads (HTTP 403 on 8 and 9 Nov), so the last check ag
 
 ## 5. Before 12 Nov: a new person plays it
 Someone who has never seen Roomsong plays the first five minutes on a headset while you watch, without help. Tell me what got stuck. This is the evidence for "Best First Five Minutes".
-
-## 6. 12 Nov feature freeze: how to tag
-**Self-score accepted 9 Nov 13:50 IST** (Parth: "do it"): all four below 8, ★ accept with the actions in FEATURE_FREEZE_PREP §5.1; recorded with the freeze. Push of develop: Parth "yes push" once the full check passes. Headset sheet, Day 2 and the second room: this evening. A new person: Parth asks his family.
-**Answered 9 Nov 13:10 IST: A** (Parth: "a"), and move the freeze forward to today since the driver's side is done (Parth: "move to next stage"). Steps run once the full check passes.
-★ **A:** you push `main` and tag v0.5.0 (the freeze build is the live one). **B:** say "go", I tag `develop`, no deploy. FEATURE_FREEZE_PREP_2026-11-12 §5–§6. After the freeze: only bug fixes.
-With it, the G3 verdict: ★ **conditional pass** (the conditions: the new-person test, item 5, and your call on any self-score below 8). It also closes G2, never held on 3 Nov.
 
 ## 7. Old items of 25 Oct, still open
 1. **Mirror (T-108).** ★ **"No mirror":** Pages is the submitted link and live since 8 Nov; a mirror adds two hand steps (a Netlify upload and a same-build check) on 15 and 17 Nov, the busiest days. The runbook and the uptime watch already work without one. **Or** Netlify by 14 Nov (free account; you drag the site folder at T-183 and T-185): send its address.
