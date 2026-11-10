@@ -393,7 +393,11 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
   await press('tempo:+');
   expect(await probe.evaluate((p) => [p.settings().tempo, p.engine.bpm])).toEqual([88, 88]);
   expect(await probe.evaluate((p) => p.words())).toContain('88 BPM');
-  expect(await uploads(probe)).toBe(drawnBefore + 1); // drawn again once, for the change
+  // Drawn again for the change, and (D-086) when the description follows the hand onto the control and off it:
+  // a few redraws for one press, never one per frame.
+  const drawn = (await uploads(probe)) - drawnBefore;
+  expect(drawn).toBeGreaterThanOrEqual(1);
+  expect(drawn).toBeLessThanOrEqual(4);
   await press('volume:-');
   expect(await probe.evaluate((p) => [p.settings().volume, p.engine.volume])).toEqual([0.7, 0.7]);
   // Idle: the canvas is not drawn again, frame after frame.
