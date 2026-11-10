@@ -630,7 +630,9 @@ test('settings panel: the gaze alone opens it, changes a setting and closes it, 
   await lookAt(await target('gazeDwell'));
   await xrFrames(page, 60);
   expect((await probe.evaluate((p) => p.settings())).gazeDwell).toBe(true);
-  expect(await probe.evaluate((p) => p.ring.visible)).toBe(false);
+  // No cue from the gaze on its own switch. The larger board of 10 Nov can sit under a resting emulated hand,
+  // whose hover may ring another control: that is the hand, not the gaze.
+  expect(await probe.evaluate((p) => p.system.panel.cue())).not.toBe('gazeDwell');
   await lookAt(await target('dwell:900'));
   await page.waitForFunction((p) => p.settings().dwellMs === 900, probe, { timeout: HOLD_LIMIT_MS });
   // What the gaze meets in the frame right after a selection counts as selected already (Panel.dwell). The
