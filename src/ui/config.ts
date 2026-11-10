@@ -168,6 +168,22 @@ export const ORB_OFF_HAND_M = 0.09;
 export const ORB_DISTANCE_M = 0.45;
 export const ORB_SIDE_DEG = 20;
 export const ORB_BELOW_GAZE_DEG = 12;
+/**
+ * D-084: "Skip guide" while the panel is closed, a wide pill waiting like the orb (home, then clamped into the FoV
+ * box): this far ahead, to the dominant side, below the gaze. At 0.35 m it spans 9.5 to 22.5 degrees out and 11.7 to
+ * 18.3 down: inside the box, under the caption (8 degrees down, 2.4 tall) and, seated over the bed, about 13 cm above
+ * its near rim, within reach. While the panel is open it sits in the header instead (Panel.ts SKIP_AT_X). Device check.
+ */
+export const SKIP_DISTANCE_M = 0.35;
+export const SKIP_SIDE_DEG = 16;
+export const SKIP_BELOW_GAZE_DEG = 15;
+/**
+ * D-084: the guide's neon glow on what it points at (the hint ring, the orb, Seeds, Move), in PANEL_ACCENT (its
+ * high-contrast twin in high contrast). A slow pulse, one a second (FR-UI-11: never more than 3 flashes a second),
+ * from GLOW_LOW of the accent to all of it; steady at full with Reduce motion (UX §8).
+ */
+export const GLOW_PERIOD_MS = 1000;
+export const GLOW_LOW = 0.45;
 
 // The hints (T-150, UX §3.3, §3.4): the onboarding icons, the hint ring, the remove arrow and the hand hint. Each is
 // a quad of one icon atlas, drawn on a canvas once (UX §1: an icon, never a paragraph; no hand model, D-027).

@@ -24,6 +24,9 @@ import {
   PANEL_TARGET_PITCH_M,
   PANEL_WIDE_TARGET_M,
   PANEL_WIDTH_M,
+  SKIP_BELOW_GAZE_DEG,
+  SKIP_DISTANCE_M,
+  SKIP_SIDE_DEG,
   TEMPO_STEP_BPM,
   VOLUME_STEP,
 } from './config.js';
@@ -112,7 +115,9 @@ export const ORB_ID = 'orb';
 export const NEW_GARDEN_ID = 'newGarden';
 const TIME_LAPSE_ID = 'timeLapse';
 const EXIT_ID = 'exit';
-const SEEDS_ID = 'seeds'; // the way to the Seeds page (T-193, 10 Nov): a palm-up no longer opens it
+export const SEEDS_ID = 'seeds'; // the way to the Seeds page (T-193, 10 Nov): a palm-up no longer opens it
+/** D-084: the "Skip guide" button, drawn by PanelSystem off the board; its press or dwell is `pressed(SKIP_ID)`. */
+export const SKIP_ID = 'skipGuide';
 // The gaze cannot switch itself off: a user with no hand to pinch with could not switch it back on.
 const GAZE_TOGGLE_ID = 'gazeDwell';
 
@@ -137,6 +142,9 @@ const END_X: Readonly<Record<Cell, number>> = { full: EDGE_X, left: -CELL_GAP_M 
 const FULL_W = 2 * EDGE_X;
 const TAB_X = [0, 1, 2].map((i) => -EDGE_X + W / 2 + i * (W + TARGET_GAP_M));
 const CLOSE_X = EDGE_X - T / 2;
+/** D-084: "Skip guide" on the open board: in the header's gap between the last tab and Close, 3.5 cm from each. */
+export const SKIP_AT_X = ((TAB_X[2] ?? 0) + W / 2 + CLOSE_X - T / 2) / 2;
+export const SKIP_AT_Y = HEADER_Y;
 const VALUE_W = 0.09; // "120 BPM", bold, is about 0.083 m
 // "+20" is about 0.036 m: "+10 cm" ran into the plus button's ring
 const HEIGHT_VALUE_W = 0.04;
@@ -503,6 +511,14 @@ export class Panel {
     this.setOpen(false);
   }
 
+  /** D-084: the guide's tips point at the Garden tab's Seeds and Move: the open board shows that tab, from any page. */
+  showGarden(): void {
+    if (!this.isOpen || (this.shownTab === 'garden' && !this.isSeeds)) return;
+    this.shownTab = 'garden';
+    this.isSeeds = this.opening = false;
+    this.stale = true;
+  }
+
   /** FR-HND-12: the gaze rests on `id` ('' = on nothing) for one more frame. */
   private dwell(dt: number, id: string, s: Readonly<Settings>, isTurning: boolean): void {
     const ms = this.ms;
@@ -549,6 +565,11 @@ export class Panel {
 
   /** Acts on a control. One that is not on show (another tab's, a closed panel's) or is at its limit does nothing. */
   private select(id: string): void {
+    if (id === SKIP_ID) {
+      this.selected = true;
+      this.actions.pressed(id); // PanelSystem ends the guide: the button is not one of the board's controls
+      return;
+    }
     if (id === ORB_ID) {
       this.selected = true;
       this.actions.pressed(id);
@@ -906,10 +927,28 @@ const ORB_DROP_M = ORB_DISTANCE_M * Math.tan(ORB_BELOW_GAZE_DEG * RAD_PER_DEG);
  * point and clamps it into the FoV box every frame, as a caption is.
  */
 export function orbHome(head: Mat4, dominant: Hand, out: Vec3): void {
-  const x = dominant === 'right' ? -ORB_SIDE_M : ORB_SIDE_M;
-  out.x = at(head, 12) + x * at(head, 0) - ORB_DROP_M * at(head, 4) - ORB_DISTANCE_M * at(head, 8);
-  out.y = at(head, 13) + x * at(head, 1) - ORB_DROP_M * at(head, 5) - ORB_DISTANCE_M * at(head, 9);
-  out.z = at(head, 14) + x * at(head, 2) - ORB_DROP_M * at(head, 6) - ORB_DISTANCE_M * at(head, 10);
+  ahead(head, dominant === 'right' ? -ORB_SIDE_M : ORB_SIDE_M, ORB_DROP_M, ORB_DISTANCE_M, out);
+}
+
+/** D-084: "Skip guide" as the FoV guard sees it while it waits in the view box. */
+export const SKIP_ELEMENT: Readonly<FovElement> = {
+  distanceM: SKIP_DISTANCE_M,
+  halfWidthM: PANEL_WIDE_TARGET_M / 2,
+  halfHeightM: PANEL_TARGET_M / 2,
+};
+const SKIP_SIDE_M = SKIP_DISTANCE_M * Math.tan(SKIP_SIDE_DEG * RAD_PER_DEG);
+const SKIP_DROP_M = SKIP_DISTANCE_M * Math.tan(SKIP_BELOW_GAZE_DEG * RAD_PER_DEG);
+
+/** D-084: "Skip guide"'s place while the board is closed: like the orb's, on the dominant hand's side. Writes `out`. */
+export function skipHome(head: Mat4, dominant: Hand, out: Vec3): void {
+  ahead(head, dominant === 'right' ? SKIP_SIDE_M : -SKIP_SIDE_M, SKIP_DROP_M, SKIP_DISTANCE_M, out);
+}
+
+/** The point `distance` ahead of `head`, `side` to its right and `drop` below its gaze line, to `out`. */
+function ahead(head: Mat4, side: number, drop: number, distance: number, out: Vec3): void {
+  out.x = at(head, 12) + side * at(head, 0) - drop * at(head, 4) - distance * at(head, 8);
+  out.y = at(head, 13) + side * at(head, 1) - drop * at(head, 5) - distance * at(head, 9);
+  out.z = at(head, 14) + side * at(head, 2) - drop * at(head, 6) - distance * at(head, 10);
 }
 
 /** A hand's palm as its `HandState` holds it (hands/): two vectors of x, y, z, world. */

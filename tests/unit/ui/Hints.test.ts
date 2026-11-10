@@ -2,6 +2,7 @@
 // the hand hint (FR-HND-15, D-030) and when all of it hides. On the real bus with a fake world; the atlas is drawn
 // on a canvas that records nothing. Zero allocation per frame is tests/unit/onboarding/onboarding.heap.test.ts.
 import {
+  Color,
   Group,
   Matrix4,
   Quaternion,
@@ -23,6 +24,8 @@ import {
   GUIDE_CELL,
   HINT_FADE_MS,
   PALM_ICON_LIFT_M,
+  PANEL_ACCENT,
+  PANEL_ACCENT_HIGH_CONTRAST,
   REMOVE_ARROW_AT_M,
 } from '../../../src/ui/config.js';
 import { HintSystem } from '../../../src/ui/Hints.js';
@@ -358,5 +361,41 @@ describe('HintSystem: the hand hint (FR-HND-15, D-030)', () => {
     bus.emit('xr:sessionEnd', { visible: false });
     r.frame();
     expect(r.system.shows.hands[0]).toBe(-1);
+  });
+});
+
+describe('the guide glow (D-084, FR-UI-11)', () => {
+  const rounded = (colour: Color) => colour.toArray().map((v) => Math.round(v * 1e4) / 1e4);
+
+  it('tints the hint ring with the accent and pulses it slowly: about once a second, never 3 times', () => {
+    const r = rig();
+    step('plant');
+    const reds: number[] = [];
+    for (let ms = 0; ms < 2000; ms += 14) {
+      r.frame();
+      reds.push(r.ring.material.color.r);
+    }
+    const peak = Math.max(...reds);
+    const low = Math.min(...reds);
+    expect(peak).toBeCloseTo(new Color(PANEL_ACCENT).r, 2);
+    expect(low).toBeLessThan(0.6 * peak);
+    // a flash is a rise past the middle: two seconds hold one or two of them
+    const mid = (peak + low) / 2;
+    const rises = reds.filter((v, i) => i > 0 && v >= mid && (reds[i - 1] ?? 0) < mid).length;
+    expect(rises).toBeGreaterThanOrEqual(1);
+    expect(rises).toBeLessThanOrEqual(2);
+  });
+
+  it('glows steady in the full accent with Reduce motion, and in the high-contrast accent in high contrast', () => {
+    settings.set({ ...DEFAULT_SETTINGS, reducedMotion: true });
+    const r = rig();
+    step('plant');
+    for (let i = 0; i < 100; i++) {
+      r.frame();
+      expect(rounded(r.ring.material.color)).toEqual(rounded(new Color(PANEL_ACCENT)));
+    }
+    settings.set({ ...DEFAULT_SETTINGS, reducedMotion: true, highContrast: true });
+    r.frame();
+    expect(rounded(r.ring.material.color)).toEqual(rounded(new Color(PANEL_ACCENT_HIGH_CONTRAST)));
   });
 });

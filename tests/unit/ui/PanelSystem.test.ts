@@ -2,7 +2,7 @@
 // is asked to draw, and what PanelSystem does with events, targets and hands, on fake entities (the way
 // tests/unit/hands/HandSystem.test.ts does it). Node has no canvas and no WebGL: the panel in a scene is
 // tests/e2e/12-settings.spec.ts.
-import { Matrix4, Vector3 } from '@iwsdk/core';
+import { Color, Matrix4, Vector3 } from '@iwsdk/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Interactable } from '../../../src/core/components.js';
@@ -28,6 +28,7 @@ import {
   PANEL_FONT,
   PANEL_FONT_PX,
   PANEL_INK,
+  PANEL_LOOK_AWAY_MS,
   PANEL_OUTLINE_HIGH_CONTRAST_PX,
   PANEL_OUTLINE_PX,
   PANEL_PX_PER_M,
@@ -35,7 +36,7 @@ import {
   PANEL_SYMBOL_FONT,
   PANEL_WIDE_TARGET_M,
 } from '../../../src/ui/config.js';
-import { ORB_ID, Panel, type PanelTab } from '../../../src/ui/Panel.js';
+import { ORB_ID, Panel, SKIP_ID, type PanelTab } from '../../../src/ui/Panel.js';
 import { drawOrb, drawPanel, PanelSystem } from '../../../src/ui/PanelSystem.js';
 import { PANEL } from '../../../src/ui/strings.js';
 
@@ -819,5 +820,155 @@ describe('the UI sounds of the panel (T-164 §6)', () => {
     silent.frame();
     expect(() => silent.press(ORB_ID)).not.toThrow();
     expect(silent.asked).toEqual([]);
+  });
+});
+
+describe('PanelSystem: the guide (D-084)', () => {
+  const offs: (() => void)[] = [];
+  afterEach(() => offs.splice(0).forEach((off) => off()));
+  /** Every payload of `type` from now on. */
+  function heard<K extends keyof EventMap>(type: K): EventMap[K][] {
+    const seen: EventMap[K][] = [];
+    offs.push(bus.on(type, (event) => void seen.push(event)));
+    return seen;
+  }
+  const opens = () => heard('panel:open');
+  const DEG = 180 / Math.PI;
+  type Shown = { visible: boolean; matrix: Matrix4; material: { color: Color } };
+  const accent = (hex: string) => new Color(hex).toArray().map((v) => Math.round(v * 1e4) / 1e4);
+  const colour = (ring: Shown) => ring.material.color.toArray().map((v) => Math.round(v * 1e4) / 1e4);
+  const where = (ring: Shown) =>
+    [12, 13, 14].map((i) => Math.round((ring.matrix.elements[i] ?? 0) * 1e4) / 1e4);
+
+  it('says panel:open once per change, by pinch and by look-away', () => {
+    const seen = opens();
+    const { watch, frame, press, head, system } = rig();
+    watch();
+    frame();
+    press(ORB_ID);
+    frame();
+    expect(seen.map((e) => e.open)).toEqual([true]);
+    press('close');
+    frame();
+    expect(seen.map((e) => e.open)).toEqual([true, false]);
+    press(ORB_ID);
+    head.makeRotationY(Math.PI).setPosition(...EYE); // the head turns round: the board is behind it
+    for (let ms = 0; ms <= PANEL_LOOK_AWAY_MS + 200; ms += 50) frame(50);
+    expect(system.panel.open).toBe(false);
+    expect(seen.map((e) => e.open)).toEqual([true, false, true, false]);
+  });
+
+  it('says panel:open once when a gaze dwell on the orb opens the board', () => {
+    settings.set({ gazeDwell: true, dwellMs: 600 });
+    const seen = opens();
+    const { head, frame, targets, system } = rig();
+    frame();
+    const [x = 0, y = 0, z = 0] = targets()[0]!.getVectorView(Interactable, 'worldPos');
+    head.lookAt(new Vector3(...EYE), new Vector3(x, y, z), new Vector3(0, 1, 0)).setPosition(...EYE);
+    for (let ms = 0; ms <= 2000; ms += 50) frame(50);
+    expect(system.panel.open).toBe(true);
+    expect(seen.map((e) => e.open)).toEqual([true]);
+  });
+
+  it('shows Skip guide only while the guide runs, low on the dominant side in the FoV box; a press says onboarding:skip once and it goes', () => {
+    const skips = heard('onboarding:skip');
+    const { frame, ids, targets, press, emit } = rig();
+    frame();
+    for (const step of ['off', 'done'] as const) {
+      emit('onboarding:step', { step });
+      frame();
+      expect(ids(), step).not.toContain(SKIP_ID);
+    }
+    emit('onboarding:step', { step: 'plant' });
+    frame();
+    expect(ids()).toEqual([SKIP_ID]); // no hand, so no orb
+    const skip = targets()[0]!;
+    expect(skip.getValue(Interactable, 'kind')).toBe('panel');
+    const [x = 0, y = 0, z = 0] = skip.getVectorView(Interactable, 'worldPos');
+    expect(Math.atan2(x, -z) * DEG).toBeCloseTo(16, 0); // to the right of a right-handed user
+    expect(Math.atan2(EYE[1] - y, -z) * DEG).toBeCloseTo(15, 0); // under the caption's 8 degrees
+    press(SKIP_ID);
+    expect(skips).toHaveLength(1);
+    expect(ids()).not.toContain(SKIP_ID);
+    press(SKIP_ID); // a pinch that ends where it was: nothing left to skip
+    expect(skips).toHaveLength(1);
+  });
+
+  it("moves Skip guide into the open board's header, clear of the tabs and Close, and takes a gaze dwell on it", () => {
+    const skips = heard('onboarding:skip');
+    const { watch, frame, press, emit, targets, head } = rig();
+    watch();
+    emit('onboarding:step', { step: 'orb' });
+    frame();
+    press(ORB_ID);
+    frame();
+    const at = (id: string) => [
+      ...targets()
+        .find((e) => e.getValue(Interactable, 'id') === id)!
+        .getVectorView(Interactable, 'worldPos'),
+    ];
+    const [x = 0, y = 0, z = 0] = at(SKIP_ID);
+    expect([y, z].map((v) => Math.round(v * 1e4) / 1e4)).toEqual([
+      Math.round(at('close')[1]! * 1e4) / 1e4,
+      -0.55,
+    ]);
+    expect(at('close')[0]! - x).toBeGreaterThanOrEqual(0.055);
+    expect(x - at('tab:garden')[0]!).toBeGreaterThanOrEqual(0.055);
+    settings.set({ gazeDwell: true, dwellMs: 600 });
+    head.lookAt(new Vector3(...EYE), new Vector3(x, y, z), new Vector3(0, 1, 0)).setPosition(...EYE);
+    for (let ms = 0; ms <= 2000; ms += 50) frame(50);
+    expect(skips).toHaveLength(1);
+  });
+
+  it('turns the open board to the Garden tab in seedsTip and rings Seeds in a slow accent pulse; Move in moveTip; the orb in orb', () => {
+    const { watch, frame, press, emit, system, mesh, targets } = rig();
+    const ring = mesh('settings-cue') as unknown as Shown;
+    const at = (id: string) =>
+      [
+        ...targets()
+          .find((e) => e.getValue(Interactable, 'id') === id)!
+          .getVectorView(Interactable, 'worldPos'),
+      ].map((v) => Math.round(v * 1e4) / 1e4);
+    watch();
+    emit('onboarding:step', { step: 'orb' });
+    frame();
+    expect(ring.visible).toBe(true);
+    expect(where(ring)).toEqual(at(ORB_ID));
+    press(ORB_ID); // the Sound tab
+    emit('onboarding:step', { step: 'seedsTip' });
+    frame();
+    expect(system.panel.tab).toBe('garden');
+    expect(where(ring)).toEqual(at('seeds'));
+    const reds: number[] = [];
+    for (let ms = 0; ms < 1000; ms += 14) {
+      frame();
+      reds.push(ring.material.color.r);
+    }
+    expect(Math.max(...reds)).toBeCloseTo(new Color(PANEL_ACCENT).r, 2);
+    expect(Math.min(...reds)).toBeLessThan(0.6 * Math.max(...reds));
+    press('tab:sound'); // once per step: the player may look round the board
+    expect(system.panel.tab).toBe('sound');
+    emit('onboarding:step', { step: 'moveTip' });
+    frame();
+    expect(system.panel.tab).toBe('garden');
+    expect(where(ring)).toEqual(at('replaceBed'));
+    emit('onboarding:step', { step: 'done' });
+    frame();
+    expect(ring.visible).toBe(false);
+  });
+
+  it('glows steady in the full accent with Reduce motion, its high-contrast twin in high contrast', () => {
+    settings.set({ reducedMotion: true });
+    const { watch, frame, emit, mesh } = rig();
+    const ring = mesh('settings-cue') as unknown as Shown;
+    watch();
+    emit('onboarding:step', { step: 'orb' });
+    for (let i = 0; i < 100; i++) {
+      frame();
+      expect(colour(ring)).toEqual(accent(PANEL_ACCENT));
+    }
+    settings.set({ highContrast: true });
+    frame();
+    expect(colour(ring)).toEqual(accent(PANEL_ACCENT_HIGH_CONTRAST));
   });
 });

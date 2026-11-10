@@ -4,6 +4,7 @@
 // listens.
 import {
   CanvasTexture,
+  Color,
   createSystem,
   Mesh,
   MeshBasicMaterial,
@@ -30,6 +31,7 @@ import {
   CUE_RING_INNER_M,
   CUE_RING_OUTER_M,
   CUE_SEGMENTS,
+  GLOW_PERIOD_MS,
   ORB_CANVAS_PX,
   ORB_DIAMETER_M,
   PANEL_ACCENT,
@@ -51,9 +53,11 @@ import {
   PANEL_SYMBOL_FONT,
   PANEL_TARGET_FILL,
   PANEL_TARGET_M,
+  PANEL_WIDE_TARGET_M,
   PANEL_WIDTH_M,
 } from './config.js';
 import { clampToFov, fovBoundsDeg, type FovBounds, type FovElement } from './FovGuard.js';
+import { neon } from './Hints.js';
 import {
   ArrayVec3,
   EDGE_X,
@@ -69,21 +73,30 @@ import {
   PANEL_ELEMENT,
   placePanel,
   RULE_Y,
+  SEEDS_ID,
+  SKIP_AT_X,
+  SKIP_AT_Y,
+  SKIP_ELEMENT,
+  SKIP_ID,
+  skipHome,
   type Palm,
   type PanelControl,
   type PanelText,
 } from './Panel.js';
+import { PANEL } from './strings.js';
 
-import type { Hand, Mat4, Settings } from '../core/index.js';
+import type { EventMap, Hand, Mat4, Settings } from '../core/index.js';
 import type { SeedKind } from '../garden/index.js';
 import type { TargetRef } from '../hands/index.js';
 
 const W = Math.round(PANEL_WIDTH_M * PANEL_PX_PER_M);
 const H = Math.round(PANEL_HEIGHT_M * PANEL_PX_PER_M);
 const TARGET_PX = PANEL_TARGET_M * PANEL_PX_PER_M;
-/** A slot per target: the orb first, then the controls on show. No tab has more than 14 of them. */
+/** A slot per target: the orb first, then the controls on show, then "Skip guide". No tab has more than 14 controls. */
 const MAX_CONTROLS = 16;
-const SLOTS = 1 + MAX_CONTROLS;
+const SKIP = 1 + MAX_CONTROLS;
+const SLOTS = SKIP + 1;
+const CREAM = new Color(CAPTION_TEXT_COLOUR);
 /** The panel's centre as the FoV guard sees it, for the look-away check. */
 const PANEL_CENTRE: Readonly<FovElement> = { distanceM: PANEL_DISTANCE_M, halfWidthM: 0, halfHeightM: 0 };
 /** Indices of one of the fill ring's steps: two triangles. */
@@ -247,6 +260,26 @@ export function drawOrb(ctx: CanvasRenderingContext2D, highContrast: boolean): v
   });
 }
 
+/** D-084: the "Skip guide" pill: a cream-outlined button on the caption backdrop, its word in the panel font. */
+export function drawSkip(ctx: CanvasRenderingContext2D, highContrast: boolean): void {
+  const outline = highContrast ? PANEL_OUTLINE_HIGH_CONTRAST_PX : PANEL_OUTLINE_PX;
+  const w = PANEL_WIDE_TARGET_M * PANEL_PX_PER_M;
+  ctx.clearRect(0, 0, w, TARGET_PX);
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = outline;
+  ctx.strokeStyle = CAPTION_TEXT_COLOUR;
+  ctx.beginPath();
+  ctx.roundRect(outline, outline, w - 2 * outline, TARGET_PX - 2 * outline, TARGET_PX / 2 - outline);
+  ctx.fillStyle = highContrast ? CAPTION_BACKDROP_HIGH_CONTRAST : CAPTION_BACKDROP;
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = CAPTION_TEXT_COLOUR;
+  ctx.font = PANEL_FONT;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(PANEL.skipGuide, w / 2, TARGET_PX / 2, w - TARGET_PX / 2); // squeezed to fit, never cut
+}
+
 /** Drawn over the garden with no depth test, like a caption. */
 const overlay = (parameters: MeshBasicMaterialParameters): MeshBasicMaterial =>
   new MeshBasicMaterial({
@@ -326,6 +359,18 @@ export class PanelSystem extends createSystem(
 
   private board!: Quad;
   private orb!: Quad;
+  /** D-084: "Skip guide", shown while the guide runs (any step but off and done). One draw call, only then. */
+  private skip!: Quad;
+  private step: EventMap['onboarding:step']['step'] = 'off';
+  private skipView: { [index: number]: number } | null = null;
+  /** Where "Skip guide" waits while the board is closed, and for which dominant hand; null = to be worked out. */
+  private readonly skipAt = new Vector3();
+  private skipFor: Hand | null = null;
+  private skipHighContrast: boolean | null = null;
+  /** The guide's tip step whose Garden tab the open board was last turned to ('' = none yet). */
+  private tipFor = '';
+  /** Whole ms into the glow's pulse (GLOW_PERIOD_MS): an integer, so it stays off the heap. */
+  private glowMs = 0;
   private ring!: Mesh<RingGeometry, MeshBasicMaterial>;
   private fill!: Mesh<RingGeometry, MeshBasicMaterial>;
   /** The fill ring's colour now: New garden's hold fills in the warm red, any other hold or dwell in the violet. */
@@ -336,10 +381,8 @@ export class PanelSystem extends createSystem(
   // that control's centre (world) and its drawn width.
   private readonly entities: Entity[] = [];
   private readonly ids: string[] = [];
-  private readonly centres = new Float32Array(3 * SLOTS);
+  private readonly centres = new Float32Array(3 * SLOTS).fill(Number.NaN); // NaN: never on the gaze line
   private readonly widths = new Float32Array(SLOTS).fill(PANEL_TARGET_M);
-  /** Slots in use: the orb and the controls on show. */
-  private count = 1;
   /** Where the orb waits when no hand carries it, and for which dominant hand that was worked out. */
   private readonly home = new Vector3();
   private homeFor: Hand | null = null;
@@ -373,12 +416,20 @@ export class PanelSystem extends createSystem(
       // D-067: IWSDK's own exit, `session.end()`; the wiring saves at `xr:sessionEnd` and the landing page returns.
       exit: () => this.world.exitXR(),
       // Place the garden again is a plain press: its confirm sounds when the bed lands (room:bedPlaced, GardenAudioSystem).
-      pressed: (id) => engine?.ui(id === NEW_GARDEN_ID ? 'confirm' : 'tick'),
+      pressed: (id) => {
+        engine?.ui(id === NEW_GARDEN_ID ? 'confirm' : 'tick');
+        if (id === SKIP_ID && this.skip.mesh.visible) {
+          this.step = 'done'; // the button goes at once, whatever the guide says next
+          bus.emit('onboarding:skip', {});
+        }
+      },
       pickSeed: (kind) => garden?.pick(kind),
       swatch: (kind, signature) => kindSwatch(kind, signature.paletteSeed, signature.reverbRt60),
     });
     this.board = makeQuad('settings-panel', PANEL_WIDTH_M, PANEL_HEIGHT_M, PANEL_PX_PER_M);
     this.orb = makeQuad('settings-orb', ORB_DIAMETER_M, ORB_DIAMETER_M, ORB_CANVAS_PX / ORB_DIAMETER_M);
+    this.skip = makeQuad('guide-skip', PANEL_WIDE_TARGET_M, PANEL_TARGET_M, PANEL_PX_PER_M);
+    this.widths[SKIP] = PANEL_WIDE_TARGET_M;
     this.ring = new Mesh(
       new RingGeometry(CUE_RING_INNER_M, CUE_RING_OUTER_M, CUE_SEGMENTS),
       overlay({ color: CAPTION_TEXT_COLOUR }),
@@ -390,8 +441,8 @@ export class PanelSystem extends createSystem(
     );
     this.ring.name = 'settings-cue';
     this.fill.name = 'settings-fill';
-    // In this order: the orb over the panel, the ring over both, the fill over the ring.
-    [this.board.mesh, this.orb.mesh, this.ring, this.fill].forEach((mesh, i) => {
+    // In this order: the orb and "Skip guide" over the panel, the ring over them, the fill over the ring.
+    [this.board.mesh, this.orb.mesh, this.skip.mesh, this.ring, this.fill].forEach((mesh, i) => {
       mesh.visible = false;
       mesh.renderOrder = PANEL_RENDER_ORDER + i;
       // The panel stays where it opened. The other three move every frame, and their matrices are written
@@ -414,8 +465,9 @@ export class PanelSystem extends createSystem(
     const s = settings.get();
     const panel = this.panel;
     this.placeOrb(head, s);
+    this.placeSkip(head, s);
     const kept = this.gazedId === '' ? -1 : this.ids.indexOf(this.gazedId);
-    const gazed = s.gazeDwell ? gazeTarget(head.elements, this.centres, this.count, kept) : -1;
+    const gazed = s.gazeDwell ? gazeTarget(head.elements, this.centres, SLOTS, kept) : -1;
     this.gazedId = gazed < 0 ? '' : (this.ids[gazed] as string);
     const board = this.board.mesh;
     const away = panel.open && clampToFov(head.elements, board.position, PANEL_CENTRE, this.scratch);
@@ -425,8 +477,13 @@ export class PanelSystem extends createSystem(
     carry[0] = (carry[0] as number) + (delta > 0 ? delta * 1000 : 0);
     const wholeMs = Math.floor(carry[0]);
     carry[0] -= wholeMs;
+    this.glowMs = (this.glowMs + wholeMs) % GLOW_PERIOD_MS;
     panel.frame(wholeMs, this.gazedId, away, isHeadTurning(head.elements, wholeMs, this.headTurn));
     if (panel.open !== board.visible) this.show(panel.open, head);
+    // D-084: a tip of the guide turns the open board to the Garden tab once, where Seeds and Move glow
+    const tip = panel.open && (this.step === 'seedsTip' || this.step === 'moveTip') ? this.step : '';
+    if (tip !== '' && tip !== this.tipFor) panel.showGarden();
+    this.tipFor = tip;
     if (panel.stale) this.redraw();
     this.placeCue();
   }
@@ -457,6 +514,7 @@ export class PanelSystem extends createSystem(
         this.homeFor = null; // the orb's place in the view box is worked out again from where the head is now
       }),
       bus.on('xr:sessionEnd', () => panel.close()),
+      bus.on('onboarding:step', ({ step }) => void (this.step = step)),
       () => this.dispose(),
     );
   }
@@ -477,7 +535,9 @@ export class PanelSystem extends createSystem(
   private show(open: boolean, head: Matrix4): void {
     const mesh = this.board.mesh;
     mesh.visible = open;
-    for (let i = 1; i < SLOTS; i++) this.target(i, '', null); // a panel that opens again has its controls elsewhere
+    for (let i = 1; i < SKIP; i++) this.target(i, '', null); // a panel that opens again has its controls elsewhere
+    this.skipFor = null; // "Skip guide" moves to the header, or back into the view box from where the head is now
+    bus.emit('panel:open', { open });
     if (!open) return;
     placePanel(head.elements, mesh.matrix.elements);
     mesh.matrixWorld.copy(mesh.matrix); // a child of the scene: its own matrix is its world matrix
@@ -491,9 +551,8 @@ export class PanelSystem extends createSystem(
     panel.stale = false;
     const controls = panel.controls();
     if (controls.length > MAX_CONTROLS) log.error('ui', 'more panel controls than slots', controls.length);
-    this.count = 1 + Math.min(controls.length, MAX_CONTROLS);
     const world = this.board.mesh.matrixWorld;
-    for (let i = 1; i < SLOTS; i++) {
+    for (let i = 1; i < SKIP; i++) {
       const control = controls[i - 1];
       if (control === undefined) {
         this.target(i, '', null);
@@ -550,7 +609,10 @@ export class PanelSystem extends createSystem(
     if (entity === undefined || id === this.ids[slot]) return;
     if (this.ids[slot] !== '') entity.removeComponent(Interactable);
     this.ids[slot] = id;
-    if (at === null) return;
+    if (at === null) {
+      this.centres.fill(Number.NaN, 3 * slot, 3 * slot + 3); // off the gaze line, as the slot stands for nothing
+      return;
+    }
     at.toArray(this.centres, 3 * slot);
     entity.addComponent(Interactable, {
       kind: 'panel',
@@ -558,6 +620,53 @@ export class PanelSystem extends createSystem(
       radius: HIT_RADIUS_M,
       worldPos: [at.x, at.y, at.z],
     });
+  }
+
+  /**
+   * D-084: "Skip guide" while the guide runs, in a session. On the open board it sits in the header's gap; else it
+   * waits low on the dominant side (skipHome), clamped into the FoV box every frame, as the orb waits (FR-UI-03).
+   */
+  private placeSkip(head: Matrix4, s: Readonly<Settings>): void {
+    const mesh = this.skip.mesh;
+    const step = this.step;
+    const shown = this.xrManager.isPresenting && step !== 'off' && step !== 'done' && hasPose(head.elements);
+    const entity = this.entities[SKIP];
+    if (shown !== mesh.visible && entity !== undefined) {
+      mesh.visible = shown;
+      this.ids[SKIP] = shown ? SKIP_ID : '';
+      if (shown) entity.addComponent(Interactable, { kind: 'panel', id: SKIP_ID, radius: HIT_RADIUS_M });
+      else entity.removeComponent(Interactable);
+      this.skipView = shown ? entity.getVectorView(Interactable, 'worldPos') : null;
+      this.skipFor = null;
+    }
+    const view = this.skipView;
+    if (view === null) {
+      this.centres.fill(Number.NaN, 3 * SKIP, 3 * SKIP + 3);
+      return;
+    }
+    if (this.skip.ctx !== null && s.highContrast !== this.skipHighContrast) {
+      drawSkip(this.skip.ctx, s.highContrast);
+      this.skip.texture.needsUpdate = true;
+      this.skipHighContrast = s.highContrast;
+    }
+    const at = this.scratch;
+    if (this.board.mesh.visible) {
+      mesh.matrix.copy(this.board.mesh.matrix);
+      at.set(SKIP_AT_X, SKIP_AT_Y, 0).applyMatrix4(this.board.mesh.matrix);
+    } else {
+      if (this.skipFor !== s.dominantHand) {
+        skipHome(head.elements, s.dominantHand, this.skipAt);
+        this.skipFor = s.dominantHand;
+      }
+      clampToFov(head.elements, this.skipAt, SKIP_ELEMENT, at);
+      mesh.matrix.copy(head); // it faces the head
+    }
+    const matrix = mesh.matrix.elements;
+    const centres = this.centres;
+    matrix[12] = centres[3 * SKIP] = view[0] = at.x;
+    matrix[13] = centres[3 * SKIP + 1] = view[1] = at.y;
+    matrix[14] = centres[3 * SKIP + 2] = view[2] = at.z;
+    mesh.matrixWorldNeedsUpdate = true;
   }
 
   /** Writes the orb's place to `orbAt`. False when it has none: outside a session, or no hand to ride. */
@@ -590,14 +699,22 @@ export class PanelSystem extends createSystem(
 
   /** The ring round the control or orb that is held, gazed at or hovered, and the fill of a hold or a dwell. */
   private placeCue(): void {
-    const id = this.panel.cue();
+    // D-084: with nothing held, gazed at or hovered, the ring glows round what the guide points at
+    const cued = this.panel.cue();
+    const step = this.step;
+    const id =
+      cued ||
+      (step === 'orb' ? ORB_ID : step === 'seedsTip' ? SEEDS_ID : step === 'moveTip' ? 'replaceBed' : '');
     const i = id === '' ? -1 : this.ids.indexOf(id);
     // How much of the fill ring is drawn: whole steps of it, from the top round (UX §8: the ring fills).
     const steps = Math.round((this.panel.fill[0] as number) * CUE_SEGMENTS);
     this.ring.visible = i >= 0;
     this.fill.visible = i >= 0 && steps > 0;
     if (i < 0) return;
-    const danger = settings.get().highContrast ? PANEL_DANGER_HIGH_CONTRAST : PANEL_DANGER;
+    const s = settings.get();
+    if (cued === '') neon(this.ring.material.color, s, this.glowMs);
+    else this.ring.material.color.copy(CREAM);
+    const danger = s.highContrast ? PANEL_DANGER_HIGH_CONTRAST : PANEL_DANGER;
     const colour = id === NEW_GARDEN_ID ? danger : CUE_FILL_COLOUR;
     if (colour !== this.fillColour) {
       this.fill.material.color.set(colour); // on a change only: a colour parsed from a string costs heap
@@ -606,7 +723,7 @@ export class PanelSystem extends createSystem(
     this.fill.geometry.setDrawRange(0, steps * INDICES_PER_SEGMENT);
     // Both rings face the way their target does (the orb's or the panel's matrix), at the target's centre, and are
     // as wide as it: a control that holds a word is twice as wide as it is tall.
-    const facing = (i === 0 ? this.orb : this.board).mesh.matrix.elements;
+    const facing = (i === 0 ? this.orb : i === SKIP ? this.skip : this.board).mesh.matrix.elements;
     const stretch = (this.widths[i] as number) / PANEL_TARGET_M;
     for (let k = 0; k < 2; k++) {
       const mesh = k === 0 ? this.ring : this.fill;
@@ -622,13 +739,14 @@ export class PanelSystem extends createSystem(
   }
 
   private dispose(): void {
-    for (const mesh of [this.board.mesh, this.orb.mesh, this.ring, this.fill]) {
+    for (const mesh of [this.board.mesh, this.orb.mesh, this.skip.mesh, this.ring, this.fill]) {
       this.scene.remove(mesh);
       mesh.geometry.dispose();
       mesh.material.dispose();
     }
     this.board.texture.dispose();
     this.orb.texture.dispose();
+    this.skip.texture.dispose();
     for (const entity of this.entities) entity.destroy();
   }
 }
