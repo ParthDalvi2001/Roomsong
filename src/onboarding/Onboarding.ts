@@ -7,15 +7,17 @@ import {
   LISTEN_AFTER_MS,
   LISTEN_AFTER_PLANTS,
   LISTEN_STEP_MS,
+  ONBOARD_TIP_MS,
   STEP_STALL_MS,
 } from './config.js';
 
 /**
- * `off`: no tutorial (before a session's signature, a bed with plants, after the session). `tune`: the ripple
+ * `off`: no tutorial (before a session's signature, a bed with plants, after the session, skipped: D-084). `tune`: the ripple
  * plays (UX §3.3 step 0). `palm`: open a hand for the seed (1). `plant`: a seed is out, plant it (2). `more`: the
  * 2nd and 3rd seeds, no hint (3). `grow` / `move`: the hint ring with the pull or the drag icon (4). `free`: the
  * gates are done but not all earned (the net, or the garden window's); earned, it is passed at once. `listen`:
- * "Show your palms to listen" (5). `done`: nothing more to teach.
+ * "Show your palms to listen" (5). `orb`, `seedsTip`, `moveTip`: the tour (D-084), the board opened, then Seeds and
+ * Move lit on it; not in the garden window (no orb). `done`: nothing more to teach.
  */
 export type OnboardingStep =
   | 'off'
@@ -47,6 +49,9 @@ const ORDER: readonly OnboardingStep[] = [
   'move',
   'free',
   'listen',
+  'orb',
+  'seedsTip',
+  'moveTip',
   'done',
 ];
 const order = (step: OnboardingStep): number => ORDER.indexOf(step);
@@ -66,6 +71,10 @@ export class Onboarding {
   private hasPulled = false;
   private hasDragged = false;
   private hasListened = false;
+  /** The settings board is open (`panel:open`): the orb step waits for it, the tips end when it closes. */
+  private isPanelOpen = false;
+  /** The tour (D-084) began this tutorial: the system's settings hint at `done` is then not needed. */
+  private hasToured = false;
   /** The latest frame time, ms; when the tutorial, the current step and its Listen step began. */
   private nowMs = 0;
   private startedMs = 0;
@@ -129,6 +138,16 @@ export class Onboarding {
     this.advance();
   }
 
+  /** `panel:open`: the settings board opened or closed. */
+  panel(isOpen: boolean): void {
+    this.isPanelOpen = isOpen;
+    this.advance();
+  }
+
+  get toured(): boolean {
+    return this.hasToured;
+  }
+
   /** Every frame, with the frame time in whole ms: the time-outs and the net. */
   tick(nowMs: number): void {
     this.nowMs = nowMs;
@@ -148,6 +167,20 @@ export class Onboarding {
     if (this.step !== 'off') this.go('done');
   }
 
+  /** D-084 "Skip guide": the guide ends at once, quietly, and stays off until a New garden restarts it. */
+  skip(): void {
+    this.go('off');
+  }
+
+  /** D-084 New garden in a headset: the guide again from the palm step, the room already tuned. The board stays. */
+  restart(isGazeOnly: boolean): void {
+    const isPanelOpen = this.isPanelOpen;
+    this.reset();
+    this.isPanelOpen = isPanelOpen;
+    this.go('tune');
+    this.tuned(true, isGazeOnly);
+  }
+
   /** `xr:sessionEnd`: nothing of one session reaches the next. */
   reset(): void {
     this.step = 'off';
@@ -158,6 +191,8 @@ export class Onboarding {
     this.hasPulled = false;
     this.hasDragged = false;
     this.hasListened = false;
+    this.isPanelOpen = false;
+    this.hasToured = false;
     this.startedMs = 0;
     this.stepAtMs = 0;
     this.listenAtMs = 0;
@@ -167,6 +202,12 @@ export class Onboarding {
     this.step = step;
     this.stepAtMs = this.nowMs;
     if (step === 'listen') this.listenAtMs = this.nowMs;
+    if (step === 'orb') this.hasToured = true;
+  }
+
+  /** After Listen: the tour, but not in the garden window (`canPull` false there), which has no orb. */
+  private afterListen(): OnboardingStep {
+    return this.canPull ? 'orb' : 'done';
   }
 
   /** Takes every step whose condition already holds: an action made early skips its step. */
@@ -194,7 +235,7 @@ export class Onboarding {
         (step === 'free' && this.hasPulled && this.hasDragged) ||
         this.nowMs - this.startedMs >= LISTEN_AFTER_MS ||
         this.planted >= LISTEN_AFTER_PLANTS;
-      if (isLate) return this.hasListened ? 'done' : 'listen';
+      if (isLate) return this.hasListened ? this.afterListen() : 'listen';
       if (step === 'more') {
         if (this.planted < HINT_RING_AFTER_PLANTS) return 'more';
         return this.canPull ? 'grow' : 'move';
@@ -204,7 +245,15 @@ export class Onboarding {
       return 'free';
     }
     if (step === 'listen') {
-      return this.hasListened || this.nowMs - this.listenAtMs >= LISTEN_STEP_MS ? 'done' : 'listen';
+      return this.hasListened || this.nowMs - this.listenAtMs >= LISTEN_STEP_MS
+        ? this.afterListen()
+        : 'listen';
+    }
+    if (step === 'orb') return this.isPanelOpen ? 'seedsTip' : 'orb';
+    if (step === 'seedsTip' || step === 'moveTip') {
+      if (!this.isPanelOpen) return 'done'; // the board closed: the rest of the tour is not shown on it
+      if (this.nowMs - this.stepAtMs < ONBOARD_TIP_MS) return step;
+      return step === 'seedsTip' ? 'moveTip' : 'done';
     }
     return step;
   }

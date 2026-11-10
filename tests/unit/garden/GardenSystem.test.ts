@@ -870,6 +870,25 @@ describe('garden/GardenSystem: the release table (API_SPEC §1.4)', () => {
 });
 
 describe('garden/GardenSystem: newGarden and setBedHeightOffset (FR-PER-03, FR-UI-10)', () => {
+  it('D-084: New garden emits garden:renewed once, after its commit and its visit', () => {
+    const s = setup();
+    s.system.load(saved([plant('a', 0, 0)]));
+    s.features();
+    s.clear();
+    const before: string[][] = []; // what had been emitted at each garden:renewed
+    const off = s.bus.on('garden:renewed', () => before.push(s.names()));
+    s.system.newGarden();
+    off();
+    expect(before).toHaveLength(1);
+    expect(before[0]).toEqual([
+      'garden:changed', // the commit
+      'garden:changed', // the visit
+      'garden:seedArrived',
+      'garden:seedArrived',
+      'garden:seedArrived',
+    ]);
+  });
+
   it('BUG-006: New garden twice on one day gives starter seeds of their own ids each time, and the save takes them', () => {
     const s = setup();
     s.system.load(s.lib.newGarden(T0, s.core.settings.get()));
