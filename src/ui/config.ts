@@ -174,9 +174,14 @@ export const ORB_BELOW_GAZE_DEG = 12;
  * 18.3 down: inside the box, under the caption (8 degrees down, 2.4 tall) and, seated over the bed, about 13 cm above
  * its near rim, within reach. While the panel is open it sits in the header instead (Panel.ts SKIP_AT_X). Device check.
  */
-export const SKIP_DISTANCE_M = 0.35;
-export const SKIP_SIDE_DEG = 16;
-export const SKIP_BELOW_GAZE_DEG = 15;
+// Parth, 10 Nov on the headset: it pulled the eye from the guide. Now the view box's upper corner on the dominant side,
+// farther and so smaller: at 0.5 m it spans 14.4 to 23.6 degrees out and 13.7 to 18.3 up (negative = above the gaze),
+// clear of the caption, the bed and the hands, and dim until a hand or the gaze is on it.
+export const SKIP_DISTANCE_M = 0.5;
+export const SKIP_SIDE_DEG = 19;
+export const SKIP_BELOW_GAZE_DEG = -16;
+/** D-084: "Skip guide" at rest; full while hovered, gazed at or held, and always in high contrast (FR-UI-05). */
+export const SKIP_REST_OPACITY = 0.45;
 /**
  * D-084: the guide's neon glow on what it points at (the hint ring, the orb, Seeds, Move), in PANEL_ACCENT (its
  * high-contrast twin in high contrast). A slow pulse, one a second (FR-UI-11: never more than 3 flashes a second),

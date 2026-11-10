@@ -35,6 +35,7 @@ import {
   PANEL_RULE_ALPHA,
   PANEL_SYMBOL_FONT,
   PANEL_WIDE_TARGET_M,
+  SKIP_REST_OPACITY,
 } from '../../../src/ui/config.js';
 import { ORB_ID, Panel, SKIP_ID, type PanelTab } from '../../../src/ui/Panel.js';
 import { drawOrb, drawPanel, PanelSystem } from '../../../src/ui/PanelSystem.js';
@@ -870,9 +871,9 @@ describe('PanelSystem: the guide (D-084)', () => {
     expect(seen.map((e) => e.open)).toEqual([true]);
   });
 
-  it('shows Skip guide only while the guide runs, low on the dominant side in the FoV box; a press says onboarding:skip once and it goes', () => {
+  it('shows Skip guide only while the guide runs, in the upper corner of the dominant side in the FoV box; a press says onboarding:skip once and it goes', () => {
     const skips = heard('onboarding:skip');
-    const { frame, ids, targets, press, emit } = rig();
+    const { frame, ids, targets, press, emit, mesh } = rig();
     frame();
     for (const step of ['off', 'done'] as const) {
       emit('onboarding:step', { step });
@@ -882,11 +883,15 @@ describe('PanelSystem: the guide (D-084)', () => {
     emit('onboarding:step', { step: 'plant' });
     frame();
     expect(ids()).toEqual([SKIP_ID]); // no hand, so no orb
+    // 10 Nov: dim at rest, so it does not pull the eye from the guide (full when hovered, gazed at, or in high contrast)
+    expect((mesh('guide-skip') as unknown as { material: { opacity: number } }).material.opacity).toBe(
+      SKIP_REST_OPACITY,
+    );
     const skip = targets()[0]!;
     expect(skip.getValue(Interactable, 'kind')).toBe('panel');
     const [x = 0, y = 0, z = 0] = skip.getVectorView(Interactable, 'worldPos');
-    expect(Math.atan2(x, -z) * DEG).toBeCloseTo(16, 0); // to the right of a right-handed user
-    expect(Math.atan2(EYE[1] - y, -z) * DEG).toBeCloseTo(15, 0); // under the caption's 8 degrees
+    expect(Math.atan2(x, -z) * DEG).toBeCloseTo(19, 0); // to the right of a right-handed user
+    expect(Math.atan2(EYE[1] - y, -z) * DEG).toBeCloseTo(-16, 0); // above the gaze, the box's upper corner (10 Nov)
     press(SKIP_ID);
     expect(skips).toHaveLength(1);
     expect(ids()).not.toContain(SKIP_ID);

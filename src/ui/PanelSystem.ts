@@ -55,6 +55,7 @@ import {
   PANEL_TARGET_M,
   PANEL_WIDE_TARGET_M,
   PANEL_WIDTH_M,
+  SKIP_REST_OPACITY,
 } from './config.js';
 import { clampToFov, fovBoundsDeg, type FovBounds, type FovElement } from './FovGuard.js';
 import { neon } from './Hints.js';
@@ -667,6 +668,8 @@ export class PanelSystem extends createSystem(
     matrix[13] = centres[3 * SKIP + 1] = view[1] = at.y;
     matrix[14] = centres[3 * SKIP + 2] = view[2] = at.z;
     mesh.matrixWorldNeedsUpdate = true;
+    const opacity = s.highContrast || this.panel.cue() === SKIP_ID ? 1 : SKIP_REST_OPACITY;
+    if (mesh.material.opacity !== opacity) mesh.material.opacity = opacity; // on a change only
   }
 
   /** Writes the orb's place to `orbAt`. False when it has none: outside a session, or no hand to ride. */
