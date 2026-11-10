@@ -227,7 +227,9 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
     const { panel, ops } = drawn('access', true);
     expect(ops('fill')[0]?.fillStyle).toBe('#000000');
     const strokes = ops('stroke');
-    expect(strokes).toHaveLength(outlines(panel) + 1); // the frame too
+    // the frame too, and in high contrast each segment and stepper button on its track (T-168 review: FR-UI-05)
+    const segments = panel.controls().filter((c) => c.look === 'segment' || c.look === 'step').length;
+    expect(strokes).toHaveLength(outlines(panel) + segments + 1);
     for (const stroke of strokes) {
       expect(stroke).toMatchObject({
         lineWidth: PANEL_OUTLINE_HIGH_CONTRAST_PX,

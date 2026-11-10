@@ -127,6 +127,7 @@ function drawControl(ctx: CanvasRenderingContext2D, control: PanelControl, highC
     // on the track: a stepper's button is a faint disc, the chosen segment is filled
     ctx.fillStyle = control.on ? accent : PANEL_TARGET_FILL;
     if (control.on || control.look === 'step') ctx.fill();
+    if (highContrast) ctx.stroke(); // FR-UI-05: in high contrast every target shows its edge (T-168 review)
   } else if (control.look === 'danger') {
     const stroke = ctx.strokeStyle;
     ctx.strokeStyle = highContrast ? PANEL_DANGER_HIGH_CONTRAST : PANEL_DANGER;

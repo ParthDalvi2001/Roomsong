@@ -702,7 +702,12 @@ export class Panel {
     const isTimeLapse = this.actions.isTimeLapse();
     const newGarden = this.actions.canRestore() ? PANEL.bringBack : PANEL.newGarden;
     return [
-      { ...wide(SEEDS_ID, fromEnd('full', 0, 1, W), ROW_Y[1], PANEL.seedsPage), look: 'primary' },
+      // No seed in the supply: a pick would do nothing, so the way to it is dim (T-168 review).
+      {
+        ...wide(SEEDS_ID, fromEnd('full', 0, 1, W), ROW_Y[1], PANEL.seedsPage),
+        look: 'primary',
+        dim: garden !== null && garden.seeds.length === 0,
+      },
       { ...round('height:-', height.minus, ROW_Y[2], PANEL.minus), dim: atEnd(-1), look: 'step' },
       { ...round('height:+', height.plus, ROW_Y[2], PANEL.plus), dim: atEnd(1), look: 'step' },
       toggle(TIME_LAPSE_ID, 'right', ROW_Y[2], isTimeLapse),

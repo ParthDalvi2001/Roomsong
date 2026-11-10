@@ -60,7 +60,10 @@ export class GardenSystem {
   /** The one seed that is out, and the hand that pinched it off the palm, if any has. */
   private out: { seedId: string; carrier: Hand | null; palm: Hand } | null = null;
   /** When each hand last held its palm up (core's clock): a palm that stays up asks again and again. */
-  private readonly palmAskedAt: Record<Hand, number> = { left: Number.NEGATIVE_INFINITY, right: Number.NEGATIVE_INFINITY };
+  private readonly palmAskedAt: Record<Hand, number> = {
+    left: Number.NEGATIVE_INFINITY,
+    right: Number.NEGATIVE_INFINITY,
+  };
   /** The removed plants that can still come back, by plant id (FR-MUS-12). */
   private readonly undos = new Map<string, { token: UndoToken; expiresAt: number }>();
   /** newGarden() calls so far, and the count at each hand's latest gesture:pinchStart (BUG-006). */
@@ -226,7 +229,12 @@ export class GardenSystem {
   /** D-060 item 13: the garden the last New garden replaced can come back: within RESTORE_WINDOW_MS, no plant yet. */
   get canRestore(): boolean {
     const s = this.current;
-    return this.replaced !== null && s !== null && s.plants.length === 0 && this.appClock.now() < this.replacedUntil;
+    return (
+      this.replaced !== null &&
+      s !== null &&
+      s.plants.length === 0 &&
+      this.appClock.now() < this.replacedUntil
+    );
   }
 
   /**
@@ -263,8 +271,10 @@ export class GardenSystem {
     const s = this.current;
     const seed = s?.seeds[0];
     if (s === null || seed === undefined || HIDDEN_KINDS.includes(kind)) return;
+    const next = setSeedKind(s, seed.id, kind);
+    if (next === s) return; // the kind it has already: a seed on a palm stays there (T-168 review)
     this.takeBack('reset');
-    this.commit(setSeedKind(s, seed.id, kind));
+    this.commit(next);
   }
 
   /**
@@ -337,7 +347,8 @@ export class GardenSystem {
    * palm that is up. Not while its own palm is up too, or two raised palms would toss it back and forth.
    */
   private crossOver(s: GardenState, out: NonNullable<GardenSystem['out']>, hand: Hand, now: number): void {
-    if (out.carrier !== null || out.palm === hand || now - this.palmAskedAt[out.palm] < SEED_PALM_DOWN_MS) return;
+    if (out.carrier !== null || out.palm === hand || now - this.palmAskedAt[out.palm] < SEED_PALM_DOWN_MS)
+      return;
     const seed = s.seeds.find(({ id }) => id === out.seedId);
     if (seed === undefined) return;
     out.palm = hand;

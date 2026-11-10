@@ -201,7 +201,11 @@ describe('garden/GardenSystem: load (API_SPEC §1.10)', () => {
   it('a bed placed in the garden window keeps the headset anchor pair; one placed in a session drops it (bug bash 27 Oct)', () => {
     const s = setup();
     s.system.load(saved([], [], { anchorHandle: 'h1', anchorLevel: 2 }));
-    s.bus.emit('room:bedPlaced', { placement: { pose: IDENTITY, level: 4 }, restored: false, inWindow: true });
+    s.bus.emit('room:bedPlaced', {
+      placement: { pose: IDENTITY, level: 4 },
+      restored: false,
+      inWindow: true,
+    });
     expect(s.state()).toMatchObject({ anchorHandle: 'h1', anchorLevel: 2 });
     s.bedPlaced(false);
     expect(s.state().anchorHandle).toBeUndefined();
@@ -1335,6 +1339,14 @@ describe('garden/GardenSystem: the seed picker (T-193, API_SPEC §1.10 rule 8)',
     s.palmUp('left');
     expect(s.names()).toEqual(['garden:seedOut']);
     expect(lib.kindOf(s.at(0, 'garden:seedOut').seed)).toBe('chime');
+  });
+
+  it('pick of the kind an out seed has already leaves it out: no seedBack, no change (T-168 review)', () => {
+    const s = carrying(bedOf(3));
+    const kind = lib.kindOf(s.state().seeds[0]!);
+    s.clear();
+    s.system.pick(kind);
+    expect(s.seen).toEqual([]);
   });
 
   it('pick of a kind in HIDDEN_KINDS does nothing; pick of the kind the seed has changes nothing', () => {

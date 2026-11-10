@@ -934,6 +934,14 @@ describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
     expect(calls.pickSeed).toEqual([]);
   });
 
+  it('the Seeds button is dim with an empty supply, and a press opens nothing (T-168 review)', () => {
+    const panel = opened('garden');
+    panel.setGarden(garden([], []));
+    expect(panel.controls().find((c) => c.id === 'seeds')?.dim).toBe(true);
+    press(panel, 'seeds');
+    expect(ids(panel)).not.toContain('seed:bowl');
+  });
+
   it("the Garden tab's Seeds button opens the Seeds page, by pinch or by dwell; a swatch press picks; the orb's next board is the settings one", () => {
     const panel = opened('garden');
     press(panel, 'seeds');
