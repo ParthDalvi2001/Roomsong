@@ -136,43 +136,41 @@ Grace 200 ms (tunable 150–250), glide 150 ms: `hands/config.ts`. Reduced motio
 - Wake: any pinch, or palm to face. Fades back in 0.8 s.
 - Auto-end at 10 min: ending chord, caption "Goodnight" (the one allowed non-instruction caption), stays in XR.
 
-### 3.6 Settings panel (0.40 × 0.28 m, 0.55 m forward at eye height; as built in T-151 it is drawn on a canvas, not with UIKit, bed height sits on the Garden tab in 2 cm steps, volume reads as a per cent, and the tab is named "Access") — tabs Sound / Access / Garden (Codex cut, D-011)
+### 3.6 Settings panel (0.48 × 0.335 m, 0.55 m forward at eye height: ±23.6° H × ±16.9° V, inside the ±25° × ±20° box; drawn on a canvas, not with UIKit; one grid and one look since 10 Nov, D-081, emulator only) — tabs Sound / Access / Garden, and the Seeds page (Codex cut, D-011)
 ```
-┌─────────────────────────────────────────────────────┐
-│ ● Sound   ● Access   ● Garden                     ✕ │
-├─────────────────────────────────────────────────────┤
-│ Sound:   Speed   [−]  84 BPM  [+]                   │
-│          Volume  [−]  80 %  [+]                     │
-│          Echo    (room) (small) (off)               │
-│          Tuned to: D major, echo 0.6 s      ○ Mono  │
-│                    room 15 sq m, ceiling 2.7 m      │
-│ Access:  ○ One hand        ○ Look to select         │
-│          Look time  (0.6 s) (0.9 s) (1.2 s)         │
-│          ○ High contrast   ○ Reduce motion          │
-│          ⦿ Beat ring   Main hand  (L) (R)           │
-│ Garden:  Day 4, Seeds left 2, Key D major (room)    │
-│          Height [−] 0 cm [+]    ○ Time-lapse        │
-│          [start]  Place the garden again    [Exit]  │
-│          [hold]   New garden (erases this one)      │
-└─────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│          (Sound|Access|Garden)                               x │
+├────────────────────────────────────────────────────────────────┤
+│ Sound  1 Tuned to: D major, echo 0.6 s                         │
+│          room 15 sq m, ceiling 2.7 m                           │
+│        2 Volume                                 (-   80 %   +) │
+│        3 Speed                                  (-  84 BPM  +) │
+│        4 Echo                             (room | small | off) │
+│        5 Mono                                         [o  off] │
+│ Access 1 One hand         [o  off] | Look to select   [o  off] │
+│        2 High contrast     [on  o] | Reduce motion    [o  off] │
+│        3 Beat ring         [on  o] | Main hand           (L|R) │
+│        4 Look time                     (0.6 s | 0.9 s | 1.2 s) │
+│ Garden 1 Day 4, Seeds left 2,                                  │
+│          Key D major (room)                                    │
+│        2 Your next seed                              [#Seeds#] │
+│        3 Height          (-  0  +) | Time-lapse       [o  off] │
+│        4             (Place again) |                    (Exit) │
+│        5 Hold to erase this garden                !New garden! │
+│ Seeds    (Classic|Calm)                                      x │
+│      1-3 Name                    @ | Name                    @ │
+│        4 Choose the kind of your next seed                     │
+└────────────────────────────────────────────────────────────────┘
 ```
-**Speed (the tempo) is the player's** (FR-MUS-03, D-021): default 84 BPM, range 60–120, in steps of 4. The room never moves it and it never reads "(room)". *v1.1 "Tempo reads (room) while it follows the room signature": Cut (D-021).* Volume: steps of 10 %.
-Speed and Volume are steppers, not sliders (changed in v1.2): a panel control acts on a pinch released over it, or on a gaze dwell (LLD §3, FR-HND-12, FR-HND-16), and neither can drag a slider.
-**Echo** (`Settings.reverb`): room follows the room (§6; the setting's value `auto`), small is a fixed 0.6 s, off mutes the echo.
-**Day n** (the Garden line): 1 on the local date the garden was made, plus one for each local date since, to the last visit: the daily seed's calendar rule (`gardenDay`, API_SPEC §1.1), so "Day 2" comes with the second date's seed, even 90 minutes after a garden made at 23:00 (BUG-037, 8 Nov; it was whole 24-hour days, which showed "Day 1" beside that seed).
-**Tuned to** (US-22; read-only, two lines, not a target): line 1 is what the room set (key root, mode, echo length), line 2 is from what (floor area, ceiling height). It is the one place that credits the room with the key and the echo, because no ripple caption can (§3.2). Wanderer: "C major, echo 0.9 s" over "no room found". The echo part dims while Echo is not on room. The Garden line's "(room)" is dropped in a Wanderer session.
-**Look time** (shown while Look to select is on): 600 / 900 / 1200 ms, default 900 (`Settings.dwellMs`, FR-HND-12).
-No bed-radius control (single annulus bed); bed height ±20 cm stays (BUG-054, was ±10 cm).
-**Seeds page** (T-193, D-076; API_SPEC v1.2.70; nothing of it seen on a headset): a fourth page of this board, opened by a palm-up and not by a tab. On top two library tabs, Old and New (New first, then the one last shown), and ✕; under them five swatches of that library, each a 4 cm disc in its kind's colour with the kind's name to its right (the names are placeholders, kept in `core/strings.ts` alone); on the bottom row the words "Pick a seed". A pinch or a dwell on a swatch picks; ✕ and looking away 5 s give no seed, and the next palm raise opens the page again. It opens where this panel opens, so a player who watches the palm must look up 15 to 30°: the exception to the ±20° box that this panel already has, now at every pick. So the 5 s count only once the board has been seen, and the caption "Look up to pick a seed" stays until then. With Look to select on, the board stays after a pick until the gaze leaves the picked swatch, so the cell behind it is not planted by the same look.
-Interaction: a control lights up on hover and acts when the pinch is released over it; moving off first cancels (FR-HND-16). In gaze mode, dwell for the chosen time. Controls ≥ 3 cm tall. Panel opens via the settings orb (wrist), by pinch / dwell; closes with ✕ or looking away 5 s.
-*As built 25 Oct (D-060 item 13):* for 10 s after New garden, and until the new garden has a plant, the New garden row reads "Bring back the old garden": the same hold, by pinch or by gaze, brings the replaced garden back as it was. Then the row is "New garden (erases this one)" again.
-
-
-*As built (T-173, 19 Oct):* the Sound tab's last row adds "[off] Mono" right of "Tuned by": the mix summed to mono for a single-sided listener (the Quest's own setting only moves the balance).
-
-*As built (T-170, D-060 (9), 25 Oct; the words are `ui/strings.ts` PANEL, the layout `ui/Panel.ts`):* the labels read "Speed", "Volume", "Echo" (room / small / off), "Tuned to:", "Mono"; "One hand", "Look to select", "Look time", "High contrast", "Reduce motion", "Beat ring", "Main hand"; on the Garden tab "Day n, Seeds left n, Key … (room)", "Height", "Time-lapse", "Place the garden again" (was "Re-place bed", read as "Replace bed") and "New garden (erases this one)" (still a 1.5 s hold). The Garden tab has four rows: the garden line; "Height" with a narrow stepper and the Time-lapse switch on its right; "[start] Place the garden again" and "[hold] New garden (erases this one)" on whole rows of their own, so the longer labels fit at the panel's size.
-
-*As built (T-174, D-057, 23 Oct; emulator only):* the Garden tab's Re-place bed row (the Height row since T-170) adds a **Time-lapse** switch (a 4 cm target; "(demo)" did not fit): a demo on a copy of the garden, one day every 4 s through the same visit real days use (leaves, more leaves and blossoms at 4, 12 and 28 s), on screen and in sound; nothing of it is saved (the save stays byte-identical over an on/off cycle); off, or a reload, restores the real garden; a bed change made during the demo reaches the real garden; no day passes while the session is hidden. For the video: `?dev=1&flags=timeLapse`.
+Key: `[o  off]` / `[on  o]` a switch, `(a | b)` a segmented track, `[#Seeds#]` the primary button, `(Exit)` an outlined button, `!New garden!` the red one, `@` a seed swatch. Access row 4 shows in gaze mode only; row 5 of Access and of Seeds is empty.
+**The grid** (`ui/Panel.ts`, one for every page): under the header (the tabs as one segmented track from the left edge, ✕ at the right, a thin rule) five rows 5.5 cm apart, 1 cm of padding all round. A row is one full-width cell or two half-width cells 2 cm apart; a cell's label starts at its left edge and its controls end at its right edge, the same x on every page. A read-only info row comes first where the page has one; what is changed most comes next, rare or risky actions last. Controls are 4 cm tall (≥ 3 cm), 8 cm wide when they hold a word, 1.5 cm apart. Labels are regular; read-outs, the chosen option, a switch that is on and the primary button are bold; 50 px, a 1.44 cm cap height. In the seated sketch its lower edge is about 3.8 cm above the table (was 8.6; a headset check).
+**Controls.** A switch is an 8 cm pill whose knob sits right on the accent with "on" on its other half, or left on faint glass with "off": the state is never colour alone. Steppers (− read-out +) and choices (Echo, Look time, Main hand, the tabs, the libraries) are segmented tracks: the chosen segment filled with the accent, its word bold in charcoal; a − or + at its limit is dim. Buttons: **Seeds** is primary (filled); **Place again** and **Exit** are outlined; **New garden** has a red outline and acts only after a 1.5 s hold (by gaze, the dwell and then the hold), its ring filling red. For 10 s after a New garden, and until the new garden has a plant, it reads **Bring back** over "Hold for the old garden": the same hold brings the replaced garden back as it was (D-060 item 13). During the time-lapse demo it is dim and does nothing.
+**Colours** (`ui/config.ts`; normal → high-contrast twin, FR-UI-05): backdrop charcoal glass rgba(20, 26, 31, 0.9) → opaque black with a cream frame; text cream #FFF8E7 in both; accent ice #48CAE4 → #8FE3F2, with charcoal #141A1F on it (9.1:1 → 12:1); danger #E5484D → #F2555A; header rule cream at 0.35 → opaque; outlines 3 → 6 px; dim 0.55 → 0.75 alpha (5.6:1 → 10.6:1); hover ring cream, dwell fill violet #9B5DE5 in both.
+**Sound.** **Tuned to** (US-22; read-only, two lines, not a target): line 1 is what the room set (key root, mode, echo length), line 2 from what (floor area, ceiling height); the one place that credits the room with the key and the echo, because no ripple caption can (§3.2). Wanderer: "C major, echo 0.9 s" over "no room found". The echo part dims while Echo is not on room. **Speed is the player's** (FR-MUS-03, D-021): default 84 BPM, 60–120 in steps of 4; the room never moves it and it never reads "(room)". Volume in steps of 10 %. Steppers, not sliders: a pinch or a dwell cannot drag (FR-HND-12, FR-HND-16). **Echo** (`Settings.reverb`): room follows the room (§6; `auto`), small is a fixed 0.6 s, off mutes it. **Mono** (T-173): the mix summed for a single-sided listener (the Quest's own setting only moves the balance).
+**Access.** **Look time** (600 / 900 / 1200 ms, default 900, `Settings.dwellMs`) takes row 4 only while Look to select is on, so no row above it moves. While the gaze mode is on its own switch is dim: the gaze cannot switch itself off (a pinch still can).
+**Garden.** **Day n**: 1 on the local date the garden was made, plus one for each local date since, to the last visit: the daily seed's calendar rule (`gardenDay`, API_SPEC §1.1, BUG-037); before the first garden only the key line shows, and "(room)" is dropped in a Wanderer session. **Height**: ±20 cm in 2 cm steps, the number only (BUG-054); no bed-radius control. **Time-lapse** (T-174, D-057): a demo on a copy of the garden, one day every 4 s (leaves, more leaves and blossoms at 4, 12 and 28 s), on screen and in sound; nothing of it is saved; off, or a reload, restores the real garden; for the video `?dev=1&flags=timeLapse`. **Place again** closes the board and places the bed again (FR-ROOM-05). **Exit** (D-067) ends the session on one press; the save is flushed and Enter brings the garden back.
+**Seeds page** (T-193, D-076, D-080; not seen on a headset): no tab of its own; the Seeds button switches the open board to it, and a palm-up always hands out a seed. Header: **Classic** and **Calm** (Calm at the first opening, then the one last shown) and ✕. Rows 1–3: the shown library's kinds, two to a row, each name on the left and a 4 cm disc in its kind's colour on the right (names in `core/strings.ts`; the name carries the kind, never the colour alone); row 4: "Choose the kind of your next seed". A pinch or a dwell on a swatch picks; ✕ and looking away change nothing, so the next seed keeps its kind. With Look to select on, the picked swatch stays lit and the board stays until the gaze leaves it, so the cell behind it is not planted by the same look.
+Interaction: a control lights up on hover (a cream ring 2 to 6 mm outside it); a pinch begun on a control presses it wherever it ends (D-064), except New garden, which a slide off cancels. In gaze mode, dwell for the chosen time; a dwell selects once until the gaze leaves, and what is under the gaze right after any selection, or right after the gaze mode is switched on, counts as selected (the fresh-gaze rule, BUG-014). Opens via the settings orb (wrist), by pinch / dwell; closes with ✕ or looking away 5 s.
 
 ### 3.7 Garden window (non-XR; Should S6, FR-SYS-07, US-24, LLD §11)
 - The same garden in a normal browser tab, when `immersive-ar` is missing (or `?flags=window` in dev). One fixed camera at a seated eye point over a drawn table. No passthrough and no room, so the song is Wanderer and there is no tuning caption. Never the judged path: the dev bench and the demo.
