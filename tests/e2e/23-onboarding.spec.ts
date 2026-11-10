@@ -323,25 +323,6 @@ async function carry(page: Page, probe: JSHandle<Probe>, hands: EmulatedHands, t
   await heard(probe, 'planted', { count });
 }
 
-/**
- * T-193: the palm that got no seed opened the Seeds page above the view box (the head is at the table's pitch). The
- * head looks up at it, the right hand pinches the swatch and lets go, the board closes, the head looks down again.
- */
-async function pick(page: Page, probe: JSHandle<Probe>, hands: EmulatedHands, id: string) {
-  await page.waitForFunction((p) => p.isOpen(), probe, { timeout: 10_000 });
-  await hands.lookAt(await probe.evaluate((p) => p.boardAt()));
-  await xrFrames(page, 3);
-  const at = (await probe.evaluate((p, id) => p.panelAt(id), id))!;
-  expect(await hands.pinchAt(at)).toBeLessThan(HIT_RADIUS_M / 4);
-  await page.waitForFunction(
-    ([p, id]) => p.heard.some((e) => e.name === 'gesture:pinchStart' && e.id === id),
-    [probe, id] as const,
-  );
-  await hands.releaseAt(at);
-  await page.waitForFunction((p) => !p.isOpen(), probe);
-  await hands.lookDown(55);
-}
-
 /** Three cells of the middle ring nearest the user: the guide cell first, then its two neighbours. */
 const nearCells: Cell[] = [GUIDE_CELL, { ring: 2, step: 3 }, { ring: 2, step: 5 }];
 
@@ -393,14 +374,12 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   await expect.poll(() => probe.evaluate((p) => p.firstNoteAtMs), { timeout: 10_000 }).toBeGreaterThan(0);
   expect(await probe.evaluate((p) => [p.shows().icon, p.shows().ring])).toEqual([-1, -1]); // step 3: nothing
 
-  // Two more seeds, each picked on the Seeds page first (T-193), no caption of the tutorial; at three plants the
+  // Two more seeds, each straight to the palm as it is (D-080), no caption of the tutorial; at three plants the
   // hint ring with the pull icon round the newest.
-  await pick(page, probe, hands, 'seed:bowl');
   await carry(page, probe, hands, await probe.evaluate((p, c) => p.cellAt(c), nearCells[1]!), 2);
-  await pick(page, probe, hands, 'seed:chime');
   await carry(page, probe, hands, await probe.evaluate((p, c) => p.cellAt(c), nearCells[2]!), 3);
   await stepAt(probe, 'grow');
-  expect((await probe.evaluate((p) => p.plants())).map((p) => p.family)).toEqual([null, 'new', 'new']);
+  expect((await probe.evaluate((p) => p.plants())).map((p) => p.family)).toEqual([null, null, null]);
   const newest = (await probe.evaluate((p) => p.plants())).slice(-1)[0]!;
   expect(newest.cell).toEqual(nearCells[2]);
   const newestAt = await probe.evaluate((p, c) => p.cellAt(c), newest.cell);
@@ -434,6 +413,13 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   // Both gates earned: the Listen step at once, "Show your palms to listen" (free is passed, not said).
   const free = await stepAt(probe, 'listen');
   await xrFrames(page, 5);
+  // The left palm, still up with the supply empty, raises "No seeds left" every 4 s (BUG-056): captions show one at
+  // a time, so the Listen caption can wait its turn behind one (D-080 made the seeds come faster).
+  await expect
+    .poll(() => probe.evaluate((p) => p.captionLog.some((c) => c.key === 'onboardListen')), {
+      timeout: 10_000,
+    })
+    .toBe(true);
 
   const timing = await probe.evaluate((p, freeAtMs) => {
     const plant = p.heard.find((e) => e.name === 'step' && e.step === 'plant')!.atMs;
