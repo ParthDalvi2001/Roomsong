@@ -108,6 +108,18 @@ describe('the UI sounds (SOUND_PASS_T164.md §6, P-025)', () => {
     expect(played[0]!.p.gain).toBeCloseTo(dbToGain(STYLES.C.mixDb.pluck + UI_SOUNDS.confirm.db), 9);
   });
 
+  it("T-164: a panel press's tick never sounds in Listen, and does again after it", async () => {
+    const { engine, run } = await start();
+    run(1);
+    const played = watchPool(engine);
+    engine.enterListen();
+    engine.ui('tick');
+    expect(played).toHaveLength(0);
+    engine.exitListen();
+    engine.ui('tick');
+    expect(played).toHaveLength(1);
+  });
+
   it('removeRev runs the chord down and undoFwd up, 50 ms apart; confirm arpeggiates up 40 ms apart', () => {
     expect(UI_SOUNDS.removeRev.notes.map((n) => n.tone)).toEqual([2, 1, 0]);
     expect(UI_SOUNDS.undoFwd.notes.map((n) => n.tone)).toEqual([0, 1, 2]);

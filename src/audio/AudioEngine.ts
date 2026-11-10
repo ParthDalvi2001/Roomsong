@@ -403,7 +403,7 @@ export class Engine implements AudioEngine {
   ui(sound: UiSound, plantId = ''): void {
     if (sound === 'goodnight') this.goodnight();
     else if (sound === 'placed') this.placed(plantId);
-    else this.uiNotes(UI_SOUNDS[sound]);
+    else if (sound !== 'tick' || !this.listening) this.uiNotes(UI_SOUNDS[sound]); // T-164: no press tick in Listen
   }
 
   /**

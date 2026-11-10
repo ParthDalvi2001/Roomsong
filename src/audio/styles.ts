@@ -272,7 +272,7 @@ export const STYLES: Readonly<Record<SoundStyle, Readonly<Recipe>>> = {
   /** Bright and glassy: bells and chimes. */
   B: {
     ...ALIVE,
-    mixDb: { ...ALIVE.mixDb, choir: -2.5, bass: -8 },
+    mixDb: { ...ALIVE.mixDb, choir: -2, bass: -8.5 }, // T-164: the mix table by RMS and K (tests/unit/audio/mix.test.ts)
     reverbSend: 0.24,
     bellFmIndex: 1.6,
     bellFmIndexFloor: 0.3,
