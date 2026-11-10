@@ -1,6 +1,6 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-11-10 01:50 IST. Live: `main` 00d0d52 pushed by Parth at 01:37 (BUG-055 palm and seed pick, the 0.5 m catch area, BUG-056 "No seeds left" notice; GitHub Pages deploy running). develop 5c85d13 adds T-194 "Place the garden again" by aim (seen on the Quest 3 at 01:38, 15 browser tests), not on main yet. T-193 (ten seeds, two libraries, the picker) is building on side branches, two agents at a time; keep-or-stop decision with Parth, hard cut the evening of 11 Nov. Headset tonight: palm 50°, pinch on finger distance, catch area, open-palm rule, the notice and the re-place all seen working; 90 fps median.
+**Last updated:** 2026-11-10 08:05 IST. Live: `main` 00d0d52 (BUG-055, BUG-056). develop ab391b1 on this Mac, not pushed past bba8340: T-194 re-place by aim (seen on the Quest 3, 01:38), T-193 ten seed kinds, D-080 (a palm-up gives the seed at once; the Seeds page from the Garden tab's Seeds button), D-081 (libraries Classic and Calm; the settings board on one grid with one look). Unit 2 068 pass; browser: the D-080 full run 135 passed (its one failure was the test, fixed); the full run on ab391b1 is running. Waiting on Parth: a headset look at D-080 and D-081 on the dev link, then the push of main.
 **Phase:** 3 Polish (Nov 4–11) · **Next gate:** code freeze Nov 15 (T-183; G3 passed 9 Nov, D-073) · **Headset:** yes since 7 Nov (Parth's Quest 3S; Chinmay's Quest 3 on 8 Nov); Emergency mode (D-013) no longer applies · **Plan:** v2.1
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 8 on 2026-11-09
 
@@ -87,8 +87,8 @@ Every open decision for Parth is in one file: **`specs/08-status/DECISIONS_PENDI
 ## Test status
 | Suite | Last run | Result | Coverage |
 |---|---|---|---|
-| unit | 2026-11-08 | `npm run verify` at 1f91c40: 1 959 tests pass (typecheck, lint, build, check-dist, check-size, audit 0); GitHub CI on main 45518e5 running 9 Nov | 96.0 % lines (`npm run test:coverage`, 20 Oct) |
-| e2e (emulator) | 2026-11-08 | full suite at 1f91c40: 132 passed, 1 flaky (06-room T-128c c1 timeout, passes alone 10/10, BUG-039), 6 skipped (23 min) | — |
+| unit | 2026-11-10 | at f481050 (develop ab391b1's code): 2 068 tests pass; typecheck, lint, build, check-dist (PASS), check-size (757.2 of 4000 kB) at cb3cd48 |
+| e2e (emulator) | 2026-11-10 | full suite at cb3cd48 (D-080): 135 passed, 6 skipped, 1 failed (TC-E2E-03 still expected the old ask: the test fixed, c9a2b4b, passes); the board tests (12, 23, 25, 32) on ab391b1: 11 passed after one test fix; the full suite on ab391b1 running |
 | device | 2026-11-07/08 | Quest 3S (Parth) and Quest 3 (Chinmay): enter with hands, seeds, planting, sound, save and reload, pulls, moves, settings, Listen, Exit and re-entry, daily seed, one-hand, room tuning after Space Setup. Not yet: undo petal, drag by sight, hands-free run, Day 2, the built page's frame rate on 3S | — |
 
 ## Perf (latest)
@@ -99,8 +99,11 @@ device, 7–8 Nov: about **90 fps** (Quest 3S on the dev server with the recorde
 |---|---|---|---|---|---|
 | 15 Oct (product-owner guess, no headset; Nov 12 guess 6 / 6 / 5 / 5; see DEVPOST_DRAFT §2; superseded 9 Nov) | 4 | 3 | 5 | 2 | product-owner |
 | **9 Nov, G3 re-score** (strict, develop e3af64b; headsets 7–8 Nov, one room each; no headset video, no stranger, the freeze build not yet on a headset; Best First Five Minutes 5; Stage 1 fails until the video exists; evidence and the four ★ accept-with-actions decisions for Parth: FEATURE_FREEZE_PREP_2026-11-12 §5.1) | 6 | 6 | 6 | 4 | product-owner |
+| 10 Nov (driver's estimate after D-079, D-080, D-081 and T-193; no video, no stranger yet; today's seed flow and board not yet on a headset) | 6 | 7 | 6 | 4 | driver |
 
 ## Stand-ups
+### 2026-11-10
+- **08:05 IST — the seed picker reworked after Parth's headset try, the board redesigned.** D-080: no ask on palm-up; the Seeds page is a place to go (two agents, garden and ui, merged cb3cd48; 32-seed-picker rewritten; full browser run 135 passed, TC-E2E-03's test fixed). D-081: Classic and Calm; one grid and one look for the board (0.48 × 0.335 m, inside ±25° × ±20°; its lower edge 3.8 cm above the table: a headset check). Track check (HACKATHON_RULES §14): Entertainment stays, the copy shows plant-then-listen for its "lean-back". Self-score estimate 6 / 7 / 6 / 4 = 23. Agents now: the board's spec text, T-164 mix levels and a panel tick, T-180 Devpost text. Blockers: DECISIONS_PENDING 4, 5, 7, 8, 9, 10 and the push of main.
 ### 2026-11-09
 - **Afternoon — plan sweep, Phase 0 to 4 (scrum-master, documents only).** Done: every open SPRINT_PLAN row decided: T-103, T-129, T-154 done; T-155 superseded by G3 (G2 never held: the cut list and the signature settled by events, the outsider score is DP 5). Today: one full browser run on today's merges, then local `main` for Parth's push (DP 1) before the headset run. Blockers (DECISIONS_PENDING): 1, 2, 3, 4, 5, 6, 7.1, 7.3, 7.4, 7.6, 8, 9, 10. Risk: G3's new-person test and self-score are unmet 3 days before the freeze; FEATURE_FREEZE_PREP still lists T-147b as building (it merged, f858505). fps: about 90 on both headsets (7–8 Nov); the built page on the 3S not timed.
 - **13:00 IST — all agent work of the day merged (develop c9eac75, not pushed).** T-190 room looks (D-071), T-147b shaping sound, BUG-042/043 (panel beats palm seed; window eye), BUG-044/045 (window head click; notice reads every 500 ms), T-182 gallery drafts in evidence/gallery/, T-186 rule check (site 403; draft passes our rules after three fixes), T-169 freeze prep and runbook, the player guide and v0.5.0 release notes draft. The heap failures under load were load. Two leftover session copies (10:50, 12:14) drove agents with no window, so their prompts were declined; Parth stopped the second with `kill`. Full verify and browser suite running.

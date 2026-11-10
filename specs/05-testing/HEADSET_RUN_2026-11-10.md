@@ -173,6 +173,16 @@ Should: the line starts "Day 2", then "Seeds left 1" (if C2 planted all three). 
 
 ---
 
+## Part F. The 10 Nov changes (about 5 minutes, after the next push of main or on the dev link)
+
+**F1. The seed comes at once.** Palm up with seeds left. Should: the seed rests on the palm, no board. ☐
+**F2. Throw one back.** Pinch the seed, let go off the bed. Should: it goes back to the supply (Seeds left unchanged). ☐
+**F3. The Seeds page.** Free hand palm down, press the orb, Garden tab, Seeds. Pick a kind under Calm. Raise the palm. Should: the seed has that kind's colour and shape. ☐
+**F4. The new board.** Look at Sound, Access and Garden. Is each clear? Do "Place again" and "New garden" read? Does the board's lower edge clear the table and the plants? ☐ Rating 1–5: ____
+**F5. The hum.** Plant a Thrumsprout (Calm). Rating 1–5: ____ (under 3: it is hidden again)
+
+---
+
 ## Not on this sheet (they need something the live site does not have)
 
 - The pinch page and the capability page (TC-DEV-00, TC-DEV-0A): out of the live build (T-189); LAN preview only.
