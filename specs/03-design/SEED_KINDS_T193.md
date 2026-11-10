@@ -1,5 +1,7 @@
 # T-193: ten seed kinds, two libraries, the seed picker (D-076)
 
+> **Amended 10 Nov by D-080.** The ask is gone: a palm-up always hands out the next seed, and the Seeds page is opened on purpose from the Garden tab's Seeds button. The rules below about `garden:seedAsk`, `setPicking`, `SEED_PICK_MIN_PLANTS`, `presetSeeds` and the look-up caption are history; API_SPEC v1.2.75 is the contract.
+
 Design record, 9 Nov 2026. Made by a design workflow (5 code maps, 3 designs, a merge, 3 adversarial reviews) on develop 0dc5446. Nothing here has been seen on a headset. The contract is `specs/04-development/API_SPEC.md` v1.2.70; where this file and the spec differ, the spec wins.
 
 ## 0. Worktrees and branches (this table overrules any worktree line in a brief)
