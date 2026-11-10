@@ -23,8 +23,6 @@ declare module '../core/index.js' {
      * API_SPEC §1.10 rule 8).
      */
     'garden:seedBack': { seedId: string; reason: 'offBed' | 'full' | 'lost' | 'reset' };
-    /** No longer emitted (T-193 follow-up): every palm-up hands out a seed. Goes with ui/'s listener. */
-    'garden:seedAsk': { hand: Hand };
     /** FR-ROOM-11/13. `starterSeeds`: this session issued the starter seeds (a new garden). */
     'room:signature': { signature: RoomSignature; starterSeeds: boolean };
     'listen:enter': Record<string, never>;

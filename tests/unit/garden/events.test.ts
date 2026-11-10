@@ -27,7 +27,6 @@ describe('garden/events (API_SPEC §2)', () => {
       seedId: string;
       reason: 'offBed' | 'full' | 'lost' | 'reset';
     }>();
-    expectTypeOf<EventMap['garden:seedAsk']>().toEqualTypeOf<{ hand: Hand }>(); // T-193: no longer emitted, goes with ui/'s listener
     expectTypeOf<EventMap['room:signature']>().toEqualTypeOf<{
       signature: RoomSignature;
       starterSeeds: boolean;

@@ -56,7 +56,6 @@ const PALM_DOWN = { roll: 0, pitch: 0, yaw: 0 };
 const PALM_UP = { roll: 180, pitch: 0, yaw: 0 };
 const LEFT_ROOT: Vec3 = { x: -0.2, y: 0.95, z: -0.3 };
 const RIGHT_ROOT: Vec3 = { x: 0.2, y: 0.95, z: -0.3 }; // over the table, beside the bed, nothing within reach
-const OFF_BED: Vec3 = { x: 0.32, y: 0.95, z: -0.3 }; // further out: a seed let go here lands on no cell
 const CELLS: Cell[] = [
   { ring: 2, step: 4 },
   { ring: 2, step: 3 },
@@ -286,6 +285,32 @@ async function openSeedsPage(page: Page, probe: JSHandle<Probe>, press: (id: str
   await expect.poll(() => probe.evaluate((p) => p.ids().slice(0, 3))).toEqual(SEEDS_HEADER);
 }
 
+/** The orb rides the left hand while its back faces the head (12-settings): that palm turned down shows it. */
+async function palmDownForOrb(
+  page: Page,
+  probe: JSHandle<Probe>,
+  hands: Awaited<ReturnType<typeof emulated>>,
+) {
+  await hands.together([hands.transform('left', LEFT_ROOT, PALM_DOWN)]);
+  await page.waitForFunction((p) => p.panelAt('orb') !== null, probe);
+}
+
+/**
+ * The gaze on the settings orb until the board opens. The orb waits at its own place in the view box, held to the
+ * box's edge while the head looks away (T-151): looked at there it goes back to its place, so the head follows it
+ * until it stays put (25-gaze).
+ */
+async function gazeOpensBoard(page: Page, probe: JSHandle<Probe>) {
+  for (let at = (await probe.evaluate((p) => p.panelAt('orb')))!, tries = 0; tries < 4; tries++) {
+    await lookOn(page, at);
+    await xrFrames(page, 3);
+    const now = await probe.evaluate((p) => p.panelAt('orb'));
+    if (now === null || distance(now, at) < 0.001) break;
+    at = now;
+  }
+  await page.waitForFunction((p) => p.isOpen(), probe);
+}
+
 /** The gaze rests on a board control until `done` holds (the dwell of FR-HND-12). */
 async function dwellOn(page: Page, probe: JSHandle<Probe>, id: string, done: (ids: string[]) => boolean) {
   const at = await probe.evaluate((p, id) => p.panelAt(id), id);
@@ -310,7 +335,9 @@ test('T-193 two hands: every palm-up brings a seed; the Seeds page, with a seed 
   const second = await heard(probe, 'garden:seedOut', { count: 2 });
   expect(await probe.evaluate((p) => p.isOpen())).toBe(false);
 
-  // With seed 2 on the palm: orb, Garden, Seeds. The page opens on the New library, every kind on offer (hum too).
+  // With seed 2 on the palm, the palm turned down shows the orb (12-settings); orb, Garden, Seeds. The page opens
+  // on the New library, every kind on offer (hum too).
+  await palmDownForOrb(page, probe, hands);
   await openSeedsPage(page, probe, (id) => hands.press(id));
   expect(await probe.evaluate((p) => p.ids())).toEqual([...SEEDS_HEADER, ...NEW_SWATCHES]);
   await page.screenshot({ path: '.tmp/t193-seeds-new.png' });
@@ -318,19 +345,22 @@ test('T-193 two hands: every palm-up brings a seed; the Seeds page, with a seed 
   expect(await probe.evaluate((p) => p.ids())).toEqual([...SEEDS_HEADER, ...OLD_SWATCHES]);
   await hands.press('seed:choir');
   await page.waitForFunction((p) => !p.isOpen(), probe);
-  // The pick took seed 2 back; the palm, still up, gets it again as a choir.
-  expect(await heard(probe, 'garden:seedBack', { id: second.id! })).toBeTruthy();
+  // The pick took seed 2 back; the palm turned up again gets it as a choir.
+  expect(await heard(probe, 'garden:seedBack', { id: second.id! })).toMatchObject({ reason: 'reset' });
+  await hands.together([hands.transform('left', LEFT_ROOT, PALM_UP)]);
   expect(await heard(probe, 'garden:seedOut', { count: 3 })).toMatchObject({ id: second.id });
   const choir = await hands.carry(await cellAt(probe, CELLS[1]!), 3);
   expect(await kindOf(probe, choir)).toEqual({ voice: 'choir', family: null });
 
   // Seed 3 comes as it is; the page opens on the library last shown; New, then the large bowl.
   await heard(probe, 'garden:seedOut', { count: 4 });
+  await palmDownForOrb(page, probe, hands);
   await openSeedsPage(page, probe, (id) => hands.press(id));
   expect(await probe.evaluate((p) => p.ids())).toContain('seed:choir');
   await hands.press('lib:new');
   await hands.press('seed:bowl');
   await page.waitForFunction((p) => !p.isOpen(), probe);
+  await hands.together([hands.transform('left', LEFT_ROOT, PALM_UP)]);
   const bowl = await hands.carry(await cellAt(probe, CELLS[2]!), 5);
   expect(await kindOf(probe, bowl)).toEqual({ voice: 'bell', family: 'new' });
   expect(await kindOf(probe, first)).toMatchObject({ family: null }); // the first seed, never picked: Old
@@ -378,7 +408,16 @@ test('T-193 one hand: palm up brings the seed at once; thrown off the bed it is 
 
   // Thrown out: pinched off the palm, carried off the bed, let go on no cell. It is in the supply again.
   await pinchOffPalm(out.id!);
-  await hands.together([hands.transform('right', OFF_BED)]);
+  const [inner, outer] = [
+    await cellAt(probe, { ring: 0, step: 4 }),
+    await cellAt(probe, { ring: 4, step: 4 }),
+  ];
+  const offBed = {
+    x: outer.x + 1.5 * (outer.x - inner.x),
+    y: outer.y,
+    z: outer.z + 1.5 * (outer.z - inner.z),
+  }; // about 0.5 m from the bed's centre, on the user's side: no cell
+  await hands.together([hands.transform('right', hands.rootFor(offBed))]);
   await hands.settle();
   await hands.together([hands.select(0)]);
   expect(await heard(probe, 'garden:seedBack', { id: out.id! })).toMatchObject({ reason: 'offBed' });
@@ -425,7 +464,7 @@ test('T-193 gaze, no table: a dwell on a cell plants the seed as it is; orb, Gar
 
   // The orb, the Garden tab and the Seeds button by dwell; then a dwell on the hum's swatch picks it. The board
   // stays while the gaze rests there, and nothing is planted.
-  await dwellOn(page, probe, 'orb', (ids) => ids.includes('tab:garden'));
+  await gazeOpensBoard(page, probe);
   await dwellOn(page, probe, 'tab:garden', (ids) => ids.includes('seeds'));
   await dwellOn(page, probe, 'seeds', (ids) => ids[0] === SEEDS_HEADER[0]);
   await lookOn(page, (await probe.evaluate((p) => p.panelAt('seed:hum')))!);

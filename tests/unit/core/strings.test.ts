@@ -96,9 +96,9 @@ describe('core/strings', () => {
       'putControllersDown',
       'noRoomScan',
     ]; // T-152 and the 23 Oct audit: instructions, each with its gaze or window twin
-    // kind*, lib* and pickSeed*: the seed picker's names and its two lines (T-193).
+    // kind* and lib*: the seed picker's names (T-193).
     const failures = entries.filter(
-      ([k]) => !/^(ripple|place|onboard|kind|lib|pickSeed)/.test(k) && !notices.includes(k),
+      ([k]) => !/^(ripple|place|onboard|kind|lib)/.test(k) && !notices.includes(k),
     );
     for (const [key] of failures) expect(key).toMatch(/^E_[A-Z_]+$/);
   });
@@ -133,12 +133,5 @@ describe('core/strings', () => {
       const source = read(file);
       for (const name of kinds) expect(source.includes(name), `${name} in ${file}`).toBe(false);
     }
-  });
-
-  it('holds the two lines of the seed picker (T-193, UX §3.6), six words at most', () => {
-    expect(STRINGS.pickSeed).toBe('Pick a seed');
-    expect(STRINGS.pickSeedLookUp).toBe('Look up to pick a seed');
-    expect(STRINGS.pickSeedLookUp.split(' ').length).toBeLessThanOrEqual(6); // FR-UI-01
-    expect(STRINGS.pickSeedLookUp.length).toBeLessThanOrEqual(29); // ui/Captions.ts: the longest that fits unsqueezed
   });
 });

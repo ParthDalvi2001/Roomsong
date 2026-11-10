@@ -60,10 +60,6 @@ export const STRINGS = {
   kindHum: 'Thrumsprout',
   libOld: 'Old',
   libNew: 'New',
-  // The Seeds page of the settings board (UX §3.6): its one line of text, and the caption ui/ holds up while the
-  // board is open and has not been seen yet (it opens above a head that looks down at the palm).
-  pickSeed: 'Pick a seed',
-  pickSeedLookUp: 'Look up to pick a seed',
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
