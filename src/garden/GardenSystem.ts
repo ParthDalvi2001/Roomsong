@@ -224,6 +224,7 @@ export class GardenSystem {
       old.plants.map((p) => p.id),
     );
     this.visit();
+    bus.emit('garden:renewed', {}); // D-084: the guide starts again
   }
 
   /** D-060 item 13: the garden the last New garden replaced can come back: within RESTORE_WINDOW_MS, no plant yet. */

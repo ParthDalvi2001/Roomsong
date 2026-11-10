@@ -23,5 +23,7 @@ export const LISTEN_AFTER_PLANTS = 6;
 /** UX §3.3 step 5: how long the Listen step's icon stays when the player does not listen: a second chance for one who
  *  looked at the plants during the caption. No requirement fixes it. */
 export const LISTEN_STEP_MS = 30_000;
+/** D-084: how long each tip of the tour (Seeds, then Move, lit on the open board) stays before the next. */
+export const ONBOARD_TIP_MS = 4000;
 /** D-053: a gate step (palm to move) that makes no progress for this long gives way to the next: no one is stuck. */
 export const STEP_STALL_MS = 60_000;

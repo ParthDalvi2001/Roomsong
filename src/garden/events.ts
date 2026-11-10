@@ -10,9 +10,9 @@ declare module '../core/index.js' {
       state: GardenState;
       diff: { added: readonly string[]; removed: readonly string[]; changed: readonly string[] };
     };
-    /** A plant was dragged off the bed (FR-HND-11). The undo is good until `expiresAt` (FR-MUS-12). */
     /** D-084: New garden made a fresh garden (GardenSystem.newGarden); the guide starts again. */
     'garden:renewed': Record<string, never>;
+    /** A plant was dragged off the bed (FR-HND-11). The undo is good until `expiresAt` (FR-MUS-12). */
     'garden:removed': { plantId: string; undoToken: UndoToken; expiresAt: number };
     'garden:grown': { deltas: readonly GrowthDelta[] };
     /** A seed joined the supply: one event per new seed of a visit. Not a seed reaching a hand. */

@@ -10,6 +10,7 @@ import {
   NO_SEEDS_GAP_MS,
   NO_SEEDS_SHOW_MS,
   ONBOARD_CAPTION_MS,
+  ONBOARD_TIP_MS,
   STEP_STALL_MS,
 } from '../../../src/onboarding/config.js';
 import { OnboardingSystem } from '../../../src/onboarding/OnboardingSystem.js';
@@ -230,8 +231,109 @@ describe('OnboardingSystem: the captions (UX §3.3)', () => {
     expect(r.steps.slice(-1)).toEqual(['listen']);
     expect(r.shown()).toBe('onboardListen');
     bus.emit('listen:enter', {});
-    expect(r.steps.slice(-1)).toEqual(['done']);
+    expect(r.steps.slice(-1)).toEqual(['orb']); // D-084: the tour comes next
     expect(r.shown()).toBeNull();
+  });
+});
+
+describe('OnboardingSystem: the tour, skip and New garden (D-084)', () => {
+  const TIP_S = ONBOARD_TIP_MS / 1000 + 0.01; // a frame past the tip: the frame time is rounded to whole ms
+
+  it('after Listen the orb caption, then Seeds and Move on the open board, ONBOARD_TIP_MS each; no settings hint', () => {
+    const r = rig();
+    started();
+    r.frame(); // the frame clock first: the jump from 0 would time the Listen step out
+    bus.emit('garden:changed', changed(6));
+    bus.emit('listen:enter', {});
+    expect(r.shown()).toBeNull(); // no instruction over Listen
+    bus.emit('listen:exit', { timedOut: false });
+    expect(r.shown()).toBe('onboardOrb');
+    bus.emit('panel:open', { open: true });
+    expect(r.shown()).toBe('onboardSeedsTip');
+    r.frame(TIP_S);
+    expect(r.shown()).toBe('onboardMoveTip');
+    r.frame(TIP_S);
+    expect(r.steps.slice(-4)).toEqual(['orb', 'seedsTip', 'moveTip', 'done']);
+    expect(r.shown()).toBeNull();
+    expect(r.notices()).toEqual([]);
+  });
+
+  it('the orb caption is "Look at the orb" in one-hand and gaze mode: the orb waits in view there', () => {
+    const r = rig();
+    for (const mode of [{ oneHand: true }, { gazeDwell: true }]) {
+      settings.set({ ...DEFAULT_SETTINGS, ...mode });
+      started();
+      bus.emit('garden:changed', changed(6));
+      bus.emit('listen:enter', {});
+      bus.emit('listen:exit', { timedOut: false });
+      expect(r.shown()).toBe('onboardOrbLook');
+      bus.emit('xr:sessionEnd', { visible: false });
+    }
+  });
+
+  it('the garden window skips the tour: listen -> done, and says no settings hint (no orb there)', () => {
+    const r = rig();
+    r.xr.isPresenting = false;
+    started();
+    bus.emit('garden:changed', changed(6));
+    bus.emit('listen:enter', {});
+    bus.emit('listen:exit', { timedOut: false });
+    expect(r.steps.slice(-2)).toEqual(['listen', 'done']);
+    expect(r.notices()).toEqual([]);
+  });
+
+  it('skip: off at once, the caption taken back, no settings hint; nothing of the session starts it again', () => {
+    const r = rig();
+    started();
+    bus.emit('onboarding:skip', {});
+    expect(r.steps.slice(-1)).toEqual(['off']);
+    expect(r.shown()).toBeNull();
+    bus.emit('garden:seedOut', { seed, hand: 'left' });
+    bus.emit('garden:changed', changed(6));
+    bus.emit('listen:enter', {});
+    bus.emit('listen:exit', { timedOut: false });
+    bus.emit('room:signature', { signature: {} as never, starterSeeds: false }); // a Re-place
+    bus.emit('room:tuned', {});
+    r.frame();
+    expect(r.steps.slice(-1)).toEqual(['off']);
+    expect(r.raised()).toEqual(['onboardPalm']);
+    expect(r.notices()).toEqual([]);
+    bus.emit('xr:sessionEnd', { visible: false });
+    started(); // skipped in the tour: its caption taken back too
+    bus.emit('garden:changed', changed(6));
+    bus.emit('listen:enter', {});
+    bus.emit('listen:exit', { timedOut: false });
+    expect(r.shown()).toBe('onboardOrb');
+    bus.emit('onboarding:skip', {});
+    expect(r.shown()).toBeNull();
+    expect(r.notices()).toEqual([]);
+  });
+
+  it('garden:renewed starts it again at once from the palm step, captions again; not in Listen, with hints off or in the window', () => {
+    const r = rig();
+    started();
+    bus.emit('onboarding:skip', {});
+    bus.emit('garden:renewed', {});
+    expect(r.steps.slice(-1)).toEqual(['palm']);
+    expect(r.raised()).toEqual(['onboardPalm', 'onboardPalm']);
+    bus.emit('garden:renewed', {}); // again at the palm step: its caption once more, the step said once
+    expect(r.raised()).toHaveLength(3);
+    expect(r.steps.filter((step) => step === 'palm')).toHaveLength(2);
+    bus.emit('onboarding:skip', {});
+    bus.emit('listen:enter', {});
+    bus.emit('garden:renewed', {});
+    bus.emit('listen:exit', { timedOut: false });
+    expect(r.steps.slice(-1)).toEqual(['off']);
+    settings.set({ ...DEFAULT_SETTINGS, hintsEnabled: false });
+    bus.emit('garden:renewed', {});
+    expect(r.steps.slice(-1)).toEqual(['off']);
+    settings.set({ ...DEFAULT_SETTINGS });
+    bus.emit('xr:sessionEnd', { visible: false });
+    r.xr.isPresenting = false;
+    started();
+    bus.emit('onboarding:skip', {});
+    bus.emit('garden:renewed', {});
+    expect(r.steps.slice(-1)).toEqual(['off']);
   });
 });
 
@@ -374,37 +476,14 @@ describe('OnboardingSystem: the one-time notices (UX re-check 23 Oct)', () => {
     expect(r.notices()).toEqual(['undoHintGaze', 'undoHintClick']);
   });
 
-  it('at done in one-hand or gaze mode the hint is "Look for the settings orb": the orb waits in the view box (23 Oct audit F1)', () => {
-    const r = rig();
-    settings.set({ ...DEFAULT_SETTINGS, oneHand: true });
-    started();
-    bus.emit('garden:changed', changed(3));
-    bus.emit('gesture:release', release('pull'));
-    bus.emit('gesture:release', release('drag')); // listen
-    bus.emit('listen:enter', {});
-    bus.emit('listen:exit', { timedOut: false });
-    expect(r.steps.slice(-1)).toEqual(['done']);
-    expect(r.notices()).toEqual(['settingsHintLook']);
-    bus.emit('xr:sessionEnd', { visible: false });
-    settings.set({ ...DEFAULT_SETTINGS, gazeDwell: true });
-    started();
-    bus.emit('garden:changed', changed(3));
-    r.system.machine.tick(Number.MAX_SAFE_INTEGER); // the gaze cannot pull or drag: the 60 s net moves it on
-    r.frame();
-    bus.emit('listen:enter', {});
-    bus.emit('listen:exit', { timedOut: false });
-    expect(r.steps.slice(-1)).toEqual(['done']);
-    expect(r.notices()).toEqual(['settingsHintLook', 'settingsHintLook']); // once a session, each
-  });
-
-  it('"Turn a hand over for settings" at done, once; after Listen when done came in it; not in the window, not with hints off', () => {
+  it('the settings hint at done only when the tour did not run (hints off, then on): once, after Listen, the twin in one-hand mode', () => {
     const r = rig();
     started();
-    bus.emit('garden:changed', changed(3));
-    bus.emit('gesture:release', release('pull'));
-    bus.emit('gesture:release', release('drag')); // listen
-    bus.emit('listen:enter', {}); // done, in Listen: nothing yet
+    settings.set({ ...DEFAULT_SETTINGS, hintsEnabled: false }); // done by stop(): no hint
+    expect(r.steps.slice(-1)).toEqual(['done']);
+    settings.set({ ...DEFAULT_SETTINGS }); // hints on again: done, and no tour ran
     expect(r.notices()).toEqual([]);
+    bus.emit('listen:enter', {});
     bus.emit('listen:exit', { timedOut: true }); // the 10-minute end: "Goodnight" has the line, not the hint
     expect(r.notices()).toEqual([]);
     bus.emit('listen:enter', {});
@@ -414,21 +493,12 @@ describe('OnboardingSystem: the one-time notices (UX re-check 23 Oct)', () => {
     bus.emit('listen:exit', { timedOut: false });
     expect(r.notices()).toEqual(['settingsHint']);
     bus.emit('xr:sessionEnd', { visible: false });
+    settings.set({ ...DEFAULT_SETTINGS, oneHand: true });
     started();
-    settings.set({ ...DEFAULT_SETTINGS, hintsEnabled: false }); // done by stop(): no hint
-    expect(r.steps.slice(-1)).toEqual(['done']);
-    expect(r.notices()).toEqual(['settingsHint']);
-    bus.emit('xr:sessionEnd', { visible: false });
-    settings.set({ ...DEFAULT_SETTINGS });
-    r.xr.isPresenting = false; // the garden window has no orb
-    started();
-    bus.emit('garden:changed', changed(3));
-    bus.emit('gesture:release', release('drag'));
-    r.system.machine.tick(Number.MAX_SAFE_INTEGER); // 4 minutes on: listen
-    r.frame();
+    settings.set({ ...DEFAULT_SETTINGS, oneHand: true, hintsEnabled: false });
+    settings.set({ ...DEFAULT_SETTINGS, oneHand: true });
     bus.emit('listen:enter', {});
     bus.emit('listen:exit', { timedOut: false });
-    expect(r.steps.slice(-1)).toEqual(['done']);
-    expect(r.notices()).toEqual(['settingsHint']);
+    expect(r.notices()).toEqual(['settingsHint', 'settingsHintLook']);
   });
 });

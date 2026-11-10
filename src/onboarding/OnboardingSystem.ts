@@ -14,10 +14,16 @@ const CAPTIONS: Partial<Record<OnboardingStep, readonly [xr: StringKey, window: 
   palm: ['onboardPalm', null], // a pointer is always palm up (LLD §11): the window has no such step to say
   plant: ['onboardPlant', 'onboardPlantClick'],
   listen: ['onboardListen', 'onboardListenClick'],
+  // D-084: the tour runs in a headset only (the window has no orb)
+  orb: ['onboardOrb', null],
+  seedsTip: ['onboardSeedsTip', null],
+  moveTip: ['onboardMoveTip', null],
 };
 
 /** The plant step's caption in gaze mode (T-160). */
 const GAZE_PLANT: StringKey = 'onboardPlantGaze';
+/** The orb step's caption in one-hand or gaze mode: the orb waits in the view box there (PanelSystem). */
+const ORB_LOOK: StringKey = 'onboardOrbLook';
 /** The notices said once a session, on their own entity so a step's caption and a notice do not take each other
  *  back: the first removal (UX §7, the undo petal), and in the garden window a palm up with no seed left. In a
  *  headset that one is said at every such palm up, on an entity of its own (BUG-056, `sayNoSeeds`). */
@@ -128,9 +134,29 @@ export class OnboardingSystem extends createSystem({}) {
       }),
       bus.on('listen:exit', ({ timedOut }) => {
         this.isListening = false;
-        // A `done` reached in Listen (listen:enter ends the Listen step) says it now; not after the 10-minute end,
-        // whose line is "Goodnight" (UX §3.5): the hint would queue ahead of it.
-        if (!timedOut) this.sayDone();
+        // A step reached in Listen (listen:enter ends the Listen step: the orb step, or done) says it now; not after
+        // the 10-minute end, whose line is "Goodnight" (UX §3.5): the hint would queue ahead of it.
+        if (timedOut) return;
+        this.sayStep();
+        this.sayDone();
+      }),
+      bus.on('panel:open', ({ open }) => {
+        machine.panel(open);
+        this.sync();
+      }),
+      // D-084: skipped, the guide ends quietly: `off`, its caption taken back, no settings hint.
+      bus.on('onboarding:skip', () => {
+        machine.skip();
+        this.sync();
+      }),
+      // D-084: a New garden in a headset starts the guide again at once, from the palm step: the room is tuned.
+      bus.on('garden:renewed', () => {
+        const s = settings.get();
+        if (!s.hintsEnabled || flags.skipOnboarding || this.inWindow || this.isListening) return;
+        machine.restart(s.gazeDwell);
+        this.captioned.clear();
+        this.sync();
+        this.sayStep(); // the step it was at already (sync said nothing): its caption again
       }),
       bus.on('settings:changed', ({ settings: next }) => {
         if (next.hintsEnabled)
@@ -165,21 +191,37 @@ export class OnboardingSystem extends createSystem({}) {
     if (step === this.said) return;
     this.said = step;
     this.takeCaption();
-    const keys = CAPTIONS[step];
-    const isGaze = step === 'plant' && settings.get().gazeDwell; // T-160: the plant step by a look
-    const key = keys === undefined ? null : this.inWindow ? keys[1] : isGaze ? GAZE_PLANT : keys[0];
-    if (key !== null && !this.isListening && !this.captioned.has(step)) {
-      this.captioned.add(step);
-      this.caption.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });
-    }
+    this.sayStep();
     bus.emit('onboarding:step', { step });
     this.sayDone();
   }
 
-  /** At `done`, once a session: where settings are. Not in the garden window (no orb there), not with hints off. */
+  /** Raises the current step's caption, once a tutorial and never in Listen. */
+  private sayStep(): void {
+    const step = this.machine.step;
+    const keys = CAPTIONS[step];
+    if (keys === undefined || this.isListening || this.captioned.has(step)) return;
+    const s = settings.get();
+    const key = this.inWindow
+      ? keys[1]
+      : step === 'plant' && s.gazeDwell // T-160: the plant step by a look
+        ? GAZE_PLANT
+        : step === 'orb' && (s.oneHand || s.gazeDwell)
+          ? ORB_LOOK
+          : keys[0];
+    if (key === null) return;
+    this.captioned.add(step);
+    this.takeCaption();
+    this.caption.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });
+  }
+
+  /**
+   * At `done`, once a session: where settings are. Not in the garden window (no orb there), not with hints off, not
+   * after the tour (D-084), which showed the orb.
+   */
   private sayDone(): void {
     const s = settings.get();
-    if (this.machine.step !== 'done' || this.inWindow || !s.hintsEnabled) return;
+    if (this.machine.step !== 'done' || this.machine.toured || this.inWindow || !s.hintsEnabled) return;
     this.raiseNotice(s.oneHand || s.gazeDwell ? SETTINGS_HINT_LOOK : SETTINGS_HINT, SETTINGS_HINT);
   }
 
@@ -203,7 +245,12 @@ export class OnboardingSystem extends createSystem({}) {
     if (this.inWindow) return this.raiseNotice(SEEDS_TOMORROW);
     const now = clock.now();
     // `!(... >= gap)`: a clock that stepped back (core's is wall time) says it again rather than never.
-    if (this.isListening || !this.isPlaced || (now >= this.noSeedsAt && now - this.noSeedsAt < NO_SEEDS_GAP_MS)) return;
+    if (
+      this.isListening ||
+      !this.isPlaced ||
+      (now >= this.noSeedsAt && now - this.noSeedsAt < NO_SEEDS_GAP_MS)
+    )
+      return;
     this.noSeedsAt = now;
     this.takeNoSeeds(); // one live caption per raiser: an entity that still has one would not qualify again
     this.noSeeds.addComponent(Caption, { key: SEEDS_TOMORROW, expiresAt: now + NO_SEEDS_SHOW_MS });

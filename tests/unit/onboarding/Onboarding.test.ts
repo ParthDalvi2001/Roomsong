@@ -7,6 +7,7 @@ import {
   LISTEN_AFTER_MS,
   LISTEN_AFTER_PLANTS,
   LISTEN_STEP_MS,
+  ONBOARD_TIP_MS,
   STEP_STALL_MS,
 } from '../../../src/onboarding/config.js';
 import { Onboarding } from '../../../src/onboarding/Onboarding.js';
@@ -242,7 +243,7 @@ describe('Onboarding: step 5, Listen (the gates earned, 4 min or 6 plantings)', 
     expect(m.step).toBe('done');
   });
 
-  it('a player who found Listen before is not told: done instead of listen', () => {
+  it('a player who found Listen before is not told: done instead of listen (the window), the tour (a headset)', () => {
     const m = at('free', false);
     m.listened();
     expect(m.step).toBe('free');
@@ -251,7 +252,91 @@ describe('Onboarding: step 5, Listen (the gates earned, 4 min or 6 plantings)', 
     const earned = at('move');
     earned.listened();
     earned.released('drag');
-    expect(earned.step).toBe('done');
+    expect(earned.step).toBe('orb');
+  });
+});
+
+describe('Onboarding: the tour after Listen (D-084)', () => {
+  it('listen -> orb, which waits for the board; seedsTip and moveTip ONBOARD_TIP_MS each; then done', () => {
+    const m = at('free');
+    expect(m.step).toBe('listen');
+    m.listened();
+    expect(m.step).toBe('orb');
+    m.tick(T0 + 10 * STEP_STALL_MS); // no net: the orb step waits for the board
+    expect(m.step).toBe('orb');
+    m.panel(true);
+    expect(m.step).toBe('seedsTip');
+    const at0 = T0 + 10 * STEP_STALL_MS;
+    m.tick(at0 + ONBOARD_TIP_MS - 1);
+    expect(m.step).toBe('seedsTip');
+    m.tick(at0 + ONBOARD_TIP_MS);
+    expect(m.step).toBe('moveTip');
+    m.tick(at0 + 2 * ONBOARD_TIP_MS - 1);
+    expect(m.step).toBe('moveTip');
+    m.tick(at0 + 2 * ONBOARD_TIP_MS);
+    expect(m.step).toBe('done');
+    expect(m.toured).toBe(true);
+  });
+
+  it('a board already open passes the orb step at once; the board closed during a tip ends the tour', () => {
+    const m = at('free');
+    m.panel(true);
+    m.tick(T0 + LISTEN_STEP_MS); // nobody listened: on to the tour
+    expect(m.step).toBe('seedsTip');
+    m.panel(false);
+    expect(m.step).toBe('done');
+    const late = at('free');
+    late.panel(true);
+    late.listened();
+    late.tick(T0 + ONBOARD_TIP_MS);
+    expect(late.step).toBe('moveTip');
+    late.panel(false);
+    expect(late.step).toBe('done');
+  });
+
+  it('the garden window has no orb: listen -> done, no tour', () => {
+    const m = at('free', false);
+    m.panel(true);
+    m.tick(T0 + LISTEN_AFTER_MS);
+    m.listened();
+    expect(m.step).toBe('done');
+    expect(m.toured).toBe(false);
+  });
+});
+
+describe('Onboarding: skip and restart (D-084)', () => {
+  it('skip ends the guide at once, off, and nothing of the session starts it again (the system passes no later signature)', () => {
+    const m = at('more');
+    m.skip();
+    expect(m.step).toBe('off');
+    m.changed(LISTEN_AFTER_PLANTS);
+    m.released('pull');
+    m.listened();
+    m.panel(true);
+    m.tick(T0 + 10 * LISTEN_AFTER_MS);
+    m.tuned(true, false);
+    m.stop();
+    expect(m.step).toBe('off');
+  });
+
+  it('restart (New garden): the palm step at once, every gate again; the board stays as it is', () => {
+    const m = at('free');
+    m.panel(true);
+    m.listened();
+    m.skip();
+    m.restart(false);
+    expect(m.step).toBe('palm');
+    expect(m.toured).toBe(false);
+    m.seed(true);
+    m.changed(HINT_RING_AFTER_PLANTS);
+    expect(m.step).toBe('grow'); // the pull and the drag before are forgotten
+    m.released('pull');
+    m.released('drag');
+    m.listened();
+    expect(m.step).toBe('seedsTip'); // the board opened before the restart is still open
+    const gaze = at('more');
+    gaze.restart(true);
+    expect(gaze.step).toBe('plant'); // gaze mode: no hand to open
   });
 });
 
