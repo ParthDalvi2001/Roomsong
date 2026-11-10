@@ -58,8 +58,8 @@ export const STRINGS = {
   kindFlute: 'Whisperwort',
   kindReed: 'Swellroot',
   kindHum: 'Thrumsprout',
-  libOld: 'Old',
-  libNew: 'New',
+  libOld: 'Classic',
+  libNew: 'Calm',
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

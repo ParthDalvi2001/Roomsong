@@ -82,7 +82,7 @@ export type StringKey = keyof typeof STRINGS;               // hands-first twins
                                                             // D-068 adds noRoomScan "No room scan: run Space Setup" (FR-ROOM-14): RoomSystem raises it on its own entity
                                                             // T-193 (v1.2.70) adds fourteen. Twelve are names the board draws, not captions: kindBell, kindPluck, kindChoir,
                                                             // kindPad, kindBass, kindBowl, kindChime, kindFlute, kindReed, kindHum (a seed kind's name, through SEED_KINDS[i].name,
-                                                            // §1.1; placeholders, at most 14 characters) and libOld "Old", libNew "New". They are twelve adjacent lines of
+                                                            // §1.1; placeholders, at most 14 characters) and libOld "Classic", libNew "Calm" (D-081; "Old" and "New" until v1.2.75). They are twelve adjacent lines of
                                                             // core/strings.ts, the one place that holds the words: a rename is that file alone (a unit test reads every
                                                             // other file of src/ and tests/). None for the Seeds page since v1.2.75 (D-080): its line is ui's `PANEL.pickSeed`, "Choose the kind of your next seed"
 export const BedAnchor, Interactable, Caption;              // the shared ECS components (above); fields: LLD §3.1. Exported from core/components.ts

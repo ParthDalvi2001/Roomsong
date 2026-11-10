@@ -112,7 +112,7 @@ describe('core/strings', () => {
       ...['kindBowl', 'kindChime', 'kindFlute', 'kindReed', 'kindHum'],
       ...['libOld', 'libNew'],
     ]);
-    expect([STRINGS.libOld, STRINGS.libNew]).toEqual(['Old', 'New']);
+    expect([STRINGS.libOld, STRINGS.libNew]).toEqual(['Classic', 'Calm']);
     const kinds = named.slice(0, 10).map(([, text]) => text);
     expect(new Set(kinds).size).toBe(10);
     for (const name of kinds) expect(name.length, name).toBeLessThanOrEqual(14); // the board's name column at 50 px
