@@ -1508,9 +1508,7 @@ describe('panel strings', () => {
 
   it('do not promise eye control: the gaze mode is named for what it asks (UX §9.7)', () => {
     expect(PANEL.gazeDwell).toBe('Look to select');
-    // Parth's own descriptions (10 Nov, PANEL.describe) say "hold your gaze": the head's, as the reticle shows
-    expect(texts({ ...PANEL, describe: {} }).join(' ')).not.toMatch(/eye|gaze|dwell/i);
-    expect(texts(PANEL.describe).join(' ')).not.toMatch(/eye|dwell/i);
+    expect(texts(PANEL).join(' ')).not.toMatch(/eye|gaze|dwell/i); // the 10 Nov descriptions too ("keep looking")
   });
 });
 
