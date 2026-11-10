@@ -162,7 +162,7 @@ describe('settings panel: opening, closing and the tabs (UX §3.6)', () => {
     ]);
     expect(ids(opened('garden'))).toEqual([
       ...header,
-      ...['height:-', 'height:+', 'replaceBed', 'exit', 'newGarden', 'timeLapse'],
+      ...['height:-', 'height:+', 'replaceBed', 'exit', 'seeds', 'newGarden', 'timeLapse'],
     ]);
     const panel = opened('garden');
     expect(control(panel, 'tab:garden')?.on).toBe(true);
@@ -385,11 +385,11 @@ describe('settings panel: the Garden tab asks, it does not act (UX §3.6)', () =
       lastVisitAt: new Date(2026, 10, 10, 0, 30).getTime(),
     };
     panel.setGarden(garden([], [seed('a'), seed('b')], visited));
-    expect(words(panel)[0]).toBe('Day 4, Seeds left 2, Key C major');
+    expect(words(panel).slice(0, 2)).toEqual(['Day 4, Seeds left 2,', 'Key C major']);
     panel.setSignature(D_MAJOR_ROOM);
-    expect(words(panel)[0]).toBe('Day 4, Seeds left 2, Key D major (room)');
+    expect(words(panel).slice(0, 2)).toEqual(['Day 4, Seeds left 2,', 'Key D major (room)']);
     panel.setGarden(garden());
-    expect(words(panel)[0]).toBe('Day 1, Seeds left 0, Key D major (room)');
+    expect(words(panel).slice(0, 2)).toEqual(['Day 1, Seeds left 0,', 'Key D major (room)']);
   });
 
   it('Place the garden again says so once and closes the panel', () => {
@@ -810,17 +810,21 @@ describe('settings panel: the cue (UX §3.6: a control lights up on hover)', () 
   });
 });
 
-/** The Seeds page as `garden:seedAsk` opens it, one frame on, with the gaze on nothing; `lib` pressed first if given. */
+/** The way to the Seeds page: the orb, the Garden tab, its Seeds button. */
+const toSeeds = (panel: Panel): void => [ORB_ID, 'tab:garden', 'seeds'].forEach((id) => press(panel, id));
+/** The Seeds page one frame on, with the gaze on nothing; `lib` pressed first if given. */
 function seedsOpened(lib?: 'old' | 'new'): Panel {
   const panel = new Panel(actions);
-  panel.openSeeds();
+  toSeeds(panel);
   panel.frame(0, '', false);
   if (lib !== undefined) press(panel, `lib:${lib}`);
   return panel;
 }
 /** The rows of SEED_KINDS on offer in `lib`: its kinds that are not hidden. */
 const offered = (lib: 'old' | 'new') =>
-  SEED_KINDS.filter((row) => (row.family === 'new' ? 'new' : 'old') === lib && !HIDDEN_KINDS.includes(row.kind));
+  SEED_KINDS.filter(
+    (row) => (row.family === 'new' ? 'new' : 'old') === lib && !HIDDEN_KINDS.includes(row.kind),
+  );
 
 describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
   it('shows two library tabs, Close and one swatch per kind on offer, each with its name beside it; no control on the bottom row', () => {
@@ -839,7 +843,10 @@ describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
         expect(name.x).toBeGreaterThan(swatch.x + swatch.w / 2); // to its right
         expect(swatch.y).toBeGreaterThan(-2 * PANEL_TARGET_PITCH_M + 1e-9); // never on the bottom row
       }
-      expect(panel.texts().find((t) => t.text === STRINGS.pickSeed)?.y).toBeCloseTo(-2 * PANEL_TARGET_PITCH_M, 9);
+      expect(panel.texts().find((t) => t.text === PANEL.pickSeed)?.y).toBeCloseTo(
+        -2 * PANEL_TARGET_PITCH_M,
+        9,
+      );
       expect(panel.controls().filter((c) => c.y < -PANEL_TARGET_PITCH_M - 1e-9)).toEqual([]);
     };
     check('new'); // New first
@@ -853,7 +860,7 @@ describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
     // then the library last shown
     press(panel, 'lib:old');
     press(panel, 'close');
-    panel.openSeeds();
+    toSeeds(panel);
     expect(control(panel, 'lib:old')?.on).toBe(true);
     expect(calls.pickSeed).toEqual([]);
   });
@@ -867,7 +874,7 @@ describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
     expect(calls.pickSeed).toEqual(['bowl']);
 
     const second = new Panel(actions);
-    second.openSeeds();
+    toSeeds(second);
     second.frame(0, '', false); // the opening frame: the targets are not there yet
     second.frame(0, 'seed:chime', false); // they appear under a resting gaze
     run(second, 5000, 'seed:chime');
@@ -923,44 +930,34 @@ describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
     expect(calls.pickSeed).toEqual([]);
   });
 
-  it('counts the look-away only once the board has been seen; the settings tabs keep theirs', () => {
-    const panel = seedsOpened();
-    expect(panel.unseen).toBe(true); // the opening frame's `away` is the last board's: it does not count
-    run(panel, 6000, '', true);
-    expect(panel.open).toBe(true);
-    expect(panel.unseen).toBe(true);
-    panel.frame(0, '', false); // in the box once
-    expect(panel.unseen).toBe(false);
-    run(panel, PANEL_LOOK_AWAY_MS - 1, '', true);
-    expect(panel.open).toBe(true);
-    run(panel, 1, '', true);
+  it("the Garden tab's Seeds button opens the Seeds page, by pinch or by dwell; a swatch press picks; the orb's next board is the settings one", () => {
+    const panel = opened('garden');
+    press(panel, 'seeds');
+    expect(ids(panel)).toContain('seed:bowl');
+    expect(ids(panel)).not.toContain('tab:sound');
+    expect(calls.pressed).toContain('seeds'); // it ticks like any press
+    press(panel, 'seed:bowl');
+    expect(calls.pickSeed).toEqual(['bowl']);
     expect(panel.open).toBe(false);
-    expect(panel.unseen).toBe(false);
+    press(panel, ORB_ID);
+    expect(ids(panel)).toContain('tab:sound');
+    expect(ids(panel)).not.toContain('lib:old');
 
-    const tabs = opened('sound');
-    expect(tabs.unseen).toBe(false);
-    run(tabs, PANEL_LOOK_AWAY_MS, '', true); // never in the box: today's rule
-    expect(tabs.open).toBe(false);
+    settings.set({ gazeDwell: true, dwellMs: 600 });
+    const looked = opened('garden');
+    lookAt(looked, 'seeds');
+    run(looked, 600, 'seeds');
+    expect(ids(looked)).toContain('seed:bowl');
+    expect(calls.pickSeed).toEqual(['bowl']);
   });
 
-  it('openSeeds while any page is open changes nothing', () => {
-    const tabs = opened('access');
-    const before = tabs.controls();
-    tabs.stale = false;
-    tabs.openSeeds();
-    expect(tabs.controls()).toEqual(before);
-    expect(tabs.stale).toBe(false);
-    expect(tabs.unseen).toBe(false);
-    const seeds = seedsOpened('old');
-    seeds.stale = false;
-    seeds.openSeeds();
-    expect(ids(seeds)).toContain('seed:bell');
-    expect(seeds.stale).toBe(false);
-    // and the orb's panel, after a Seeds page, is the settings board again
-    press(seeds, 'close');
-    press(seeds, ORB_ID);
-    expect(ids(seeds)).toContain('tab:sound');
-    expect(ids(seeds)).not.toContain('lib:old');
+  it('the garden line ends 1 cm or more before the Seeds button', () => {
+    const panel = opened('garden');
+    panel.setGarden(garden());
+    const seeds = control(panel, 'seeds')!;
+    expect([seeds.x, seeds.y]).toEqual([control(panel, 'exit')!.x, PANEL_TARGET_PITCH_M]); // above Exit
+    for (const line of panel.texts().filter((t) => t.y > PANEL_TARGET_PITCH_M / 2))
+      expect(seeds.x - seeds.w / 2 - (line.x + line.w)).toBeGreaterThanOrEqual(0.01 - 1e-9);
   });
 });
 
@@ -1369,14 +1366,15 @@ describe('what the open panel costs per frame (CODING_GUIDELINES §5)', () => {
     expect(keeper.kept).not.toBeNull();
   });
 
-  it('the Seeds page, unseen and looked away from, with the gaze sweeping its swatches: nothing on the heap', () => {
+  it('the Seeds page, with the gaze sweeping its swatches: nothing on the heap', () => {
     const ROUNDS = 20_000;
     settings.set({ gazeDwell: true });
     const panel = seedsOpened();
     const idList = ['', 'seed:bowl', '', 'seed:chime', '', 'close'];
     const frames = (): void => {
-      // The gaze moves on before any dwell completes; the board is never in the box, so it stays open and unseen.
-      for (let i = 0; i < ROUNDS; i++) panel.frame(14, idList[Math.floor(i / 20) % idList.length] ?? '', true);
+      // The gaze moves on before any dwell completes, the board in the box, so it stays open.
+      for (let i = 0; i < ROUNDS; i++)
+        panel.frame(14, idList[Math.floor(i / 20) % idList.length] ?? '', false);
     };
     frames();
     frames();
@@ -1384,7 +1382,6 @@ describe('what the open panel costs per frame (CODING_GUIDELINES §5)', () => {
     const clean = costs.filter((cost) => cost.gcs === 0 && cost.grewBytes < PROBE_BYTES);
     expect(clean.length, JSON.stringify(costs)).toBeGreaterThan(0);
     expect(panel.open).toBe(true);
-    expect(panel.unseen).toBe(true);
     expect(calls.pickSeed).toEqual([]);
   });
 });

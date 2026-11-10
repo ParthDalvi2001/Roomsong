@@ -5,7 +5,7 @@
 import { Matrix4, Vector3 } from '@iwsdk/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Caption, Interactable } from '../../../src/core/components.js';
+import { Interactable } from '../../../src/core/components.js';
 import { bus, DEFAULT_SETTINGS, log, settings, STRINGS } from '../../../src/core/index.js';
 import { SEED_KINDS, WANDERER } from '../../../src/garden/index.js';
 import { HandState, HIT_RADIUS_M } from '../../../src/hands/index.js';
@@ -30,6 +30,7 @@ import {
 } from '../../../src/ui/config.js';
 import { ORB_ID, Panel, type PanelTab } from '../../../src/ui/Panel.js';
 import { drawOrb, drawPanel, PanelSystem } from '../../../src/ui/PanelSystem.js';
+import { PANEL } from '../../../src/ui/strings.js';
 
 import type { EventMap, Hand } from '../../../src/core/index.js';
 
@@ -70,11 +71,7 @@ function drawn(tab: PanelTab | 'seeds', highContrast = false) {
     pickSeed: () => {},
     swatch: (kind) => `swatch-${kind}`, // a stand-in for render's kindSwatch
   });
-  if (tab === 'seeds') {
-    panel.openSeeds();
-    panel.frame(0, '', false);
-  }
-  for (const id of tab === 'seeds' ? [] : [ORB_ID, `tab:${tab}`]) {
+  for (const id of tab === 'seeds' ? [ORB_ID, 'tab:garden', 'seeds'] : [ORB_ID, `tab:${tab}`]) {
     panel.down('right', id);
     panel.up('right', id);
   }
@@ -226,8 +223,12 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
         expect(fills[i]?.globalAlpha).toBe(1);
       }
       const names = swatches.map((c) => STRINGS[SEED_KINDS.find((row) => `seed:${row.kind}` === c.id)!.name]);
-      for (const word of [...names, STRINGS.pickSeed])
-        expect(text(word), word).toMatchObject({ fillStyle: CAPTION_TEXT_COLOUR, globalAlpha: 1, textAlign: 'left' });
+      for (const word of [...names, PANEL.pickSeed])
+        expect(text(word), word).toMatchObject({
+          fillStyle: CAPTION_TEXT_COLOUR,
+          globalAlpha: 1,
+          textAlign: 'left',
+        });
       expect(text(STRINGS.libNew)?.fillStyle).toBe(PANEL_INK); // the shown library, lit
       expect(text(STRINGS.libOld)?.fillStyle).toBe(CAPTION_TEXT_COLOUR);
     }
@@ -695,65 +696,31 @@ describe('PanelSystem: the ring of a hold (UX §8)', () => {
 });
 
 describe('PanelSystem: the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
-  const captions = (created: FakeEntity[]) => created.filter((entity) => entity.hasComponent(Caption));
-
-  it('garden:seedAsk opens it; a swatch is filled by render, and its press is garden.pick once, then the board closes', () => {
-    const { frame, press, emit, ids, asked, system, mesh } = rig();
+  it("the Garden tab's Seeds button opens it; a swatch is filled by render, and its press is garden.pick once, then the board closes", () => {
+    const { frame, press, ids, asked, system, mesh } = rig();
     frame();
-    emit('garden:seedAsk', { hand: 'right' });
+    for (const id of [ORB_ID, 'tab:garden', 'seeds']) press(id);
     frame();
     expect(system.panel.open).toBe(true);
     expect(mesh('settings-panel').visible).toBe(true);
-    expect(ids()).toEqual(['lib:old', 'lib:new', 'close', 'seed:bowl', 'seed:chime', 'seed:flute', 'seed:reed', 'seed:hum']);
+    expect(ids()).toEqual([
+      'lib:old',
+      'lib:new',
+      'close',
+      'seed:bowl',
+      'seed:chime',
+      'seed:flute',
+      'seed:reed',
+      'seed:hum',
+    ]);
     const bowl = system.panel.controls().find((c) => c.id === 'seed:bowl')!;
     expect(bowl.fill).toMatch(/^#[0-9a-f]{6}$/);
     expect(bowl.fill).toBe(kindSwatch('bowl', WANDERER.paletteSeed, WANDERER.reverbRt60));
-    emit('garden:seedAsk', { hand: 'left' }); // while open: nothing
-    frame();
-    expect(ids()).toHaveLength(8);
+    asked.length = 0;
     press('seed:bowl');
     expect(asked).toEqual(['ui tick', 'pick bowl']);
     expect(system.panel.open).toBe(false);
     expect(ids()).toEqual([]);
-  });
-
-  it('keeps the look-up caption on its own entity while the board is open and unseen, and takes it back when it is seen or closed, adding nothing in between', () => {
-    const { head, frame, press, emit, created, system } = rig();
-    const look = (downDeg: number) =>
-      head.makeRotationX((-downDeg * Math.PI) / 180).setPosition(...EYE);
-    look(44); // at the palm on the table: the board opens above the box
-    frame();
-    emit('garden:seedAsk', { hand: 'right' });
-    frame(); // the opening frame
-    frame();
-    expect(system.panel.unseen).toBe(true);
-    const [caption, ...others] = captions(created);
-    expect(others).toEqual([]);
-    expect(caption!.getValue(Caption, 'key')).toBe('pickSeedLookUp');
-    expect(caption!.getValue(Caption, 'expiresAt') as number).toBeGreaterThan(Date.now() + 3_600_000);
-    const added = vi.spyOn(caption!, 'addComponent');
-    const removed = vi.spyOn(caption!, 'removeComponent');
-    for (let ms = 0; ms < 6000; ms += 50) frame(50); // 6 s away, unseen: still open, the caption still up
-    expect(system.panel.open).toBe(true);
-    expect([added.mock.calls.length, removed.mock.calls.length]).toEqual([0, 0]);
-
-    look(24); // up to the board: seen
-    frame();
-    expect(system.panel.unseen).toBe(false);
-    expect(captions(created)).toEqual([]);
-    look(44);
-    for (let ms = 0; ms < 5000; ms += 50) frame(50); // looked away, seen before: today's rule closes it
-    expect(system.panel.open).toBe(false);
-    expect(captions(created)).toEqual([]);
-    expect(removed.mock.calls.length).toBe(1); // taken back once, when seen
-
-    look(44);
-    emit('garden:seedAsk', { hand: 'right' });
-    frame();
-    frame();
-    expect(captions(created)).toEqual([caption]); // the same entity carries it again
-    press('close');
-    expect(captions(created)).toEqual([]);
   });
 });
 

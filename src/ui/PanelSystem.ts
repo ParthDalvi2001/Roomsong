@@ -17,7 +17,7 @@ import {
   type MeshBasicMaterialParameters,
 } from '@iwsdk/core';
 
-import { Caption, Interactable } from '../core/components.js';
+import { Interactable } from '../core/components.js';
 import { bus, log, settings } from '../core/index.js';
 import { HandState, HIT_RADIUS_M } from '../hands/index.js';
 import { kindSwatch } from '../render/index.js';
@@ -66,7 +66,7 @@ import {
   type PanelText,
 } from './Panel.js';
 
-import type { Hand, Mat4, Settings, StringKey } from '../core/index.js';
+import type { Hand, Mat4, Settings } from '../core/index.js';
 import type { SeedKind } from '../garden/index.js';
 import type { TargetRef } from '../hands/index.js';
 
@@ -78,8 +78,6 @@ const MAX_CONTROLS = 16;
 const SLOTS = 1 + MAX_CONTROLS;
 /** The panel's centre as the FoV guard sees it, for the look-away check. */
 const PANEL_CENTRE: Readonly<FovElement> = { distanceM: PANEL_DISTANCE_M, halfWidthM: 0, halfHeightM: 0 };
-/** T-193: up while the Seeds board is open above the view box and has not been seen yet (API_SPEC §1.9). */
-const LOOK_UP: StringKey = 'pickSeedLookUp';
 /** Indices of one of the fill ring's steps: two triangles. */
 const INDICES_PER_SEGMENT = 6;
 // The orb's sign, three sliders, in canvas pixels from its centre: where each line is, and where its knob sits on it.
@@ -264,8 +262,6 @@ export class PanelSystem extends createSystem(
   // Per slot: its entity, the id of the control it stands for ('' = none: the entity has no Interactable then),
   // that control's centre (world) and its drawn width.
   private readonly entities: Entity[] = [];
-  /** T-193: carries the `pickSeedLookUp` caption while the Seeds board is open, unseen and out of the box. */
-  private caption!: Entity;
   private readonly ids: string[] = [];
   private readonly centres = new Float32Array(3 * SLOTS);
   private readonly widths = new Float32Array(SLOTS).fill(PANEL_TARGET_M);
@@ -308,7 +304,6 @@ export class PanelSystem extends createSystem(
       pickSeed: (kind) => garden?.pick(kind),
       swatch: (kind, signature) => kindSwatch(kind, signature.paletteSeed, signature.reverbRt60),
     });
-    this.caption = this.createEntity();
     this.board = makeQuad('settings-panel', PANEL_WIDTH_M, PANEL_HEIGHT_M, PANEL_PX_PER_M);
     this.orb = makeQuad('settings-orb', ORB_DIAMETER_M, ORB_DIAMETER_M, ORB_CANVAS_PX / ORB_DIAMETER_M);
     this.ring = new Mesh(
@@ -358,12 +353,6 @@ export class PanelSystem extends createSystem(
     const wholeMs = Math.floor(carry[0]);
     carry[0] -= wholeMs;
     panel.frame(wholeMs, this.gazedId, away, isHeadTurning(head.elements, wholeMs, this.headTurn));
-    // T-193: 'Look up to pick a seed' while the Seeds board waits above the box; taken back when seen or closed.
-    const lookUp = panel.unseen && away;
-    if (lookUp !== this.caption.hasComponent(Caption)) {
-      if (lookUp) this.caption.addComponent(Caption, { key: LOOK_UP, expiresAt: Number.POSITIVE_INFINITY });
-      else this.caption.removeComponent(Caption);
-    }
     if (panel.open !== board.visible) this.show(panel.open, head);
     if (panel.stale) this.redraw();
     this.placeCue();
@@ -382,7 +371,6 @@ export class PanelSystem extends createSystem(
       bus.on('garden:changed', ({ state }) => panel.setGarden(state)),
       bus.on('room:signature', ({ signature }) => panel.setSignature(signature)),
       bus.on('room:features', ({ features }) => panel.setFeatures(features)),
-      bus.on('garden:seedAsk', () => panel.openSeeds()), // T-193: a palm-up that got no seed
       bus.on('target:hover', (event) => panel.hover(event.hand, panelId(event.target))),
       bus.on('gesture:pinchStart', (event) => panel.down(event.hand, panelId(event.target))),
       bus.on('gesture:release', (event) =>
@@ -563,6 +551,5 @@ export class PanelSystem extends createSystem(
     this.board.texture.dispose();
     this.orb.texture.dispose();
     for (const entity of this.entities) entity.destroy();
-    this.caption.destroy();
   }
 }

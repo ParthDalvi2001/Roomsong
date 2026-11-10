@@ -103,6 +103,7 @@ export const ORB_ID = 'orb';
 export const NEW_GARDEN_ID = 'newGarden';
 const TIME_LAPSE_ID = 'timeLapse';
 const EXIT_ID = 'exit';
+const SEEDS_ID = 'seeds'; // the way to the Seeds page (T-193, 10 Nov): a palm-up no longer opens it
 // The gaze cannot switch itself off: a user with no hand to pinch with could not switch it back on.
 const GAZE_TOGGLE_ID = 'gazeDwell';
 
@@ -148,6 +149,10 @@ const EXIT_X = 0.15;
 const REPLACE_LABEL_W = EXIT_X - PANEL_WIDE_TARGET_M / 2 - 0.01 - ACTION_LABEL_X;
 const TUNED_Y = ROW_Y[3] + 0.005; // the two lines of "Tuned by" sit a little above the last row's middle
 const LINE_M = 0.013; // half the distance between those two lines
+// T-193: Seeds sits above Exit, at the right end of the garden line's row. That line, at its longest "Day 99, Seeds
+// left 5, Key D major (room)" about 0.385 m, takes two lines there, as "Tuned by" does: each about 0.19 m, and both
+// end 1 cm before the button.
+const GARDEN_LINE_W = EXIT_X - PANEL_WIDE_TARGET_M / 2 - 0.01 - LEFT_X;
 // Both lines end before the Mono switch: "Tuned by: C major," is about 0.165 m, "echo 0.9 s" 0.09 m and the longest
 // second line, "room 120 sq m, ceiling 3.4 m", 0.26 m, in the panel's 50 px font.
 const TUNED_W = 0.175;
@@ -164,7 +169,9 @@ const TABS: Readonly<Record<string, PanelTab>> = {
 type Library = 'old' | 'new';
 type Row = (typeof SEED_KINDS)[number];
 const LIBS: Readonly<Record<string, Library>> = { 'lib:old': 'old', 'lib:new': 'new' };
-const KINDS: Readonly<Record<string, SeedKind>> = Object.fromEntries(SEED_KINDS.map((row) => [`seed:${row.kind}`, row.kind]));
+const KINDS: Readonly<Record<string, SeedKind>> = Object.fromEntries(
+  SEED_KINDS.map((row) => [`seed:${row.kind}`, row.kind]),
+);
 const REVERBS = ['auto', 'small', 'off'] as const;
 const DWELLS: readonly Settings['dwellMs'][] = [600, 900, 1200];
 
@@ -246,22 +253,22 @@ function roomLine(sig: RoomSignature, features: RoomFeatures | null): string {
 const tzAt = (t: number): number => new Date(t).getTimezoneOffset();
 
 /**
- * UX §3.6: "Day 4, Seeds left 2, Key D major (room)". The day counts local calendar dates from the garden's making
- * to its last visit, the daily seed's rule (BUG-037): the day's new seed and "Day 2" come together.
+ * UX §3.6: "Day 4, Seeds left 2," over "Key D major (room)"; the key only before the first garden. The day counts
+ * local calendar dates from the garden's making to its last visit, the daily seed's rule (BUG-037): the day's new
+ * seed and "Day 2" come together.
  */
-function gardenLine(garden: GardenState | null, sig: RoomSignature): string {
-  const parts: string[] = [];
-  if (garden !== null) {
-    const day = gardenDay(
-      garden.createdAt,
-      tzAt(garden.createdAt),
-      garden.lastVisitAt,
-      tzAt(garden.lastVisitAt),
-    );
-    parts.push(`${PANEL.day} ${day}`, `${PANEL.seeds} ${garden.seeds.length}`);
-  }
-  parts.push(`${PANEL.key} ${keyName(sig)}${sig.paletteSeed === 0 ? '' : ` ${PANEL.fromRoom}`}`);
-  return parts.join(', ');
+function gardenLines(garden: GardenState | null, sig: RoomSignature): PanelText[] {
+  const key = `${PANEL.key} ${keyName(sig)}${sig.paletteSeed === 0 ? '' : ` ${PANEL.fromRoom}`}`;
+  const keyLine = label(LEFT_X, ROW_Y[0] - LINE_M, GARDEN_LINE_W, key);
+  if (garden === null) return [keyLine];
+  const day = gardenDay(
+    garden.createdAt,
+    tzAt(garden.createdAt),
+    garden.lastVisitAt,
+    tzAt(garden.lastVisitAt),
+  );
+  const counts = `${PANEL.day} ${day}, ${PANEL.seeds} ${garden.seeds.length},`;
+  return [label(LEFT_X, ROW_Y[0] + LINE_M, GARDEN_LINE_W, counts), keyLine];
 }
 
 /** FR-UI-10: the offset one more step would ask for, in metres, to the millimetre. */
@@ -301,11 +308,9 @@ export class Panel {
   /** T-193 (API_SPEC §1.9): the Seeds page is on show (else the settings tabs), and the library it shows. */
   private isSeeds = false;
   private lib: Library = 'new';
-  /** The frame after `openSeeds`: the targets are not there yet, and what the gaze rests on when they appear is
-   *  not a choice (decision 1 of SEED_KINDS_T193). */
+  /** The frame after the Seeds button: the swatches are not there yet, and what the gaze rests on when they appear
+   *  is not a choice (decision 1 of SEED_KINDS_T193). */
   private opening = false;
-  /** The Seeds board has not been in the view box since it was placed: the look-away does not count yet. */
-  private unseenSeeds = false;
   /** The swatch picked while the gaze mode is on: lit, and the board stays until the gaze leaves it. */
   private pickedId = '';
   private garden: GardenState | null = null;
@@ -335,11 +340,6 @@ export class Panel {
     return this.shownTab;
   }
 
-  /** T-193: the Seeds page is open and its centre has not been in the view box since it was placed. */
-  get unseen(): boolean {
-    return this.unseenSeeds;
-  }
-
   /** The targets on show: the header and the open tab; none while the panel is closed. A new array: not per frame. */
   controls(): PanelControl[] {
     if (!this.isOpen) return [];
@@ -364,7 +364,7 @@ export class Panel {
     if (this.shownTab === 'sound') return this.soundTexts(s);
     if (this.shownTab === 'access') return this.accessTexts(s);
     return [
-      label(LEFT_X, ROW_Y[0], FULL_W, gardenLine(this.garden, this.signature)),
+      ...gardenLines(this.garden, this.signature),
       label(LEFT_X, ROW_Y[1], HEIGHT_LABEL_W, PANEL.bedHeight),
       label(HEIGHT_VALUE_X, ROW_Y[1], HEIGHT_VALUE_W, heightText(this.garden)),
       label(TIME_LAPSE_X + TOGGLE_LABEL_M, ROW_Y[1], TIME_LAPSE_LABEL_W, PANEL.timeLapse),
@@ -443,10 +443,7 @@ export class Panel {
     const ms = this.ms;
     const dt = dtMs > 0 ? Math.min(dtMs, PANEL_MAX_FRAME_MS) : 0; // a time that is not a number counts as 0
     if (this.heldId !== '') ms[HELD] = at(ms, HELD) + dt;
-    // The Seeds page's look-up exception (API_SPEC §1.9): its look-away counts once the board has been seen. On the
-    // opening frame `away` is the last board's.
-    if (this.unseenSeeds && !away && !this.opening) this.unseenSeeds = false;
-    ms[AWAY] = this.isOpen && away && !this.unseenSeeds ? at(ms, AWAY) + dt : 0;
+    ms[AWAY] = this.isOpen && away ? at(ms, AWAY) + dt : 0;
     if (at(ms, AWAY) >= PANEL_LOOK_AWAY_MS) this.setOpen(false);
     const s = settings.get();
     const gazing = s.gazeDwell && !this.pinching.left && !this.pinching.right && gazeId !== GAZE_TOGGLE_ID;
@@ -473,15 +470,6 @@ export class Panel {
 
   close(): void {
     this.setOpen(false);
-  }
-
-  /** T-193 (`garden:seedAsk`): the Seeds page opens where the settings board does; nothing while any page is open. */
-  openSeeds(): void {
-    if (this.isOpen) return;
-    this.isSeeds = true;
-    this.opening = true;
-    this.unseenSeeds = true;
-    this.setOpen(true);
   }
 
   /** FR-HND-12: the gaze rests on `id` ('' = on nothing) for one more frame. */
@@ -525,7 +513,7 @@ export class Panel {
     this.ms[AWAY] = 0;
     this.stale = true;
     this.pickedId = '';
-    if (!open) this.isSeeds = this.opening = this.unseenSeeds = false; // the orb's next press shows the settings board
+    if (!open) this.isSeeds = this.opening = false; // the orb's next press shows the settings board
   }
 
   /** Acts on a control. One that is not on show (another tab's, a closed panel's) or is at its limit does nothing. */
@@ -571,7 +559,8 @@ export class Panel {
       // The placement needs the view, and its confirming pinch must not land on a control.
       this.setOpen(false);
       this.actions.replaceBed();
-    } else if (id === EXIT_ID) {
+    } else if (id === SEEDS_ID) this.isSeeds = this.opening = true;
+    else if (id === EXIT_ID) {
       // D-067: one press, no hold: the garden is saved and Enter brings it back. Closed first, so a second press
       // in the frames before the session's end has nothing to land on.
       this.setOpen(false);
@@ -601,7 +590,7 @@ export class Panel {
       ...this.offered().map(([i, row]) =>
         toggleLabel((i % 2) as 0 | 1, ROW_Y[Math.floor(i / 2)] ?? 0, STRINGS[row.name]),
       ),
-      label(LEFT_X, ROW_Y[3], FULL_W, STRINGS.pickSeed),
+      label(LEFT_X, ROW_Y[3], FULL_W, PANEL.pickSeed),
     ];
   }
 
@@ -677,6 +666,7 @@ export class Panel {
       { ...round('height:+', HEIGHT_PLUS_X, ROW_Y[1], PANEL.plus), dim: atEnd(1) },
       wide('replaceBed', ACTION_X, ROW_Y[2], PANEL.start),
       wide(EXIT_ID, EXIT_X, ROW_Y[2], PANEL.exit),
+      wide(SEEDS_ID, EXIT_X, ROW_Y[0], PANEL.seedsPage),
       // Not during the time-lapse demo (the garden refuses it then): drawn faint, and not selected.
       { ...wide(NEW_GARDEN_ID, ACTION_X, ROW_Y[3], PANEL.hold), dim: this.actions.isTimeLapse() },
       { ...toggle(TIME_LAPSE_ID, 1, ROW_Y[1], this.actions.isTimeLapse()), x: TIME_LAPSE_X },
