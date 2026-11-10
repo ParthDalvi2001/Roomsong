@@ -125,4 +125,5 @@ export const PANEL = {
   seedsPage: 'Seeds',
   nextSeed: 'Your next seed',
   pickSeed: 'Choose the kind of your next seed',
+  skipGuide: 'Skip guide', // D-084: ends the guide; shown while it runs
 } as const;

@@ -7,6 +7,7 @@
 // has a cream outline round that as well (FR-UI-05, BUG-008). Hidden in Listen.
 import {
   CanvasTexture,
+  Color,
   createSystem,
   Float32BufferAttribute,
   Mesh,
@@ -22,7 +23,7 @@ import {
   type Object3D,
 } from '@iwsdk/core';
 
-import { bus, log, settings, type EventMap, type Hand } from '../core/index.js';
+import { bus, log, settings, type EventMap, type Hand, type Settings } from '../core/index.js';
 import { cellCentre, type Cell } from '../garden/index.js';
 import { HAND_HINT_MAX_MS, HandState } from '../hands/index.js';
 
@@ -35,6 +36,8 @@ import {
   GHOST_OPEN_AT,
   GHOST_SIZE_M,
   GHOST_TOP_M,
+  GLOW_LOW,
+  GLOW_PERIOD_MS,
   GUIDE_CELL,
   HAND_HINT_DISTANCE_M,
   HAND_HINT_FADE_IN_MS,
@@ -46,6 +49,8 @@ import {
   HINT_RENDER_ORDER,
   ICON_SIZE_M,
   LISTEN_ICON_LIFT_M,
+  PANEL_ACCENT,
+  PANEL_ACCENT_HIGH_CONTRAST,
   PALM_ICON_LIFT_M,
   PANEL_MAX_FRAME_MS,
   REMOVE_ARROW_AT_M,
@@ -80,6 +85,21 @@ const HAND_HINT: Readonly<FovElement> = {
   halfWidthM: HAND_HINT_SIZE_M / 2,
   halfHeightM: HAND_HINT_SIZE_M / 2,
 };
+const ACCENT = new Color(PANEL_ACCENT);
+const ACCENT_HIGH_CONTRAST = new Color(PANEL_ACCENT_HIGH_CONTRAST);
+
+/**
+ * D-084: the guide's neon glow (GLOW_*), as the colour of a material, `ms` into the pulse: the accent, from GLOW_LOW
+ * of it to all of it and back once a GLOW_PERIOD_MS; steady at full with Reduce motion. Writes `out`; creates nothing.
+ */
+export function neon(out: Color, s: Readonly<Settings>, ms: number): void {
+  const base = s.highContrast ? ACCENT_HIGH_CONTRAST : ACCENT;
+  const wave = 0.5 + 0.5 * Math.cos((2 * Math.PI * (ms % GLOW_PERIOD_MS)) / GLOW_PERIOD_MS);
+  const k = s.reducedMotion ? 1 : GLOW_LOW + (1 - GLOW_LOW) * wave;
+  out.r = base.r * k;
+  out.g = base.g * k;
+  out.b = base.b * k;
+}
 const GHOST_TRAVEL_M = GHOST_BOTTOM_M - GHOST_TOP_M; // negative: the loop goes down first
 const handIndex = (hand: Hand): number => (hand === 'left' ? 0 : 1);
 
@@ -270,6 +290,7 @@ export class HintSystem extends createSystem(
       at.x = this.at.x;
       at.y = RING_LIFT_M;
       at.z = this.at.y;
+      neon(this.ring.material.color, now, this.frameMs); // D-084: the cream ring, tinted to the glowing accent
     }
     this.shows.ring = isRing ? Frame.Ring : -1;
     fade(this.ring, isRing, dtMs, HINT_FADE_MS);
