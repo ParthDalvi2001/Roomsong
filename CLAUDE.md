@@ -7,7 +7,7 @@ On demand: commands `.claude/QUICK_START.md` · where things live `.claude/ARCHI
 **Roomsong**: a hands-first mixed-reality music garden on your real table. Pinch to plant glowing seeds in a ring-shaped bed; a ring of light sweeps it and each plant sings. Where you plant sets when it plays (16 steps) and how high (5 rings). The real room tunes the song (room size and volume set key, mode and echo: the "room signature", gated on device evidence). Saved locally; a new seed each day.
 - Track Entertainment · Division New Experience (all code after 2026-09-24) · Meta Quest 3 / 3S in Meta Quest Browser (WebXR).
 - Stack: IWSDK + Three.js + TypeScript + Vite + Web Audio. Hosting: GitHub Pages + a mirror (D-022).
-- **Deadline 2026-11-18 12:00 PT.** Feature freeze Nov 12 · code freeze Nov 15 · submit Nov 17 ≤18:00 IST.
+- **Deadline 2026-11-18 12:00 PT.** Code freeze Thu Nov 12 · video, gallery, strangers and **submit Fri Nov 13 ≤18:00 IST** (D-082, Parth 10 Nov; was Nov 15/17).
 
 ## 2. Reality
 - **Headsets since 7 Nov:** Parth's Quest 3S (dev server with `?rec=1`) and Chinmay's Quest 3 (live site); results in `specs/05-testing/TEST_PLAN.md` §4.6. Emulator-first stays (IWER + Playwright); work not yet seen on a device is `done-pending-device`.

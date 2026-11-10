@@ -2,6 +2,8 @@
 
 **The one file for every open decision** (updated 9 Nov, after the plan sweep). Reply with the number and your answer, or "done". Answered ones go to DECISIONS_LOG.
 
+
+> **10 Nov, Parth (D-082):** submit **Fri 13 Nov by 18:00 IST**; code freeze Thu 12 Nov. Resolved: 7.1 (no mirror: GitHub Pages is the one link), 7.3 (Chinmay applied as a Start member, added the project on the Meta page and on Devpost, invited Parth), T-164 (sound done as it is), T-166 (room matrix closed as it is). Moved to Friday: 2 to 3 strangers (item 5), the video (9), the gallery (10), the Devpost text at the submission page (7.6).
 ## 4. Headset checks (you or Chinmay, on the live link)
 **Use the one sheet: `specs/05-testing/HEADSET_RUN_2026-11-10.md`** (about 25 minutes in five short sessions, plus 2 minutes tomorrow for Day 2; tick boxes; send a photo of it). It covers everything below and items 8.
 1. Open the link over a phone hotspot. 2. "No room scan" message: once unscanned, once after Space Setup. 3. Undo a plant (undo petal). 4. Drag a plant by looking at it. 5. Listen: both palms out 1.5 s. 6. A no-pinch run: the link with `?access=gaze`. 7. Tomorrow: Garden tab says Day 2. 8. A 10 s Quest video with sound. Optional: the voice test (RND_2026-11-08 §1).
