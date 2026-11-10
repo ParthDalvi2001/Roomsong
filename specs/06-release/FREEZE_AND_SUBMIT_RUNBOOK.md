@@ -1,6 +1,6 @@
 # Freeze and Submit Runbook — SonicSpace (T-183, T-185, T-187)
 
-**Status:** Approved for use · **Owner:** devops-engineer · **Written:** 2026-10-27 · **Checked:** 2026-11-09 (T-169 prep; evidence steps T-192)
+**Status:** Approved for use · **Owner:** devops-engineer · **Written:** 2026-10-27 · **Checked:** 2026-11-10 (state after the 42cb460 push; 9 Nov: T-169 prep, evidence steps T-192)
 The click-by-click order for the code freeze (15 Nov) and the submit day (17 Nov). The rules behind each step are in
 [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) (cited as "Guide §n"); this file does not repeat them.
 **Parth** pushes `main`, pushes tags and clicks GitHub, Netlify and Devpost. **Claude** prepares `develop`, checks and
@@ -9,18 +9,20 @@ records. Claude never pushes `main` and never creates or pushes a `v1.0.0*` tag 
 | When | What | Task |
 |---|---|---|
 | 15 Nov, by 23:59 IST | Code freeze: `v1.0.0-rc1` on Pages (and Netlify, if the mirror is set up), the same build on both | T-183 |
-| 16 Nov | UAT on the live link on a Quest 3 / 3S, go/no-go (SUBMISSION_CHECKLIST §4) | T-184 |
+| 16 Nov | UAT on the live link on a Quest 3 / 3S (UAT_PLAN v1.4, with TC-DEV-18 to 20 for the 10 Nov changes), go/no-go (SUBMISSION_CHECKLIST §4) | T-184 |
 | 17 Nov, by 12:00 IST | Tag `v1.0.0-submission`; Chinmay submits by 18:00 IST; lock | T-185 |
 | 18 Nov 12:00 PT (19 Nov 01:30 IST) → 11 Dec | Deadline, then judging: no change to either link | T-187 |
 
-`<mirror>` below is the Netlify address, for example `https://sonicspace.netlify.app` (Guide §1.2; D-060, D-069).
+`<mirror>` below is the Netlify address: ★ `https://sonicspace-garden.netlify.app` (`sonicspace` is taken; the name
+waits on Parth, DECISIONS_PENDING 7.1; Guide §1.2; D-060, D-069).
 All Terminal commands run in `~/Documents/test-pro/Roomsong`.
 
-**State on 9 Nov:** Pages is live from `main` (`https://parthdalvi2001.github.io/Roomsong/`, `main` = 5c676b6). The
-product is now SonicSpace (D-069): once Parth renames the repository to `SonicSpace` the link is
-`https://parthdalvi2001.github.io/SonicSpace/`, as below; the old `/Roomsong/` path then answers 404 (Pages does not
-redirect a renamed repository; saved gardens stay, the origin is the same). Netlify is chosen for the mirror (project
-`sonicspace`), **not set up** yet: Parth sends the address (T-108). With no mirror:
+**State on 10 Nov:** the repository is renamed `SonicSpace` (D-069) and Pages is live from `main` at
+`https://parthdalvi2001.github.io/SonicSpace/`: `main` = 42cb460, `version.json` version 0.5.0, built
+2026-11-10T02:35Z (Parth pushed it about 08:00 IST). The old `/Roomsong/` path answers 404 (Pages does not redirect a renamed repository; checked 10 Nov; saved
+gardens stay, the origin is the same). `develop` (9077836 and later: T-164, the T-168 review fixes, documents) is not
+live yet. Netlify is chosen for the mirror, **not set up** yet: `sonicspace` is taken, ★ `sonicspace-garden`
+(DECISIONS_PENDING 7.1); Parth sends the address (T-108). With no mirror:
 skip §1.4 and §1.6 step 2, check Pages alone in §1.5, and leave `<mirror>` out of the Devpost (§2 step 3). The device
 test pages are out of the release build (T-189). Two headsets exist (Parth's Quest 3S, Chinmay's Quest 3; TEST_PLAN
 §4.6), so the UAT and the smoke tests are run on one.
@@ -30,12 +32,15 @@ test pages are out of the release build (T-189). Two headsets exist (Parth's Que
 ## 1. Code freeze, 15 Nov (T-183)
 
 ### 1.1 Ready on `develop` (Claude)
-1. Guide §4 step 1: the `develop` commit has a green `ci` run (verify, e2e, audit); BUG_LOG has no open S1/S2.
-2. Guide §4 step 2: `package.json` `version` = `1.0.0` (it stays `1.0.0` for every rc and the submission: the
-   `commit` in `version.json` tells the builds apart); the `v1.0.0-rc1` entry in `RELEASE_NOTES.md`.
+1. Guide §4 step 1: the `develop` commit has a green `ci` run (verify, coverage, e2e, audit); BUG_LOG has no open S1/S2
+   (10 Nov: none; BUG-055, S2, is fixed pending device).
+2. Guide §4 step 2: `package.json` `version` = `1.0.0` (0.5.0 today, since the 9 Nov feature freeze; it stays `1.0.0`
+   for every rc and the submission: the `commit` in `version.json` tells the builds apart); the `v1.0.0-rc1` entry in
+   `RELEASE_NOTES.md`.
 3. Claude asks Parth's go, Parth pushes `develop`, and Claude waits for its `ci` to go green. A red step that is a known
-   timing test on GitHub's machines (`VineRenderer.heap`, `HandSystem` "no allocation", `08-landing` TC-E2E-11):
-   run page → **Re-run failed jobs**, once. Red again: stop and tell Claude.
+   timing test (GitHub's machines, BUG-020: `VineRenderer.heap`, `HandSystem` "no allocation", `08-landing` TC-E2E-11;
+   load, BUG-051: `GardenAudioSystem.heap`, `layers.heap`; BUG-035, BUG-039, BUG-052: e2e 07 gaze only, `06-room`
+   T-128c c1, `30-shaky-hands` scene 6): run page → **Re-run failed jobs**, once. Red again: stop and tell Claude.
 4. Claude writes the green commit's full hash in PROGRESS.md. Call it `<C>`. Nothing more is committed to `develop` until
    step 1.2.1 is done.
 
@@ -57,7 +62,7 @@ test pages are out of the release build (T-189). Two headsets exist (Parth's Que
    (Terminal instead: `cd ~/SonicSpace-release/v1.0.0-rc1 && mkdir site && tar -xf artifact.tar -C site`.)
 3. **First time only:** app.netlify.com → **Add new project** (older screens: "Add new site") → **Deploy manually** →
    drag the site folder onto the box. When it says Published, Project configuration → **Change project name** →
-   `sonicspace` (or the nearest free name). Send Claude the address.
+   `sonicspace-garden` (★; `sonicspace` is taken; DECISIONS_PENDING 7.1). Send Claude the address.
    *Never use "Import from Git":* Netlify would build on its own, with no `version.json` and another `builtAt`, so it is
    not the same build (Guide §1.2 step 1). If a project was made that way already: Project configuration → General →
    Danger zone → **Delete project**, then do this step.
@@ -77,7 +82,8 @@ test pages are out of the release build (T-189). Two headsets exist (Parth's Que
 
 ### 1.6 Uptime watch (Parth, once; T-187)
 1. `uptime.yml` is on `main` already (it came with the go-live push; Actions → **uptime** lists runs on `main`). It stays
-   there: GitHub runs schedules from `main` only.
+   there: GitHub runs schedules from `main` only. The runs up to 9 Nov checked `/Roomsong/`; since 00d0d52 it checks
+   `/SonicSpace/` daily at 03:17 UTC (08:47 IST).
 2. Settings → Secrets and variables → Actions → **Variables** tab → **New repository variable** → Name `MIRROR_URL`,
    Value `<mirror>/` → Add variable.
 3. Actions → **uptime** → **Run workflow** → Branch `main` → Run. It goes green and its log shows two lines ending in

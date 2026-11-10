@@ -48,6 +48,30 @@ Versions follow SPRINT_PLAN v2.1 phases. Up to v0.4.0 every entry is **"emulator
 - Shared gardens: a friend's garden in your room's key.
 - The store-launch line is not agreed (DECISIONS_PENDING 7.6): added only if Parth and Chinmay agree it.
 
+## v0.5.0, 10 Nov live build (`main` 42cb460; not tagged)
+- Build hash: `42cb46005dd140b6557d1d4c8a1ee5b155d5044a`; `version.json` says version 0.5.0, built 2026-11-10T02:35:05Z. Pushed by Parth about 08:00 IST; `deploy` run 42743410491 green. Live at `https://parthdalvi2001.github.io/SonicSpace/` (the repository renamed, D-069; `/Roomsong/` answers 404). Checks: unit 2 068 green; the full browser suite 136 of 136 at ab391b1 (42cb460 adds documents only).
+- Highlights over 00d0d52 (BUG-055, BUG-056): the garden placed again by aim, ten seed kinds in two libraries, the seed at a palm-up at once, the settings board on one grid.
+
+**In the build**
+- Room: "Place the garden again" starts at the aim: the ghost ring shows where the bed lands, a pinch on nothing places it there, after 40 s it lands where it shows; with no hit-test the whole chain runs as before (T-194, D-079).
+- Seeds: ten kinds in two libraries, Classic and Calm, each with its own head shape; the tenth voice, the hum, a tanpura-like string for Calm's bass plant (T-193, D-076, D-081).
+- Play: every palm-up gives the next seed at once; a seed you do not want, thrown off the bed, goes back to the supply. Picking a kind is optional, on the Seeds page, from the orb or the Garden tab's Seeds button (D-080).
+- Board: every setting a label on the left and its control on the right; pills for switches, segmented tracks for steppers and choices, the chosen tab filled; 0.48 x 0.335 m (D-081, API v1.2.76).
+
+**Tested**
+- Seen on a headset (Quest 3, 10 Nov, Parth, dev server with the recorder; TEST_PLAN §4.6): "Place the garden again" by aim (TC-DEV-15); the "No seeds left. More tomorrow." notice on a palm-up with an empty supply (BUG-056); the palm seed picked at once, 4 seeds in 10 s, none flew back (BUG-055, TC-DEV-03). The live 42cb460 itself has not been opened on a headset yet (HEADSET_RUN_2026-11-10 part F).
+- Emulator and unit only: the seed at once and the Seeds page (D-080, TC-DEV-18); the one-grid board (D-081, TC-DEV-19); the ten kinds and the hum, not listened to on a headset (TC-DEV-20).
+
+**Known issues**
+- The re-place button is hard to find: Parth looked twice before finding the small "start" on its row (TC-DEV-15).
+- BUG-055 (S2, fixed pending device): a full bed over the hole reports `offBed`, not `full`; its beta and angle need a headset rating.
+- BUG-035, BUG-039, BUG-052 (S3, watch): e2e timeouts on a very busy machine. Tests only.
+
+**Next push** (develop 9077836, not live)
+- Sound: T-164, the style B mix within ±1.5 dB of the table (the pluck left for Parth's ear); no press tick in Listen.
+- Fixes from the T-168 review: picking the kind the palm seed already has leaves it on the palm (BUG-057); the Seeds button dims with an empty supply (BUG-058); segments and stepper buttons outlined in high contrast (BUG-059).
+- Documents: Devpost copy v3.2 (T-180), UAT plan v1.4 with TC-DEV-18 to 20 (T-184), the V1 video script.
+
 ## v1.0.0-rc1 — Code freeze (2026-11-15)
 ## v1.0.0-submission — Submitted build (2026-11-17)
 - Build hash: _tbd_ · Prod URL: _tbd_ · Video: _tbd_ · Device-tested: _yes/no (state honestly)_
