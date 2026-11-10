@@ -397,6 +397,9 @@ export class Panel {
       cellLabel('left', ROW_Y[2], height.start, PANEL.bedHeight),
       readout(height.value, ROW_Y[2], HEIGHT_VALUE_W, heightText(this.garden)),
       toggleLabel('right', ROW_Y[2], PANEL.timeLapse),
+      // every action of the row has its label too, so "Move" and "Exit" sit at their cells' ends like the rest
+      cellLabel('left', ROW_Y[3], startOf('left', 1, W), PANEL.replaceBedLabel),
+      cellLabel('right', ROW_Y[3], startOf('right', 1, W), PANEL.exitLabel),
       cellLabel(
         'full',
         ROW_Y[4],
@@ -693,7 +696,7 @@ export class Panel {
     ];
   }
 
-  /** Seeds, the most used, first; Place again and Exit; New garden, the risky one, last and away from Seeds. */
+  /** Seeds, the most used, first; Move (the garden spot) and Exit; New garden, the risky one, last and away from Seeds. */
   private gardenControls(): PanelControl[] {
     const garden = this.garden;
     const atEnd = (steps: number): boolean =>
