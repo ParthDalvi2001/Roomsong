@@ -19,13 +19,11 @@ declare module '../core/index.js' {
     'garden:seedOut': { seed: Seed; hand: Hand };
     /**
      * The seed that was out is in the supply again: released off the bed, released over a full bed, the
-     * carrying hand lost past its grace, or the session ended or New garden ran (API_SPEC §1.10 rule 8).
+     * carrying hand lost past its grace, or the session ended, New garden ran or a kind was picked ('reset';
+     * API_SPEC §1.10 rule 8).
      */
     'garden:seedBack': { seedId: string; reason: 'offBed' | 'full' | 'lost' | 'reset' };
-    /**
-     * A palm-up that got no seed: with picking on, the player picks the next seed's kind first (T-193; API_SPEC
-     * §1.10 rule 8). ui/ opens the Seeds page. Once per palm raise.
-     */
+    /** No longer emitted (T-193 follow-up): every palm-up hands out a seed. Goes with ui/'s listener. */
     'garden:seedAsk': { hand: Hand };
     /** FR-ROOM-11/13. `starterSeeds`: this session issued the starter seeds (a new garden). */
     'room:signature': { signature: RoomSignature; starterSeeds: boolean };

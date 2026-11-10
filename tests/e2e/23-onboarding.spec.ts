@@ -349,7 +349,7 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   page,
 }) => {
   const errors = watch(page);
-  const offHost = await openApp(page, readRoom('table'), '/', { onboarding: true, presetSeeds: false });
+  const offHost = await openApp(page, readRoom('table'), '/', { onboarding: true });
   const probe = await probeApp(page);
   await enterXR(page);
   const hands = await emulatedHands(page, probe);
@@ -484,7 +484,7 @@ async function openPlain(page: Page): Promise<string[]> {
       return route.abort();
     },
   );
-  await page.goto('/?flags=presetSeeds');
+  await page.goto('/');
   return offHost;
 }
 

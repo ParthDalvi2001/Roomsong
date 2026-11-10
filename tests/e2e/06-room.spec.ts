@@ -743,7 +743,7 @@ test('T-128c anchors: a second visit brings the bed back at the same pose, and w
   );
 
   // With noAnchors the store answers null: the chain places the bed, and no anchor is announced.
-  await page.goto('/?flags=noAnchors,presetSeeds');
+  await page.goto('/?flags=noAnchors');
   const flagged = await watchRoom(page);
   await enterXR(page);
   await heardOf(page, flagged, 'room:features');

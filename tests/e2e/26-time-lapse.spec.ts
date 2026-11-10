@@ -56,7 +56,7 @@ test('with the timeLapse flag the plants grow within a minute; the save and a re
   const real = await read(page);
   expect(real.stages).toEqual([0, 0]);
 
-  await page.goto('/?flags=timeLapse,skipOnboarding,presetSeeds');
+  await page.goto('/?flags=timeLapse,skipOnboarding');
   await opened(page);
   expect((await read(page)).timeLapse).toBe(true);
   const started = Date.now();
@@ -71,7 +71,7 @@ test('with the timeLapse flag the plants grow within a minute; the save and a re
   expect(lapsed.saved).toBe(real.saved); // the demo was never written
   await page.screenshot({ path: '.tmp/time-lapse.png' });
 
-  await page.goto('/?flags=skipOnboarding,presetSeeds');
+  await page.goto('/?flags=skipOnboarding');
   await opened(page);
   expect(await read(page)).toEqual({ ...real, timeLapse: false, grown: 0 });
   expect(errors).toEqual([]);

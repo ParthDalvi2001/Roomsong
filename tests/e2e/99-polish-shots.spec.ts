@@ -145,7 +145,7 @@ test.beforeAll(() => mkdirSync(DIR, { recursive: true }));
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test('laptop mode: landing, the empty bed with the first caption and hint', async ({ page }) => {
-  await openPlain(page, '/?flags=presetSeeds');
+  await openPlain(page, '/');
   await page.waitForFunction(
     (text) => document.querySelector('[role=status]')?.textContent === text,
     WINDOW,
@@ -164,7 +164,7 @@ test('laptop mode: landing, the empty bed with the first caption and hint', asyn
 
 // The tutorial off: its move gate holds the fourth seed back until a drag.
 test('laptop mode: five plants, Listen', async ({ page }) => {
-  await openPlain(page, '/?flags=skipOnboarding,presetSeeds');
+  await openPlain(page, '/?flags=skipOnboarding');
   const p = await withFivePlants(page);
   await page.screenshot({ path: shot('five-plants') });
   // Listen: a click on the Listen orb in the centre hole, aimed at its foot: the pointer's ray meets the bed plane,
@@ -181,7 +181,7 @@ test('laptop mode: five plants, Listen', async ({ page }) => {
 });
 
 test('laptop mode: high contrast with five plants', async ({ page }) => {
-  await openPlain(page, '/?flags=skipOnboarding,presetSeeds');
+  await openPlain(page, '/?flags=skipOnboarding');
   await page.locator('summary', { hasText: 'Accessibility' }).click(); // D-065: closed until asked for
   await page.getByLabel('High contrast').check();
   await withFivePlants(page);

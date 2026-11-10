@@ -141,14 +141,12 @@ function slowFrames(ms: number): void {
  * `path` opens another page of the same site, for example '/proto/spike/'.
  * The app itself ('/') opens with the `skipOnboarding` flag added (T-150): a spec about something else is not held
  * up by the tutorial's captions and icons, which wait for the player. `onboarding: true` keeps the tutorial.
- * It also gets `presetSeeds` (T-193), on its own: every palm-up hands out the next seed as it is, with no Seeds page.
- * `presetSeeds: false` keeps the seed picker.
  */
 export async function openApp(
   page: Page,
   room: Room,
   path = '/',
-  { onboarding = false, presetSeeds = true }: { onboarding?: boolean; presetSeeds?: boolean } = {},
+  { onboarding = false }: { onboarding?: boolean } = {},
 ): Promise<string[]> {
   if (FRAME_MS > 0) await page.addInitScript(slowFrames, FRAME_MS);
   const offHost: string[] = [];
@@ -163,9 +161,7 @@ export async function openApp(
     return route.abort();
   });
   await page.route(ROOM_REQUEST, (route) => route.fulfill({ json: roomCapture(room) }));
-  await page.goto(
-    withFlags(path, [...(onboarding ? [] : ['skipOnboarding']), ...(presetSeeds ? ['presetSeeds'] : [])]),
-  );
+  await page.goto(withFlags(path, onboarding ? [] : ['skipOnboarding']));
   const want = [
     ...room.planes.map((plane) => `plane:${plane.label}`),
     ...(room.meshes ?? []).map((mesh) => `mesh:${mesh.label}`),

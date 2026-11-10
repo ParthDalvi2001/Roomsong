@@ -123,7 +123,6 @@ describe('garden/ dependency direction and purity (API_SPEC §1)', () => {
         'REVERB_RT60_STEPS_S',
         'RINGS',
         'SEED_KINDS', // T-193
-        'SEED_PICK_MIN_PLANTS', // T-193
         'SEED_SUPPLY_MAX',
         'STEPS',
         'UNDO_LIFE_MS',
