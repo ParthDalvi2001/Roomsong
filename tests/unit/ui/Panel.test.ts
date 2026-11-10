@@ -21,6 +21,7 @@ import {
   PANEL_LOOK_AWAY_MS,
   PANEL_MAX_FRAME_MS,
   PANEL_MAX_PITCH_DOWN_DEG,
+  PANEL_PAD_M,
   PANEL_TARGET_M,
   PANEL_TARGET_PITCH_M,
   PANEL_WIDTH_M,
@@ -38,6 +39,7 @@ import {
   PANEL_ELEMENT,
   placePanel,
   type PanelActions,
+  type PanelControl,
   type PanelTab,
 } from '../../../src/ui/Panel.js';
 import { PANEL } from '../../../src/ui/strings.js';
@@ -154,7 +156,7 @@ describe('settings panel: opening, closing and the tabs (UX §3.6)', () => {
     const header = ['tab:sound', 'tab:access', 'tab:garden', 'close'];
     expect(ids(opened('sound'))).toEqual([
       ...header,
-      ...['tempo:-', 'tempo:+', 'volume:-', 'volume:+', 'reverb:auto', 'reverb:small', 'reverb:off', 'mono'],
+      ...['volume:-', 'volume:+', 'tempo:-', 'tempo:+', 'reverb:auto', 'reverb:small', 'reverb:off', 'mono'],
     ]);
     expect(ids(opened('access'))).toEqual([
       ...header,
@@ -162,7 +164,7 @@ describe('settings panel: opening, closing and the tabs (UX §3.6)', () => {
     ]);
     expect(ids(opened('garden'))).toEqual([
       ...header,
-      ...['height:-', 'height:+', 'replaceBed', 'exit', 'seeds', 'newGarden', 'timeLapse'],
+      ...['seeds', 'height:-', 'height:+', 'timeLapse', 'replaceBed', 'exit', 'newGarden'],
     ]);
     const panel = opened('garden');
     expect(control(panel, 'tab:garden')?.on).toBe(true);
@@ -328,7 +330,7 @@ describe('settings panel: every control writes core settings and shows the value
 });
 
 describe('settings panel: the Sound tab says what tuned the song (UX §3.6, US-22)', () => {
-  const tuned = (panel: Panel) => panel.texts().slice(-3);
+  const tuned = (panel: Panel) => panel.texts().slice(0, 3); // the info row, the tab's first
 
   it('shows the Wanderer tuning until a room has set one', () => {
     expect(tuned(opened('sound')).map((t) => t.text)).toEqual([
@@ -542,8 +544,9 @@ describe('settings panel: New garden needs a hold, so it cannot happen by accide
     panel.stale = false;
     panel.frame(16, '', false);
     expect(panel.stale).toBe(true); // redrawn as the row turns
-    expect(words(panel)).toContain(PANEL.bringBack);
-    expect(words(panel)).not.toContain(PANEL.newGarden);
+    expect(control(panel, 'newGarden')?.text).toBe(PANEL.bringBack);
+    expect(words(panel)).toContain(PANEL.bringBackHint);
+    expect(words(panel)).not.toContain(PANEL.newGardenHint);
     press(panel, 'newGarden'); // a short press does nothing, as for New garden
     expect(calls.restore).toEqual([]);
     panel.down('right', 'newGarden');
@@ -561,7 +564,8 @@ describe('settings panel: New garden needs a hold, so it cannot happen by accide
     panel.stale = false;
     panel.frame(16, '', false);
     expect(panel.stale).toBe(true);
-    expect(words(panel)).toContain(PANEL.newGarden);
+    expect(control(panel, 'newGarden')?.text).toBe(PANEL.newGarden);
+    expect(words(panel)).toContain(PANEL.newGardenHint);
   });
 
   it('does nothing when the hand moved off it before letting go, however long the hold', () => {
@@ -840,14 +844,14 @@ describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
         expect(swatch.fill).toBe(`#${row.kind}-${WANDERER.paletteSeed}`);
         const name = panel.texts().find((t) => t.text === STRINGS[row.name])!;
         expect(name.y).toBe(swatch.y);
-        expect(name.x).toBeGreaterThan(swatch.x + swatch.w / 2); // to its right
-        expect(swatch.y).toBeGreaterThan(-2 * PANEL_TARGET_PITCH_M + 1e-9); // never on the bottom row
+        expect(name.x + name.w).toBeLessThan(swatch.x - swatch.w / 2); // the name first, then its swatch
+        expect(swatch.y).toBeGreaterThan(-PANEL_TARGET_PITCH_M + 1e-9); // the first three rows
       }
       expect(panel.texts().find((t) => t.text === PANEL.pickSeed)?.y).toBeCloseTo(
-        -2 * PANEL_TARGET_PITCH_M,
+        -1.5 * PANEL_TARGET_PITCH_M,
         9,
       );
-      expect(panel.controls().filter((c) => c.y < -PANEL_TARGET_PITCH_M - 1e-9)).toEqual([]);
+      expect(panel.controls().filter((c) => c.y < -PANEL_TARGET_PITCH_M)).toEqual([]);
     };
     check('new'); // New first
     press(panel, 'lib:old');
@@ -951,13 +955,24 @@ describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
     expect(calls.pickSeed).toEqual(['bowl']);
   });
 
-  it('the garden line ends 1 cm or more before the Seeds button', () => {
+  it('10 Nov: Seeds, the primary button, on the row under the garden line; New garden, the risky one, on the last', () => {
     const panel = opened('garden');
     panel.setGarden(garden());
-    const seeds = control(panel, 'seeds')!;
-    expect([seeds.x, seeds.y]).toEqual([control(panel, 'exit')!.x, PANEL_TARGET_PITCH_M]); // above Exit
-    for (const line of panel.texts().filter((t) => t.y > PANEL_TARGET_PITCH_M / 2))
-      expect(seeds.x - seeds.w / 2 - (line.x + line.w)).toBeGreaterThanOrEqual(0.01 - 1e-9);
+    const rows = [...new Set(panel.controls().map((c) => c.y))].sort((a, b) => b - a);
+    expect(control(panel, 'seeds')).toMatchObject({ y: rows[1], look: 'primary', text: 'Seeds' });
+    expect(control(panel, 'newGarden')).toMatchObject({
+      y: rows[rows.length - 1],
+      look: 'danger',
+      text: 'New garden',
+    });
+    expect(
+      panel
+        .controls()
+        .filter((c) => c.y === rows[rows.length - 1])
+        .map((c) => c.id),
+    ).toEqual(['newGarden']);
+    const info = panel.texts().slice(0, 2);
+    for (const line of info) expect(line.y).toBeGreaterThan(control(panel, 'seeds')!.y + PANEL_TARGET_M / 2);
   });
 });
 
@@ -994,6 +1009,41 @@ describe('settings panel: targets of at least 4 cm with clear gaps (T-151, Golde
           expect(Math.max(gapX, gapY), pair).toBeGreaterThanOrEqual(0.015 - 1e-9);
         }
       }
+    }
+  });
+
+  it("10 Nov, one grammar on every page: a label starts at its cell's left edge and ends before its controls, the last of which ends at the cell's right edge", () => {
+    const edge = PANEL_WIDTH_M / 2 - PANEL_PAD_M;
+    const left = (c: PanelControl) => c.x - c.w / 2;
+    const right = (c: PanelControl) => c.x + c.w / 2;
+    for (const [name, panel] of layouts()) {
+      const body = panel.controls().filter((c) => c.y < 2 * PANEL_TARGET_PITCH_M); // under the header's rule
+      const onRow = (y: number) => body.filter((c) => Math.abs(c.y - y) < PANEL_TARGET_M / 2);
+      for (const text of panel.texts().filter((t) => t.value !== true)) {
+        const row = onRow(text.y);
+        if (row.length === 0) continue; // an info line: a row of its own
+        const atStart = [-edge, 0.01].some((x) => Math.abs(text.x - x) < 1e-9);
+        expect(atStart, `${name}: "${text.text}" at ${text.x}`).toBe(true);
+        for (const c of row.filter((each) => left(each) >= text.x))
+          expect(left(c), `${name}: "${text.text}" before ${c.id}`).toBeGreaterThanOrEqual(text.x + text.w);
+      }
+      for (const c of body) {
+        const end = right(c) <= -0.01 + 1e-9 ? -0.01 : edge; // a left cell's, or a right or full one's
+        const later = onRow(c.y).some((d) => d !== c && left(d) >= right(c) - 1e-9 && left(d) < end);
+        if (!later) expect(right(c), `${name} ${c.id}`).toBeCloseTo(end, 9);
+      }
+    }
+    for (const tab of ['sound', 'garden'] as const) {
+      const panel = opened(tab);
+      panel.setGarden(garden()); // the garden line is two lines then
+      const top = Math.max(
+        ...panel
+          .controls()
+          .filter((c) => c.y < 2 * PANEL_TARGET_PITCH_M)
+          .map((c) => c.y),
+      );
+      for (const line of panel.texts().slice(0, 2))
+        expect(line.y, `${tab} ${line.text}`).toBeGreaterThan(top + PANEL_TARGET_M / 2);
     }
   });
 
@@ -1103,14 +1153,15 @@ describe('settings panel: where it opens (UX §3.6, FR-UI-03)', () => {
   });
 
   it.each([30, 44, 70, 90])(
-    'stays clear of the table when the head looks %i degrees down: its lower edge at most 35 cm below the eyes',
+    'stays clear of the table when the head looks %i degrees down: its lower edge at most 40 cm below the eyes',
     (down) => {
       expect(PANEL_MAX_PITCH_DOWN_DEG).toBe(30);
       const EYE_M = 1.15; // the seated sketch of UX §2: the table top is at 0.72 m
       const { centre, corners } = placed(headAt([0, EYE_M, 0], 35, -down));
       const lowest = Math.min(...corners.map((corner) => corner.y));
-      expect(lowest).toBeGreaterThanOrEqual(EYE_M - 0.35);
-      expect(lowest).toBeCloseTo(EYE_M - 0.3442, 3); // 8.6 cm above that table, the same from 30 degrees on
+      expect(lowest).toBeGreaterThanOrEqual(EYE_M - 0.4);
+      // 3.8 cm above that table, the same from 30 degrees on (8.6 cm while the board was 0.28 m tall, before 10 Nov)
+      expect(lowest).toBeCloseTo(EYE_M - 0.3918, 3);
       // and it is where the head pointed: 35 degrees to the left, not straight ahead in the room
       expect((Math.atan2(-centre.x, -centre.z) * 180) / Math.PI).toBeCloseTo(35, 6);
     },
@@ -1126,7 +1177,7 @@ describe('settings panel: where it opens (UX §3.6, FR-UI-03)', () => {
     const head = headAt(SEATED, 0, -down);
     const { pose, centre } = placed(head);
     const up = (i: number) => pose[4 + i] as number;
-    [1, 0, -1].forEach((row, i) => {
+    [1.5, 0.5, -0.5].forEach((row, i) => {
       const y = row * PANEL_TARGET_PITCH_M; // ROW_Y[0..2]: the swatch rows
       const point = new Vector3(centre.x + up(0) * y, centre.y + up(1) * y, centre.z + up(2) * y);
       const local = seenFrom(head, point);

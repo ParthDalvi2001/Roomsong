@@ -19,6 +19,7 @@ import {
   PANEL_LOOK_AWAY_MS,
   PANEL_MAX_FRAME_MS,
   PANEL_MAX_PITCH_DOWN_DEG,
+  PANEL_PAD_M,
   PANEL_TARGET_M,
   PANEL_TARGET_PITCH_M,
   PANEL_WIDE_TARGET_M,
@@ -52,6 +53,12 @@ export interface PanelControl {
   dim: boolean;
   /** T-193: a seed swatch's colour (`kindSwatch`), drawn instead of the on/off fill. */
   fill?: string;
+  /**
+   * How it is drawn (10 Nov): a switch, a pill with a knob; a segment of a segmented control or a button of a
+   * stepper, drawn on one track with the controls of its group (the part of the id before ':'); the primary button;
+   * the destructive one. Else an outlined pill.
+   */
+  look?: 'switch' | 'segment' | 'step' | 'primary' | 'danger';
 }
 
 /** A label or a read-out: its left end at `x`, its middle line at `y`, squeezed into `w` when it is longer. */
@@ -62,6 +69,8 @@ export interface PanelText {
   text: string;
   /** Not in effect now (the room's echo while Reverb is not on auto). */
   dim: boolean;
+  /** A stepper's read-out: bold, centred in `w`. */
+  value?: boolean;
 }
 
 /**
@@ -107,58 +116,49 @@ const SEEDS_ID = 'seeds'; // the way to the Seeds page (T-193, 10 Nov): a palm-u
 // The gaze cannot switch itself off: a user with no hand to pinch with could not switch it back on.
 const GAZE_TOGGLE_ID = 'gazeDwell';
 
-// The layout, in the panel's plane. Rows are PANEL_TARGET_PITCH_M apart; the header holds the tabs and Close.
-const HEADER_Y = PANEL_TARGET_PITCH_M * 2;
-const ROW_Y = [1, 0, -1, -2].map((row) => row * PANEL_TARGET_PITCH_M) as [number, number, number, number];
-const LEFT_X = -0.19; // where a row's label starts
-const FULL_W = 0.38;
-const LABEL_W = 0.1;
-const TAB_X = [-0.15, -0.05, 0.05] as const;
-const CLOSE_X = 0.17;
-const MINUS_X = -0.05;
-const PLUS_X = 0.11;
-const VALUE_X = -0.015; // the read-out of a stepper, between its two buttons
-const VALUE_W = 0.09;
-const OPTION_X = [-0.04, 0.055, 0.15] as const; // the three choices of Reverb and of Hold time
-// Two switches to a row, each with its label to its right; the third column is the Sound tab's Mono (P-014), under
-// the steppers' plus, beside "Tuned by": no tab had a free row for it.
-const TOGGLE_X = [-0.17, 0.03, PLUS_X] as const;
-const TOGGLE_LABEL_M = 0.03; // from a switch's centre to where its label starts
-const TOGGLE_LABEL_W = 0.13;
-const BEAT_LABEL_W = 0.11; // "Main hand" shares its row
-const MONO_LABEL_W = 0.05; // to the panel's edge
-const HAND_LABEL_X = -0.02;
-const HAND_LABEL_W = 0.1;
-const HAND_X = [0.11, 0.17] as const;
-const ACTION_X = -0.15;
-const ACTION_LABEL_X = -0.09;
-const ACTION_LABEL_W = 0.28;
-// The Garden tab's height row (T-167, T-174): "Height" and a narrow stepper on the left, so the Time-lapse switch
-// fits on its right and "Place the garden again" and "New garden (erases this one)" keep whole rows.
-// The read-out is the number only ("+20" is about 0.036 m): "+10 cm" ran into the plus button's ring.
-const HEIGHT_LABEL_W = 0.065; // "Height" is about 0.06 m
-const HEIGHT_MINUS_X = -0.105;
-const HEIGHT_VALUE_X = -0.08;
-const HEIGHT_VALUE_W = 0.04; // ends 1 cm before the plus button
-const HEIGHT_PLUS_X = -0.01;
-const TIME_LAPSE_X = 0.045; // one pitch from the plus
-const TIME_LAPSE_LABEL_W = 0.115; // "Time-lapse" is about 0.1 m: it ends about 2 cm short of the panel's edge
-// D-067: Exit at the right end of the Place-again row, the one action row with room for it ("New garden (erases
-// this one)" fills its row); the row's label ends 1 cm before it.
-const EXIT_X = 0.15;
-const REPLACE_LABEL_W = EXIT_X - PANEL_WIDE_TARGET_M / 2 - 0.01 - ACTION_LABEL_X;
-const TUNED_Y = ROW_Y[3] + 0.005; // the two lines of "Tuned by" sit a little above the last row's middle
-const LINE_M = 0.013; // half the distance between those two lines
-// T-193: Seeds sits above Exit, at the right end of the garden line's row. That line, at its longest "Day 99, Seeds
-// left 5, Key D major (room)" about 0.385 m, takes two lines there, as "Tuned by" does: each about 0.19 m, and both
-// end 1 cm before the button.
-const GARDEN_LINE_W = EXIT_X - PANEL_WIDE_TARGET_M / 2 - 0.01 - LEFT_X;
-// Both lines end before the Mono switch: "Tuned by: C major," is about 0.165 m, "echo 0.9 s" 0.09 m and the longest
-// second line, "room 120 sq m, ceiling 3.4 m", 0.26 m, in the panel's 50 px font.
+// The layout (10 Nov, Parth: "make it systematic"): one grid for every page. Under the header (the tabs, Close and a
+// thin rule) five rows PANEL_TARGET_PITCH_M apart. A row is one full-width cell or two half-width ones; a cell's label
+// starts at its left edge and its controls end at its right edge, the same x on every page. Read-only lines take the
+// first row of their tab. What a player changes most comes first, rare or risky actions last.
+const P = PANEL_TARGET_PITCH_M;
+const HEADER_Y = 2.5 * P;
+/** The rule under the header, and the content's edge: the panel's less its padding. */
+export const RULE_Y = 2 * P;
+export const EDGE_X = PANEL_WIDTH_M / 2 - PANEL_PAD_M;
+const ROW_Y = [1.5, 0.5, -0.5, -1.5, -2.5].map((row) => row * P) as [number, number, number, number, number];
+const T = PANEL_TARGET_M;
+const W = PANEL_WIDE_TARGET_M;
+const TARGET_GAP_M = P - T; // 1.5 cm between two targets
+const TEXT_GAP_M = 0.01; // between a label or a read-out and a target
+const CELL_GAP_M = 0.02;
+type Cell = 'full' | 'left' | 'right';
+const START_X: Readonly<Record<Cell, number>> = { full: -EDGE_X, left: -EDGE_X, right: CELL_GAP_M / 2 };
+const END_X: Readonly<Record<Cell, number>> = { full: EDGE_X, left: -CELL_GAP_M / 2, right: EDGE_X };
+const FULL_W = 2 * EDGE_X;
+const TAB_X = [0, 1, 2].map((i) => -EDGE_X + W / 2 + i * (W + TARGET_GAP_M));
+const CLOSE_X = EDGE_X - T / 2;
+const VALUE_W = 0.09; // "120 BPM", bold, is about 0.083 m
+// "+20" is about 0.036 m: "+10 cm" ran into the plus button's ring
+const HEIGHT_VALUE_W = 0.04;
+// The info lines: "Tuned to: C major," then the echo, which dims on its own, and the room under them; on the Garden
+// tab "Day 4, Seeds left 2," over "Key D major (room)".
+const LINE_M = 0.013; // half the distance between the two lines of the info row
 const TUNED_W = 0.175;
-const ECHO_X = -0.01;
+const ECHO_X = -EDGE_X + 0.18;
 const ECHO_W = 0.095;
-const ROOM_W = 0.27;
+
+/** The centre of target `i` of `n`, each `w` wide and 1.5 cm apart, the last ending at the cell's right edge. */
+const fromEnd = (cell: Cell, i: number, n: number, w: number): number =>
+  END_X[cell] - w / 2 - (n - 1 - i) * (w + TARGET_GAP_M);
+/** Where the first of `n` such targets starts. */
+const startOf = (cell: Cell, n: number, w: number): number => END_X[cell] - n * w - (n - 1) * TARGET_GAP_M;
+/** A stepper in a cell: the centres of − and +, the read-out between them `valueW` wide, and where it starts. */
+function stepperX(cell: Cell, valueW: number) {
+  const plus = END_X[cell] - T / 2;
+  const value = plus - T / 2 - TEXT_GAP_M - valueW;
+  const minus = value - TEXT_GAP_M - T / 2;
+  return { minus, value, plus, start: minus - T / 2 };
+}
 
 const TABS: Readonly<Record<string, PanelTab>> = {
   'tab:sound': 'sound',
@@ -174,6 +174,12 @@ const KINDS: Readonly<Record<string, SeedKind>> = Object.fromEntries(
 );
 const REVERBS = ['auto', 'small', 'off'] as const;
 const DWELLS: readonly Settings['dwellMs'][] = [600, 900, 1200];
+
+/** A tab of the header (a settings tab or a library): one segmented control from the panel's left edge. */
+const tabAt = (id: string, i: number, text: string, on: boolean): PanelControl => ({
+  ...lit(wide(id, TAB_X[i] ?? 0, HEADER_Y, text), on),
+  look: 'segment',
+});
 
 /** One more step of the volume, without the dust of adding 0.1 ten times. */
 const volumeAfter = (volume: number, steps: number): number =>
@@ -216,23 +222,46 @@ const wide = (id: string, x: number, y: number, text: string): PanelControl => (
 });
 const lit = (control: PanelControl, on: boolean): PanelControl => ({ ...control, on });
 const label = (x: number, y: number, w: number, text: string): PanelText => ({ x, y, w, text, dim: false });
+/** A cell's label: from the cell's left edge to 1 cm before `controlX`, where the cell's first target starts. */
+const cellLabel = (cell: Cell, y: number, controlX: number, text: string): PanelText =>
+  label(START_X[cell], y, controlX - TEXT_GAP_M - START_X[cell], text);
+const readout = (x: number, y: number, w: number, text: string): PanelText => ({
+  ...label(x, y, w, text),
+  value: true,
+});
 
-/** A switch: it says "on" or "off" in words, so its state is not carried by its fill alone. */
-function toggle(id: string, column: 0 | 1 | 2, y: number, value: boolean): PanelControl {
-  return lit(round(id, TOGGLE_X[column], y, value ? PANEL.on : PANEL.off), value);
+/** A switch: a pill whose knob moves, and it says "on" or "off" in words, so its state is not carried by colour. */
+function toggle(id: string, cell: Cell, y: number, value: boolean): PanelControl {
+  const control = wide(id, fromEnd(cell, 0, 1, W), y, value ? PANEL.on : PANEL.off);
+  return { ...lit(control, value), look: 'switch' };
 }
-const toggleLabel = (column: 0 | 1 | 2, y: number, text: string): PanelText =>
-  label(TOGGLE_X[column] + TOGGLE_LABEL_M, y, TOGGLE_LABEL_W, text);
+const toggleLabel = (cell: Cell, y: number, text: string): PanelText =>
+  cellLabel(cell, y, startOf(cell, 1, W), text);
+
+/** Option `i` of `n` of a segmented control in a cell, each `w` wide. */
+function segment(
+  id: string,
+  cell: Cell,
+  i: number,
+  n: number,
+  w: number,
+  y: number,
+  text: string,
+  on: boolean,
+): PanelControl {
+  return { ...lit({ ...round(id, fromEnd(cell, i, n, w), y, text), w }, on), look: 'segment' };
+}
 
 /** The two buttons of a tempo or volume stepper. One is dim when the store's validator would not move the value. */
 function stepper(name: 'tempo' | 'volume', y: number, s: Readonly<Settings>): PanelControl[] {
+  const x = stepperX('full', VALUE_W);
   return [
-    { id: `${name}:-`, x: MINUS_X, text: PANEL.minus },
-    { id: `${name}:+`, x: PLUS_X, text: PANEL.plus },
+    { id: `${name}:-`, x: x.minus, text: PANEL.minus },
+    { id: `${name}:+`, x: x.plus, text: PANEL.plus },
   ].map(({ id, x, text }) => {
     const patch = PATCHES[id];
     const next = patch === undefined ? s : validateSettings({ ...s, ...patch(s) }, s);
-    return { ...round(id, x, y, text), dim: next[name] === s[name] };
+    return { ...round(id, x, y, text), dim: next[name] === s[name], look: 'step' as const };
   });
 }
 
@@ -259,7 +288,7 @@ const tzAt = (t: number): number => new Date(t).getTimezoneOffset();
  */
 function gardenLines(garden: GardenState | null, sig: RoomSignature): PanelText[] {
   const key = `${PANEL.key} ${keyName(sig)}${sig.paletteSeed === 0 ? '' : ` ${PANEL.fromRoom}`}`;
-  const keyLine = label(LEFT_X, ROW_Y[0] - LINE_M, GARDEN_LINE_W, key);
+  const keyLine = label(-EDGE_X, ROW_Y[0] - LINE_M, FULL_W, key);
   if (garden === null) return [keyLine];
   const day = gardenDay(
     garden.createdAt,
@@ -268,7 +297,7 @@ function gardenLines(garden: GardenState | null, sig: RoomSignature): PanelText[
     tzAt(garden.lastVisitAt),
   );
   const counts = `${PANEL.day} ${day}, ${PANEL.seeds} ${garden.seeds.length},`;
-  return [label(LEFT_X, ROW_Y[0] + LINE_M, GARDEN_LINE_W, counts), keyLine];
+  return [label(-EDGE_X, ROW_Y[0] + LINE_M, FULL_W, counts), keyLine];
 }
 
 /** FR-UI-10: the offset one more step would ask for, in metres, to the millimetre. */
@@ -346,9 +375,7 @@ export class Panel {
     const s = settings.get();
     if (this.isSeeds) return this.seedControls();
     const header = [
-      ...Object.entries(TABS).map(([id, tab], i) =>
-        lit(wide(id, TAB_X[i] ?? 0, HEADER_Y, PANEL.tabs[tab]), tab === this.shownTab),
-      ),
+      ...Object.entries(TABS).map(([id, tab], i) => tabAt(id, i, PANEL.tabs[tab], tab === this.shownTab)),
       round('close', CLOSE_X, HEADER_Y, PANEL.close),
     ];
     if (this.shownTab === 'sound') return [...header, ...this.soundControls(s)];
@@ -363,17 +390,18 @@ export class Panel {
     if (this.isSeeds) return this.seedTexts();
     if (this.shownTab === 'sound') return this.soundTexts(s);
     if (this.shownTab === 'access') return this.accessTexts(s);
+    const height = stepperX('left', HEIGHT_VALUE_W);
     return [
       ...gardenLines(this.garden, this.signature),
-      label(LEFT_X, ROW_Y[1], HEIGHT_LABEL_W, PANEL.bedHeight),
-      label(HEIGHT_VALUE_X, ROW_Y[1], HEIGHT_VALUE_W, heightText(this.garden)),
-      label(TIME_LAPSE_X + TOGGLE_LABEL_M, ROW_Y[1], TIME_LAPSE_LABEL_W, PANEL.timeLapse),
-      label(ACTION_LABEL_X, ROW_Y[2], REPLACE_LABEL_W, PANEL.replaceBed),
-      label(
-        ACTION_LABEL_X,
-        ROW_Y[3],
-        ACTION_LABEL_W,
-        this.actions.canRestore() ? PANEL.bringBack : PANEL.newGarden,
+      cellLabel('full', ROW_Y[1], startOf('full', 1, W), PANEL.nextSeed),
+      cellLabel('left', ROW_Y[2], height.start, PANEL.bedHeight),
+      readout(height.value, ROW_Y[2], HEIGHT_VALUE_W, heightText(this.garden)),
+      toggleLabel('right', ROW_Y[2], PANEL.timeLapse),
+      cellLabel(
+        'full',
+        ROW_Y[4],
+        startOf('full', 1, W),
+        this.actions.canRestore() ? PANEL.bringBackHint : PANEL.newGardenHint,
       ),
     ];
   }
@@ -574,11 +602,16 @@ export class Panel {
    */
   private seedControls(): PanelControl[] {
     return [
-      lit(wide('lib:old', TAB_X[0], HEADER_Y, STRINGS.libOld), this.lib === 'old'),
-      lit(wide('lib:new', TAB_X[1], HEADER_Y, STRINGS.libNew), this.lib === 'new'),
+      tabAt('lib:old', 0, STRINGS.libOld, this.lib === 'old'),
+      tabAt('lib:new', 1, STRINGS.libNew, this.lib === 'new'),
       round('close', CLOSE_X, HEADER_Y, PANEL.close),
       ...this.offered().map(([i, row]) => ({
-        ...round(`seed:${row.kind}`, TOGGLE_X[i % 2] ?? 0, ROW_Y[Math.floor(i / 2)] ?? 0, ''),
+        ...round(
+          `seed:${row.kind}`,
+          fromEnd(i % 2 ? 'right' : 'left', 0, 1, T),
+          ROW_Y[Math.floor(i / 2)] ?? 0,
+          '',
+        ),
         on: `seed:${row.kind}` === this.pickedId,
         fill: this.actions.swatch(row.kind, this.signature),
       })),
@@ -587,10 +620,11 @@ export class Panel {
 
   private seedTexts(): PanelText[] {
     return [
-      ...this.offered().map(([i, row]) =>
-        toggleLabel((i % 2) as 0 | 1, ROW_Y[Math.floor(i / 2)] ?? 0, STRINGS[row.name]),
-      ),
-      label(LEFT_X, ROW_Y[3], FULL_W, PANEL.pickSeed),
+      ...this.offered().map(([i, row]) => {
+        const cell = i % 2 ? 'right' : 'left';
+        return cellLabel(cell, ROW_Y[Math.floor(i / 2)] ?? 0, startOf(cell, 1, T), STRINGS[row.name]);
+      }),
+      label(-EDGE_X, ROW_Y[3], FULL_W, PANEL.pickSeed),
     ];
   }
 
@@ -603,73 +637,83 @@ export class Panel {
 
   private soundControls(s: Readonly<Settings>): PanelControl[] {
     return [
-      ...stepper('tempo', ROW_Y[0], s),
       ...stepper('volume', ROW_Y[1], s),
+      ...stepper('tempo', ROW_Y[2], s),
       ...REVERBS.map((reverb, i) =>
-        lit(wide(`reverb:${reverb}`, OPTION_X[i] ?? 0, ROW_Y[2], PANEL.reverbs[reverb]), s.reverb === reverb),
+        segment(`reverb:${reverb}`, 'full', i, 3, W, ROW_Y[3], PANEL.reverbs[reverb], s.reverb === reverb),
       ),
-      toggle('mono', 2, ROW_Y[3], s.mono),
+      toggle('mono', 'full', ROW_Y[4], s.mono),
     ];
   }
 
   private soundTexts(s: Readonly<Settings>): PanelText[] {
     const echo = `${PANEL.echo} ${this.signature.reverbRt60.toFixed(1)} ${PANEL.seconds}`;
+    const x = stepperX('full', VALUE_W);
     return [
-      label(LEFT_X, ROW_Y[0], LABEL_W, PANEL.tempo),
-      label(VALUE_X, ROW_Y[0], VALUE_W, `${Math.round(s.tempo)} ${PANEL.bpm}`),
-      label(LEFT_X, ROW_Y[1], LABEL_W, PANEL.volume),
-      label(VALUE_X, ROW_Y[1], VALUE_W, `${Math.round(s.volume * 100)} ${PANEL.percent}`),
-      label(LEFT_X, ROW_Y[2], LABEL_W, PANEL.reverb),
-      { ...toggleLabel(2, ROW_Y[3], PANEL.mono), w: MONO_LABEL_W },
-      label(LEFT_X, TUNED_Y + LINE_M, TUNED_W, `${PANEL.tunedBy} ${keyName(this.signature)},`),
+      label(-EDGE_X, ROW_Y[0] + LINE_M, TUNED_W, `${PANEL.tunedBy} ${keyName(this.signature)},`),
       // UX §3.6: the echo part dims while Reverb is not on auto, when the room's echo is not the one heard.
-      { ...label(ECHO_X, TUNED_Y + LINE_M, ECHO_W, echo), dim: s.reverb !== 'auto' },
-      label(LEFT_X, TUNED_Y - LINE_M, ROOM_W, roomLine(this.signature, this.features)),
+      { ...label(ECHO_X, ROW_Y[0] + LINE_M, ECHO_W, echo), dim: s.reverb !== 'auto' },
+      label(-EDGE_X, ROW_Y[0] - LINE_M, FULL_W, roomLine(this.signature, this.features)),
+      cellLabel('full', ROW_Y[1], x.start, PANEL.volume),
+      readout(x.value, ROW_Y[1], VALUE_W, `${Math.round(s.volume * 100)} ${PANEL.percent}`),
+      cellLabel('full', ROW_Y[2], x.start, PANEL.tempo),
+      readout(x.value, ROW_Y[2], VALUE_W, `${Math.round(s.tempo)} ${PANEL.bpm}`),
+      cellLabel('full', ROW_Y[3], startOf('full', 3, W), PANEL.reverb),
+      toggleLabel('full', ROW_Y[4], PANEL.mono),
     ];
   }
 
   private accessControls(s: Readonly<Settings>): PanelControl[] {
     const dwells = DWELLS.map((ms, i) =>
-      lit(wide(`dwell:${ms}`, OPTION_X[i] ?? 0, ROW_Y[1], `${ms / 1000} ${PANEL.seconds}`), s.dwellMs === ms),
+      segment(`dwell:${ms}`, 'full', i, 3, W, ROW_Y[3], `${ms / 1000} ${PANEL.seconds}`, s.dwellMs === ms),
     );
     return [
-      toggle('oneHand', 0, ROW_Y[0], s.oneHand),
+      toggle('oneHand', 'left', ROW_Y[0], s.oneHand),
       // While the gaze mode is on the gaze cannot act on its own switch (GAZE_TOGGLE_ID), and the switch shows it.
-      { ...toggle(GAZE_TOGGLE_ID, 1, ROW_Y[0], s.gazeDwell), dim: s.gazeDwell },
-      ...(s.gazeDwell ? dwells : []), // UX §3.6: the dwell times show while the gaze mode is on
-      toggle('highContrast', 0, ROW_Y[2], s.highContrast),
-      toggle('reducedMotion', 1, ROW_Y[2], s.reducedMotion),
-      toggle('beatRing', 0, ROW_Y[3], s.beatRing),
-      lit(round('hand:left', HAND_X[0], ROW_Y[3], PANEL.hands.left), s.dominantHand === 'left'),
-      lit(round('hand:right', HAND_X[1], ROW_Y[3], PANEL.hands.right), s.dominantHand === 'right'),
+      { ...toggle(GAZE_TOGGLE_ID, 'right', ROW_Y[0], s.gazeDwell), dim: s.gazeDwell },
+      toggle('highContrast', 'left', ROW_Y[1], s.highContrast),
+      toggle('reducedMotion', 'right', ROW_Y[1], s.reducedMotion),
+      toggle('beatRing', 'left', ROW_Y[2], s.beatRing),
+      segment('hand:left', 'right', 0, 2, T, ROW_Y[2], PANEL.hands.left, s.dominantHand === 'left'),
+      segment('hand:right', 'right', 1, 2, T, ROW_Y[2], PANEL.hands.right, s.dominantHand === 'right'),
+      // UX §3.6: the dwell times show while the gaze mode is on, on the last row: no row above them moves
+      ...(s.gazeDwell ? dwells : []),
     ];
   }
 
   private accessTexts(s: Readonly<Settings>): PanelText[] {
     return [
-      toggleLabel(0, ROW_Y[0], PANEL.oneHand),
-      toggleLabel(1, ROW_Y[0], PANEL.gazeDwell),
-      ...(s.gazeDwell ? [label(LEFT_X, ROW_Y[1], LABEL_W, PANEL.holdTime)] : []),
-      toggleLabel(0, ROW_Y[2], PANEL.highContrast),
-      toggleLabel(1, ROW_Y[2], PANEL.reducedMotion),
-      { ...toggleLabel(0, ROW_Y[3], PANEL.beatRing), w: BEAT_LABEL_W },
-      label(HAND_LABEL_X, ROW_Y[3], HAND_LABEL_W, PANEL.mainHand),
+      toggleLabel('left', ROW_Y[0], PANEL.oneHand),
+      toggleLabel('right', ROW_Y[0], PANEL.gazeDwell),
+      toggleLabel('left', ROW_Y[1], PANEL.highContrast),
+      toggleLabel('right', ROW_Y[1], PANEL.reducedMotion),
+      toggleLabel('left', ROW_Y[2], PANEL.beatRing),
+      cellLabel('right', ROW_Y[2], startOf('right', 2, T), PANEL.mainHand),
+      ...(s.gazeDwell ? [cellLabel('full', ROW_Y[3], startOf('full', 3, W), PANEL.holdTime)] : []),
     ];
   }
 
+  /** Seeds, the most used, first; Place again and Exit; New garden, the risky one, last and away from Seeds. */
   private gardenControls(): PanelControl[] {
     const garden = this.garden;
     const atEnd = (steps: number): boolean =>
       garden !== null && setBedHeightOffset(garden, heightAfter(garden, steps)) === garden;
+    const height = stepperX('left', HEIGHT_VALUE_W);
+    const isTimeLapse = this.actions.isTimeLapse();
+    const newGarden = this.actions.canRestore() ? PANEL.bringBack : PANEL.newGarden;
     return [
-      { ...round('height:-', HEIGHT_MINUS_X, ROW_Y[1], PANEL.minus), dim: atEnd(-1) },
-      { ...round('height:+', HEIGHT_PLUS_X, ROW_Y[1], PANEL.plus), dim: atEnd(1) },
-      wide('replaceBed', ACTION_X, ROW_Y[2], PANEL.start),
-      wide(EXIT_ID, EXIT_X, ROW_Y[2], PANEL.exit),
-      wide(SEEDS_ID, EXIT_X, ROW_Y[0], PANEL.seedsPage),
+      { ...wide(SEEDS_ID, fromEnd('full', 0, 1, W), ROW_Y[1], PANEL.seedsPage), look: 'primary' },
+      { ...round('height:-', height.minus, ROW_Y[2], PANEL.minus), dim: atEnd(-1), look: 'step' },
+      { ...round('height:+', height.plus, ROW_Y[2], PANEL.plus), dim: atEnd(1), look: 'step' },
+      toggle(TIME_LAPSE_ID, 'right', ROW_Y[2], isTimeLapse),
+      wide('replaceBed', fromEnd('left', 0, 1, W), ROW_Y[3], PANEL.replaceBed),
+      wide(EXIT_ID, fromEnd('right', 0, 1, W), ROW_Y[3], PANEL.exit),
       // Not during the time-lapse demo (the garden refuses it then): drawn faint, and not selected.
-      { ...wide(NEW_GARDEN_ID, ACTION_X, ROW_Y[3], PANEL.hold), dim: this.actions.isTimeLapse() },
-      { ...toggle(TIME_LAPSE_ID, 1, ROW_Y[1], this.actions.isTimeLapse()), x: TIME_LAPSE_X },
+      {
+        ...wide(NEW_GARDEN_ID, fromEnd('full', 0, 1, W), ROW_Y[4], newGarden),
+        dim: isTimeLapse,
+        look: 'danger',
+      },
     ];
   }
 }

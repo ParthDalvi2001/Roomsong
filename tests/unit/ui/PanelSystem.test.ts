@@ -18,6 +18,11 @@ import {
   CUE_SEGMENTS,
   NEW_GARDEN_HOLD_MS,
   ORB_OFF_HAND_M,
+  PANEL_ACCENT,
+  PANEL_ACCENT_HIGH_CONTRAST,
+  PANEL_BOLD_FONT,
+  PANEL_DANGER,
+  PANEL_DANGER_HIGH_CONTRAST,
   PANEL_DIM_ALPHA,
   PANEL_DIM_ALPHA_HIGH_CONTRAST,
   PANEL_FONT,
@@ -26,7 +31,9 @@ import {
   PANEL_OUTLINE_HIGH_CONTRAST_PX,
   PANEL_OUTLINE_PX,
   PANEL_PX_PER_M,
+  PANEL_RULE_ALPHA,
   PANEL_SYMBOL_FONT,
+  PANEL_WIDE_TARGET_M,
 } from '../../../src/ui/config.js';
 import { ORB_ID, Panel, type PanelTab } from '../../../src/ui/Panel.js';
 import { drawOrb, drawPanel, PanelSystem } from '../../../src/ui/PanelSystem.js';
@@ -78,7 +85,12 @@ function drawn(tab: PanelTab | 'seeds', highContrast = false) {
   const { ctx, calls } = recorder();
   drawPanel(ctx, panel.controls(), panel.texts(), highContrast);
   const ops = (op: string) => calls.filter((call) => call.op === op);
-  const text = (word: string) => ops('fillText').find((call) => call.args[0] === word);
+  // its numbers to the micrometre of a canvas pixel: the layout's metres are sums of decimals
+  const fine = (v: unknown) => (typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v);
+  const text = (word: string) => {
+    const call = ops('fillText').find((each) => each.args[0] === word);
+    return call && { ...call, args: call.args.map(fine) };
+  };
   return { panel, calls, ops, text };
 }
 
@@ -102,31 +114,40 @@ beforeEach(() => settings.set({ ...DEFAULT_SETTINGS }));
 describe('settings panel drawing: where things go (UX §3.6)', () => {
   it('draws each control 4 cm tall where the layout puts it: 2500 canvas pixels to the metre, y down', () => {
     const { ops } = drawn('sound');
-    const shapes = ops('roundRect').map((call) => call.args);
-    expect(shapes[0]).toEqual([3, 3, 994, 694, 50]); // the backdrop, clear of the canvas edge
-    expect(shapes[1]).toEqual([25, 25, 200, 100, 50]); // the Sound tab: 8 cm wide, centred on (-0.15, 0.11) m
-    expect(shapes[4]).toEqual([875, 25, 100, 100, 50]); // Close: 4 cm round, centred on (0.17, 0.11) m
+    const shapes = ops('roundRect').map((call) => call.args as number[]);
+    const near = (got: number[] | undefined, want: number[]) =>
+      want.forEach((v, i) => expect(got?.[i], `${want.join(', ')}`).toBeCloseTo(v, 6));
+    near(shapes[0], [3, 3, 1194, 832, 50]); // the backdrop, clear of the canvas edge
+    // 10 Nov: a track under each group, the tabs first: from 1 cm inside the panel's left edge to the third tab's end
+    near(shapes[1], [25, 25.25, 675, 100, 50]);
+    near(shapes[5], [25, 25.25, 200, 100, 50]); // the Sound tab: 8 cm wide, centred on (-0.19, 0.1375) m
+    near(shapes[8], [1075, 25.25, 100, 100, 50]); // Close: 4 cm round, centred on (0.21, 0.1375) m, 1 cm in
   });
 
-  it('writes a word in the panel font and a single sign larger, centred on the control', () => {
+  it('writes a word in the panel font, the chosen one bold, and a single sign larger, centred on the control', () => {
     const { text } = drawn('sound');
     expect(text('Sound')).toMatchObject({
-      args: ['Sound', 125, 75, 175],
-      font: PANEL_FONT,
+      args: ['Sound', 125, 75.25, 175],
+      font: PANEL_BOLD_FONT,
       textAlign: 'center',
     });
-    expect(text('x')).toMatchObject({ args: ['x', 925, 75, 75], font: PANEL_SYMBOL_FONT });
+    expect(text('Access')).toMatchObject({ font: PANEL_FONT, textAlign: 'center' });
+    expect(text('x')).toMatchObject({ args: ['x', 1125, 75.25, 75], font: PANEL_SYMBOL_FONT });
     expect(text('+')?.font).toBe(PANEL_SYMBOL_FONT);
   });
 
-  it('writes labels and read-outs from their left end, squeezed into their room and never cut', () => {
+  it('writes labels from their left end in the regular weight, read-outs bold and centred, squeezed into their room and never cut', () => {
     const { text } = drawn('sound');
     expect(text('Speed')).toMatchObject({
-      args: ['Speed', 25, 212.5, 250],
+      args: ['Speed', 25, 487.75, 650],
       font: PANEL_FONT,
       textAlign: 'left',
     });
-    expect(text('84 BPM')?.args).toEqual(['84 BPM', 462.5, 212.5, 225]);
+    expect(text('84 BPM')).toMatchObject({
+      args: ['84 BPM', 937.5, 487.75, 225],
+      font: PANEL_BOLD_FONT,
+      textAlign: 'center',
+    });
     expect(text('no room found')?.fillStyle).toBe(CAPTION_TEXT_COLOUR);
   });
 
@@ -138,32 +159,45 @@ describe('settings panel drawing: where things go (UX §3.6)', () => {
 });
 
 describe('settings panel drawing: state is not carried by colour alone (NFR-ACC-01)', () => {
-  it('fills the chosen tab and option with cream and writes on it in charcoal; the others are outlined', () => {
-    const { ops, text } = drawn('sound');
-    const fills = ops('fill').map((call) => call.fillStyle);
-    expect(fills[1]).toBe(CAPTION_TEXT_COLOUR); // the Sound tab
-    expect(fills[2]).not.toBe(CAPTION_TEXT_COLOUR); // the Access tab
-    expect(text('Sound')?.fillStyle).toBe(PANEL_INK);
-    expect(text('Access')?.fillStyle).toBe(CAPTION_TEXT_COLOUR);
-    expect(text('room')?.fillStyle).toBe(PANEL_INK); // Echo: room, the chosen option
-    expect(text('small')?.fillStyle).toBe(CAPTION_TEXT_COLOUR);
+  it('fills the chosen tab and option with the accent and writes on it in bold charcoal; the others lie plain on their track', () => {
+    for (const [highContrast, accent] of [
+      [false, PANEL_ACCENT],
+      [true, PANEL_ACCENT_HIGH_CONTRAST],
+    ] as const) {
+      const { ops, text } = drawn('sound', highContrast);
+      expect(ops('fill').filter((call) => call.fillStyle === accent)).toHaveLength(2); // Sound and room; Mono is off
+      for (const word of ['Sound', 'room'])
+        expect(text(word)).toMatchObject({ fillStyle: PANEL_INK, font: PANEL_BOLD_FONT });
+      for (const word of ['Access', 'small'])
+        expect(text(word)).toMatchObject({ fillStyle: CAPTION_TEXT_COLOUR, font: PANEL_FONT });
+    }
   });
 
-  it('says on or off in words on every switch', () => {
+  it('says on or off in words on every switch, and its knob sits right when on and left when off', () => {
     const { panel, ops } = drawn('access');
     const switches = ['oneHand', 'gazeDwell', 'highContrast', 'reducedMotion', 'beatRing'];
     const said = panel.controls().filter((control) => switches.includes(control.id));
     expect(said.map((control) => control.text)).toEqual(['off', 'off', 'off', 'off', 'on']);
+    expect(said.every((control) => control.look === 'switch' && control.w === PANEL_WIDE_TARGET_M)).toBe(
+      true,
+    );
     const written = ops('fillText').map((call) => call.args[0]);
     expect(written.filter((word) => word === 'off')).toHaveLength(4);
     expect(written.filter((word) => word === 'on')).toHaveLength(1);
+    const knobs = ops('arc').map((call) => call.args[0] as number);
+    expect(knobs).toHaveLength(5);
+    said.forEach((control, i) => {
+      const centre = 600 + control.x * 2500;
+      expect(knobs[i], control.id).toBeCloseTo(centre + (control.on ? 50 : -50), 6);
+    });
   });
 
   it('draws a stepper that has nothing left, and the echo that is not in effect, fainter', () => {
-    settings.set({ tempo: 120, reverb: 'small' });
+    settings.set({ tempo: 120, volume: 1, reverb: 'small' });
     const normal = drawn('sound');
-    expect(normal.text('+')?.globalAlpha).toBe(PANEL_DIM_ALPHA); // the first +: the tempo's
-    expect(normal.text('-')?.globalAlpha).toBe(1);
+    const signs = (sign: string) => normal.ops('fillText').filter((call) => call.args[0] === sign);
+    expect(signs('+').map((call) => call.globalAlpha)).toEqual([PANEL_DIM_ALPHA, PANEL_DIM_ALPHA]);
+    expect(signs('-').map((call) => call.globalAlpha)).toEqual([1, 1]);
     expect(normal.text('echo 0.9 s')?.globalAlpha).toBe(PANEL_DIM_ALPHA);
     expect(normal.text('Tuned to: C major,')?.globalAlpha).toBe(1);
     expect(drawn('sound', true).text('echo 0.9 s')?.globalAlpha).toBe(PANEL_DIM_ALPHA_HIGH_CONTRAST);
@@ -171,22 +205,29 @@ describe('settings panel drawing: state is not carried by colour alone (NFR-ACC-
 });
 
 describe('settings panel drawing: high contrast (FR-UI-05)', () => {
-  it('normally: charcoal glass, a light outline on every control, no frame', () => {
+  // An outline on every control: its own, or its track's for a segment and a stepper's button (one per group).
+  const outlines = (panel: Panel) => {
+    const grouped = panel.controls().filter((c) => c.look === 'segment' || c.look === 'step');
+    const groups = new Set(grouped.map((c) => c.id.split(':')[0]));
+    return panel.controls().length - grouped.length + groups.size;
+  };
+
+  it('normally: charcoal glass, a light outline on every control or its track, no frame', () => {
     const { panel, ops } = drawn('access');
     expect(ops('fill')[0]?.fillStyle).toBe(CAPTION_BACKDROP);
     expect(CAPTION_BACKDROP).toBe(`rgba(${CHARCOAL.join(', ')}, 0.9)`);
     const strokes = ops('stroke');
-    expect(strokes).toHaveLength(panel.controls().length);
+    expect(strokes).toHaveLength(outlines(panel));
     for (const stroke of strokes) {
       expect(stroke).toMatchObject({ lineWidth: PANEL_OUTLINE_PX, strokeStyle: CAPTION_TEXT_COLOUR });
     }
   });
 
-  it('in high contrast: opaque black, a frame, and an outline twice as heavy on every control', () => {
+  it('in high contrast: opaque black, a frame, and an outline twice as heavy on every control or its track', () => {
     const { panel, ops } = drawn('access', true);
     expect(ops('fill')[0]?.fillStyle).toBe('#000000');
     const strokes = ops('stroke');
-    expect(strokes).toHaveLength(panel.controls().length + 1); // the frame too
+    expect(strokes).toHaveLength(outlines(panel) + 1); // the frame too
     for (const stroke of strokes) {
       expect(stroke).toMatchObject({
         lineWidth: PANEL_OUTLINE_HIGH_CONTRAST_PX,
@@ -196,6 +237,24 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
     expect(PANEL_OUTLINE_HIGH_CONTRAST_PX).toBe(2 * PANEL_OUTLINE_PX);
   });
 
+  it('10 Nov: Seeds is filled with the accent, New garden outlined in the warm red, a thin rule under the header', () => {
+    for (const [highContrast, accent, danger, rule] of [
+      [false, PANEL_ACCENT, PANEL_DANGER, PANEL_RULE_ALPHA],
+      [true, PANEL_ACCENT_HIGH_CONTRAST, PANEL_DANGER_HIGH_CONTRAST, 1],
+    ] as const) {
+      const { ops, text } = drawn('garden', highContrast);
+      expect(text('Seeds')).toMatchObject({ fillStyle: PANEL_INK, font: PANEL_BOLD_FONT });
+      expect(ops('fill').filter((call) => call.fillStyle === accent)).toHaveLength(2); // the tab and Seeds
+      expect(ops('stroke').filter((call) => call.strokeStyle === danger)).toHaveLength(1);
+      expect(text('New garden')?.fillStyle).toBe(CAPTION_TEXT_COLOUR);
+      const outline = highContrast ? PANEL_OUTLINE_HIGH_CONTRAST_PX : PANEL_OUTLINE_PX;
+      expect(ops('fillRect')[0]).toMatchObject({
+        args: [25, 144 - outline / 2, 1150, outline],
+        globalAlpha: rule,
+      });
+    }
+  });
+
   it('text is 4.5:1 or better normally and 7:1 or better in high contrast, the faint text included', () => {
     // On the backdrop's own colour. What a room seen through the glass does to it is for the device run.
     expect(contrast(CREAM, CHARCOAL)).toBeGreaterThan(15);
@@ -203,11 +262,21 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
     expect(contrast(over(CREAM, CHARCOAL, PANEL_DIM_ALPHA), CHARCOAL)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(CREAM, BLACK)).toBeGreaterThan(19);
     expect(contrast(over(CREAM, BLACK, PANEL_DIM_ALPHA_HIGH_CONTRAST), BLACK)).toBeGreaterThanOrEqual(7);
+    // 10 Nov: the charcoal on the accent, normal and high contrast
+    expect(contrast(rgb(PANEL_INK), rgb(PANEL_ACCENT))).toBeGreaterThanOrEqual(7);
+    expect(contrast(rgb(PANEL_INK), rgb(PANEL_ACCENT_HIGH_CONTRAST))).toBeGreaterThanOrEqual(7);
   });
 
   it('the ring of a hold or a dwell shows against what it lies on, the cream ring and the backdrop: 3:1 or better', () => {
     const violet = rgb(CUE_FILL_COLOUR);
     for (const under of [CREAM, CHARCOAL, BLACK]) expect(contrast(violet, under)).toBeGreaterThanOrEqual(3);
+    // New garden's red, as its outline on the backdrop and as its hold ring (10 Nov)
+    for (const red of [PANEL_DANGER, PANEL_DANGER_HIGH_CONTRAST])
+      for (const under of [CREAM, CHARCOAL, BLACK])
+        expect(contrast(rgb(red), under), red).toBeGreaterThanOrEqual(3);
+    // and the accent against the backdrop it lies on
+    expect(contrast(rgb(PANEL_ACCENT), CHARCOAL)).toBeGreaterThanOrEqual(3);
+    expect(contrast(rgb(PANEL_ACCENT_HIGH_CONTRAST), BLACK)).toBeGreaterThanOrEqual(3);
   });
 
   it('the Seeds page (T-193): each swatch is filled with its kind colour, in high contrast too, and its name keeps the text colour', () => {
@@ -216,11 +285,12 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
       const controls = panel.controls();
       const swatches = controls.filter((c) => c.id.startsWith('seed:'));
       expect(swatches.length).toBeGreaterThanOrEqual(4);
-      const fills = ops('fill').slice(1); // after the backdrop: one per control, in their order
       for (const swatch of swatches) {
-        const i = controls.indexOf(swatch);
-        expect(fills[i]?.fillStyle, swatch.id).toBe(`swatch-${swatch.id.slice(5)}`);
-        expect(fills[i]?.globalAlpha).toBe(1);
+        const fills = ops('fill').filter((call) => call.fillStyle === `swatch-${swatch.id.slice(5)}`);
+        expect(
+          fills.map((call) => call.globalAlpha),
+          swatch.id,
+        ).toEqual([1]);
       }
       const names = swatches.map((c) => STRINGS[SEED_KINDS.find((row) => `seed:${row.kind}` === c.id)!.name]);
       for (const word of [...names, PANEL.pickSeed])
@@ -238,7 +308,7 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
 describe('settings panel drawing: a redraw (UX §3.6)', () => {
   it('clears the canvas first: nothing of the tab before shows through the glass', () => {
     const { calls } = drawn('garden');
-    expect(calls[0]).toMatchObject({ op: 'clearRect', args: [0, 0, 1000, 700] });
+    expect(calls[0]).toMatchObject({ op: 'clearRect', args: [0, 0, 1200, 838] });
   });
 
   it('draws the labels in the label colour whatever the last control was drawn in', () => {
@@ -247,7 +317,7 @@ describe('settings panel drawing: a redraw (UX §3.6)', () => {
     const { text, ops } = drawn('access');
     const onControls = ops('fillText').filter((call) => call.textAlign === 'center');
     expect(onControls.pop()).toMatchObject({
-      args: ['R', 925, 625, 75],
+      args: ['R', 1125, 487.75, 75],
       fillStyle: PANEL_INK,
     });
     const labels = ['One hand', 'Look to select', 'High contrast', 'Reduce motion', 'Beat ring', 'Main hand'];
@@ -262,8 +332,15 @@ describe('settings panel drawing: a redraw (UX §3.6)', () => {
       [true, PANEL_DIM_ALPHA_HIGH_CONTRAST],
     ] as const) {
       const { panel, ops } = drawn('access', highContrast);
-      const shapes = ops('fill').slice(1); // after the backdrop: one fill per control, in their order
-      const alphaOf = (id: string) => shapes[panel.controls().findIndex((c) => c.id === id)]?.globalAlpha;
+      // a control's own pill: the shape at its place and of its width (a track is wider)
+      const alphaOf = (id: string) => {
+        const c = panel.controls().find((each) => each.id === id)!;
+        const left = 600 + (c.x - c.w / 2) * 2500;
+        const shape = ops('roundRect').find(
+          (call) => Math.abs((call.args[0] as number) - left) < 1e-6 && call.args[2] === c.w * 2500,
+        );
+        return shape?.globalAlpha;
+      };
       expect(alphaOf('gazeDwell')).toBe(alpha);
       expect(alphaOf('oneHand')).toBe(1);
       expect(alphaOf('dwell:900')).toBe(1);
@@ -448,10 +525,10 @@ function rig(given: { garden?: object | null; room?: object | null; engine?: obj
 
 const HEADER = ['tab:sound', 'tab:access', 'tab:garden', 'close'];
 const SOUND = [
-  'tempo:-',
-  'tempo:+',
   'volume:-',
   'volume:+',
+  'tempo:-',
+  'tempo:+',
   'reverb:auto',
   'reverb:small',
   'reverb:off',
@@ -476,10 +553,10 @@ describe('PanelSystem: its targets (API_SPEC §1.10 rule 7)', () => {
       expect(entity.getValue(Interactable, 'kind')).toBe('panel');
       expect(entity.getValue(Interactable, 'radius')).toBe(HIT_RADIUS_M);
     }
-    // Where it is drawn: the panel is 0.55 m ahead of a level head, and Close is at (0.17, 0.11) m on it.
+    // Where it is drawn: the panel is 0.55 m ahead of a level head, and Close is at (0.21, 0.1375) m on it.
     const close = targets().find((entity) => entity.getValue(Interactable, 'id') === 'close')!;
     const [x, y, z] = close.getVectorView(Interactable, 'worldPos');
-    expect([x, y, z].map((v) => Math.round(v! * 1000) / 1000)).toEqual([0.17, 1.26, -0.55]);
+    expect([x, y, z].map((v) => Math.round(v! * 10000) / 10000)).toEqual([0.21, 1.2875, -0.55]);
 
     press('tab:access');
     expect(ids()).toEqual([ORB_ID, ...HEADER, ...ACCESS]);
@@ -656,11 +733,11 @@ describe('PanelSystem: the orb (UX §2, FR-UI-09, FR-HND-12)', () => {
   });
 
   it('steps aside while the panel it opened by gaze is open, and what lies under the gaze is not selected', () => {
-    const { head, frame, press, watch, ids, targets, system } = rig();
-    watch(); // first by hand, to leave the panel on the Access tab: its Reduce motion switch is where the gaze will rest
+    const { head, frame, press, watch, ids, targets, system, asked } = rig();
+    watch(); // first by hand, to leave the panel on the Garden tab: its height's plus is where the gaze will rest
     frame();
     press(ORB_ID);
-    press('tab:access');
+    press('tab:garden');
     press('close');
     settings.set({ gazeDwell: true, dwellMs: 600 });
     frame();
@@ -671,10 +748,12 @@ describe('PanelSystem: the orb (UX §2, FR-UI-09, FR-HND-12)', () => {
     for (let ms = 0; ms <= 1100; ms += 50) frame(50);
     expect(system.panel.open).toBe(true);
     expect(ids()).not.toContain(ORB_ID);
-    expect(system.panel.cue()).toBe('reducedMotion'); // that control is under the resting gaze
+    expect(system.panel.cue()).toBe('height:+'); // that control is under the resting gaze
     const before = { ...settings.get() };
+    const asks = asked.length;
     for (let ms = 0; ms < 3000; ms += 50) frame(50);
     expect(settings.get()).toEqual(before);
+    expect(asked.slice(asks)).toEqual([]); // no height asked for
     expect(system.panel.open).toBe(true);
   });
 });

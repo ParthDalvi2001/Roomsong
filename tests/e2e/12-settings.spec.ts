@@ -368,13 +368,13 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
   expect(fov.rightDeg).toBeLessThanOrEqual(25 + EDGE);
   expect(fov.downDeg).toBeGreaterThanOrEqual(-20 - EDGE);
   expect(fov.upDeg).toBeLessThanOrEqual(20 + EDGE);
-  expect(fov.rightDeg - fov.leftDeg).toBeCloseTo(40, 0); // 0.40 m wide at 0.55 m
+  expect(fov.rightDeg - fov.leftDeg).toBeCloseTo(47, 0); // 0.48 m wide at 0.55 m (10 Nov; was 0.40 m)
   const header = ['tab:sound', 'tab:access', 'tab:garden', 'close'];
   const sound = [
-    'tempo:-',
-    'tempo:+',
     'volume:-',
     'volume:+',
+    'tempo:-',
+    'tempo:+',
     'reverb:auto',
     'reverb:small',
     'reverb:off',
@@ -417,14 +417,14 @@ test('settings panel: by real pinches the orb opens it, each tab shows, a contro
   expect(await ids(probe)).toEqual([
     'orb',
     ...header,
-    ...['height:-', 'height:+', 'replaceBed', 'exit', 'seeds', 'newGarden', 'timeLapse'],
+    ...['seeds', 'height:-', 'height:+', 'timeLapse', 'replaceBed', 'exit', 'newGarden'],
   ]);
   await press('height:+');
   expect(await events(probe, 'garden.setBedHeightOffset')).toEqual([0.02]);
   await xrFrames(page, 2);
   const gardenWords = await probe.evaluate((p) => p.words());
-  // The app's own garden after its first visit: three starter seeds, in the key the table room gives; two lines
-  // since D-080, which put the Seeds button at the row's end.
+  // The app's own garden after its first visit: three starter seeds, in the key the table room gives; two lines,
+  // the info row of the tab.
   expect(gardenWords).toEqual(expect.arrayContaining(['+2', 'Day 1, Seeds left 3,', 'Key C minor (room)']));
   await page.screenshot({ path: '.tmp/settings-garden.png' });
 
@@ -647,11 +647,12 @@ test('settings panel: the gaze alone opens it, changes a setting and closes it, 
   await xrFrames(page, 2);
   expect(await probe.evaluate((p) => p.words())).toContain('Time-lapse');
   await page.screenshot({ path: '.tmp/settings-time-lapse.png' });
-  const newGarden = await target('newGarden'); // halfway to it no target is within reach of the gaze
+  // halfway to the height's plus, in the gap between the row's two cells, no target is within reach of the gaze
+  const plus = await target('height:+');
   await lookAt({
-    x: (timeLapse.x + newGarden.x) / 2,
-    y: (timeLapse.y + newGarden.y) / 2,
-    z: (timeLapse.z + newGarden.z) / 2,
+    x: (timeLapse.x + plus.x) / 2,
+    y: (timeLapse.y + plus.y) / 2,
+    z: (timeLapse.z + plus.z) / 2,
   });
   await xrFrames(page, 2);
   await lookAt(timeLapse);

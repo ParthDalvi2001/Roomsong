@@ -56,15 +56,23 @@ export const CAPTION_RENDER_ORDER = 1000;
 
 // The settings panel (T-151, UX §3.6). Drawn like a caption: text on a canvas, on one quad in the scene.
 
-/** UX §3.6: the panel is 0.40 by 0.28 m and opens 0.55 m ahead of the head. */
-export const PANEL_WIDTH_M = 0.4;
-export const PANEL_HEIGHT_M = 0.28;
+/**
+ * UX §3.6: the panel opens 0.55 m ahead of the head. 10 Nov (Parth: "make it systematic"): 0.48 by 0.335 m, was 0.40
+ * by 0.28, for a grid of a header and five rows (ui/Panel.ts) with PANEL_PAD_M all round. At 0.55 m that is 23.6
+ * degrees either side and 16.9 up and down, inside the FoV box of 25 by 20 (Golden Rule 6).
+ */
+export const PANEL_WIDTH_M = 0.48;
+export const PANEL_HEIGHT_M = 0.335;
+/** The even padding inside the panel's edge, and its corner radius is the controls' own (PANEL_TARGET_M / 2). */
+export const PANEL_PAD_M = 0.01;
 export const PANEL_DISTANCE_M = 0.55;
 /** Canvas pixels per metre: 1000 by 700, about one per display pixel at 0.55 m on a Quest 3 (25 px per degree). */
 export const PANEL_PX_PER_M = 2500;
 /** FR-UI-04: a cap height of at least 1.4 cm. A sans-serif capital is about 0.72 of its font size: 50 px is 1.44 cm. */
 export const PANEL_FONT_PX = 50;
-export const PANEL_FONT = `600 ${PANEL_FONT_PX}px system-ui, sans-serif`;
+// 10 Nov: labels in the regular weight; read-outs, the chosen option, a switch that is on and the primary button bold.
+export const PANEL_FONT = `400 ${PANEL_FONT_PX}px system-ui, sans-serif`;
+export const PANEL_BOLD_FONT = `700 ${PANEL_FONT_PX}px system-ui, sans-serif`;
 /** A control that holds one character (+, -, x, L, R) shows it larger. */
 export const PANEL_SYMBOL_FONT = '700 70px system-ui, sans-serif';
 /**
@@ -88,6 +96,18 @@ export const PANEL_OUTLINE_HIGH_CONTRAST_PX = 6;
 /** UX §5 palette: a control that is off is a faint cream glass; the text on one that is on is the charcoal. */
 export const PANEL_TARGET_FILL = 'rgba(255, 248, 231, 0.12)';
 export const PANEL_INK = '#141A1F';
+/**
+ * 10 Nov, the board's look: the accent (the ice of the UX §5 palette) fills a switch that is on, the chosen tab or
+ * option and the primary button, with PANEL_INK on it (9.1:1; 12:1 for the high-contrast twin). The warm red outlines
+ * New garden and fills its hold ring: 3:1 or better against the cream ring, the charcoal and the black it lies on.
+ * The thin rule under the header is cream at PANEL_RULE_ALPHA, opaque in high contrast. tests/unit/ui/PanelSystem.test.ts
+ * works the ratios out.
+ */
+export const PANEL_ACCENT = '#48CAE4';
+export const PANEL_ACCENT_HIGH_CONTRAST = '#8FE3F2';
+export const PANEL_DANGER = '#E5484D';
+export const PANEL_DANGER_HIGH_CONTRAST = '#F2555A';
+export const PANEL_RULE_ALPHA = 0.35;
 /**
  * UX §3.6 ("a control lights up on hover"): a cream ring round the control, from 2 to 6 mm outside it. High contrast
  * asks for an outline as well as a glow (UX §8): the ring is an outline.

@@ -110,15 +110,17 @@ export const PANEL = {
   key: 'Key',
   fromRoom: '(room)',
   bedHeight: 'Height',
-  replaceBed: 'Place the garden again', // "Re-place bed" read as "Replace bed"
-  start: 'start',
-  newGarden: 'New garden (erases this one)',
-  bringBack: 'Bring back the old garden', // D-060 item 13: the same row, for RESTORE_WINDOW_MS after a New garden
-  hold: 'hold',
+  // 10 Nov: the Garden tab's actions are buttons that carry their own words, short enough for 8 cm
+  replaceBed: 'Place again', // "Re-place bed" read as "Replace bed"
+  newGarden: 'New garden',
+  newGardenHint: 'Hold to erase this garden',
+  bringBack: 'Bring back', // D-060 item 13: the same button, for RESTORE_WINDOW_MS after a New garden
+  bringBackHint: 'Hold for the old garden',
   timeLapse: 'Time-lapse', // T-174: the demo switch; "(demo)" does not fit the row at a readable size
   exit: 'Exit', // D-067: leaves the session; the garden is saved and Enter brings it back
   // T-193: the Garden tab's way to the Seeds page, and that page's one line. A palm-up hands out a seed at once; the
   // page sets the kind of the next one.
   seedsPage: 'Seeds',
+  nextSeed: 'Your next seed',
   pickSeed: 'Choose the kind of your next seed',
 } as const;
