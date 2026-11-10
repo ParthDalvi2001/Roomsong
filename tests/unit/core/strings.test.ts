@@ -67,6 +67,10 @@ describe('core/strings', () => {
       'Look at a cell to plant', // gaze mode (T-160)
       'Show your palms to listen',
       'Click the orb to listen',
+      'Turn a hand over: settings', // D-084: the tour after Listen
+      'Look at the orb: settings',
+      'Seeds: choose your next seed',
+      'Move: put the garden elsewhere',
     ]);
     for (const [key, text] of onboarding) expect(text.split(' ').length, key).toBeLessThanOrEqual(6);
   });
