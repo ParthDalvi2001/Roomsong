@@ -74,6 +74,8 @@ export interface PanelText {
   dim: boolean;
   /** A stepper's read-out: bold, centred in `w`. */
   value?: boolean;
+  /** A line of the description row: a little dimmer than a label (PANEL_DESCRIBE_ALPHA). */
+  note?: boolean;
 }
 
 /**
@@ -122,15 +124,17 @@ export const SKIP_ID = 'skipGuide';
 const GAZE_TOGGLE_ID = 'gazeDwell';
 
 // The layout (10 Nov, Parth: "make it systematic"): one grid for every page. Under the header (the tabs, Close and a
-// thin rule) five rows PANEL_TARGET_PITCH_M apart. A row is one full-width cell or two half-width ones; a cell's label
-// starts at its left edge and its controls end at its right edge, the same x on every page. Read-only lines take the
-// first row of their tab. What a player changes most comes first, rare or risky actions last.
+// thin rule) the description row (what the control pointed at does), then five rows PANEL_TARGET_PITCH_M apart. A row
+// is one full-width cell or two half-width ones; a cell's label starts at its left edge and its controls end at its
+// right edge, the same x on every page. Read-only lines take the first row of their tab. What a player changes most
+// comes first, rare or risky actions last.
 const P = PANEL_TARGET_PITCH_M;
-const HEADER_Y = 2.5 * P;
+const HEADER_Y = 3 * P;
 /** The rule under the header, and the content's edge: the panel's less its padding. */
-export const RULE_Y = 2 * P;
+export const RULE_Y = 2.5 * P;
 export const EDGE_X = PANEL_WIDTH_M / 2 - PANEL_PAD_M;
-const ROW_Y = [1.5, 0.5, -0.5, -1.5, -2.5].map((row) => row * P) as [number, number, number, number, number];
+const DESCRIBE_Y = 2 * P;
+const ROW_Y = [1, 0, -1, -2, -3].map((row) => row * P) as [number, number, number, number, number];
 const T = PANEL_TARGET_M;
 const W = PANEL_WIDE_TARGET_M;
 const TARGET_GAP_M = P - T; // 1.5 cm between two targets
@@ -154,6 +158,10 @@ const LINE_M = 0.013; // half the distance between the two lines of the info row
 const TUNED_W = 0.175;
 const ECHO_X = -EDGE_X + 0.18;
 const ECHO_W = 0.095;
+// shortcut: a description longer than this many characters is split in two at the space nearest its middle, by count
+// (no canvas here); a line that still runs long is squeezed to the row by fillText. Measure if a text ever squeezes.
+const ONE_LINE_CHARS = 44;
+const DESCRIBE: Readonly<Record<string, string>> = PANEL.describe;
 
 /** The centre of target `i` of `n`, each `w` wide and 1.5 cm apart, the last ending at the cell's right edge. */
 const fromEnd = (cell: Cell, i: number, n: number, w: number): number =>
@@ -286,6 +294,17 @@ function roomLine(sig: RoomSignature, features: RoomFeatures | null): string {
   return parts.join(', ');
 }
 
+/** The description row: `text` on one line, or on two LINE_M above and below the row's middle. */
+function describeLines(text: string): PanelText[] {
+  const line = (y: number, words: string): PanelText => ({ ...label(-EDGE_X, y, FULL_W, words), note: true });
+  if (text.length <= ONE_LINE_CHARS) return [line(DESCRIBE_Y, text)];
+  const mid = text.length / 2;
+  const before = text.lastIndexOf(' ', mid);
+  const after = text.indexOf(' ', mid);
+  const cut = after < 0 || (before >= 0 && mid - before <= after - mid) ? before : after;
+  return [line(DESCRIBE_Y + LINE_M, text.slice(0, cut)), line(DESCRIBE_Y - LINE_M, text.slice(cut + 1))];
+}
+
 /** The device's zone at `t`, UTC minus local in minutes, as GardenSystem hands it to the daily seed. */
 const tzAt = (t: number): number => new Date(t).getTimezoneOffset();
 
@@ -358,6 +377,8 @@ export class Panel {
   private heldId = '';
   private heldHand: Hand = 'right';
   private gazeId = '';
+  /** The cue the board was last drawn for: the description row follows it. */
+  private cuedId = '';
   /** The dwell on `gazeId` has acted: it does not act again until the gaze has left it. */
   private gazeDone = false;
   /** Something was selected since the gaze was last looked at (`dwell`). */
@@ -391,13 +412,33 @@ export class Panel {
     return [...header, ...this.gardenControls()];
   }
 
-  /** The labels and read-outs of the open tab. A new array: not per frame. */
+  /** The description row, and the labels and read-outs of the open tab. A new array: not per frame. */
   texts(): PanelText[] {
     if (!this.isOpen) return [];
     const s = settings.get();
-    if (this.isSeeds) return this.seedTexts();
-    if (this.shownTab === 'sound') return this.soundTexts(s);
-    if (this.shownTab === 'access') return this.accessTexts(s);
+    const page = this.isSeeds
+      ? this.seedTexts()
+      : this.shownTab === 'sound'
+        ? this.soundTexts(s)
+        : this.shownTab === 'access'
+          ? this.accessTexts(s)
+          : this.gardenTexts();
+    return [...describeLines(this.describe(s)), ...page];
+  }
+
+  /** What the cued control does (PANEL.describe), or the page's default when nothing on it is cued. */
+  private describe(s: Readonly<Settings>): string {
+    const id = this.cue();
+    const kind = SEED_KINDS.find((row) => `seed:${row.kind}` === id);
+    if (kind !== undefined) return `${STRINGS[kind.name]}: ${PANEL.describe.seed}`;
+    if (id === NEW_GARDEN_ID && this.actions.canRestore()) return PANEL.describe.bringBack;
+    const text = DESCRIBE[id] ?? DESCRIBE[id.split(':')[0] ?? ''];
+    if (text !== undefined) return text;
+    if (this.isSeeds) return PANEL.pickSeed;
+    return s.gazeDwell ? PANEL.describe.gazeDefault : PANEL.describe.default;
+  }
+
+  private gardenTexts(): PanelText[] {
     const height = stepperX('left', HEIGHT_VALUE_W);
     return [
       ...gardenLines(this.garden, this.signature),
@@ -498,6 +539,12 @@ export class Panel {
     const canRestore = this.isOpen && this.shownTab === 'garden' && this.actions.canRestore();
     if (canRestore !== this.couldRestore) {
       this.couldRestore = canRestore;
+      this.stale = true;
+    }
+    // The description row says what the cued control does: drawn again when the cue moves, never per frame.
+    const cued = this.isOpen ? this.cue() : '';
+    if (cued !== this.cuedId) {
+      this.cuedId = cued;
       this.stale = true;
     }
   }
@@ -622,7 +669,7 @@ export class Panel {
 
   /**
    * T-193 (API_SPEC §1.9): the library tabs, Close, and that library's kinds not in HIDDEN_KINDS, a kind and its
-   * sibling in the same place (row index mod 5); none on the bottom row, which holds the page's line of text.
+   * sibling in the same place (row index mod 5), on the first three rows.
    */
   private seedControls(): PanelControl[] {
     return [
@@ -648,8 +695,7 @@ export class Panel {
         const cell = i % 2 ? 'right' : 'left';
         return cellLabel(cell, ROW_Y[Math.floor(i / 2)] ?? 0, startOf(cell, 1, T), STRINGS[row.name]);
       }),
-      label(-EDGE_X, ROW_Y[3], FULL_W, PANEL.pickSeed),
-    ];
+    ]; // its line, "Choose the kind of your next seed", is the description row's default now (10 Nov)
   }
 
   /** The shown library's rows of SEED_KINDS that are not hidden, each with its place, 0..4. */

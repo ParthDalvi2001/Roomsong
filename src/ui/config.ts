@@ -57,12 +57,12 @@ export const CAPTION_RENDER_ORDER = 1000;
 // The settings panel (T-151, UX §3.6). Drawn like a caption: text on a canvas, on one quad in the scene.
 
 /**
- * UX §3.6: the panel opens 0.55 m ahead of the head. 10 Nov (Parth: "make it systematic"): 0.48 by 0.335 m, was 0.40
- * by 0.28, for a grid of a header and five rows (ui/Panel.ts) with PANEL_PAD_M all round. At 0.55 m that is 23.6
- * degrees either side and 16.9 up and down, inside the FoV box of 25 by 20 (Golden Rule 6).
+ * UX §3.6: the panel opens 0.55 m ahead of the head. 10 Nov (Parth: "make it systematic"): 0.48 by 0.39 m, was 0.40
+ * by 0.28, for a grid of a header, the description row and five rows (ui/Panel.ts) with PANEL_PAD_M all round. At
+ * 0.55 m that is 23.6 degrees either side and 19.5 up and down, inside the FoV box of 25 by 20 (Golden Rule 6).
  */
 export const PANEL_WIDTH_M = 0.48;
-export const PANEL_HEIGHT_M = 0.335;
+export const PANEL_HEIGHT_M = 0.39;
 /** The even padding inside the panel's edge, and its corner radius is the controls' own (PANEL_TARGET_M / 2). */
 export const PANEL_PAD_M = 0.01;
 export const PANEL_DISTANCE_M = 0.55;
@@ -90,6 +90,8 @@ export const PANEL_TARGET_PITCH_M = 0.055;
  */
 export const PANEL_DIM_ALPHA = 0.55;
 export const PANEL_DIM_ALPHA_HIGH_CONTRAST = 0.75;
+/** 10 Nov: the description row's ink, a little dimmer than a label's (over 4.5:1, tested); full in high contrast. */
+export const PANEL_DESCRIBE_ALPHA = 0.8;
 /** FR-UI-05: the outline of a control, in canvas pixels: normal and high contrast. */
 export const PANEL_OUTLINE_PX = 3;
 export const PANEL_OUTLINE_HIGH_CONTRAST_PX = 6;
@@ -147,9 +149,10 @@ export const PANEL_RENDER_ORDER = 990;
 /**
  * UX §2, §3.6: the panel opens as if the head looked down no more than this. A head that looks at the bed (44
  * degrees down in the seated sketch) would otherwise get the panel on the table, its bottom row among the plants or
- * under the table top; with the limit its lower edge is at most 35 cm below the eyes, and the user looks up to it.
+ * under the table top; with the limit its lower edge is at most 40 cm below the eyes, and the user looks up to it.
+ * 10 Nov: 23, was 30: at 30 the board grown by the description row reached 1 cm under the table top.
  */
-export const PANEL_MAX_PITCH_DOWN_DEG = 30;
+export const PANEL_MAX_PITCH_DOWN_DEG = 23;
 
 /** The settings orb (UX §2, §3.6): drawn 4 cm across, picked like every other target. */
 export const ORB_DIAMETER_M = 0.04;
@@ -184,11 +187,13 @@ export const SKIP_BELOW_GAZE_DEG = -16;
 export const SKIP_REST_OPACITY = 0.45;
 /**
  * D-084: the guide's neon glow on what it points at (the hint ring, the orb, Seeds, Move), in PANEL_ACCENT (its
- * high-contrast twin in high contrast). A slow pulse, one a second (FR-UI-11: never more than 3 flashes a second),
- * from GLOW_LOW of the accent to all of it; steady at full with Reduce motion (UX §8).
+ * high-contrast twin in high contrast). A slow breath (10 Nov: one a second read as blinking), one per GLOW_PERIOD_MS
+ * (FR-UI-11: never more than 3 flashes a second), from GLOW_LOW of the accent to all of it; the settings ring also
+ * grows by GLOW_GROW at the peak. Steady at full and at its own size with Reduce motion (UX §8).
  */
-export const GLOW_PERIOD_MS = 1000;
-export const GLOW_LOW = 0.45;
+export const GLOW_PERIOD_MS = 2400;
+export const GLOW_LOW = 0.65;
+export const GLOW_GROW = 0.05;
 
 // The hints (T-150, UX §3.3, §3.4): the onboarding icons, the hint ring, the remove arrow and the hand hint. Each is
 // a quad of one icon atlas, drawn on a canvas once (UX §1: an icon, never a paragraph; no hand model, D-027).

@@ -97,7 +97,9 @@ function opened(tab: PanelTab = 'sound'): Panel {
 }
 const ids = (panel: Panel): string[] => panel.controls().map((control) => control.id);
 const control = (panel: Panel, id: string) => panel.controls().find((c) => c.id === id);
-const words = (panel: Panel): string[] => panel.texts().map((text) => text.text);
+/** The page's own labels and read-outs, without the description row (10 Nov). */
+const pageTexts = (panel: Panel) => panel.texts().filter((text) => text.note !== true);
+const words = (panel: Panel): string[] => pageTexts(panel).map((text) => text.text);
 /** Moves the fake time on by `ms`, in frames no longer than a real one, with the gaze on `gazeId`. */
 function run(panel: Panel, ms: number, gazeId = '', away = false): void {
   for (let left = ms; left > 0; left -= 50) panel.frame(Math.min(50, left), gazeId, away);
@@ -330,7 +332,7 @@ describe('settings panel: every control writes core settings and shows the value
 });
 
 describe('settings panel: the Sound tab says what tuned the song (UX §3.6, US-22)', () => {
-  const tuned = (panel: Panel) => panel.texts().slice(0, 3); // the info row, the tab's first
+  const tuned = (panel: Panel) => pageTexts(panel).slice(0, 3); // the info row, the tab's first
 
   it('shows the Wanderer tuning until a room has set one', () => {
     expect(tuned(opened('sound')).map((t) => t.text)).toEqual([
@@ -831,7 +833,7 @@ const offered = (lib: 'old' | 'new') =>
   );
 
 describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
-  it('shows two library tabs, Close and one swatch per kind on offer, each with its name beside it; no control on the bottom row', () => {
+  it('shows two library tabs, Close and one swatch per kind on offer, each with its name beside it, on the first three rows', () => {
     const panel = seedsOpened();
     const check = (lib: 'old' | 'new') => {
       const rows = offered(lib);
@@ -845,13 +847,12 @@ describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
         const name = panel.texts().find((t) => t.text === STRINGS[row.name])!;
         expect(name.y).toBe(swatch.y);
         expect(name.x + name.w).toBeLessThan(swatch.x - swatch.w / 2); // the name first, then its swatch
-        expect(swatch.y).toBeGreaterThan(-PANEL_TARGET_PITCH_M + 1e-9); // the first three rows
+        expect(swatch.y).toBeGreaterThan(-PANEL_TARGET_PITCH_M - 1e-9); // the first three rows
       }
-      expect(panel.texts().find((t) => t.text === PANEL.pickSeed)?.y).toBeCloseTo(
-        -1.5 * PANEL_TARGET_PITCH_M,
-        9,
-      );
-      expect(panel.controls().filter((c) => c.y < -PANEL_TARGET_PITCH_M)).toEqual([]);
+      // 10 Nov: its line is the description row's default, under the header, no longer a row of its own
+      expect(panel.texts().find((t) => t.text === PANEL.pickSeed)).toMatchObject({ note: true });
+      expect(words(panel)).not.toContain(PANEL.pickSeed);
+      expect(panel.controls().filter((c) => c.y < -PANEL_TARGET_PITCH_M - 1e-9)).toEqual([]);
     };
     check('new'); // New first
     press(panel, 'lib:old');
@@ -979,7 +980,7 @@ describe('the Seeds page (T-193, D-076; API_SPEC §1.9)', () => {
         .filter((c) => c.y === rows[rows.length - 1])
         .map((c) => c.id),
     ).toEqual(['newGarden']);
-    const info = panel.texts().slice(0, 2);
+    const info = pageTexts(panel).slice(0, 2);
     for (const line of info) expect(line.y).toBeGreaterThan(control(panel, 'seeds')!.y + PANEL_TARGET_M / 2);
   });
 });
@@ -1050,9 +1051,51 @@ describe('settings panel: targets of at least 4 cm with clear gaps (T-151, Golde
           .filter((c) => c.y < 2 * PANEL_TARGET_PITCH_M)
           .map((c) => c.y),
       );
-      for (const line of panel.texts().slice(0, 2))
+      for (const line of pageTexts(panel).slice(0, 2))
         expect(line.y, `${tab} ${line.text}`).toBeGreaterThan(top + PANEL_TARGET_M / 2);
     }
+  });
+
+  it('10 Nov: the description row says what each control on each page does, follows the cue and redraws only then', () => {
+    const lines = (panel: Panel) => panel.texts().filter((t) => t.note === true);
+    const described = (panel: Panel) =>
+      lines(panel)
+        .map((t) => t.text)
+        .join(' ');
+    for (const [name, panel] of layouts()) {
+      const idle = described(panel);
+      expect(idle, name).toBe(name.startsWith('seeds') ? PANEL.pickSeed : PANEL.describe.gazeDefault);
+      for (const c of panel.controls()) {
+        panel.stale = false;
+        panel.hover('right', c.id);
+        panel.frame(0, '', false);
+        expect(panel.stale, `${name} ${c.id}: drawn again`).toBe(true);
+        panel.stale = false;
+        panel.frame(14, '', false);
+        expect(panel.stale, `${name} ${c.id}: not per frame`).toBe(false);
+        const text = described(panel);
+        expect(text, `${name} ${c.id}`).not.toBe(idle);
+        expect(lines(panel).length, `${name} ${c.id}`).toBeLessThanOrEqual(2);
+        for (const line of lines(panel)) expect(line.text.length, line.text).toBeLessThanOrEqual(50);
+      }
+      panel.hover('right', '');
+      panel.frame(0, '', false);
+      expect(described(panel), name).toBe(idle);
+    }
+    const garden = opened('garden');
+    garden.hover('left', 'timeLapse');
+    garden.frame(0, '', false);
+    expect(described(garden)).toBe(PANEL.describe.timeLapse);
+    canRestore = true;
+    garden.hover('left', 'newGarden');
+    garden.frame(0, '', false);
+    expect(described(garden)).toBe(PANEL.describe.bringBack);
+    const seeds = seedsOpened('old');
+    seeds.hover('right', 'seed:bell');
+    seeds.frame(0, '', false);
+    expect(described(seeds)).toBe(`${STRINGS.kindBell}: ${PANEL.describe.seed}`);
+    settings.set({ gazeDwell: false });
+    expect(described(opened('sound'))).toBe(PANEL.describe.default);
   });
 
   it("the height read-out ends 1 cm or more before the plus button's ring, at its widest value", () => {
@@ -1118,19 +1161,23 @@ function placed(head: Mat4) {
 
 describe('settings panel: where it opens (UX §3.6, FR-UI-03)', () => {
   const SEATED: [number, number, number] = [0, 1.15, 0];
-  // The head the panel is placed for: the head itself, or, when that looks down more than 30 degrees, the same
-  // head looking 30 degrees down.
+  // The head the panel is placed for: the head itself, or, when that looks down more than PANEL_MAX_PITCH_DOWN_DEG
+  // (23, 10 Nov), the same head looking 23 degrees down.
   const POSES: [name: string, head: Mat4, placedFor?: Mat4][] = [
     ['level', headAt(SEATED)],
-    ['looking at a wrist, 25 degrees down and 20 to the left', headAt(SEATED, 20, -25)],
+    [
+      'looking at a wrist, 25 degrees down and 20 to the left',
+      headAt(SEATED, 20, -25),
+      headAt(SEATED, 20, -23),
+    ],
     ['looking up 35 degrees', headAt(SEATED, 0, 35)],
     ['turned 60 degrees right', headAt(SEATED, -60)],
     ['turned 170 degrees left, leaning', headAt([0.2, 1.05, -0.1], 170, -10)],
-    ['head tilted 30 degrees, looking 25 degrees down', headAt(SEATED, -15, -25, 30)],
+    ['head tilted 30 degrees, looking 20 degrees down', headAt(SEATED, -15, -20, 30)],
     ['straight up', headAt(SEATED, 40, 90)],
-    ['looking at the bed, 44 degrees down', headAt(SEATED, 0, -44), headAt(SEATED, 0, -30)],
-    ['70 degrees down and 50 to the right', headAt(SEATED, -50, -70), headAt(SEATED, -50, -30)],
-    ['straight down', headAt(SEATED, 0, -90), headAt(SEATED, 0, -30)],
+    ['looking at the bed, 44 degrees down', headAt(SEATED, 0, -44), headAt(SEATED, 0, -23)],
+    ['70 degrees down and 50 to the right', headAt(SEATED, -50, -70), headAt(SEATED, -50, -23)],
+    ['straight down', headAt(SEATED, 0, -90), headAt(SEATED, 0, -23)],
   ];
 
   it.each(POSES)('all four corners are inside 25 by 20 degrees: %s', (_name, head, placedFor = head) => {
@@ -1160,16 +1207,16 @@ describe('settings panel: where it opens (UX §3.6, FR-UI-03)', () => {
     expect(edges.rightDeg).toBeCloseTo(-edges.leftDeg, 6); // centred
   });
 
-  it.each([30, 44, 70, 90])(
+  it.each([23, 44, 70, 90])(
     'stays clear of the table when the head looks %i degrees down: its lower edge at most 40 cm below the eyes',
     (down) => {
-      expect(PANEL_MAX_PITCH_DOWN_DEG).toBe(30);
+      expect(PANEL_MAX_PITCH_DOWN_DEG).toBe(23);
       const EYE_M = 1.15; // the seated sketch of UX §2: the table top is at 0.72 m
       const { centre, corners } = placed(headAt([0, EYE_M, 0], 35, -down));
       const lowest = Math.min(...corners.map((corner) => corner.y));
       expect(lowest).toBeGreaterThanOrEqual(EYE_M - 0.4);
-      // 3.8 cm above that table, the same from 30 degrees on (8.6 cm while the board was 0.28 m tall, before 10 Nov)
-      expect(lowest).toBeCloseTo(EYE_M - 0.3918, 3);
+      // 4 cm above that table, the same from 23 degrees on (10 Nov: the 0.39 m board; 3.8 cm at 0.335 m and 30 degrees)
+      expect(lowest).toBeCloseTo(EYE_M - 0.3896, 3);
       // and it is where the head pointed: 35 degrees to the left, not straight ahead in the room
       expect((Math.atan2(-centre.x, -centre.z) * 180) / Math.PI).toBeCloseTo(35, 6);
     },
@@ -1178,14 +1225,14 @@ describe('settings panel: where it opens (UX §3.6, FR-UI-03)', () => {
   // T-193, the look-up exception (API_SPEC §1.9, UX §3.6): the Seeds page opens for a head that looks at its palm, and
   // its three swatch rows stand this far above that head's gaze line. The top two are above the 20 degree box.
   it.each([
-    [44, [25.8, 20.3, 14.5]],
-    [47, [28.8, 23.3, 17.5]],
-    [66, [47.8, 42.3, 36.5]],
+    [44, [27.2, 21.5, 15.8]],
+    [47, [30.2, 24.5, 18.8]],
+    [66, [49.2, 43.5, 37.8]],
   ] as const)('the swatch rows of a Seeds page seen by a head %i degrees down', (down, degrees) => {
     const head = headAt(SEATED, 0, -down);
     const { pose, centre } = placed(head);
     const up = (i: number) => pose[4 + i] as number;
-    [1.5, 0.5, -0.5].forEach((row, i) => {
+    [1, 0, -1].forEach((row, i) => {
       const y = row * PANEL_TARGET_PITCH_M; // ROW_Y[0..2]: the swatch rows
       const point = new Vector3(centre.x + up(0) * y, centre.y + up(1) * y, centre.z + up(2) * y);
       const local = seenFrom(head, point);
@@ -1461,7 +1508,9 @@ describe('panel strings', () => {
 
   it('do not promise eye control: the gaze mode is named for what it asks (UX §9.7)', () => {
     expect(PANEL.gazeDwell).toBe('Look to select');
-    expect(all.join(' ')).not.toMatch(/eye|gaze|dwell/i);
+    // Parth's own descriptions (10 Nov, PANEL.describe) say "hold your gaze": the head's, as the reticle shows
+    expect(texts({ ...PANEL, describe: {} }).join(' ')).not.toMatch(/eye|gaze|dwell/i);
+    expect(texts(PANEL.describe).join(' ')).not.toMatch(/eye|dwell/i);
   });
 });
 

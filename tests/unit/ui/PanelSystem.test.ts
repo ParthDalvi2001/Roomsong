@@ -16,6 +16,9 @@ import {
   CAPTION_TEXT_COLOUR,
   CUE_FILL_COLOUR,
   CUE_SEGMENTS,
+  GLOW_GROW,
+  GLOW_LOW,
+  GLOW_PERIOD_MS,
   NEW_GARDEN_HOLD_MS,
   ORB_OFF_HAND_M,
   PANEL_ACCENT,
@@ -23,6 +26,7 @@ import {
   PANEL_BOLD_FONT,
   PANEL_DANGER,
   PANEL_DANGER_HIGH_CONTRAST,
+  PANEL_DESCRIBE_ALPHA,
   PANEL_DIM_ALPHA,
   PANEL_DIM_ALPHA_HIGH_CONTRAST,
   PANEL_FONT,
@@ -119,34 +123,34 @@ describe('settings panel drawing: where things go (UX §3.6)', () => {
     const shapes = ops('roundRect').map((call) => call.args as number[]);
     const near = (got: number[] | undefined, want: number[]) =>
       want.forEach((v, i) => expect(got?.[i], `${want.join(', ')}`).toBeCloseTo(v, 6));
-    near(shapes[0], [3, 3, 1194, 832, 50]); // the backdrop, clear of the canvas edge
+    near(shapes[0], [3, 3, 1194, 969, 50]); // the backdrop, clear of the canvas edge
     // 10 Nov: a track under each group, the tabs first: from 1 cm inside the panel's left edge to the third tab's end
-    near(shapes[1], [25, 25.25, 675, 100, 50]);
-    near(shapes[5], [25, 25.25, 200, 100, 50]); // the Sound tab: 8 cm wide, centred on (-0.19, 0.1375) m
-    near(shapes[8], [1075, 25.25, 100, 100, 50]); // Close: 4 cm round, centred on (0.21, 0.1375) m, 1 cm in
+    near(shapes[1], [25, 25, 675, 100, 50]);
+    near(shapes[5], [25, 25, 200, 100, 50]); // the Sound tab: 8 cm wide, centred on (-0.19, 0.165) m
+    near(shapes[8], [1075, 25, 100, 100, 50]); // Close: 4 cm round, centred on (0.21, 0.165) m, 1 cm in
   });
 
   it('writes a word in the panel font, the chosen one bold, and a single sign larger, centred on the control', () => {
     const { text } = drawn('sound');
     expect(text('Sound')).toMatchObject({
-      args: ['Sound', 125, 75.25, 175],
+      args: ['Sound', 125, 75, 175],
       font: PANEL_BOLD_FONT,
       textAlign: 'center',
     });
     expect(text('Access')).toMatchObject({ font: PANEL_FONT, textAlign: 'center' });
-    expect(text('x')).toMatchObject({ args: ['x', 1125, 75.25, 75], font: PANEL_SYMBOL_FONT });
+    expect(text('x')).toMatchObject({ args: ['x', 1125, 75, 75], font: PANEL_SYMBOL_FONT });
     expect(text('+')?.font).toBe(PANEL_SYMBOL_FONT);
   });
 
   it('writes labels from their left end in the regular weight, read-outs bold and centred, squeezed into their room and never cut', () => {
     const { text } = drawn('sound');
     expect(text('Speed')).toMatchObject({
-      args: ['Speed', 25, 487.75, 650],
+      args: ['Speed', 25, 625, 650],
       font: PANEL_FONT,
       textAlign: 'left',
     });
     expect(text('84 BPM')).toMatchObject({
-      args: ['84 BPM', 937.5, 487.75, 225],
+      args: ['84 BPM', 937.5, 625, 225],
       font: PANEL_BOLD_FONT,
       textAlign: 'center',
     });
@@ -253,7 +257,7 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
       expect(text('New garden')?.fillStyle).toBe(CAPTION_TEXT_COLOUR);
       const outline = highContrast ? PANEL_OUTLINE_HIGH_CONTRAST_PX : PANEL_OUTLINE_PX;
       expect(ops('fillRect')[0]).toMatchObject({
-        args: [25, 144 - outline / 2, 1150, outline],
+        args: [25, 143.75 - outline / 2, 1150, outline],
         globalAlpha: rule,
       });
     }
@@ -264,6 +268,7 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
     expect(contrast(CREAM, CHARCOAL)).toBeGreaterThan(15);
     expect(contrast(rgb(PANEL_INK), CREAM)).toBeGreaterThan(15);
     expect(contrast(over(CREAM, CHARCOAL, PANEL_DIM_ALPHA), CHARCOAL)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(over(CREAM, CHARCOAL, PANEL_DESCRIBE_ALPHA), CHARCOAL)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(CREAM, BLACK)).toBeGreaterThan(19);
     expect(contrast(over(CREAM, BLACK, PANEL_DIM_ALPHA_HIGH_CONTRAST), BLACK)).toBeGreaterThanOrEqual(7);
     // 10 Nov: the charcoal on the accent, normal and high contrast
@@ -297,12 +302,18 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
         ).toEqual([1]);
       }
       const names = swatches.map((c) => STRINGS[SEED_KINDS.find((row) => `seed:${row.kind}` === c.id)!.name]);
-      for (const word of [...names, PANEL.pickSeed])
+      for (const word of names)
         expect(text(word), word).toMatchObject({
           fillStyle: CAPTION_TEXT_COLOUR,
           globalAlpha: 1,
           textAlign: 'left',
         });
+      // 10 Nov: the page's line is the description row's default, a little dimmer; full in high contrast
+      expect(text(PANEL.pickSeed)).toMatchObject({
+        fillStyle: CAPTION_TEXT_COLOUR,
+        globalAlpha: highContrast ? 1 : PANEL_DESCRIBE_ALPHA,
+        textAlign: 'left',
+      });
       expect(text(STRINGS.libNew)?.fillStyle).toBe(PANEL_INK); // the shown library, lit
       expect(text(STRINGS.libOld)?.fillStyle).toBe(CAPTION_TEXT_COLOUR);
     }
@@ -312,7 +323,7 @@ describe('settings panel drawing: high contrast (FR-UI-05)', () => {
 describe('settings panel drawing: a redraw (UX §3.6)', () => {
   it('clears the canvas first: nothing of the tab before shows through the glass', () => {
     const { calls } = drawn('garden');
-    expect(calls[0]).toMatchObject({ op: 'clearRect', args: [0, 0, 1200, 838] });
+    expect(calls[0]).toMatchObject({ op: 'clearRect', args: [0, 0, 1200, 975] });
   });
 
   it('draws the labels in the label colour whatever the last control was drawn in', () => {
@@ -321,7 +332,7 @@ describe('settings panel drawing: a redraw (UX §3.6)', () => {
     const { text, ops } = drawn('access');
     const onControls = ops('fillText').filter((call) => call.textAlign === 'center');
     expect(onControls.pop()).toMatchObject({
-      args: ['R', 1125, 487.75, 75],
+      args: ['R', 1125, 625, 75],
       fillStyle: PANEL_INK,
     });
     const labels = ['One hand', 'Look to select', 'High contrast', 'Reduce motion', 'Beat ring', 'Main hand'];
@@ -557,10 +568,10 @@ describe('PanelSystem: its targets (API_SPEC §1.10 rule 7)', () => {
       expect(entity.getValue(Interactable, 'kind')).toBe('panel');
       expect(entity.getValue(Interactable, 'radius')).toBe(HIT_RADIUS_M);
     }
-    // Where it is drawn: the panel is 0.55 m ahead of a level head, and Close is at (0.21, 0.1375) m on it.
+    // Where it is drawn: the panel is 0.55 m ahead of a level head, and Close is at (0.21, 0.165) m on it.
     const close = targets().find((entity) => entity.getValue(Interactable, 'id') === 'close')!;
     const [x, y, z] = close.getVectorView(Interactable, 'worldPos');
-    expect([x, y, z].map((v) => Math.round(v! * 10000) / 10000)).toEqual([0.21, 1.2875, -0.55]);
+    expect([x, y, z].map((v) => Math.round(v! * 10000) / 10000)).toEqual([0.21, 1.315, -0.55]);
 
     press('tab:access');
     expect(ids()).toEqual([ORB_ID, ...HEADER, ...ACCESS]);
@@ -738,7 +749,7 @@ describe('PanelSystem: the orb (UX §2, FR-UI-09, FR-HND-12)', () => {
 
   it('steps aside while the panel it opened by gaze is open, and what lies under the gaze is not selected', () => {
     const { head, frame, press, watch, ids, targets, system, asked } = rig();
-    watch(); // first by hand, to leave the panel on the Garden tab: its height's plus is where the gaze will rest
+    watch(); // first by hand, to leave the panel on the Garden tab
     frame();
     press(ORB_ID);
     press('tab:garden');
@@ -752,7 +763,9 @@ describe('PanelSystem: the orb (UX §2, FR-UI-09, FR-HND-12)', () => {
     for (let ms = 0; ms <= 1100; ms += 50) frame(50);
     expect(system.panel.open).toBe(true);
     expect(ids()).not.toContain(ORB_ID);
-    expect(system.panel.cue()).toBe('height:+'); // that control is under the resting gaze
+    // 10 Nov: the board opens with the resting gaze in the empty middle of a row, between its two cells (the gaze
+    // that rests on a control at opening is Panel.test.ts's "takes what is under the gaze when the panel opens")
+    expect(system.panel.cue()).toBe('');
     const before = { ...settings.get() };
     const asks = asked.length;
     for (let ms = 0; ms < 3000; ms += 50) frame(50);
@@ -838,6 +851,9 @@ describe('PanelSystem: the guide (D-084)', () => {
   type Shown = { visible: boolean; matrix: Matrix4; material: { color: Color } };
   const accent = (hex: string) => new Color(hex).toArray().map((v) => Math.round(v * 1e4) / 1e4);
   const colour = (ring: Shown) => ring.material.color.toArray().map((v) => Math.round(v * 1e4) / 1e4);
+  /** The ring's scale up its target's face: 1 at rest, 1 + GLOW_GROW at the glow's brightest. */
+  const size = (ring: Shown) =>
+    Math.round(Math.hypot(...[4, 5, 6].map((i) => ring.matrix.elements[i] ?? 0)) * 1e4) / 1e4;
   const where = (ring: Shown) =>
     [12, 13, 14].map((i) => Math.round((ring.matrix.elements[i] ?? 0) * 1e4) / 1e4);
 
@@ -945,12 +961,12 @@ describe('PanelSystem: the guide (D-084)', () => {
     expect(system.panel.tab).toBe('garden');
     expect(where(ring)).toEqual(at('seeds'));
     const reds: number[] = [];
-    for (let ms = 0; ms < 1000; ms += 14) {
+    for (let ms = 0; ms < GLOW_PERIOD_MS; ms += 14) {
       frame();
       reds.push(ring.material.color.r);
     }
     expect(Math.max(...reds)).toBeCloseTo(new Color(PANEL_ACCENT).r, 2);
-    expect(Math.min(...reds)).toBeLessThan(0.6 * Math.max(...reds));
+    expect(Math.min(...reds)).toBeCloseTo(GLOW_LOW * Math.max(...reds), 3); // 10 Nov: a slow breath, not a blink
     press('tab:sound'); // once per step: the player may look round the board
     expect(system.panel.tab).toBe('sound');
     emit('onboarding:step', { step: 'moveTip' });
@@ -962,7 +978,35 @@ describe('PanelSystem: the guide (D-084)', () => {
     expect(ring.visible).toBe(false);
   });
 
-  it('glows steady in the full accent with Reduce motion, its high-contrast twin in high contrast', () => {
+  it("10 Nov: stays neon round the guide's target while it is hovered, breathing 1 to 1.05 with the glow; another control rings cream", () => {
+    const { watch, frame, press, emit, mesh } = rig();
+    const ring = mesh('settings-cue') as unknown as Shown;
+    const hover = (id: string) =>
+      emit('target:hover', { hand: 'right', target: { kind: 'panel', id } as never, cell: null });
+    watch();
+    emit('onboarding:step', { step: 'orb' });
+    frame();
+    hover(ORB_ID);
+    const reds: number[] = [];
+    const sizes: number[] = [];
+    for (let ms = 0; ms < GLOW_PERIOD_MS; ms += 14) {
+      frame();
+      reds.push(ring.material.color.r);
+      sizes.push(size(ring));
+    }
+    expect(Math.max(...reds)).toBeCloseTo(new Color(PANEL_ACCENT).r, 2); // never the cream of a hover
+    expect(Math.min(...reds)).toBeCloseTo(GLOW_LOW * Math.max(...reds), 3);
+    expect(Math.max(...sizes)).toBeCloseTo(1 + GLOW_GROW, 3);
+    expect(Math.min(...sizes)).toBeCloseTo(1, 3);
+    expect(sizes[reds.indexOf(Math.max(...reds))]).toBeCloseTo(1 + GLOW_GROW, 3); // largest when brightest
+    press(ORB_ID); // the board opens; the guide still points at the orb, which it covers
+    hover('tab:access');
+    frame();
+    expect(colour(ring)).toEqual(accent(CAPTION_TEXT_COLOUR));
+    expect(size(ring)).toBe(1);
+  });
+
+  it('glows steady in the full accent and at its own size with Reduce motion, its high-contrast twin in high contrast', () => {
     settings.set({ reducedMotion: true });
     const { watch, frame, emit, mesh } = rig();
     const ring = mesh('settings-cue') as unknown as Shown;
@@ -971,6 +1015,7 @@ describe('PanelSystem: the guide (D-084)', () => {
     for (let i = 0; i < 100; i++) {
       frame();
       expect(colour(ring)).toEqual(accent(PANEL_ACCENT));
+      expect(size(ring)).toBe(1);
     }
     settings.set({ highContrast: true });
     frame();

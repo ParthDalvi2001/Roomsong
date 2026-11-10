@@ -31,6 +31,7 @@ import {
   CUE_RING_INNER_M,
   CUE_RING_OUTER_M,
   CUE_SEGMENTS,
+  GLOW_GROW,
   GLOW_PERIOD_MS,
   ORB_CANVAS_PX,
   ORB_DIAMETER_M,
@@ -39,6 +40,7 @@ import {
   PANEL_BOLD_FONT,
   PANEL_DANGER,
   PANEL_DANGER_HIGH_CONTRAST,
+  PANEL_DESCRIBE_ALPHA,
   PANEL_DIM_ALPHA,
   PANEL_DIM_ALPHA_HIGH_CONTRAST,
   PANEL_DISTANCE_M,
@@ -223,7 +225,7 @@ export function drawPanel(
   for (const control of controls) drawControl(ctx, control, highContrast);
   ctx.fillStyle = CAPTION_TEXT_COLOUR;
   for (const text of texts) {
-    ctx.globalAlpha = text.dim ? dimAlpha : 1;
+    ctx.globalAlpha = text.dim ? dimAlpha : text.note === true && !highContrast ? PANEL_DESCRIBE_ALPHA : 1;
     ctx.textAlign = text.value === true ? 'center' : 'left';
     ctx.font = text.value === true ? PANEL_BOLD_FONT : PANEL_FONT;
     const x = text.value === true ? text.x + text.w / 2 : text.x;
@@ -703,11 +705,10 @@ export class PanelSystem extends createSystem(
   /** The ring round the control or orb that is held, gazed at or hovered, and the fill of a hold or a dwell. */
   private placeCue(): void {
     // D-084: with nothing held, gazed at or hovered, the ring glows round what the guide points at
-    const cued = this.panel.cue();
     const step = this.step;
-    const id =
-      cued ||
-      (step === 'orb' ? ORB_ID : step === 'seedsTip' ? SEEDS_ID : step === 'moveTip' ? 'replaceBed' : '');
+    const guided =
+      step === 'orb' ? ORB_ID : step === 'seedsTip' ? SEEDS_ID : step === 'moveTip' ? 'replaceBed' : '';
+    const id = this.panel.cue() || guided;
     const i = id === '' ? -1 : this.ids.indexOf(id);
     // How much of the fill ring is drawn: whole steps of it, from the top round (UX §8: the ring fills).
     const steps = Math.round((this.panel.fill[0] as number) * CUE_SEGMENTS);
@@ -715,8 +716,15 @@ export class PanelSystem extends createSystem(
     this.fill.visible = i >= 0 && steps > 0;
     if (i < 0) return;
     const s = settings.get();
-    if (cued === '') neon(this.ring.material.color, s, this.glowMs);
+    // 10 Nov: round the guide's target the ring stays neon, hovered or not: a flip to cream at each hover flickered
+    const glowing = id === guided;
+    if (glowing) neon(this.ring.material.color, s, this.glowMs);
     else this.ring.material.color.copy(CREAM);
+    // ...and breathes with it, GLOW_GROW larger at its brightest (neon's cosine); its own size with Reduce motion
+    const grow =
+      glowing && !s.reducedMotion
+        ? 1 + GLOW_GROW * (0.5 + 0.5 * Math.cos((2 * Math.PI * this.glowMs) / GLOW_PERIOD_MS))
+        : 1;
     const danger = s.highContrast ? PANEL_DANGER_HIGH_CONTRAST : PANEL_DANGER;
     const colour = id === NEW_GARDEN_ID ? danger : CUE_FILL_COLOUR;
     if (colour !== this.fillColour) {
@@ -727,13 +735,13 @@ export class PanelSystem extends createSystem(
     // Both rings face the way their target does (the orb's or the panel's matrix), at the target's centre, and are
     // as wide as it: a control that holds a word is twice as wide as it is tall.
     const facing = (i === 0 ? this.orb : i === SKIP ? this.skip : this.board).mesh.matrix.elements;
-    const stretch = (this.widths[i] as number) / PANEL_TARGET_M;
+    const stretch = ((this.widths[i] as number) / PANEL_TARGET_M) * grow;
     for (let k = 0; k < 2; k++) {
       const mesh = k === 0 ? this.ring : this.fill;
       const matrix = mesh.matrix.elements;
       for (let axis = 0; axis < 3; axis++) {
         matrix[axis] = (facing[axis] as number) * stretch;
-        matrix[4 + axis] = facing[4 + axis] as number;
+        matrix[4 + axis] = (facing[4 + axis] as number) * grow;
         matrix[8 + axis] = facing[8 + axis] as number;
         matrix[12 + axis] = this.centres[3 * i + axis] as number;
       }

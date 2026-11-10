@@ -129,4 +129,37 @@ export const PANEL = {
   nextSeed: 'Your next seed',
   pickSeed: 'Choose the kind of your next seed',
   skipGuide: 'Skip tutorial', // D-084, renamed by Parth 10 Nov (D-085): ends the guide; shown while it runs
+  // 10 Nov (Parth: a new player does not know what "Time-lapse" does): the description row under the header says what
+  // the control that is pointed at does, keyed by control id; ui/Panel.ts looks an id up whole, then by the part
+  // before ':'. A swatch's line is its kind's name, ': ', then `seed`.
+  describe: {
+    default: 'Point at a setting to see what it does.',
+    gazeDefault: 'Look at a setting to see what it does.',
+    'tab:sound': 'Sound: volume, speed, echo and mono.',
+    'tab:access': 'Access: play with one hand, with no hands, or with stronger colours.',
+    'tab:garden': 'Garden: seeds, height, time-lapse, moving and leaving.',
+    close: 'Close the settings. They also close when you look away.',
+    volume: 'Volume: how loud the garden plays.',
+    tempo: 'Speed: how fast the ring of light sweeps the garden, in beats per minute.',
+    reverb: 'Echo: Room uses the echo of your real room. Small is a short echo. Off has none.',
+    mono: 'Mono: the same sound in both ears, for one earbud or hearing in one ear.',
+    oneHand: 'One hand: play with one hand. Pinch the seed off your own palm and carry it.',
+    gazeDwell: 'Look to select: no hands needed. Look at something and hold your gaze to choose it.',
+    dwell: 'Look time: how long to hold your gaze before it selects.',
+    highContrast: 'High contrast: stronger colours and outlines, easier to see.',
+    reducedMotion: 'Reduce motion: less sway, no blooming or flying animations, steady glows.',
+    beatRing: 'Beat ring: a ring of light that pulses on every beat, so you can see the rhythm.',
+    hand: 'Main hand: the hand you pinch with. The settings orb rides your other hand.',
+    seeds: 'Seeds: choose the kind of your next seed, from the Classic or Calm sounds.',
+    height: 'Height: raise or lower the garden over the table, 2 cm a step.',
+    timeLapse:
+      'Time-lapse: a quick demo of the garden growing, one day every 4 seconds. Switch it off to go back.',
+    replaceBed: 'Move: put the garden somewhere else. Look at the new spot and pinch.',
+    exit: 'Exit: leave the garden. It is saved, and Enter brings it back.',
+    newGarden: 'New garden: hold to erase this garden and start again with three new seeds.',
+    bringBack: 'Bring back: hold to bring back the garden you just erased.',
+    'lib:old': 'Classic: bell, pluck, choir, pad and bass.',
+    'lib:new': 'Calm: softer sounds: bowl, chime, flute, reed and hum.',
+    seed: 'your next seed will play this sound.',
+  },
 } as const;

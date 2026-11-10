@@ -21,6 +21,8 @@ import {
   FOV_HALF_V_DEG,
   GHOST_BOTTOM_M,
   GHOST_TOP_M,
+  GLOW_LOW,
+  GLOW_PERIOD_MS,
   GUIDE_CELL,
   HINT_FADE_MS,
   PALM_ICON_LIFT_M,
@@ -367,19 +369,20 @@ describe('HintSystem: the hand hint (FR-HND-15, D-030)', () => {
 describe('the guide glow (D-084, FR-UI-11)', () => {
   const rounded = (colour: Color) => colour.toArray().map((v) => Math.round(v * 1e4) / 1e4);
 
-  it('tints the hint ring with the accent and pulses it slowly: about once a second, never 3 times', () => {
+  it('tints the hint ring with the accent and breathes it slowly: once in GLOW_PERIOD_MS (2.4 s), never 3 times a second', () => {
     const r = rig();
     step('plant');
     const reds: number[] = [];
-    for (let ms = 0; ms < 2000; ms += 14) {
+    for (let ms = 0; ms < 2 * GLOW_PERIOD_MS; ms += 14) {
       r.frame();
       reds.push(r.ring.material.color.r);
     }
     const peak = Math.max(...reds);
     const low = Math.min(...reds);
+    expect(GLOW_PERIOD_MS).toBe(2400); // 10 Nov: one a second read as blinking on the headset
     expect(peak).toBeCloseTo(new Color(PANEL_ACCENT).r, 2);
-    expect(low).toBeLessThan(0.6 * peak);
-    // a flash is a rise past the middle: two seconds hold one or two of them
+    expect(low).toBeCloseTo(GLOW_LOW * peak, 3);
+    // a flash is a rise past the middle: two breaths hold one or two of them
     const mid = (peak + low) / 2;
     const rises = reds.filter((v, i) => i > 0 && v >= mid && (reds[i - 1] ?? 0) < mid).length;
     expect(rises).toBeGreaterThanOrEqual(1);
