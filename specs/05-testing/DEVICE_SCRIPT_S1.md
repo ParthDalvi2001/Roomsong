@@ -179,7 +179,7 @@ Some steps say **(console)**. They read lines that the app writes for developers
 ### Route A — the public address (only after you have gone live on GitHub Pages)
 
 1. Headset: open Meta Quest Browser.
-2. Type `https://parthdalvi2001.github.io/Roomsong/` (capital R: the address is case-sensitive). No warning is expected.
+2. Type `https://parthdalvi2001.github.io/SonicSpace/` (capital S twice: the address is case-sensitive; `/Roomsong/` is gone since the repo rename, 404). No warning is expected.
 3. Count the seconds from the moment the page starts to load until the line "Getting the garden ready." under the button is gone. Write the count down as T1.
 4. You see "Roomsong", "Grow a song on your table." and a button **Enter the garden**. Do not pinch it yet. Bookmark the page.
 5. No test page here: `proto/spike/`, `proto/pinch/` and `proto/bed/` are not on the public site (T-189). A sitting that runs one uses route B.
@@ -2201,7 +2201,7 @@ Filled on 9 Nov (T-188) where the headset runs of 7 and 8 Nov answer a line: **D
 
 | # | What | Your answer | From block | Who waits for it |
 |---|---|---|---|---|
-| 1 | Headset model; lighting; route, address and build | D 7 Nov Parth: Quest 3S, OculusBrowser 156, the dev server over LAN with the recorder (`?rec=1`), not route A or B. D 8 Nov Chinmay: Quest 3, route A, https://parthdalvi2001.github.io/Roomsong/, build 4bc6c7c. Lighting not noted | setup, 0 | every result below |
+| 1 | Headset model; lighting; route, address and build | D 7 Nov Parth: Quest 3S, OculusBrowser 156, the dev server over LAN with the recorder (`?rec=1`), not route A or B. D 8 Nov Chinmay: Quest 3, route A, https://parthdalvi2001.github.io/SonicSpace/, build 4bc6c7c. Lighting not noted | setup, 0 | every result below |
 | 2 | T1: page load to a usable Enter button (s) | | 0 | TC-DEV-01; PROGRESS item 26b |
 | 3 | T2: Enter pinch to the first sight of the room (s) | | 8 | TC-DEV-01; PROGRESS item 26b |
 | 4 | Does one pinch on Enter start session and sound: "No sound. Leave and enter again." on the first Enter, on the second | D 7 Nov Parth: Enter started immersive-ar with hand tracking and sound (6–9 voices); Exit and re-entry work (D-067). D 8 Nov Chinmay: Exit works | 8 | T-128a (API_SPEC §1.10 rule 2); T-152 |

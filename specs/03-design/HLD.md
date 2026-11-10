@@ -96,7 +96,7 @@ Hosting is decided (D-022, ADR-004): GitHub Pages is the submitted URL, plus a V
 |---|---|---|---|
 | Local dev | any | `https://<lan-ip>:8081` | Headset over Wi-Fi via IWSDK dev server |
 | Local, built | any | `npm run build && npm run preview`, `https://<lan-ip>:4173` | The production build before a release; there is no hosted staging (T-108) |
-| Production | `main`, deployed by GitHub Actions | `https://parthdalvi2001.github.io/Roomsong/` (the path is case-sensitive) | The judged URL; frozen from 2026-11-17 |
+| Production | `main`, deployed by GitHub Actions | `https://parthdalvi2001.github.io/SonicSpace/` (the path is case-sensitive) | The judged URL; frozen from 2026-11-17 |
 | Mirror | same build as production | Vercel or Netlify (T-108) | Second link in the Devpost text; same build hash |
 
 ## 6. Third-party integrations

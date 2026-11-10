@@ -98,7 +98,7 @@ Pull a plant up for louder, drag to move or remove it; 5 seconds to undo. Ten se
 Entertainment: plant a song in two minutes, then palms out for Listen and lean back: the ring of light plays it, music visualization, spatial audio panned from each plant. Hands-first, seated: the bed about 0.45 m ahead. Purposeful MR: the table is the stage, the room the tuning. Original: synthesized sound, procedural visuals, offline.
 
 ## How we built it
-Immersive Web SDK (IWSDK, WebXR), Three.js, TypeScript, Web Audio. Plane detection finds the table; fallbacks end in a floating bed. Measured: about 90 fps on Quest 3 (live site) and Quest 3S (development build), code under 2 ms a frame.
+Immersive Web SDK (IWSDK, WebXR), Three.js, TypeScript, Web Audio. Plane detection finds the table; fallbacks end in a floating bed. Measured: about 90 fps on Quest 3 (live site) and Quest 3S (development build), code under 2 ms a frame on the 3S.
 
 ## Known limitations
 Tested hands-only by the team on Quest 3S and Quest 3, one room each: entering, seeds, planting, sound, pulls, moves, Listen, settings, re-placing the bed, Time-lapse, Exit, save, resume, one-hand mode, daily seed, no-seeds notice, room tuning. [decide 14 Nov: no stranger has played (DECISIONS_PENDING 5) → keep "by the team"; one played unaided → "by the team and <n> newcomers" (+3 words: 498 in all)] Emulator only so far: ten seed kinds, Seeds page, settings redesign, undo, drag by sight, hands-free mode, day 2, access links, shaping sounds, room tints, no-scan notice, live site on 3S. A borderline room may change scale between visits.

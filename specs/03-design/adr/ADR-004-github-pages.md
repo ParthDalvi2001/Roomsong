@@ -6,7 +6,7 @@
 The contest explicitly suggests GitHub Pages for IWSDK entries and requires the build to remain available and unchanged through judging. The 2026 rule text names a "GitHub page" for WebXR links; the most common failure of the 2025 edition was the wrong link (D-022).
 
 ## Decision
-GitHub Pages is the submitted URL: `https://parthdalvi2001.github.io/Roomsong/`, a sub-path with a case-sensitive name. Every push to `main` is built and published by GitHub Actions (`.github/workflows/deploy.yml`). `main` is release and is pushed only by Parth; `develop` is work. A Vercel or Netlify mirror (host not chosen yet) serves the same build, proven by the same `version.json` on both links; it is named in the Devpost description and is the fallback if Pages fails during judging. Procedure: DEPLOYMENT_GUIDE.
+GitHub Pages is the submitted URL: `https://parthdalvi2001.github.io/SonicSpace/`, a sub-path with a case-sensitive name. Every push to `main` is built and published by GitHub Actions (`.github/workflows/deploy.yml`). `main` is release and is pushed only by Parth; `develop` is work. A Vercel or Netlify mirror (host not chosen yet) serves the same build, proven by the same `version.json` on both links; it is named in the Devpost description and is the fallback if Pages fails during judging. Procedure: DEPLOYMENT_GUIDE.
 
 *Superseded (D-022, T-108):* "Deploy production from `main` (tagged) to `https://<org>.github.io/roomsong/`, staging from `develop` to `/staging/`", and the Vercel mirror as a cold standby used only on failure. There is no staging path, no `gh-pages` branch and no tag trigger.
 

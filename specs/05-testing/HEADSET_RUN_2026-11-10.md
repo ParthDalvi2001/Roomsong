@@ -15,7 +15,7 @@ Count seconds aloud ("one-and-two...") or ask someone to hold a phone stopwatch.
 1. Headset: ☐ Quest 3S (Parth) ☐ Quest 3 (Chinmay). Network: ☐ home Wi-Fi ☐ phone hotspot (better: like a judge).
 2. Room 1: the room you scanned in Space Setup, with its table. Room 2 (Part D): another room with **no** scan.
 3. Controllers: on a shelf, out of reach, but in the house (Part D needs them).
-4. In the headset's browser open `https://parthdalvi2001.github.io/Roomsong/version.json?nocache=1`.
+4. In the headset's browser open `https://parthdalvi2001.github.io/SonicSpace/version.json?nocache=1`.
    Write the `commit`: ________ (it should be newer than 4bc6c7c and 5c676b6; Claude checks it).
 5. Browser settings → Privacy → **Clear browsing data** (names may differ): tick site data and cached files → Clear.
    This erases the garden on this headset. That is wanted: it is a judge's first visit,
@@ -25,7 +25,7 @@ Count seconds aloud ("one-and-two...") or ask someone to hold a phone stopwatch.
 
 ## Part A. Room 1, the plain link, a brand-new garden (about 9 minutes)
 
-**A1. Cold start, part 1 (T1).** Open `https://parthdalvi2001.github.io/Roomsong/`. Start counting as you tap the link.
+**A1. Cold start, part 1 (T1).** Open `https://parthdalvi2001.github.io/SonicSpace/`. Start counting as you tap the link.
 Stop when "Getting the garden ready." goes away and **Enter the garden** can be pressed.
 Should: 5 s or less. ☐ T1 = ____ s. What happened: ____________________
 
@@ -94,7 +94,7 @@ Should: you leave the garden, back to the first page. ☐ What happened: _______
 ## Part B. Room 1, the frame rate, then one-hand mode (about 5 minutes)
 
 **B1. The garden comes back, with the frame-rate panel.** Open
-`https://parthdalvi2001.github.io/Roomsong/?dev=1&flags=perfHud` and pinch Enter. Count from the pinch.
+`https://parthdalvi2001.github.io/SonicSpace/?dev=1&flags=perfHud` and pinch Enter. Count from the pinch.
 Should: your three plants on the same spot within 4 s. ☐ ____ s, drift ____ cm. ☐ "re-placed" instead.
 
 **B2. Read the frame rate.** A small panel sits low and left in your view. Its top line reads like `90 fps  1.4 ms`;
@@ -119,7 +119,7 @@ Should: you leave the garden. The seed does **not** jump to your fingers. ☐ Wh
 ## Part C. Room 1, no hands at all: look to select (about 4 minutes)
 
 **C1. The no-hands link.** On the first page, open **Accessibility** and untick **One hand**. Then open
-`https://parthdalvi2001.github.io/Roomsong/?access=gaze`. Pinch Enter (the page and the prompt need this one pinch).
+`https://parthdalvi2001.github.io/SonicSpace/?access=gaze`. Pinch Enter (the page and the prompt need this one pinch).
 From now on: **no pinches**. Hands in your lap.
 
 **C2. Plant by looking.** A small cream dot shows where your head points. Rest it on a free place on the bed.
@@ -144,7 +144,7 @@ do D1–D4 there, then scan it again in D5.
 
 **D1. Controllers held, no scan (BUG-045).** Go to Room 2. Pick up both controllers.
 If the headset asks for a boundary, make a stationary one. Do **not** run Space Setup.
-Open `https://parthdalvi2001.github.io/Roomsong/?dev=1&flags=perfHud` and press Enter with a controller.
+Open `https://parthdalvi2001.github.io/SonicSpace/?dev=1&flags=perfHud` and press Enter with a controller.
 Should: "Put the controllers down" shows. Hold the controllers 20 s and watch the fps panel: it stays steady.
 ☐ fps while holding: ____. What happened: ____________________
 
@@ -159,7 +159,7 @@ Where did it land? ☐ table ☐ other surface ☐ floating. What happened: ____
 
 **D5. Space Setup in Room 2.** Settings → Physical space → Space Setup. Scan the room; mark the table. ☐
 
-**D6. After the scan.** Open the plain link `https://parthdalvi2001.github.io/Roomsong/`, Enter.
+**D6. After the scan.** Open the plain link `https://parthdalvi2001.github.io/SonicSpace/`, Enter.
 Should: no "No room scan". Ripples over the table, a wall and the ceiling. ☐
 Ceiling caption, exact words: ____________________. Room colour 1–5: ____.
 Same garden, two rooms: does it sound different from Room 1? ☐ yes ☐ no. How? ☐ higher/lower ☐ mood ☐ echo ☐ other ____

@@ -145,7 +145,7 @@ What the emulator **cannot** tell you: real fps / JS ms on the Quest, hand-track
 | Local | `npm run dev` | `https://localhost:8081` (LAN: `https://<lan-ip>:8081`; *was 5173*) |
 | Local, built | `npm run build && npm run preview` | `https://<lan-ip>:4173`, or the next free port |
 | Staging | *none (T-108):* a push to `develop` runs CI and publishes nothing | — |
-| Prod | push to `main` (Parth) → `.github/workflows/deploy.yml` | `https://parthdalvi2001.github.io/Roomsong/` (case-sensitive; live once Parth enables Pages, T-108) |
+| Prod | push to `main` (Parth) → `.github/workflows/deploy.yml` | `https://parthdalvi2001.github.io/SonicSpace/` (case-sensitive; live once Parth enables Pages, T-108) |
 | Mirror | the same `dist/` uploaded to Vercel or Netlify (host not chosen yet) | _tbd_ |
 
 Secrets: none. The device test pages (`…/proto/pinch/`, `…/proto/spike/`) are served by the Local row, and by the Local, built row only after `ROOMSONG_PROTO=1 npm run build` (T-189); Prod and the mirror do not have them.

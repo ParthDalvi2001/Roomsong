@@ -108,7 +108,7 @@ A tag is a label: it deploys nothing (DEPLOYMENT_GUIDE §5). Agents never push `
         `git fetch origin && git checkout main && git merge --ff-only <F> && git push origin main && git checkout develop`
      3. Parth: Actions → wait for `deploy` of `<F>` to go green (red: runbook §5).
      4. Parth: `git tag -a v0.5.0 -m "Feature freeze 2026-11-12" <F> && git push origin v0.5.0`
-     5. Check: on the phone (mobile data) `https://parthdalvi2001.github.io/Roomsong/version.json?nocache=1` shows `commit` = `<F>`; the driver runs `git fetch origin --tags && git rev-parse 'v0.5.0^{commit}'` and compares. On a headset: open the live link in Meta Quest Browser, Enter, plant one seed, hear it. No mirror check (no mirror yet).
+     5. Check: on the phone (mobile data) `https://parthdalvi2001.github.io/SonicSpace/version.json?nocache=1` shows `commit` = `<F>`; the driver runs `git fetch origin --tags && git rev-parse 'v0.5.0^{commit}'` and compares. On a headset: open the live link in Meta Quest Browser, Enter, plant one seed, hear it. No mirror check (no mirror yet).
    - **B (label only, no deploy; the live site stays on today's `main`, 5c676b6, until the code freeze, so T-190 and T-147b reach it only on 15 Nov):** Parth says "go v0.5.0"; the driver runs
      `git tag -a v0.5.0 -m "Feature freeze 2026-11-12" <F> && git push origin develop v0.5.0`
 4. **Record:** a DECISIONS_LOG line (the freeze at `<F>`, A or B, the What's next list, the G3 verdict, the self-score decision); SPRINT_PLAN T-169 done; PROGRESS "Gates" G3 row; DECISIONS_PENDING 6 removed.
