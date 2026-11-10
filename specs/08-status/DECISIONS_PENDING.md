@@ -19,7 +19,7 @@ Someone who has never seen Roomsong plays the first five minutes on a headset wh
 3. **Chinmay, by 12 Nov (T-115):** (a) a screenshot of his Meta Horizon Start membership (the Representative must be a member); (b) open the Devpost "Enter a submission" form without submitting and send a photo of its fields, so the text fits them; (c) if the rules or form ask for prize papers (W-8BEN, bank), start them now.
 4. **Rate the music (T-164).** During the headset run, after A5: the song itself (style B, the app's sound since 25 Oct), 1 to 5 and one sentence. 4 or more closes the sound pass; below 4, say what is worst (fixes only after 12 Nov).
 6. **Devpost (T-180):** the launch line is agreed (9 Nov, D-069: "Early 2027 on the Meta Horizon Store, as a web app"). Still open: "What excites us about VR", two sentences in your own words (Parth: "I will reply shortly").
-7. **The name (10 Nov).** A recording studio called "The Sonic Space" exists; Rules §4.17 bars trademark infringement. ★ Keep SonicSpace (a different field) after a quick name search before the 13 Nov shoot; or rename before the shoot, since the title, link and end card change together.
+7. **The name (10 Nov). Closed: keep SonicSpace (D-083).** A recording studio called "The Sonic Space" exists; Rules §4.17 bars trademark infringement. ★ Keep SonicSpace (a different field) after a quick name search before the 13 Nov shoot; or rename before the shoot, since the title, link and end card change together.
 (7.2 and 7.5 closed 9 Nov: the G2 questions are settled by events or folded into items 5 and 6 above; SPRINT_PLAN T-155.)
 
 ## 9. Video and final check (Chinmay, with you)
