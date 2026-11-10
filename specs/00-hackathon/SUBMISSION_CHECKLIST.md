@@ -78,7 +78,7 @@ Immersive Web SDK, Three.js and TypeScript in Meta Quest Browser (WebXR). Plane 
 deterministic, quantised function turns the room's measurements into key, scale and echo; a 4-level placement
 fallback and a default song cover rooms it cannot read. Instanced procedural visuals (<N> draw calls), Web Audio
 synthesis (<N> voices). <Measured N fps on Quest 3 over 10 minutes.>
-As far as we know, no earlier consumer MR instrument lets room geometry tune the music.
+We found no app where the room sets the key.
 
 ## Known limitations
 <"Tested on Quest 3 in N rooms." | "Verified in the Immersive Web Emulator; device testing: N sessions / none.">
@@ -112,8 +112,8 @@ Copy rules (product-owner checks each one before the go/no-go):
   it was measured on a headset; otherwise the sentence is removed and "Known limitations" says the frame rate is unverified.
 - **Emulator versus device:** no sentence may present emulator-only behaviour as device-tested. "Known limitations" states
   what was tested on a headset, in how many rooms, and what was not (Golden Rule 11).
-- **The "first" claim:** only the qualified sentence above, word for word as in DEVPOST_DRAFT §1.2: "As far as we know, no
-  earlier consumer MR instrument lets room geometry tune the music." It says "as far as we know", uses no "first", and
+- **The "first" claim:** only the qualified sentence above, word for word as in DEVPOST_DRAFT §1.2: "We found no app where
+  the room sets the key." (v3.2, 10 Nov) It says what we found, uses no "first", and
   names no earlier project (the art and research antecedents of WINNING_STRATEGY §0.1 are not named in the copy: their
   names would be third-party names in a judge-facing place). Never "first musical garden", "first ever", "the only" or
   "no other app" (WINNING_STRATEGY §0.2). It stands only while S1 (the room tuning) ships. No competitor or brand names
