@@ -108,7 +108,7 @@ function renderChannel(render: ChannelRender, samples: number): boolean {
 
 /**
  * Fill one channel of an impulse response at once. Deterministic for (seed). The engine renders in slices
- * (impulseRenderer); this stays for the sound prototype (proto/sound) and for the tests that measure one channel.
+ * (impulseRenderer); this stays for the tests that measure one channel (the Phase 0 sound prototype that also used it was removed 10 Nov).
  */
 export function renderImpulseResponse(
   out: Float32Array,
