@@ -18,7 +18,20 @@ import {
  * "Show your palms to listen" (5). `done`: nothing more to teach.
  */
 export type OnboardingStep =
-  'off' | 'tune' | 'palm' | 'plant' | 'more' | 'grow' | 'move' | 'free' | 'listen' | 'done';
+  | 'off'
+  | 'tune'
+  | 'palm'
+  | 'plant'
+  | 'more'
+  | 'grow'
+  | 'move'
+  | 'free'
+  | 'listen'
+  // D-084 (10 Nov): the guide's tour after Listen: open the settings orb, then Seeds and Move lit on the board
+  | 'orb'
+  | 'seedsTip'
+  | 'moveTip'
+  | 'done';
 
 /** The release kinds that pass a gate (API_SPEC §1.4 `HeldGesture`). */
 export type GateGesture = 'pull' | 'drag';

@@ -35,6 +35,11 @@ export const STRINGS = {
   onboardPlantGaze: 'Look at a cell to plant', // gaze mode (Settings.gazeDwell): a dwell on a free cell plants (T-160)
   onboardListen: 'Show your palms to listen', // both palms out towards the garden (hands/ palmsOut)
   onboardListenClick: 'Click the orb to listen',
+  // D-084: the guide's tour after Listen, six words at most (FR-UI-01); one-hand and gaze mode say "look" for the orb
+  onboardOrb: 'Turn a hand over: settings',
+  onboardOrbLook: 'Look at the orb: settings',
+  onboardSeedsTip: 'Seeds: choose your next seed',
+  onboardMoveTip: 'Move: put the garden elsewhere',
   // The message of a user-facing failure has its error code (ErrorCode, API_SPEC §5) as its key (LLD §8).
   E_SAVE_FAILED: 'This garden cannot be saved',
   // A session with no sound (API_SPEC §1.10 rule 2): src/app.ts raises it. The garden still works, silent.
