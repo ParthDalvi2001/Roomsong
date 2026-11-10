@@ -136,6 +136,9 @@ test('landing page: name, Enter, device support, toggles and Help, all by keyboa
   await page.keyboard.press('Space');
   await expect(landing(page).getByLabel('Reduce motion')).toBeChecked();
   expect(await readSettings(page)).toMatchObject({ reducedMotion: true });
+  await page.keyboard.press('Tab'); // D-085: "Skip tutorial" after the four toggles
+  await expect(landing(page).getByLabel('Skip tutorial')).toBeFocused();
+  await expect(landing(page).getByLabel('Skip tutorial')).toHaveCSS('outline-style', 'solid');
   await page.keyboard.press('Tab');
   const help = landing(page).getByText('Help', { exact: true });
   await expect(help).toBeFocused();
@@ -170,6 +173,15 @@ test('landing page: each access toggle changes core settings, and follows them',
     await landing(page).getByLabel(label).uncheck();
     expect(await readSettings(page), label).toMatchObject({ [key]: false });
   }
+
+  // D-085: "Skip tutorial" is hintsEnabled the other way round: ticked, no guide on any visit.
+  await landing(page).getByLabel('Skip tutorial').check();
+  expect(await readSettings(page)).toMatchObject({ hintsEnabled: false });
+  await expect(landing(page).locator('summary', { hasText: 'Accessibility' })).toHaveText(
+    'Accessibility: skip tutorial',
+  );
+  await landing(page).getByLabel('Skip tutorial').uncheck();
+  expect(await readSettings(page)).toMatchObject({ hintsEnabled: true });
 
   // The other way: the store changes (what src/index.ts does with a loaded save, API_SPEC §2) and the boxes follow.
   await page.evaluate(async () => {

@@ -96,13 +96,18 @@ function build(root: HTMLElement) {
     label.append(LANDING.access[key]);
     return box;
   });
+  // D-085: "Skip tutorial", the inverse of the hintsEnabled setting (the guide starts only with hints on)
+  const skipLabel = add(access, 'label');
+  const skip = add(skipLabel, 'input');
+  skip.type = 'checkbox';
+  skipLabel.append(LANDING.skipTutorial);
 
   const help = add(root, 'details');
   add(help, 'summary', LANDING.helpHeading);
   const steps = add(help, 'ol');
   for (const step of LANDING.help) add(steps, 'li', step);
   add(root, 'p', LANDING.privacy);
-  return { button, status, device, rows, boxes, more, summary };
+  return { button, status, device, rows, boxes, skip, more, summary };
 }
 
 /**
@@ -110,7 +115,7 @@ function build(root: HTMLElement) {
  * `xr:sessionEnd`).
  */
 export function mountLanding(root: HTMLElement): Landing {
-  const { button, status, device, rows, boxes, more, summary } = build(root);
+  const { button, status, device, rows, boxes, skip, more, summary } = build(root);
   let arSupported: boolean | undefined;
   let enabled: readonly string[] | null | undefined = null;
   let enter: (() => Promise<boolean>) | null = null;
@@ -142,11 +147,15 @@ export function mountLanding(root: HTMLElement): Landing {
     boxes.forEach((box, i) => {
       box.checked = current[TOGGLES[i] as (typeof TOGGLES)[number]];
     });
-    if (boxes.some((box) => box.checked)) more.open = true; // what is on stays in sight
+    skip.checked = !current.hintsEnabled;
+    if (skip.checked || boxes.some((box) => box.checked)) more.open = true; // what is on stays in sight
     const on = (Object.keys(LANDING.accessOn) as (keyof typeof LANDING.accessOn)[]).filter(
       (key) => current[key],
     );
-    const names = on.map((key) => LANDING.accessOn[key]).join(', ');
+    const names = [
+      ...on.map((key) => LANDING.accessOn[key]),
+      ...(skip.checked ? [LANDING.skipTutorialOn] : []),
+    ].join(', ');
     summary.textContent = names === '' ? LANDING.accessHeading : `${LANDING.accessHeading}: ${names}`; // FR-UI-12
   }
   function entered(started: boolean): void {
@@ -179,6 +188,7 @@ export function mountLanding(root: HTMLElement): Landing {
   boxes.forEach((box, i) => {
     box.addEventListener('change', () => settings.set({ [TOGGLES[i] as string]: box.checked }));
   });
+  skip.addEventListener('change', () => settings.set({ hintsEnabled: !skip.checked }));
   bus.on('settings:changed', syncToggles);
   bus.on('xr:sessionStart', () => {
     sessionSeen = true;

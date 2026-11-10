@@ -49,6 +49,9 @@ export const LANDING = {
     highContrast: 'High contrast',
     reducedMotion: 'Reduce motion',
   },
+  // D-085 (Parth, 10 Nov): no guide on any visit while ticked; the setting is `hintsEnabled`, inverted
+  skipTutorial: 'Skip tutorial',
+  skipTutorialOn: 'skip tutorial',
   // FR-UI-12: what is on, after the heading in the closed section's summary: "Accessibility: look to select, one hand".
   accessOn: {
     gazeDwell: 'look to select',
@@ -125,5 +128,5 @@ export const PANEL = {
   seedsPage: 'Seeds',
   nextSeed: 'Your next seed',
   pickSeed: 'Choose the kind of your next seed',
-  skipGuide: 'Skip guide', // D-084: ends the guide; shown while it runs
+  skipGuide: 'Skip tutorial', // D-084, renamed by Parth 10 Nov (D-085): ends the guide; shown while it runs
 } as const;
