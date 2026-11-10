@@ -179,6 +179,7 @@ Should: the line starts "Day 2", then "Seeds left 1" (if C2 planted all three). 
 **F2. Throw one back.** Pinch the seed, let go off the bed. Should: it goes back to the supply (Seeds left unchanged). ☐
 **F3. The Seeds page.** Free hand palm down, press the orb, Garden tab, Seeds. Pick a kind under Calm. Raise the palm. Should: the seed has that kind's colour and shape. ☐
 **F4. The new board.** Look at Sound, Access and Garden. Is each clear? Do "Move" ("Garden spot") and "New garden" read? Does the board's lower edge clear the table and the plants? ☐ Rating 1–5: ____
+**F4b. Descriptions and glow (D-086).** Point at Time-lapse: a 1–2 line description shows under the tabs; is it readable, not squeezed? During the guide, does the glow breathe smoothly (no flicker when your hand nears it)? ☐
 **F5. The hum.** Plant a Thrumsprout (Calm). Rating 1–5: ____ (under 3: it is hidden again)
 
 ---
