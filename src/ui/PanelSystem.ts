@@ -32,6 +32,11 @@ import {
   CUE_SEGMENTS,
   ORB_CANVAS_PX,
   ORB_DIAMETER_M,
+  PANEL_ACCENT,
+  PANEL_ACCENT_HIGH_CONTRAST,
+  PANEL_BOLD_FONT,
+  PANEL_DANGER,
+  PANEL_DANGER_HIGH_CONTRAST,
   PANEL_DIM_ALPHA,
   PANEL_DIM_ALPHA_HIGH_CONTRAST,
   PANEL_DISTANCE_M,
@@ -42,6 +47,7 @@ import {
   PANEL_OUTLINE_PX,
   PANEL_PX_PER_M,
   PANEL_RENDER_ORDER,
+  PANEL_RULE_ALPHA,
   PANEL_SYMBOL_FONT,
   PANEL_TARGET_FILL,
   PANEL_TARGET_M,
@@ -50,6 +56,7 @@ import {
 import { clampToFov, fovBoundsDeg, type FovBounds, type FovElement } from './FovGuard.js';
 import {
   ArrayVec3,
+  EDGE_X,
   gazeTarget,
   hasPose,
   isHeadTurning,
@@ -61,6 +68,7 @@ import {
   Panel,
   PANEL_ELEMENT,
   placePanel,
+  RULE_Y,
   type Palm,
   type PanelControl,
   type PanelText,
@@ -86,34 +94,74 @@ const SLIDER_KNOB_X_PX = [-12, 14, -2] as const;
 const SLIDER_HALF_PX = 30;
 const SLIDER_KNOB_PX = 9;
 const SLIDER_LINE_PX = 6;
+/** A switch's knob, in canvas pixels: inside its pill's end with 14 px to spare. */
+const KNOB_PX = TARGET_PX / 2 - 14;
 
 /** Canvas pixels of a point of the panel's plane (metres from its centre, y up). */
 const px = (x: number): number => W / 2 + x * PANEL_PX_PER_M;
 const py = (y: number): number => H / 2 - y * PANEL_PX_PER_M;
 
-function drawControl(ctx: CanvasRenderingContext2D, control: PanelControl, dimAlpha: number): void {
-  const w = control.w * PANEL_PX_PER_M;
-  ctx.globalAlpha = control.dim ? dimAlpha : 1;
+/** The path of a pill `w` canvas pixels wide round (x, y): the targets' height and corner radius, as everywhere. */
+function pill(ctx: CanvasRenderingContext2D, x: number, y: number, w: number): void {
   ctx.beginPath();
-  ctx.roundRect(px(control.x) - w / 2, py(control.y) - TARGET_PX / 2, w, TARGET_PX, TARGET_PX / 2);
-  ctx.fillStyle = control.fill ?? (control.on ? CAPTION_TEXT_COLOUR : PANEL_TARGET_FILL);
-  ctx.fill();
-  ctx.stroke(); // every target has an outline; high contrast makes it heavier (FR-UI-05)
-  if (control.fill !== undefined && control.on) {
-    // T-193: a picked swatch keeps its colour and is lit by a heavier outline
-    const width = ctx.lineWidth;
-    ctx.lineWidth = 3 * width;
-    ctx.stroke();
-    ctx.lineWidth = width;
-  }
-  ctx.fillStyle = control.on ? PANEL_INK : CAPTION_TEXT_COLOUR;
-  ctx.font = control.text.length === 1 ? PANEL_SYMBOL_FONT : PANEL_FONT;
-  ctx.fillText(control.text, px(control.x), py(control.y), w - TARGET_PX / 4);
+  ctx.roundRect(x - w / 2, y - TARGET_PX / 2, w, TARGET_PX, TARGET_PX / 2);
 }
 
 /**
- * Draws the panel on its canvas: the backdrop, each control with its word or sign, each label and read-out (UX §3.6).
- * High contrast is cream on opaque black with heavier outlines and a frame (FR-UI-05). Once per change, not per frame.
+ * One control, by its look (10 Nov). A segment or a stepper's button lies on its group's track: the chosen segment is
+ * filled with the accent and written bold in charcoal. A switch is a pill whose knob sits right and fills with the
+ * accent when on, left and faint when off, its word on the other half. Seeds is the primary button (filled), New
+ * garden the destructive one (a red outline); the rest are outlined pills, a seed swatch filled with its colour.
+ */
+function drawControl(ctx: CanvasRenderingContext2D, control: PanelControl, highContrast: boolean): void {
+  const w = control.w * PANEL_PX_PER_M;
+  const x = px(control.x);
+  const y = py(control.y);
+  const accent = highContrast ? PANEL_ACCENT_HIGH_CONTRAST : PANEL_ACCENT;
+  const filled = control.on || control.look === 'primary';
+  let textX = x;
+  let textW = w - TARGET_PX / 4;
+  ctx.globalAlpha = control.dim ? (highContrast ? PANEL_DIM_ALPHA_HIGH_CONTRAST : PANEL_DIM_ALPHA) : 1;
+  pill(ctx, x, y, w);
+  if (control.look === 'segment' || control.look === 'step') {
+    // on the track: a stepper's button is a faint disc, the chosen segment is filled
+    ctx.fillStyle = control.on ? accent : PANEL_TARGET_FILL;
+    if (control.on || control.look === 'step') ctx.fill();
+  } else if (control.look === 'danger') {
+    const stroke = ctx.strokeStyle;
+    ctx.strokeStyle = highContrast ? PANEL_DANGER_HIGH_CONTRAST : PANEL_DANGER;
+    ctx.stroke();
+    ctx.strokeStyle = stroke;
+  } else {
+    ctx.fillStyle = control.fill ?? (filled ? accent : PANEL_TARGET_FILL);
+    ctx.fill();
+    ctx.stroke(); // every target has an outline; high contrast makes it heavier (FR-UI-05)
+    if (control.fill !== undefined && control.on) {
+      // T-193: a picked swatch keeps its colour and is lit by a heavier outline
+      const width = ctx.lineWidth;
+      ctx.lineWidth = 3 * width;
+      ctx.stroke();
+      ctx.lineWidth = width;
+    }
+  }
+  if (control.look === 'switch') {
+    const side = (control.on ? 1 : -1) * ((w - TARGET_PX) / 2);
+    ctx.beginPath();
+    ctx.arc(x + side, y, KNOB_PX, 0, 2 * Math.PI);
+    ctx.fillStyle = control.on ? PANEL_INK : CAPTION_TEXT_COLOUR;
+    ctx.fill();
+    textX = x - side;
+    textW = TARGET_PX - TARGET_PX / 4;
+  }
+  ctx.fillStyle = filled ? PANEL_INK : CAPTION_TEXT_COLOUR;
+  ctx.font = control.text.length === 1 ? PANEL_SYMBOL_FONT : filled ? PANEL_BOLD_FONT : PANEL_FONT;
+  ctx.fillText(control.text, textX, y, textW);
+}
+
+/**
+ * Draws the panel on its canvas: the backdrop, the rule under the header, the track of each stepper and segmented
+ * control, each control with its word or sign, each label and read-out (UX §3.6). High contrast is cream on opaque
+ * black with heavier outlines, a frame and its own accent (FR-UI-05). Once per change, not per frame.
  */
 export function drawPanel(
   ctx: CanvasRenderingContext2D,
@@ -134,15 +182,37 @@ export function drawPanel(
   ctx.fillStyle = highContrast ? CAPTION_BACKDROP_HIGH_CONTRAST : CAPTION_BACKDROP;
   ctx.fill();
   if (highContrast) ctx.stroke();
+  ctx.globalAlpha = highContrast ? 1 : PANEL_RULE_ALPHA;
+  ctx.fillStyle = CAPTION_TEXT_COLOUR;
+  ctx.fillRect(px(-EDGE_X), py(RULE_Y) - outline / 2, 2 * EDGE_X * PANEL_PX_PER_M, outline);
 
+  ctx.globalAlpha = 1;
+  const group = (control: PanelControl | undefined): string =>
+    control?.look === 'segment' || control?.look === 'step'
+      ? control.id.slice(0, control.id.indexOf(':'))
+      : '';
+  for (let i = 0; i < controls.length; i++) {
+    const first = controls[i] as PanelControl;
+    const name = group(first);
+    if (name === '') continue;
+    while (group(controls[i + 1]) === name) i++;
+    const last = controls[i] as PanelControl;
+    const left = px(first.x - first.w / 2);
+    const right = px(last.x + last.w / 2);
+    pill(ctx, (left + right) / 2, py(first.y), right - left);
+    ctx.fillStyle = PANEL_TARGET_FILL;
+    ctx.fill();
+    ctx.stroke();
+  }
   ctx.textAlign = 'center';
-  for (const control of controls) drawControl(ctx, control, dimAlpha);
-  ctx.textAlign = 'left';
-  ctx.font = PANEL_FONT;
+  for (const control of controls) drawControl(ctx, control, highContrast);
   ctx.fillStyle = CAPTION_TEXT_COLOUR;
   for (const text of texts) {
     ctx.globalAlpha = text.dim ? dimAlpha : 1;
-    ctx.fillText(text.text, px(text.x), py(text.y), text.w * PANEL_PX_PER_M);
+    ctx.textAlign = text.value === true ? 'center' : 'left';
+    ctx.font = text.value === true ? PANEL_BOLD_FONT : PANEL_FONT;
+    const x = text.value === true ? text.x + text.w / 2 : text.x;
+    ctx.fillText(text.text, px(x), py(text.y), text.w * PANEL_PX_PER_M);
   }
   ctx.globalAlpha = 1;
 }
@@ -257,6 +327,8 @@ export class PanelSystem extends createSystem(
   private orb!: Quad;
   private ring!: Mesh<RingGeometry, MeshBasicMaterial>;
   private fill!: Mesh<RingGeometry, MeshBasicMaterial>;
+  /** The fill ring's colour now: New garden's hold fills in the warm red, any other hold or dwell in the violet. */
+  private fillColour = CUE_FILL_COLOUR;
   /** Each hand's HandState entity and the views of its palm, kept while the entity has the component. */
   private readonly palms: Record<Hand, (Palm & { entity: Entity }) | null> = { left: null, right: null };
   // Per slot: its entity, the id of the control it stands for ('' = none: the entity has no Interactable then),
@@ -524,6 +596,12 @@ export class PanelSystem extends createSystem(
     this.ring.visible = i >= 0;
     this.fill.visible = i >= 0 && steps > 0;
     if (i < 0) return;
+    const danger = settings.get().highContrast ? PANEL_DANGER_HIGH_CONTRAST : PANEL_DANGER;
+    const colour = id === NEW_GARDEN_ID ? danger : CUE_FILL_COLOUR;
+    if (colour !== this.fillColour) {
+      this.fill.material.color.set(colour); // on a change only: a colour parsed from a string costs heap
+      this.fillColour = colour;
+    }
     this.fill.geometry.setDrawRange(0, steps * INDICES_PER_SEGMENT);
     // Both rings face the way their target does (the orb's or the panel's matrix), at the target's centre, and are
     // as wide as it: a control that holds a word is twice as wide as it is tall.
