@@ -126,7 +126,14 @@ describe('HintSystem: the onboarding steps (UX §3.3)', () => {
   it('off: nothing shows and nothing is drawn', () => {
     const r = rig();
     r.settle();
-    expect(r.system.shows).toEqual({ icon: -1, ring: -1, arrow: -1, hands: [-1, -1], ghostHands: 0, line: false });
+    expect(r.system.shows).toEqual({
+      icon: -1,
+      ring: -1,
+      arrow: -1,
+      hands: [-1, -1],
+      ghostHands: 0,
+      line: false,
+    });
     for (const mesh of [r.icon, r.ring, r.arrow, ...r.scene.children]) expect(mesh.visible).toBe(false);
   });
 
