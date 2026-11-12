@@ -182,6 +182,15 @@ Should: the line starts "Day 2", then "Seeds left 1" (if C2 planted all three). 
 **F4b. Descriptions and glow (D-086).** Point at Time-lapse: a 1–2 line description shows under the tabs; is it readable, not squeezed? During the guide, does the glow breathe smoothly (no flicker when your hand nears it)? ☐
 **F5. The hum.** Plant a Thrumsprout (Calm). Rating 1–5: ____ (under 3: it is hidden again)
 
+## Part G. The guide's dotted arrows and the petal lesson (D-089, 12 Nov; about 4 minutes)
+
+Start it: untick **One hand** on the start page; settings orb → Garden → hold **New garden**.
+
+**G1. Arrows.** At each step a dotted line flows from where to act to where to let go, with an arrowhead: seed supply → your open hand; seed → glowing cell; up from the plant; two cells along; out past the rim; your hand → the petal; towards the garden (Listen); your hand → the back of your other hand (settings). Are they easy to follow? Rating 1–5: ____ ☐
+**G2. Remove.** After the move: "Drag a plant off to remove", the arrow points off the bed. Drag a plant off. ☐
+**G3. Undo.** "Pinch the petal to undo", the ring and the arrow on the petal. Pinch it within 5 s: the plant comes back. (Let one fade once: the guide still goes on.) ☐
+**G4. Settings.** Turn the other hand over, pinch the orb; Seeds then Move glow 4 s each; done. ☐
+
 ---
 
 ## Not on this sheet (they need something the live site does not have)
