@@ -74,6 +74,11 @@ interface Probe {
   ringAt(): Vec3;
   seedTarget(): { id: string; at: Vec3 } | null;
   plantTargets(): { id: string; at: Vec3 }[];
+  /** D-089: the undo petals up, by the removed plant's id. */
+  petalTargets(): { id: string; at: Vec3 }[];
+  /** A bed-local point (x, z on the bed's plane) in the world, and on the page. */
+  bedPoint(x: number, z: number): Vec3;
+  bedOnPage(x: number, z: number): { x: number; y: number };
   hand(hand: Hand): { palmPos: Vec3; pinchPos: Vec3 };
   cellAt(cell: Cell): Vec3;
   plants(): { id: string; cell: Cell; family: string | null }[];
@@ -180,6 +185,27 @@ async function probeApp(page: Page): Promise<JSHandle<Probe>> {
           id: e.getValue(Interactable, 'id') ?? '',
           at: vec(e.getVectorView(Interactable, 'worldPos')),
         })),
+      petalTargets: () =>
+        ofKind('undo').map((e) => ({
+          id: e.getValue(Interactable, 'id') ?? '',
+          at: vec(e.getVectorView(Interactable, 'worldPos')),
+        })),
+      bedPoint(x, z) {
+        const e = bed.matrixWorld.elements;
+        return {
+          x: e[0] * x + e[8] * z + e[12],
+          y: e[1] * x + e[9] * z + e[13],
+          z: e[2] * x + e[10] * z + e[14],
+        };
+      },
+      bedOnPage(x, z) {
+        const ndc = bed.localToWorld(bed.position.clone().set(x, 0, z)).project(world.camera);
+        const rect = world.renderer.domElement.getBoundingClientRect();
+        return {
+          x: rect.left + ((ndc.x + 1) / 2) * rect.width,
+          y: rect.top + ((1 - ndc.y) / 2) * rect.height,
+        };
+      },
       hand: (hand) => ({
         palmPos: vec(stateOf(hand).getVectorView(hands.HandState, 'palmPos')),
         pinchPos: vec(stateOf(hand).getVectorView(hands.HandState, 'pinchPos')),
@@ -410,8 +436,30 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   await page.screenshot({ path: '.tmp/t150-5-drag.png' });
   await hands.releaseAt(across);
   await heard(probe, 'gesture:release', { gesture: 'drag' });
-  // Both gates earned: the Listen step at once, "Show your palms to listen" (free is passed, not said).
+  // D-089: the remove step, "Drag a plant off to remove", a dotted arrow out past the rim. The left palm goes down:
+  // the supply is empty, and its "No seeds left" every 4 s would hold the line of captions.
+  await hands.putLeft(PALM_DOWN);
+  await stepAt(probe, 'remove');
+  await xrFrames(page, 20);
+  expect(await probe.evaluate((p) => p.shows())).toMatchObject({ icon: ICON.drag, ring: RING, line: true });
+  await page.screenshot({ path: '.tmp/t150-6-remove.png' });
+  const there = (await probe.evaluate((p) => p.plantTargets())).find((t) => t.id === newest.id)!.at;
+  expect(await hands.pinchAt(there)).toBeLessThan(HIT_RADIUS_M / 4);
+  const off = { ...(await probe.evaluate((p) => p.bedPoint(0.45, 0))), y: there.y }; // past the rim, at its height
+  await hands.carryTo(off);
+  await hands.releaseAt(off);
+  // The undo step: "Pinch the petal to undo", the ring and the arrow on the petal; pinched within its 5 s.
+  await stepAt(probe, 'undo');
+  await expect.poll(() => probe.evaluate((p) => p.petalTargets().length)).toBe(1);
+  expect(await probe.evaluate((p) => p.shows())).toMatchObject({ ring: RING, line: true });
+  await page.screenshot({ path: '.tmp/t150-7-undo.png' });
+  const petal = (await probe.evaluate((p) => p.petalTargets()))[0]!;
+  expect(petal.id).toBe(newest.id);
+  expect(await hands.pinchAt(petal.at)).toBeLessThan(HIT_RADIUS_M / 4);
+  await hands.releaseAt(petal.at);
+  // Every gate earned: the Listen step at once, "Show your palms to listen" (free is passed, not said).
   const free = await stepAt(probe, 'listen');
+  expect((await probe.evaluate((p) => p.plants())).map((p) => p.id)).toContain(newest.id); // back on the bed
   await xrFrames(page, 5);
   // The left palm, still up with the supply empty, raises "No seeds left" every 4 s (BUG-056): captions show one at
   // a time, so the Listen caption can wait its turn behind one (D-080 made the seeds come faster).
@@ -446,9 +494,11 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   expect(appShareMs(timing)).toBeLessThanOrEqual(FIRST_SOUND_MS);
   expect(timing.firstLoopMs).toBeLessThanOrEqual(FIRST_LOOP_MS);
   // One caption at a time, each one of the tutorial's own after the ripple's, at most six words (FR-UI-01).
-  expect(timing.captions.filter((key) => key?.startsWith('onboard'))).toEqual([
+  expect(timing.captions.filter((key) => key?.startsWith('onboard') || key === 'undoHint')).toEqual([
     'onboardPalm',
     'onboardPlant',
+    'onboardRemove',
+    'undoHint',
     'onboardListen',
   ]);
   expect(timing.maxFlashPerS).toBeLessThanOrEqual(3); // FR-UI-11
@@ -522,6 +572,16 @@ test('TC-E2E-14 the first minute in the garden window: a click on the glowing ce
   await page.mouse.move(to.x, to.y, { steps: 12 });
   await page.mouse.up();
   await heard(probe, 'gesture:release', { gesture: 'drag' });
+  // D-089: the remove step: the same plant dragged with the mouse off the bed; then its petal clicked.
+  await stepAt(probe, 'remove');
+  const off = await probe.evaluate((p) => p.bedOnPage(0.45, 0));
+  await page.mouse.move(to.x, to.y);
+  await page.mouse.down();
+  await page.mouse.move(off.x, off.y, { steps: 12 });
+  await page.mouse.up();
+  await stepAt(probe, 'undo');
+  const petalOnPage = await probe.evaluate((p) => p.cellOnPage({ ring: 3, step: 2 }));
+  await page.mouse.click(petalOnPage.x, petalOnPage.y);
   const free = await stepAt(probe, 'free');
   const timing = await probe.evaluate(
     (p, freeAtMs) => ({
@@ -540,7 +600,11 @@ test('TC-E2E-14 the first minute in the garden window: a click on the glowing ce
   );
   expect(appShareMs(timing)).toBeLessThanOrEqual(FIRST_SOUND_MS);
   expect(timing.firstLoopMs).toBeLessThanOrEqual(FIRST_LOOP_MS);
-  expect(timing.captions.filter((key) => key.startsWith('onboard'))).toEqual(['onboardPlantClick']);
+  expect(timing.captions.filter((key) => key.startsWith('onboard') || key.startsWith('undo'))).toEqual([
+    'onboardPlantClick',
+    'onboardRemove',
+    'undoHintClick',
+  ]);
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
 });

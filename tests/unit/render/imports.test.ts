@@ -91,12 +91,14 @@ describe('render/ dependency direction (API_SPEC §1)', () => {
         'FOVEATION_MEDIUM',
         'FlashGuard',
         'HaloSystem', // T-148
+        'PETAL_LIFT_M', // D-089: the guide's arrow ends on the petal
         'PLANT_FLASH_BRIGHTNESS', // T-160: the beat ring lights as the plants do
         'PLANT_REST_BRIGHTNESS',
         'PerfSampler',
         'PerfSystem',
         'PetalRenderer',
         'PlantRenderer',
+        'SUPPLY_ORB_LIFT_M', // D-089: and starts at the seed supply
         'SeedSystem',
         'TideRenderer',
         'TuningRippleSystem',

@@ -19,7 +19,7 @@ const T0 = 12_345_678; // a frame time of real size, ms
  * `free` in a headset is passed at once: the gates earned bring the Listen step (step 5).
  */
 function at(
-  step: 'tune' | 'palm' | 'plant' | 'more' | 'grow' | 'move' | 'free',
+  step: 'tune' | 'palm' | 'plant' | 'more' | 'grow' | 'move' | 'remove' | 'undo' | 'free',
   canPull = true,
   onStall?: ConstructorParameters<typeof Onboarding>[0],
 ): Onboarding {
@@ -38,6 +38,10 @@ function at(
   if (canPull) m.released('pull');
   if (step === 'move') return m;
   m.released('drag');
+  if (step === 'remove') return m;
+  m.removed(); // D-089
+  if (step === 'undo') return m;
+  m.undone();
   return m;
 }
 
@@ -138,15 +142,28 @@ describe('Onboarding: gates 2 and 3, grow then move (step 4)', () => {
     m.released('drag');
     expect(m.step).toBe('grow');
     m.released('pull');
-    expect(m.step).toBe('listen'); // the drag made before counts for the move gate; both earned: step 5
+    expect(m.step).toBe('remove'); // the drag made before counts for the move gate (D-089: then the remove gate)
   });
 
-  it('grow -> move -> listen, one at a time: both gates earned, Listen is taught at once (day 1 has 3 seeds)', () => {
+  it('grow -> move -> remove -> undo -> listen, one at a time: every gate earned, Listen at once (day 1 has 3 seeds)', () => {
     const m = at('grow');
     m.released('pull');
     expect(m.step).toBe('move');
     m.released('drag');
+    expect(m.step).toBe('remove');
+    m.undone(); // no removal yet: nothing to undo
+    expect(m.step).toBe('remove');
+    m.removed();
+    expect(m.step).toBe('undo');
+    m.undone();
     expect(m.step).toBe('listen');
+  });
+
+  it('D-089: a drag off the bed in the move step passes the move and the remove gates at once', () => {
+    const m = at('move');
+    m.released('drag');
+    m.removed();
+    expect(m.step).toBe('undo');
   });
 
   it('a gate the net passed is not earned: free, and the 4-minute net brings Listen', () => {
@@ -154,6 +171,8 @@ describe('Onboarding: gates 2 and 3, grow then move (step 4)', () => {
     m.tick(T0 + STEP_STALL_MS); // the pull never came
     expect(m.step).toBe('move');
     m.released('drag');
+    m.removed();
+    m.undone();
     expect(m.step).toBe('free');
     m.tick(T0 + LISTEN_AFTER_MS);
     expect(m.step).toBe('listen');
@@ -164,6 +183,9 @@ describe('Onboarding: gates 2 and 3, grow then move (step 4)', () => {
     m.changed(HINT_RING_AFTER_PLANTS - 1);
     expect(m.step).toBe('move');
     m.released('drag');
+    expect(m.step).toBe('remove'); // D-089: a pointer drags a plant off too, and clicks its petal
+    m.removed();
+    m.undone();
     expect(m.step).toBe('free');
   });
 });
@@ -174,7 +196,9 @@ describe('Onboarding: the 60 s net (D-053): no one is stuck', () => {
     const pairs = [
       ['more', 'grow'],
       ['grow', 'move'],
-      ['move', 'free'],
+      ['move', 'remove'],
+      ['remove', 'free'], // D-089: no removal, no petal: the undo step is passed too
+      ['undo', 'listen'], // the undo's net: free, and every gate earned before it brings Listen at once
     ] as const;
     for (const [from, to] of pairs) {
       const m = at(from, true, (was, now) => stalls.push(`${was}>${now}`));
@@ -183,7 +207,7 @@ describe('Onboarding: the 60 s net (D-053): no one is stuck', () => {
       m.tick(T0 + STEP_STALL_MS);
       expect(m.step).toBe(to);
     }
-    expect(stalls).toEqual(['more>grow', 'grow>move', 'move>free']);
+    expect(stalls).toEqual(['more>grow', 'grow>move', 'move>remove', 'remove>free', 'undo>free']);
   });
 
   it('palm and plant have no net: with nothing planted, nothing teaches shaping a plant (D-061)', () => {
@@ -252,6 +276,8 @@ describe('Onboarding: step 5, Listen (the gates earned, 4 min or 6 plantings)', 
     const earned = at('move');
     earned.listened();
     earned.released('drag');
+    earned.removed();
+    earned.undone();
     expect(earned.step).toBe('orb');
   });
 });
@@ -332,6 +358,8 @@ describe('Onboarding: skip and restart (D-084)', () => {
     expect(m.step).toBe('grow'); // the pull and the drag before are forgotten
     m.released('pull');
     m.released('drag');
+    m.removed();
+    m.undone();
     m.listened();
     expect(m.step).toBe('seedsTip'); // the board opened before the restart is still open
     const gaze = at('more');

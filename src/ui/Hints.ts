@@ -24,8 +24,9 @@ import {
 } from '@iwsdk/core';
 
 import { bus, log, settings, type EventMap, type Hand, type Settings } from '../core/index.js';
-import { cellCentre, type Cell } from '../garden/index.js';
+import { BED_OUTER, cellCentre, type Cell, type GardenState } from '../garden/index.js';
 import { HAND_HINT_MAX_MS, HandState } from '../hands/index.js';
+import { PETAL_LIFT_M, SUPPLY_ORB_LIFT_M } from '../render/index.js';
 
 import {
   ATLAS_CELL_PX,
@@ -39,6 +40,7 @@ import {
   GLOW_LOW,
   GLOW_PERIOD_MS,
   GUIDE_CELL,
+  GUIDE_FLOW_MS,
   HAND_HINT_DISTANCE_M,
   HAND_HINT_FADE_IN_MS,
   HAND_HINT_LIFT_M,
@@ -49,6 +51,7 @@ import {
   HINT_RENDER_ORDER,
   ICON_SIZE_M,
   LISTEN_ICON_LIFT_M,
+  ORB_OFF_HAND_M,
   PANEL_ACCENT,
   PANEL_ACCENT_HIGH_CONTRAST,
   PALM_ICON_LIFT_M,
@@ -60,6 +63,7 @@ import {
   RING_SIZE_M,
 } from './config.js';
 import { clampToFov, type FovElement } from './FovGuard.js';
+import { GuideLine } from './GuideLine.js';
 
 type Step = EventMap['onboarding:step']['step'];
 
@@ -102,13 +106,15 @@ export function neon(out: Color, s: Readonly<Settings>, ms: number): void {
 }
 const GHOST_TRAVEL_M = GHOST_BOTTOM_M - GHOST_TOP_M; // negative: the loop goes down first
 const handIndex = (hand: Hand): number => (hand === 'left' ? 0 : 1);
+/** D-089: the outer ring's cell nearest the seated player (step 4, D-029): where an arrow starts with no hand to start at. */
+const NEAR_CELL: Readonly<Cell> = Object.freeze({ ring: 4, step: 4 });
 
 export class HintSystem extends createSystem(
   { hands: { required: [HandState] } },
   { bed: { type: Types.Object, default: null } },
 ) {
   /** What each element shows now, for tests: the atlas frame, or -1 while it is hidden or fading out. */
-  readonly shows = { icon: -1, ring: -1, arrow: -1, hands: [-1, -1] };
+  readonly shows = { icon: -1, ring: -1, arrow: -1, hands: [-1, -1], line: false };
 
   private step: Step = 'off';
   private isListening = false;
@@ -134,6 +140,18 @@ export class HintSystem extends createSystem(
   private readonly bedTurn = new Quaternion();
   /** The glowing cell's centre, bed-local: it never moves. */
   private readonly guide = cellCentre(GUIDE_CELL, new Vector2());
+  /** D-089: the dotted navigation arrow of each step, and the points it is worked out from (world). */
+  private line!: GuideLine;
+  private readonly from = new Vector3();
+  private readonly to = new Vector3();
+  private readonly nextCell: Cell = { ring: 0, step: 0 };
+  /** The hand a seed rests on (`garden:seedOut`), as handIndex; -1 for none. */
+  private seedHand = -1;
+  /** The garden of the latest `garden:changed` and the one before: a removed plant's cell is in one of them. */
+  private state: GardenState | null = null;
+  private lastState: GardenState | null = null;
+  /** D-089: the cell of the plant whose petal is up, from `garden:removed`; null for none. */
+  private petalCell: Cell | null = null;
 
   override init(): void {
     const canvas = document.createElement('canvas');
@@ -158,6 +176,7 @@ export class HintSystem extends createSystem(
       mesh.scale.setScalar(HAND_HINT_SIZE_M);
       this.handMeshes.push(mesh);
     }
+    this.line = new GuideLine(this.scene);
 
     const { hands } = this.queries;
     this.cleanupFuncs.push(
@@ -173,11 +192,17 @@ export class HintSystem extends createSystem(
       bus.on('onboarding:step', ({ step }) => void (this.step = step)),
       bus.on('garden:changed', ({ state }) => {
         this.newest = state.plants[state.plants.length - 1]?.cell ?? null;
+        this.lastState = this.state;
+        this.state = state;
       }),
-      bus.on('garden:removed', () => {
+      bus.on('garden:removed', ({ plantId }) => {
         this.hasRemoved = true; // UX §3.4: shown until the first removal
         this.dragHand = null;
+        const find = (s: GardenState | null) => s?.plants.find((plant) => plant.id === plantId)?.cell ?? null;
+        this.petalCell = find(this.state) ?? find(this.lastState);
       }),
+      bus.on('garden:seedOut', ({ hand }) => void (this.seedHand = handIndex(hand))),
+      bus.on('garden:seedBack', () => void (this.seedHand = -1)),
       bus.on('gesture:drag', ({ hand }) => {
         if (!this.hasRemoved) this.dragHand = hand;
       }),
@@ -203,6 +228,7 @@ export class HintSystem extends createSystem(
         }
         for (const geometry of this.frames) geometry.dispose();
         this.texture.dispose();
+        this.line.dispose();
       },
     );
   }
@@ -254,7 +280,7 @@ export class HintSystem extends createSystem(
       if (still || isClosed) at.y = GHOST_BOTTOM_M;
       else if (phase < GHOST_CLOSE_AT) at.y = GHOST_TOP_M + GHOST_TRAVEL_M * (phase / GHOST_CLOSE_AT);
       else at.y = GHOST_TOP_M + GHOST_TRAVEL_M * ((1 - phase) / (1 - GHOST_OPEN_AT));
-    } else if ((step === 'grow' || step === 'move') && this.newest !== null) {
+    } else if ((step === 'grow' || step === 'move' || step === 'remove') && this.newest !== null) {
       ring = this.newest;
       cellCentre(this.newest, this.at);
       icon = step === 'grow' ? Frame.Pull : Frame.Drag;
@@ -262,6 +288,8 @@ export class HintSystem extends createSystem(
       at.x = this.at.x;
       at.y = RING_ICON_LIFT_M;
       at.z = this.at.y;
+    } else if (step === 'undo' && this.petalCell !== null) {
+      ring = this.petalCell; // D-089: the ring glows round the petal's cell
     } else if (step === 'listen') {
       icon = isXr ? Frame.PalmsOut : Frame.PointerClick;
       if (!isXr) iconMirror = 1;
@@ -313,7 +341,145 @@ export class HintSystem extends createSystem(
     this.shows.arrow = isArrow ? arrowFrame : -1;
     fade(this.arrow, isArrow, dtMs, HINT_FADE_MS);
 
+    // D-089: the step's dotted navigation arrow, from where to act to where to let go
+    const isLine = isShown && this.pointArrow(step, isXr, head, now);
+    neon(this.line.material.color, now, this.frameMs);
+    this.line.show(fadeTo(this.line.material, isLine, dtMs));
+    this.shows.line = isLine;
+
     for (let i = 0; i < 2; i++) this.updateHand(i, head, dtMs);
+  }
+
+  /**
+   * D-089: sets the navigation arrow for `step` and says whether there is one. Points are written field by field,
+   * millimetres and thousandths handed on, never a fraction, and each step is its own small method, which V8
+   * optimises soon (one long one stayed slow and boxed: onboarding.heap.test.ts). Creates nothing.
+   */
+  private pointArrow(step: Step, isXr: boolean, head: Matrix4, s: Readonly<Settings>): boolean {
+    const bed = this.icon.parent;
+    if (bed === null) return false;
+    const main = this.handStates[s.dominantHand === 'left' ? 0 : 1] ?? null;
+    let liftMm: number;
+    if (step === 'palm' && isXr) liftMm = this.arrowPalm(main, bed);
+    else if (step === 'plant') liftMm = this.arrowPlant(bed);
+    else if ((step === 'grow' || step === 'move' || step === 'remove') && this.newest !== null)
+      liftMm = this.arrowShape(step, this.newest, bed);
+    else if (step === 'undo' && this.petalCell !== null) liftMm = this.arrowUndo(main, this.petalCell, bed);
+    else if (step === 'listen') liftMm = this.arrowListen(head, bed);
+    else if (step === 'orb' && isXr && !s.oneHand && !s.gazeDwell) liftMm = this.arrowOrb(main, s);
+    else return false;
+    if (liftMm < 0) return false;
+    this.line.set(this.from, this.to, liftMm);
+    this.line.draw(s.reducedMotion ? 0 : Math.floor((1000 * (this.frameMs % GUIDE_FLOW_MS)) / GUIDE_FLOW_MS));
+    return true;
+  }
+
+  /** From the seed supply to the open main hand (or over the near rim): the seed comes to it. */
+  private arrowPalm(main: Entity | null, bed: Object3D): number {
+    const from = this.from;
+    from.x = 0;
+    from.y = SUPPLY_ORB_LIFT_M;
+    from.z = 0;
+    from.applyMatrix4(bed.matrixWorld);
+    if (!this.palmOf(main, this.to)) this.cellAt(NEAR_CELL, 0.15, bed, this.to);
+    return 40;
+  }
+
+  /** From the seed on the hand that holds it (or over the glowing cell) down onto the glowing cell. */
+  private arrowPlant(bed: Object3D): number {
+    const holder = this.seedHand >= 0 ? (this.handStates[this.seedHand] ?? null) : null;
+    if (this.palmOf(holder, this.from))
+      this.from.y += 0.035; // the seed rests on the palm
+    else this.cellAt(GUIDE_CELL, 0.15, bed, this.from);
+    this.cellAt(GUIDE_CELL, 0.02, bed, this.to);
+    return 60;
+  }
+
+  /** The newest plant: straight up (grow), two cells along its ring (move), or out past the rim (remove). */
+  private arrowShape(step: Step, newest: Cell, bed: Object3D): number {
+    const { from, to } = this;
+    this.cellAt(newest, 0.05, bed, from);
+    if (step === 'grow') {
+      to.copy(from);
+      to.y += 0.1;
+      return 0;
+    }
+    if (step === 'move') {
+      // shortcut: two cells along the ring whether that cell is free or not; it shows the gesture, not a spot
+      this.nextCell.ring = newest.ring;
+      this.nextCell.step = (newest.step + 2) % 16;
+      this.cellAt(this.nextCell, 0.05, bed, to);
+      return 30;
+    }
+    cellCentre(newest, this.at); // along the plant's own direction from the centre, out over the rim
+    const k = (BED_OUTER + 0.1) / Math.sqrt(this.at.x * this.at.x + this.at.y * this.at.y);
+    to.x = this.at.x * k;
+    to.y = 0.05;
+    to.z = this.at.y * k;
+    to.applyMatrix4(bed.matrixWorld);
+    return 30;
+  }
+
+  /** From the main hand's pinch (or over the near rim) to the petal over the removed plant's cell. */
+  private arrowUndo(main: Entity | null, petal: Cell, bed: Object3D): number {
+    if (!this.pinchOf(main, this.from)) this.cellAt(NEAR_CELL, 0.15, bed, this.from);
+    this.cellAt(petal, PETAL_LIFT_M, bed, this.to);
+    return 40;
+  }
+
+  /** From before the eyes towards the garden: the palms go out to it (the window's Listen orb is there too). */
+  private arrowListen(head: Matrix4, bed: Object3D): number {
+    const e = head.elements;
+    const { from, to } = this;
+    from.x = e[12] - 0.3 * e[8];
+    from.y = e[13] - 0.3 * e[9];
+    from.z = e[14] - 0.3 * e[10];
+    to.x = 0;
+    to.y = 0.03;
+    to.z = 0;
+    to.applyMatrix4(bed.matrixWorld);
+    return 20;
+  }
+
+  /** From the main hand's pinch to where the orb rides, off the back of the other hand (ui/Panel orbOnHand). */
+  private arrowOrb(main: Entity | null, s: Readonly<Settings>): number {
+    const other = this.handStates[s.dominantHand === 'left' ? 1 : 0] ?? null;
+    if (!this.pinchOf(main, this.from) || !this.palmOf(other, this.to)) return -1;
+    const normal = other!.getVectorView(HandState, 'palmNormal');
+    const to = this.to;
+    to.x -= ORB_OFF_HAND_M * normal[0]!;
+    to.y -= ORB_OFF_HAND_M * normal[1]!;
+    to.z -= ORB_OFF_HAND_M * normal[2]!;
+    return 30;
+  }
+
+  /** A tracked hand's palm point into `out`; false for none. */
+  private palmOf(state: Entity | null, out: Vector3): boolean {
+    if (state === null || state.getValue(HandState, 'tracked') !== true) return false;
+    const palm = state.getVectorView(HandState, 'palmPos');
+    out.x = palm[0]!;
+    out.y = palm[1]!;
+    out.z = palm[2]!;
+    return true;
+  }
+
+  /** A tracked hand's pinch point into `out`; false for none. */
+  private pinchOf(state: Entity | null, out: Vector3): boolean {
+    if (state === null || state.getValue(HandState, 'tracked') !== true) return false;
+    const at = state.getVectorView(HandState, 'pinchPos');
+    out.x = at[0]!;
+    out.y = at[1]!;
+    out.z = at[2]!;
+    return true;
+  }
+
+  /** A cell's centre `lift` above the bed, in world space, into `out`. Fields one by one (see update()). */
+  private cellAt(cell: Cell, lift: number, bed: Object3D, out: Vector3): void {
+    cellCentre(cell, this.at);
+    out.x = this.at.x;
+    out.y = lift;
+    out.z = this.at.y;
+    out.applyMatrix4(bed.matrixWorld);
   }
 
   private updateHand(i: number, head: Matrix4, dtMs: number): void {
@@ -357,6 +523,13 @@ export class HintSystem extends createSystem(
     parent.add(mesh);
     return mesh;
   }
+}
+
+/** D-089: a material's opacity towards 1 or 0 over HINT_FADE_MS; whether it shows at all. */
+function fadeTo(material: MeshBasicMaterial, on: boolean, dtMs: number): boolean {
+  const step = dtMs / HINT_FADE_MS;
+  material.opacity = on ? Math.min(1, material.opacity + step) : Math.max(0, material.opacity - step);
+  return material.opacity > 0;
 }
 
 /** Opacity towards 1 or 0 over `ms`; hidden at 0, so a hint that shows nothing draws nothing. */

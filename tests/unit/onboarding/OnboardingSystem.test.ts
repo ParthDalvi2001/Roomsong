@@ -172,8 +172,34 @@ describe('OnboardingSystem: the captions (UX §3.3)', () => {
     bus.emit('garden:changed', changed(3));
     bus.emit('gesture:release', release('pull'));
     bus.emit('gesture:release', release('drag'));
-    expect(r.steps).toEqual(['tune', 'palm', 'plant', 'more', 'grow', 'move', 'listen']); // free passed at once
-    expect(r.raised()).toEqual(['onboardPalm', 'onboardPlant', 'onboardListen']);
+    // D-089: then the remove step, and the petal's undo step
+    expect(r.shown()).toBe('onboardRemove');
+    bus.emit('garden:removed', { ...removed, plantId: 'p2', expiresAt: Date.now() + 10_000 });
+    expect(r.shown()).toBe('undoHint');
+    bus.emit('garden:changed', changed(3, 1)); // p2 back: its petal pinched
+    expect(r.steps).toEqual(['tune', 'palm', 'plant', 'more', 'grow', 'move', 'remove', 'undo', 'listen']);
+    expect(r.raised()).toEqual(['onboardPalm', 'onboardPlant', 'onboardRemove', 'undoHint', 'onboardListen']);
+    expect(r.notices()).toEqual([]); // the undo step said it: no notice as well
+  });
+
+  it('D-089: a petal that fades unpinched passes the undo step; a new planting does not', () => {
+    const r = rig();
+    started();
+    bus.emit('garden:changed', changed(3));
+    bus.emit('gesture:release', release('pull'));
+    bus.emit('gesture:release', release('drag'));
+    bus.emit('garden:removed', { ...removed, plantId: 'p2', expiresAt: Date.now() + 60_000 });
+    bus.emit('garden:changed', changed(4, 1)); // p3, a new seed planted: not the removed plant come back
+    expect(r.steps.slice(-1)).toEqual(['undo']);
+    bus.emit('xr:sessionEnd', { visible: false });
+    started();
+    bus.emit('garden:changed', changed(3));
+    bus.emit('gesture:release', release('pull'));
+    bus.emit('gesture:release', release('drag'));
+    bus.emit('garden:removed', { ...removed, plantId: 'p9', expiresAt: Date.now() - 1 });
+    expect(r.steps.slice(-1)).toEqual(['undo']);
+    r.frame(); // the petal's time is up
+    expect(r.steps.slice(-1)).toEqual(['listen']);
   });
 
   it('a caption asks for ONBOARD_CAPTION_MS: the line of captions is never held by a slow step', () => {

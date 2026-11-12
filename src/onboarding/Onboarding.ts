@@ -1,6 +1,7 @@
 // The guided first minute (UX §3.3, T-150) as a plain state machine: no bus, no ECS, no clock of its own.
 // OnboardingSystem feeds it the events and the frame time; ui/Hints draws each step's icon from `onboarding:step`.
-// Mastery gates, one at a time: pinch (a seed planted), grow (a pull), move (a drag). No one is stuck: a gate step
+// Mastery gates, one at a time: pinch (a seed planted), grow (a pull), move (a drag), remove (a plant dragged off the
+// bed) and undo (its petal pinched; D-089). No one is stuck: a gate step
 // that makes no progress for STEP_STALL_MS gives way to the next one (D-053), from a first plant on (D-061).
 import {
   HINT_RING_AFTER_PLANTS,
@@ -14,7 +15,8 @@ import {
 /**
  * `off`: no tutorial (before a session's signature, a bed with plants, after the session, skipped: D-084). `tune`: the ripple
  * plays (UX §3.3 step 0). `palm`: open a hand for the seed (1). `plant`: a seed is out, plant it (2). `more`: the
- * 2nd and 3rd seeds, no hint (3). `grow` / `move`: the hint ring with the pull or the drag icon (4). `free`: the
+ * 2nd and 3rd seeds, no hint (3). `grow` / `move`: the hint ring with the pull or the drag icon (4). `remove` /
+ * `undo` (D-089): a plant dragged off the bed, then its petal pinched (or let fade) to bring it back. `free`: the
  * gates are done but not all earned (the net, or the garden window's); earned, it is passed at once. `listen`:
  * "Show your palms to listen" (5). `orb`, `seedsTip`, `moveTip`: the tour (D-084), the board opened, then Seeds and
  * Move lit on it; not in the garden window (no orb). `done`: nothing more to teach.
@@ -27,6 +29,9 @@ export type OnboardingStep =
   | 'more'
   | 'grow'
   | 'move'
+  // D-089 (12 Nov): the remove gate and the undo petal, after the move
+  | 'remove'
+  | 'undo'
   | 'free'
   | 'listen'
   // D-084 (10 Nov): the guide's tour after Listen: open the settings orb, then Seeds and Move lit on the board
@@ -47,6 +52,8 @@ const ORDER: readonly OnboardingStep[] = [
   'more',
   'grow',
   'move',
+  'remove',
+  'undo',
   'free',
   'listen',
   'orb',
@@ -57,7 +64,7 @@ const ORDER: readonly OnboardingStep[] = [
 const order = (step: OnboardingStep): number => ORDER.indexOf(step);
 /** The steps that wait for the player. Gaze mode keeps the plant gate only. */
 const isGate = (step: OnboardingStep): boolean =>
-  order(step) >= order('palm') && order(step) <= order('move');
+  order(step) >= order('palm') && order(step) <= order('undo');
 
 export class Onboarding {
   step: OnboardingStep = 'off';
@@ -70,6 +77,9 @@ export class Onboarding {
   private isGazeOnly = false;
   private hasPulled = false;
   private hasDragged = false;
+  /** D-089: a plant was removed (its petal is up), and it was brought back by its petal, or the petal faded. */
+  private hasRemoved = false;
+  private isUndoDone = false;
   private hasListened = false;
   /** The settings board is open (`panel:open`): the orb step waits for it, the tips end when it closes. */
   private isPanelOpen = false;
@@ -132,6 +142,18 @@ export class Onboarding {
     this.advance();
   }
 
+  /** D-089 `garden:removed`: a plant dragged off the bed; its petal is up. */
+  removed(): void {
+    this.hasRemoved = true;
+    this.advance();
+  }
+
+  /** D-089: the removed plant came back by its petal, or the petal faded unpinched: the undo step is passed. */
+  undone(): void {
+    if (this.hasRemoved) this.isUndoDone = true;
+    this.advance();
+  }
+
   /** `listen:enter`: the player found Listen, so its step is not needed any more. */
   listened(): void {
     this.hasListened = true;
@@ -156,7 +178,9 @@ export class Onboarding {
     // D-061: no net on palm and plant. What follows them teaches shaping a plant, so with none planted their hint
     // stays, the true one. Nothing waits on a hint: the player can still do everything.
     if (!isGate(step) || order(step) <= order('plant') || nowMs - this.stepAtMs < STEP_STALL_MS) return;
-    const to = step === 'more' && !this.canPull ? 'move' : ORDER[order(step) + 1]!;
+    // No removal, no petal: the remove step's net passes the undo step too
+    const to =
+      step === 'more' && !this.canPull ? 'move' : step === 'remove' ? 'free' : ORDER[order(step) + 1]!;
     this.go(to);
     this.onStall(step, to);
     this.advance();
@@ -190,6 +214,8 @@ export class Onboarding {
     this.isGazeOnly = false;
     this.hasPulled = false;
     this.hasDragged = false;
+    this.hasRemoved = false;
+    this.isUndoDone = false;
     this.hasListened = false;
     this.isPanelOpen = false;
     this.hasToured = false;
@@ -228,11 +254,18 @@ export class Onboarding {
       if (this.planted > 0) return 'more';
       return this.seedIsOut ? 'plant' : 'palm';
     }
-    if (step === 'more' || step === 'grow' || step === 'move' || step === 'free') {
+    if (
+      step === 'more' ||
+      step === 'grow' ||
+      step === 'move' ||
+      step === 'remove' ||
+      step === 'undo' ||
+      step === 'free'
+    ) {
       // The Listen step: when both gates are earned (day 1 has 3 seeds, so LISTEN_AFTER_PLANTS is a later visit's
       // net), 4 minutes on, or at 6 plantings. A gate the net passed is not earned: its player gets the 4 minutes.
       const isLate =
-        (step === 'free' && this.hasPulled && this.hasDragged) ||
+        (step === 'free' && this.hasPulled && this.hasDragged && this.hasRemoved) ||
         this.nowMs - this.startedMs >= LISTEN_AFTER_MS ||
         this.planted >= LISTEN_AFTER_PLANTS;
       if (isLate) return this.hasListened ? this.afterListen() : 'listen';
@@ -241,7 +274,9 @@ export class Onboarding {
         return this.canPull ? 'grow' : 'move';
       }
       if (step === 'grow') return this.hasPulled ? 'move' : 'grow';
-      if (step === 'move') return this.hasDragged ? 'free' : 'move';
+      if (step === 'move') return this.hasDragged ? 'remove' : 'move';
+      if (step === 'remove') return this.hasRemoved ? 'undo' : 'remove';
+      if (step === 'undo') return this.isUndoDone ? 'free' : 'undo';
       return 'free';
     }
     if (step === 'listen') {

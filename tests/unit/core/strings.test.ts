@@ -65,6 +65,7 @@ describe('core/strings', () => {
       'Pinch the seed, drop it here',
       'Click or tap to plant',
       'Look at a cell to plant', // gaze mode (T-160)
+      'Drag a plant off to remove', // D-089
       'Show your palms to listen',
       'Click the orb to listen',
       'Turn a hand over: settings', // D-084: the tour after Listen

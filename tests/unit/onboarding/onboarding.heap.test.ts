@@ -70,7 +70,11 @@ describe('OnboardingSystem and HintSystem per frame (NFR-PERF-08)', () => {
     bus.emit('gesture:drag', { hand: 'right' } as EventMap['gesture:drag']);
     // Every step Hints draws, in turn, a headset's and the window's: each payload made once, so the test's own
     // emits create nothing. The hand hint is re-armed every 300 frames (4 s), inside HAND_HINT_MAX_MS (5 s).
-    const STEPS = (['palm', 'plant', 'grow', 'move', 'listen'] as const).map((step) => ({ step }));
+    // D-089: the remove and undo steps too, with a petal up over plant b's cell
+    hints['petalCell'] = three[1]!.cell; // not by garden:removed, which would end the remove arrow (UX §3.4)
+    const STEPS = (['palm', 'plant', 'grow', 'move', 'remove', 'undo', 'listen'] as const).map((step) => ({
+      step,
+    }));
     const LOST: EventMap['hands:lost'] = { hand: 'left', held: { kind: 'seed', id: 's' } };
     const lose = () => bus.emit('hands:lost', LOST);
     const xr = world.renderer.xr;

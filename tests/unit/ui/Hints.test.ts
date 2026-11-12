@@ -14,8 +14,9 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { bus, DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
-import { cellCentre } from '../../../src/garden/index.js';
+import { BED_OUTER, cellCentre } from '../../../src/garden/index.js';
 import { HAND_HINT_MAX_MS, HandState } from '../../../src/hands/index.js';
+import { PETAL_LIFT_M } from '../../../src/render/index.js';
 import {
   FOV_HALF_H_DEG,
   FOV_HALF_V_DEG,
@@ -119,7 +120,7 @@ describe('HintSystem: the onboarding steps (UX §3.3)', () => {
   it('off: nothing shows and nothing is drawn', () => {
     const r = rig();
     r.settle();
-    expect(r.system.shows).toEqual({ icon: -1, ring: -1, arrow: -1, hands: [-1, -1] });
+    expect(r.system.shows).toEqual({ icon: -1, ring: -1, arrow: -1, hands: [-1, -1], line: false });
     for (const mesh of [r.icon, r.ring, r.arrow, ...r.handMeshes]) expect(mesh.visible).toBe(false);
   });
 
@@ -243,6 +244,48 @@ describe('HintSystem: the onboarding steps (UX §3.3)', () => {
     settings.set({ ...DEFAULT_SETTINGS, dominantHand: 'left' });
     r.frame();
     expect(r.icon.scale.x).toBeLessThan(0);
+  });
+
+  it('D-089: a dotted navigation arrow on every step that teaches a move: from where to act to where to let go', () => {
+    const r = rig();
+    const plants = [plant('a', 1, 2), plant('b', 3, 6), plant('c', 2, 10)];
+    bus.emit('garden:changed', { state: garden(plants), diff: { added: ['c'], removed: [], changed: [] } });
+    const head = () => r.system['line'].head.position;
+    const world = (x: number, y: number, z: number) => new Vector3(x, y, z).applyMatrix4(r.bed.matrixWorld);
+    for (const s of ['palm', 'plant', 'grow', 'move', 'remove', 'listen'] as const) {
+      step(s);
+      r.settle();
+      expect(r.system.shows.line, s).toBe(true);
+      expect(r.system['line'].dots.visible, s).toBe(true);
+    }
+    // plant: onto the glowing cell
+    step('plant');
+    r.frame();
+    const guide = centre(GUIDE_CELL);
+    expect(head().distanceTo(world(guide.x, 0.02, guide.y))).toBeLessThan(1e-6);
+    // remove: out past the rim, along the newest plant's direction
+    step('remove');
+    r.frame();
+    const at = centre(plants[2]!.cell);
+    const out = (BED_OUTER + 0.1) / Math.hypot(at.x, at.y);
+    expect(head().distanceTo(world(at.x * out, 0.05, at.y * out))).toBeLessThan(1e-6);
+    // undo: onto the petal, over the removed plant's cell, which the ring lights
+    bus.emit('garden:removed', { plantId: 'b', undoToken: 'u', expiresAt: 0 } as never);
+    step('undo');
+    r.frame();
+    const petal = centre(plants[1]!.cell);
+    expect(head().distanceTo(world(petal.x, PETAL_LIFT_M, petal.y))).toBeLessThan(1e-6);
+    expect(r.system.shows.ring).toBe(RING);
+    // none on the steps with nothing to move: more, free, done; none with hints off
+    for (const s of ['more', 'free', 'done'] as const) {
+      step(s);
+      r.frame();
+      expect(r.system.shows.line, s).toBe(false);
+    }
+    step('grow');
+    settings.set({ ...DEFAULT_SETTINGS, hintsEnabled: false });
+    r.frame();
+    expect(r.system.shows.line).toBe(false);
   });
 
   it('hides everything in Listen and with hints off, and shows it again after', () => {

@@ -6,8 +6,10 @@ export {
   FLASH_CAP_PER_S,
   FLASH_MIN_DELTA,
   FOVEATION_MEDIUM,
+  PETAL_LIFT_M,
   PLANT_FLASH_BRIGHTNESS,
   PLANT_REST_BRIGHTNESS,
+  SUPPLY_ORB_LIFT_M,
 } from './config.js';
 export { FlashGuard } from './FlashGuard.js';
 export { BedRenderer } from './BedRenderer.js';

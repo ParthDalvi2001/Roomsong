@@ -219,6 +219,14 @@ export const GHOST_SIZE_M = 0.06;
 export const GHOST_TOP_M = 0.1;
 export const GHOST_BOTTOM_M = 0.045;
 export const GHOST_LOOP_MS = 2000;
+/**
+ * D-089: the guide's dotted navigation arrow (GuideLine.ts): GUIDE_DOTS dots GUIDE_DOT_M across, flowing on once a
+ * GUIDE_FLOW_MS (still with Reduce motion), an arrowhead GUIDE_HEAD_M long.
+ */
+export const GUIDE_DOTS = 14;
+export const GUIDE_DOT_M = 0.004;
+export const GUIDE_FLOW_MS = 800;
+export const GUIDE_HEAD_M = 0.03;
 /** Of the loop: down with the fingers open until this fraction, closed until the next, then up open again. */
 export const GHOST_CLOSE_AT = 0.35;
 export const GHOST_OPEN_AT = 0.7;

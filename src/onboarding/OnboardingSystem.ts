@@ -13,6 +13,9 @@ import { Onboarding, type OnboardingStep } from './Onboarding.js';
 const CAPTIONS: Partial<Record<OnboardingStep, readonly [xr: StringKey, window: StringKey | null]>> = {
   palm: ['onboardPalm', null], // a pointer is always palm up (LLD §11): the window has no such step to say
   plant: ['onboardPlant', 'onboardPlantClick'],
+  // D-089: a drag reads the same with a mouse; the petal is pinched, or clicked in the garden window
+  remove: ['onboardRemove', 'onboardRemove'],
+  undo: ['undoHint', 'undoHintClick'],
   listen: ['onboardListen', 'onboardListenClick'],
   // D-084: the tour runs in a headset only (the window has no orb)
   orb: ['onboardOrb', null],
@@ -66,6 +69,9 @@ export class OnboardingSystem extends createSystem({}) {
   private plants = 0;
   /** This session's first `room:signature` was heard: a Re-place's later one starts nothing. */
   private isSigned = false;
+  /** D-089: the plant whose petal is up ('' for none), and when its undo ends, on core's clock. */
+  private removedId = '';
+  private petalUntilMs = 0;
 
   get step(): OnboardingStep {
     return this.machine.step;
@@ -102,6 +108,11 @@ export class OnboardingSystem extends createSystem({}) {
         this.plants = state.plants.length;
         this.seeds = state.seeds.length;
         machine.changed(diff.added.length);
+        // D-089: the removed plant back on the bed is its petal pinched
+        if (this.removedId !== '' && diff.added.includes(this.removedId)) {
+          this.removedId = '';
+          machine.undone();
+        }
         this.sync();
       }),
       // The supply is empty (day 1 has 3 seeds; the next comes tomorrow): the garden hands out nothing, so say why.
@@ -116,7 +127,13 @@ export class OnboardingSystem extends createSystem({}) {
         this.isPlaced = true;
       }),
       // The first removal of the session: the undo petal is a target (UX §7), one hint while it is there.
-      bus.on('garden:removed', () => {
+      bus.on('garden:removed', ({ plantId, expiresAt }) => {
+        this.removedId = plantId;
+        this.petalUntilMs = expiresAt;
+        machine.removed();
+        this.sync();
+        // D-089: the guide's undo step says it itself; the once-a-session notice is then spent
+        if (machine.step === 'undo') this.noticed.add('undoHint');
         const s = settings.get();
         if (s.hintsEnabled) this.raiseNotice(UNDO_HINT[this.inWindow ? 1 : s.gazeDwell ? 2 : 0], 'undoHint');
       }),
@@ -167,6 +184,7 @@ export class OnboardingSystem extends createSystem({}) {
       bus.on('xr:sessionEnd', () => {
         machine.reset();
         this.isSigned = false;
+        this.removedId = '';
         this.captioned.clear();
         this.noticed.clear();
         this.isListening = false;
@@ -182,6 +200,8 @@ export class OnboardingSystem extends createSystem({}) {
   override update(_delta: number, time: number): void {
     // Whole ms: a fraction kept in a field is boxed by V8 (HandSystem's note, API_SPEC §1.4).
     this.machine.tick(Math.round(time * 1000));
+    // D-089: the petal faded unpinched: the undo step is passed
+    if (this.machine.step === 'undo' && clock.now() > this.petalUntilMs) this.machine.undone();
     if (this.machine.step !== this.said) this.sync();
   }
 
