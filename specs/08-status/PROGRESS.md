@@ -1,6 +1,6 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-11-12 22:45 IST. **Live `main` af014f0** (pushed by Parth; deploy green): **D-090** the strict guide on D-089's dotted arrows. Unit 2,091 pass; full browser run 129 passed + 8 that timed out on a loaded Mac (swap 18 GB, the run took 1.1 h) and all pass on a rerun alone (15 of 15); 6 skipped as before. Waiting on Parth: HEADSET_RUN part G, the strangers, the video, the Devpost form.
+**Last updated:** 2026-11-13 00:00 IST. **Code freeze (T-183, D-082) under way:** develop sets 1.0.0 and the v1.0.0-rc1 notes; its CI then main and the tag (runbook §1). Live `main` af014f0 (D-090). After the freeze only an S1 fix (runbook §1.8). Waiting on Parth: main and the tag once CI is green; the strangers, the video, the gallery, the Devpost form, Start membership.
 **Phase:** 3 Polish (Nov 4–11) · **Next gate:** code freeze Nov 15 (T-183; G3 passed 9 Nov, D-073) · **Headset:** yes since 7 Nov (Parth's Quest 3S; Chinmay's Quest 3 on 8 Nov); Emergency mode (D-013) no longer applies · **Plan:** v2.1
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 8 on 2026-11-09
 

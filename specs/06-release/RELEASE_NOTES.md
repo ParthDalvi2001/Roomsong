@@ -20,6 +20,12 @@ Versions follow SPRINT_PLAN v2.1 phases. Up to v0.4.0 every entry is **"emulator
 ## v0.4.0 — Polish (target ~2026-11-08)
 - Highlights: accessibility set, daily seed + growth, art + sound pass, perf pass, room matrix.
 
+## v1.0.0-rc1 (code freeze, 12–13 Nov 2026; D-082)
+- Build hash: the commit tagged `v1.0.0-rc1` (`git rev-parse 'v1.0.0-rc1^{commit}'`); `package.json` 1.0.0, kept for every rc and the submission (`version.json` `commit` tells builds apart).
+- Highlights since v0.5.0: the seed comes at once to an open palm and the Seeds page is a place to go (D-080); the settings board on one grid, "Classic" and "Calm" libraries (D-081); the guide with "Skip tutorial", also on the landing page (D-084, D-085); every setting explains itself, the guide's glow breathes (D-086); **the strict guide** (D-090): palm, plant, grow, move, remove, undo the petal, Listen and back, the settings orb, the Seeds and Move tips, each step taking only its own gesture, with dotted neon arrows, rings and icons (D-089), Skip always there.
+- Tested: unit 2,091; the full browser run 129 + 8 rerun alone (load time-outs), 6 skipped; build checks pass. Headset: D-080 to D-086 seen on a Quest 3S (10 Nov); the strict guide (D-090) by Parth on the headset, 12 Nov.
+- Known issues: BUG-060 (a flaky e2e scene, not the app). The room signature needs Space Setup (else "No room scan"). One-hand and look-to-select modes show the guide's captions without the orb arrow (Parth: not to fix).
+
 ## v0.5.0 (feature freeze, 9 Nov 2026; moved forward from 12 Nov on Parth's word)
 - Build hash: the commit tagged `v0.5.0` (`git rev-parse 'v0.5.0^{commit}'`); it is the commit that sets `package.json` to 0.5.0. Deployed: option A, the freeze build goes live (DECISIONS_PENDING 6, Parth 9 Nov). Checks at freeze: `npm run verify` 1 986 unit tests green; the full browser suite 132 passed, 1 timing flake (BUG-052, passes 3 of 3 alone), 6 skipped.
 - Highlights: every Must built, the core of each seen on a headset; the room signature (S1) stays in. Headsets: a Quest 3S (7 Nov, dev server with the recorder) and a Quest 3 (8 Nov, the live site at 4bc6c7c), TEST_PLAN §4.6.
