@@ -489,6 +489,12 @@ const SCENES: Record<number, Scene> = {
     await rig.open('right');
     await rig.wait(300);
     rig.check(panel.open, 'The panel closed again as the pinch ended');
+    // A player looks at the board to use it. Since D-086 it opens 23 degrees below the eyes: 0.6 degrees outside the
+    // FoV box of this seat's head, which looks 43.6 degrees down at the bed. Left there, the head lets the 5 s
+    // look-away close (PANEL_LOOK_AWAY_MS) run out before the Close press on a slow machine (BUG-060).
+    rig.beat('The head turns to the board');
+    rig.lookAt(window.__roomsong!.world.scene.getObjectByName('settings-panel')!.position.clone());
+    await rig.wait(200);
 
     const press = async (id: string, isDone: () => boolean, why: string): Promise<void> => {
       const at = rig.target('panel', id);
