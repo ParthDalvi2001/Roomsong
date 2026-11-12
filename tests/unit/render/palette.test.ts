@@ -36,7 +36,8 @@ describe('the palette (D-060, D-071)', () => {
       ]);
     }
     // A decay that is not a step (roomSignature never gives one): no turn.
-    for (const decay of [0, 0.45, 2.5, Number.NaN]) expect(setPalette(newPalette(), ROOM_SEED, decay).shiftDeg).toBe(0);
+    for (const decay of [0, 0.45, 2.5, Number.NaN])
+      expect(setPalette(newPalette(), ROOM_SEED, decay).shiftDeg).toBe(0);
   });
 
   it('the saturation stays the hash: one step of 0.06 either way, the same at every decay', () => {
@@ -56,7 +57,10 @@ describe('the palette (D-060, D-071)', () => {
 
   it('in every room, Wanderer and each of the six turns, every hue lies on 32°–282°: no pinks, no reds', () => {
     const colour = new Color();
-    const rooms = [newPalette(), ...REVERB_RT60_STEPS_S.map((decay) => setPalette(newPalette(), ROOM_SEED, decay))];
+    const rooms = [
+      newPalette(),
+      ...REVERB_RT60_STEPS_S.map((decay) => setPalette(newPalette(), ROOM_SEED, decay)),
+    ];
     for (const room of rooms) {
       for (let k = 0; k <= 100; k++) {
         const deg = hueDeg(plantColour(colour, k / 100, PLANT_LIGHTNESS, room));

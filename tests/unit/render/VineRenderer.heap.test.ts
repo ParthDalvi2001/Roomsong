@@ -14,7 +14,11 @@ const MOST_ROUNDS = 40;
 const FRAME_MS = 10;
 const FRAMES = (VINE_GROW_MS + 1000) / FRAME_MS;
 const BED = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0.74, -0.45, 1];
-const WALL = { id: 'w', pose: [1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 1.25, -1, 1], extents: { x: 4, y: 2.5 } };
+const WALL = {
+  id: 'w',
+  pose: [1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 1.25, -1, 1],
+  extents: { x: 4, y: 2.5 },
+};
 const PLANTS: Plant[] = Array.from({ length: PLANT_CAPACITY }, (_, i) => ({
   id: `p${i}`,
   voice: 'bell',

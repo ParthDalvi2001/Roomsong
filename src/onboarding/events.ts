@@ -6,7 +6,7 @@ declare module '../core/index.js' {
   interface EventMap {
     /** The tutorial took a step (UX §3.3); once per change, `off` again at the session's end. ui/Hints draws it. */
     'onboarding:step': { step: OnboardingStep };
-    /** D-084: the player pressed "Skip guide" (ui/). The guide ends at once, quietly. */
+    /** D-084: the player pressed "Skip tutorial" (ui/). The guide ends at once, quietly. */
     'onboarding:skip': Record<string, never>;
   }
 }

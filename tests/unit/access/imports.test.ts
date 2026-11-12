@@ -37,6 +37,11 @@ describe('access/ dependency direction (API_SPEC §1)', () => {
   });
 
   it('index.ts exports the three systems and the dwell rule', () => {
-    expect(Object.keys(access).sort()).toEqual(['BeatRingSystem', 'Dwell', 'GazeDwellSystem', 'StillnessSystem']);
+    expect(Object.keys(access).sort()).toEqual([
+      'BeatRingSystem',
+      'Dwell',
+      'GazeDwellSystem',
+      'StillnessSystem',
+    ]);
   });
 });

@@ -33,11 +33,17 @@ export const STRINGS = {
   onboardPlant: 'Pinch the seed, drop it here', // the pinch is on the seed in the palm, the drop on the cell
   onboardPlantClick: 'Click or tap to plant',
   onboardPlantGaze: 'Look at a cell to plant', // gaze mode (Settings.gazeDwell): a dwell on a free cell plants (T-160)
+  onboardGrow: 'Pinch the plant, pull it up', // D-090: the strict guide's grow and move steps
+  onboardMove: 'Pinch the plant, slide it along',
   onboardRemove: 'Drag a plant off to remove', // D-089: the remove step, before the undo petal (undoHint)
   onboardListen: 'Show your palms to listen', // both palms out towards the garden (hands/ palmsOut)
   onboardListenClick: 'Click the orb to listen',
+  // D-090: in Listen at the guide's Listen step, the way back out (a pinch or a palm to the face; a click; a look)
+  onboardWake: 'Pinch to come back',
+  onboardWakeClick: 'Click to come back',
+  onboardWakeGaze: 'Look at the orb: come back',
   // D-084: the guide's tour after Listen, six words at most (FR-UI-01); one-hand and gaze mode say "look" for the orb
-  onboardOrb: 'Turn a hand over: settings',
+  onboardOrb: 'Raise your wrist, pinch the orb', // D-090: like looking at a watch; the orb rides its back
   onboardOrbLook: 'Look at the orb: settings',
   onboardSeedsTip: 'Seeds: choose your next seed',
   onboardMoveTip: 'Move: put the garden elsewhere',

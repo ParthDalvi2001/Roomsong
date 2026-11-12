@@ -107,7 +107,11 @@ describe('persistence/Store save and load (TC-PER-01)', () => {
     backend.failing.clear();
     expect(backend.data.get('state.backup.replaced')).toEqual(second);
     expect((await reopened.load())?.createdAt).toBe(NOW + 2000);
-    expect(log.warn).toHaveBeenCalledWith('persistence', 'the replaced garden could not be backed up', expect.any(Error));
+    expect(log.warn).toHaveBeenCalledWith(
+      'persistence',
+      'the replaced garden could not be backed up',
+      expect.any(Error),
+    );
   });
 
   it('refuses to write a state load would reject, and the last good save stays', async () => {

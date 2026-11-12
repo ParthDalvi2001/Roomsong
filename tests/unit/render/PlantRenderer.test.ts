@@ -209,7 +209,9 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
     const { renderer } = make([
       plant('gold', 0, 0, { hue: 0 }),
       plant('also gold', 0, 8, { hue: 1 }),
-      ...SEED_KINDS.map(({ voice, family }, i) => plant(`k${i}`, 1, i, family ? { voice, family } : { voice })),
+      ...SEED_KINDS.map(({ voice, family }, i) =>
+        plant(`k${i}`, 1, i, family ? { voice, family } : { voice }),
+      ),
     ]);
     expectRgb(at(renderer, 0, 0)?.rgb, tint('bell'));
     expect(at(renderer, 0, 8)!.rgb).toEqual(at(renderer, 0, 0)!.rgb); // two bells, the two ends of the hue
@@ -232,7 +234,9 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
 
   it('one mesh per silhouette, one silhouette per seed kind (T-193); shimmer borrows the pluck', () => {
     const { renderer, parent } = make([
-      ...SEED_KINDS.map(({ voice, family }, i) => plant(`k${i}`, 0, i, family ? { voice, family } : { voice })),
+      ...SEED_KINDS.map(({ voice, family }, i) =>
+        plant(`k${i}`, 0, i, family ? { voice, family } : { voice }),
+      ),
       plant('f', 0, 10, { voice: 'shimmer' }),
     ]);
     // And the shaping guides (T-147), drawn only while a plant is pulled or dragged off the bed.
@@ -251,7 +255,10 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
   });
 
   it("a bass + new plant has the hum's head, whatever the picker hides: HIDDEN_KINDS is not the renderer's (T-193)", () => {
-    const { renderer } = make([plant('h', 0, 0, { voice: 'bass', family: 'new' }), plant('b', 0, 1, { voice: 'bass' })]);
+    const { renderer } = make([
+      plant('h', 0, 0, { voice: 'bass', family: 'new' }),
+      plant('b', 0, 1, { voice: 'bass' }),
+    ]);
     expect([at(renderer, 0, 0)!.shape, at(renderer, 0, 1)!.shape]).toEqual(['hum', 'bass']);
   });
 
@@ -299,7 +306,10 @@ describe('PlantRenderer.setState (FR-MUS-01, UX §5)', () => {
     for (const shape of NEW_SHAPES) {
       for (const stemM of [PLANT_STEM_MIN_M, 0.09, PLANT_STEM_MAX_M]) {
         for (const share of PLANT_WHORL_AT) {
-          expect(halfWidth(outline(renderer, shape, stemM), share * stemM), `${shape} at ${share}`).toBeLessThanOrEqual(
+          expect(
+            halfWidth(outline(renderer, shape, stemM), share * stemM),
+            `${shape} at ${share}`,
+          ).toBeLessThanOrEqual(
             0.004 + 1e-9, // the old stems' radius; the outline is read back from 32-bit buffers
           );
         }
@@ -1326,12 +1336,21 @@ describe('PlantRenderer.setPalette (UX §5, ART_PASS_T163 §0, D-060)', () => {
   it("every plant drawn takes the room's colours at once, a blossom's lighter one and its whorls too; so does a new one", () => {
     const { renderer } = make();
     // Two plants a week old: a blossom's colours (and cream whorls) from their first frame.
-    const week = [plant('a', 2, 5, { plantedAt: 0 }), plant('b', 1, 3, { voice: 'pad', family: 'new', plantedAt: 0 })];
+    const week = [
+      plant('a', 2, 5, { plantedAt: 0 }),
+      plant('b', 1, 3, { voice: 'pad', family: 'new', plantedAt: 0 }),
+    ];
     show(renderer, week, 7.5 * MS_PER_DAY);
     renderer.update(Number.NaN, 0);
     renderer.setPalette(ROOM, 1.6);
-    expectRgb(at(renderer, 2, 5)!.rgb, colourIn(ROOM, 'bell', PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
-    expectRgb(at(renderer, 1, 3)!.rgb, colourIn(ROOM, 'reed', PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS));
+    expectRgb(
+      at(renderer, 2, 5)!.rgb,
+      colourIn(ROOM, 'bell', PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS),
+    );
+    expectRgb(
+      at(renderer, 1, 3)!.rgb,
+      colourIn(ROOM, 'reed', PLANT_BLOSSOM_LIGHTNESS, PLANT_REST_BRIGHTNESS),
+    );
     show(renderer, [plant('young', 0, 0, { hue: 0.2 })]);
     expectRgb(at(renderer, 0, 0)!.rgb, colourIn(ROOM, 'bell', PLANT_LIGHTNESS, PLANT_REST_BRIGHTNESS));
     // Wanderer again: the plain arc.

@@ -110,7 +110,9 @@ describe('SeedRenderer: the supply orb (UX §7, FR-MUS-08)', () => {
     expect(brightnessOf(seeds, 0, 'bell')).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
     expect(brightnessOf(seeds, 2, 'hum')).toBeCloseTo(PLANT_REST_BRIGHTNESS, 5);
     // The colour of the plant it becomes (kindColour, T-193), in every channel.
-    const hum = kindColour(new Color(), 'hum', PLANT_LIGHTNESS, newPalette()).multiplyScalar(PLANT_REST_BRIGHTNESS);
+    const hum = kindColour(new Color(), 'hum', PLANT_LIGHTNESS, newPalette()).multiplyScalar(
+      PLANT_REST_BRIGHTNESS,
+    );
     const drawn = new Color();
     seeds.mesh.getColorAt(2, drawn);
     hum.toArray().forEach((channel, i) => expect(drawn.toArray()[i]).toBeCloseTo(channel, 5));

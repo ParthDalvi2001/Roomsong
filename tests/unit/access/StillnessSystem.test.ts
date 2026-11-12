@@ -71,7 +71,11 @@ function cellAt(cell: Cell): Vector3 {
 function rig() {
   const head = new Matrix4().lookAt(EYE, BED_AT, UP).setPosition(EYE);
   const xr = { isPresenting: true };
-  const world = { player: { head: { matrixWorld: head } }, camera: { matrixWorld: new Matrix4() }, renderer: { xr } };
+  const world = {
+    player: { head: { matrixWorld: head } },
+    camera: { matrixWorld: new Matrix4() },
+    renderer: { xr },
+  };
   const bedObject = new Group();
   bedObject.position.copy(BED_AT);
   bedObject.updateMatrixWorld(true);
@@ -102,7 +106,8 @@ function rig() {
     entity.getVectorView(Interactable, 'worldPos').set(cellAt(cell).toArray());
     return targets.add(entity);
   };
-  const hand = (pinch: boolean) => hands.add(new FakeEntity().addComponent(HandState, { hand: 'right', pinch }));
+  const hand = (pinch: boolean) =>
+    hands.add(new FakeEntity().addComponent(HandState, { hand: 'right', pinch }));
   const heard: EventMap['stillness:changed'][] = [];
   off.push(bus.on('stillness:changed', (payload) => heard.push({ ...payload })));
   return { system, head, xr, bed, beds, hand, hands, frames, lookAt, turn, plant, heard };

@@ -276,8 +276,8 @@ describe('HintSystem: the onboarding steps (UX §3.3)', () => {
     const petal = centre(plants[1]!.cell);
     expect(head().distanceTo(world(petal.x, PETAL_LIFT_M, petal.y))).toBeLessThan(1e-6);
     expect(r.system.shows.ring).toBe(RING);
-    // none on the steps with nothing to move: more, free, done; none with hints off
-    for (const s of ['more', 'free', 'done'] as const) {
+    // none on the steps with nothing to move: tune, the tips, done; none with hints off
+    for (const s of ['tune', 'seedsTip', 'done'] as const) {
       step(s);
       r.frame();
       expect(r.system.shows.line, s).toBe(false);

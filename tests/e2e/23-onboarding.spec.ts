@@ -349,9 +349,6 @@ async function carry(page: Page, probe: JSHandle<Probe>, hands: EmulatedHands, t
   await heard(probe, 'planted', { count });
 }
 
-/** Three cells of the middle ring nearest the user: the guide cell first, then its two neighbours. */
-const nearCells: Cell[] = [GUIDE_CELL, { ring: 2, step: 3 }, { ring: 2, step: 5 }];
-
 test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, move; first sound and first loop timed', async ({
   page,
 }) => {
@@ -396,18 +393,12 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
 
   // The pinch gate: the seed planted on the glowing cell. The tide plays it: the first sound.
   await carry(page, probe, hands, guideAt, 1);
-  await stepAt(probe, 'more');
-  await expect.poll(() => probe.evaluate((p) => p.firstNoteAtMs), { timeout: 10_000 }).toBeGreaterThan(0);
-  expect(await probe.evaluate((p) => [p.shows().icon, p.shows().ring])).toEqual([-1, -1]); // step 3: nothing
-
-  // Two more seeds, each straight to the palm as it is (D-080), no caption of the tutorial; at three plants the
-  // hint ring with the pull icon round the newest.
-  await carry(page, probe, hands, await probe.evaluate((p, c) => p.cellAt(c), nearCells[1]!), 2);
-  await carry(page, probe, hands, await probe.evaluate((p, c) => p.cellAt(c), nearCells[2]!), 3);
+  // D-090 strict: straight on to the pull, the hint ring and the pull icon round the plant; the palm still up asks
+  // for no seed here.
   await stepAt(probe, 'grow');
-  expect((await probe.evaluate((p) => p.plants())).map((p) => p.family)).toEqual([null, null, null]);
+  await expect.poll(() => probe.evaluate((p) => p.firstNoteAtMs), { timeout: 10_000 }).toBeGreaterThan(0);
   const newest = (await probe.evaluate((p) => p.plants())).slice(-1)[0]!;
-  expect(newest.cell).toEqual(nearCells[2]);
+  expect(newest.cell).toEqual(GUIDE_CELL);
   const newestAt = await probe.evaluate((p, c) => p.cellAt(c), newest.cell);
   await xrFrames(page, 20);
   expect(await probe.evaluate((p) => [p.shows().icon, p.shows().ring])).toEqual([ICON.pull, RING]);
@@ -497,6 +488,8 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   expect(timing.captions.filter((key) => key?.startsWith('onboard') || key === 'undoHint')).toEqual([
     'onboardPalm',
     'onboardPlant',
+    'onboardGrow',
+    'onboardMove',
     'onboardRemove',
     'undoHint',
     'onboardListen',
@@ -554,11 +547,9 @@ test('TC-E2E-14 the first minute in the garden window: a click on the glowing ce
     await heard(probe, 'planted', { count });
     return at;
   };
-  await click(GUIDE_CELL, 1);
+  const newestAt = await click(GUIDE_CELL, 1);
   await expect.poll(() => probe.evaluate((p) => p.firstNoteAtMs), { timeout: 10_000 }).toBeGreaterThan(0);
-  await click(nearCells[1]!, 2); // each next seed comes to the pointer by itself
-  const newestAt = await click(nearCells[2]!, 3);
-  // No grow gate here (a pointer cannot pull): from three plants straight to move.
+  // No grow step here (a pointer cannot pull): from the first plant straight to move (D-090).
   await stepAt(probe, 'move');
   expect(await probe.evaluate((p) => p.heard.some((e) => e.step === 'grow'))).toBe(false);
   await page.waitForTimeout(400);
@@ -582,7 +573,7 @@ test('TC-E2E-14 the first minute in the garden window: a click on the glowing ce
   await stepAt(probe, 'undo');
   const petalOnPage = await probe.evaluate((p) => p.cellOnPage({ ring: 3, step: 2 }));
   await page.mouse.click(petalOnPage.x, petalOnPage.y);
-  const free = await stepAt(probe, 'free');
+  const free = await stepAt(probe, 'listen');
   const timing = await probe.evaluate(
     (p, freeAtMs) => ({
       plantStepMs: p.heard.find((e) => e.name === 'step' && e.step === 'plant')!.atMs - p.enterAtMs,
@@ -604,6 +595,7 @@ test('TC-E2E-14 the first minute in the garden window: a click on the glowing ce
     'onboardPlantClick',
     'onboardRemove',
     'undoHintClick',
+    'onboardListenClick',
   ]);
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
@@ -652,7 +644,13 @@ test('a returning player (the skipOnboarding flag, as openApp adds it): no tutor
     'off',
     0,
   ]);
-  expect(await probe.evaluate((p) => p.shows())).toEqual({ icon: -1, ring: -1, arrow: -1, hands: [-1, -1] });
+  expect(await probe.evaluate((p) => p.shows())).toEqual({
+    icon: -1,
+    ring: -1,
+    arrow: -1,
+    hands: [-1, -1],
+    line: false,
+  });
   expect(await probe.evaluate((p) => p.captionLog.map((c) => c.key))).not.toContain('onboardPalm');
   expect(errors).toEqual([]);
 });

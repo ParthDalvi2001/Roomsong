@@ -517,7 +517,10 @@ export class PanelSystem extends createSystem(
         this.homeFor = null; // the orb's place in the view box is worked out again from where the head is now
       }),
       bus.on('xr:sessionEnd', () => panel.close()),
-      bus.on('onboarding:step', ({ step }) => void (this.step = step)),
+      bus.on('onboarding:step', ({ step }) => {
+        this.step = step;
+        if (step === 'palm') panel.close(); // D-090: the strict guide begins again (New garden on the board): nothing over it
+      }),
       () => this.dispose(),
     );
   }

@@ -1,7 +1,7 @@
 // The settings panel without its drawing (UX §3.6, T-151): what each tab shows, what a press, a hold or a dwell
 // does, and where the panel and its orb go. No Three.js and no canvas here: ui/PanelSystem.ts draws what this file
 // lists and feeds it the events and the frame. Settings are read from and written through core's store.
-import { settings, STRINGS, validateSettings } from '../core/index.js';
+import { GUIDE_SKIP_ID, guideAllows, settings, STRINGS, validateSettings } from '../core/index.js';
 import { gardenDay, HIDDEN_KINDS, SEED_KINDS, setBedHeightOffset, WANDERER } from '../garden/index.js';
 import { HIT_RADIUS_M, HOVER_DEAD_BAND_M, ORB_HIDE_FACING, ORB_SHOW_FACING } from '../hands/index.js';
 
@@ -119,7 +119,7 @@ const TIME_LAPSE_ID = 'timeLapse';
 const EXIT_ID = 'exit';
 export const SEEDS_ID = 'seeds'; // the way to the Seeds page (T-193, 10 Nov): a palm-up no longer opens it
 /** D-084: the "Skip guide" button, drawn by PanelSystem off the board; its press or dwell is `pressed(SKIP_ID)`. */
-export const SKIP_ID = 'skipGuide';
+export const SKIP_ID = GUIDE_SKIP_ID; // core's: the strict guide's lock always lets it through (D-090)
 // The gaze cannot switch itself off: a user with no hand to pinch with could not switch it back on.
 const GAZE_TOGGLE_ID = 'gazeDwell';
 
@@ -612,6 +612,7 @@ export class Panel {
 
   /** Acts on a control. One that is not on show (another tab's, a closed panel's) or is at its limit does nothing. */
   private select(id: string): void {
+    if (!guideAllows('panel', id)) return; // D-090: the strict guide holds the board to its step (Skip always works)
     if (id === SKIP_ID) {
       this.selected = true;
       this.actions.pressed(id); // PanelSystem ends the guide: the button is not one of the board's controls

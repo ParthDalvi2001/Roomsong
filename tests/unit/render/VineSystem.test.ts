@@ -14,7 +14,11 @@ import type { RoomSurfaces } from '../../../src/room/index.js';
 
 const FRAME_S = 0.01;
 const SURFACES: RoomSurfaces = {
-  nearestWall: { id: 'w', pose: [1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 1.25, -1, 1], extents: { x: 4, y: 2.5 } },
+  nearestWall: {
+    id: 'w',
+    pose: [1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 1.25, -1, 1],
+    extents: { x: 4, y: 2.5 },
+  },
 };
 const PLANTS: Plant[] = Array.from({ length: PLANT_CAPACITY }, (_, i) => ({
   id: `p${i}`,
@@ -51,7 +55,7 @@ function rig() {
   system.init();
   stop = () => system.destroy();
   const runFor = (seconds: number): void => {
-    for (const until = timeS + seconds; timeS < until - 1e-9; ) {
+    for (const until = timeS + seconds; timeS < until - 1e-9;) {
       timeS = Math.round((timeS + FRAME_S) * 1000) / 1000;
       system.update(FRAME_S, timeS);
     }

@@ -107,7 +107,9 @@ describe('BUG-011: the pointer picks a lifted target where it is drawn', () => {
     const { stage, cell, onCanvas } = rig();
     let timeMs = 1000;
     for (const head of [cell(4, 12, HEAD_LIFT_M), cell(4, 4, HEAD_LIFT_M)]) {
-      const targets: PickCandidate[] = [{ target: { kind: 'plant', id: 'p' }, radius: HIT_RADIUS_M, pos: head }];
+      const targets: PickCandidate[] = [
+        { target: { kind: 'plant', id: 'p' }, radius: HIT_RADIUS_M, pos: head },
+      ];
       const canvas = fakeCanvas();
       const source = new PointerSource(canvas.element, stage, targets);
       made.push(source);
@@ -125,11 +127,15 @@ describe('BUG-011: the pointer picks a lifted target where it is drawn', () => {
       const toPx = onCanvas(to);
       canvas.fire('pointermove', at(toPx.x, toPx.y, { buttons: 1 }));
       source.sample(frame.hand, (timeMs += 10), frame);
-      expect(Math.hypot(frame.pinchPos.x - to.x, frame.pinchPos.y - to.y, frame.pinchPos.z - to.z)).toBeLessThan(0.001);
+      expect(
+        Math.hypot(frame.pinchPos.x - to.x, frame.pinchPos.y - to.y, frame.pinchPos.z - to.z),
+      ).toBeLessThan(0.001);
       // And let go there: the drop is where the drag was shown, not the bed point far behind it (BUG-049).
       canvas.fire('pointerup', at(toPx.x, toPx.y));
       source.sample(frame.hand, (timeMs += 10), frame);
-      expect(Math.hypot(frame.pinchPos.x - to.x, frame.pinchPos.y - to.y, frame.pinchPos.z - to.z)).toBeLessThan(0.001);
+      expect(
+        Math.hypot(frame.pinchPos.x - to.x, frame.pinchPos.y - to.y, frame.pinchPos.z - to.z),
+      ).toBeLessThan(0.001);
     }
   });
 

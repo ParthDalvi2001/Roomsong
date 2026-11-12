@@ -4,7 +4,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Engine } from '../../../src/audio/AudioEngine.js';
-import { REVERB_SEND, STILL_GAZE_DB, STILL_RAMP_TAU_S, STILL_SEND_MUL, TICK_MS } from '../../../src/audio/config.js';
+import {
+  REVERB_SEND,
+  STILL_GAZE_DB,
+  STILL_RAMP_TAU_S,
+  STILL_SEND_MUL,
+  TICK_MS,
+} from '../../../src/audio/config.js';
 import * as audio from '../../../src/audio/index.js';
 import { bus } from '../../../src/core/index.js';
 
@@ -48,7 +54,8 @@ async function start() {
   /** The gain of each plant's first note from `from` on: 'a' sits at bed-local +x (step 0), 'b' at −x (step 8). */
   const peaks = (from = 0): number[] => {
     const since = played.slice(from);
-    const first = (side: 1 | -1) => since.find((note) => Math.sign(note.at[0]!) === side)?.p.gain ?? Number.NaN;
+    const first = (side: 1 | -1) =>
+      since.find((note) => Math.sign(note.at[0]!) === side)?.p.gain ?? Number.NaN;
     return [first(1), first(-1)];
   };
   const send = ctx.of('gain').find((node) => node.gain.value === REVERB_SEND)!;
@@ -62,7 +69,10 @@ describe('the engine when the garden is open (P-016)', () => {
     expect(send).toBeDefined();
     const before = send.gain.events.length;
     engine.setStillness(true, '');
-    expect(send.gain.last('target')).toMatchObject({ value: REVERB_SEND * STILL_SEND_MUL, tau: STILL_RAMP_TAU_S });
+    expect(send.gain.last('target')).toMatchObject({
+      value: REVERB_SEND * STILL_SEND_MUL,
+      tau: STILL_RAMP_TAU_S,
+    });
     engine.setStillness(true, 'p1');
     expect(send.gain.events).toHaveLength(before + 1);
     engine.setStillness(false, '');

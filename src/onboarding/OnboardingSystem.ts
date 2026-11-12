@@ -4,7 +4,7 @@
 import { createSystem, type Entity } from '@iwsdk/core';
 
 import { Caption } from '../core/components.js';
-import { bus, clock, flags, log, settings, type StringKey } from '../core/index.js';
+import { bus, clock, flags, guide, settings, type StringKey } from '../core/index.js';
 
 import { NO_SEEDS_GAP_MS, NO_SEEDS_SHOW_MS, ONBOARD_CAPTION_MS } from './config.js';
 import { Onboarding, type OnboardingStep } from './Onboarding.js';
@@ -13,6 +13,9 @@ import { Onboarding, type OnboardingStep } from './Onboarding.js';
 const CAPTIONS: Partial<Record<OnboardingStep, readonly [xr: StringKey, window: StringKey | null]>> = {
   palm: ['onboardPalm', null], // a pointer is always palm up (LLD §11): the window has no such step to say
   plant: ['onboardPlant', 'onboardPlantClick'],
+  // D-090: the grow and the move say what to do too; the window's drag is shown by its icon and arrow alone
+  grow: ['onboardGrow', null],
+  move: ['onboardMove', null],
   // D-089: a drag reads the same with a mouse; the petal is pinched, or clicked in the garden window
   remove: ['onboardRemove', 'onboardRemove'],
   undo: ['undoHint', 'undoHintClick'],
@@ -43,9 +46,7 @@ const SETTINGS_HINT: StringKey = 'settingsHint';
 const SETTINGS_HINT_LOOK: StringKey = 'settingsHintLook';
 
 export class OnboardingSystem extends createSystem({}) {
-  readonly machine = new Onboarding((from, to) =>
-    log.info('onboarding', `no progress in "${from}" for 60 s: on to "${to}" (D-053)`),
-  );
+  readonly machine = new Onboarding();
   private caption!: Entity;
   private notice!: Entity;
   /** BUG-056: the "no seeds" notice's own entity, so its repeats never take another notice back. */
@@ -93,6 +94,9 @@ export class OnboardingSystem extends createSystem({}) {
       }),
       bus.on('room:tuned', () => {
         this.inWindow = !this.xrManager.isPresenting;
+        // D-090: the strict palm step would wait for a seed that cannot come: none in the supply (the visit's seeds,
+        // given after the signature, are in by now), no guide
+        if (this.seeds === 0 && machine.step === 'tune') machine.skip();
         machine.tuned(!this.inWindow, settings.get().gazeDwell);
         this.sync();
       }),
@@ -144,16 +148,18 @@ export class OnboardingSystem extends createSystem({}) {
       }),
       bus.on('listen:enter', () => {
         this.isListening = true;
-        this.takeCaption(); // Listen dims the room: no instruction over it
+        this.takeCaption(); // Listen dims the room: no instruction over it but the guide's way back out (D-090)
         this.takeNoSeeds();
         machine.listened();
         this.sync();
+        if (machine.step === 'listen') this.sayWake();
       }),
       bus.on('listen:exit', ({ timedOut }) => {
         this.isListening = false;
-        // A step reached in Listen (listen:enter ends the Listen step: the orb step, or done) says it now; not after
-        // the 10-minute end, whose line is "Goodnight" (UX §3.5): the hint would queue ahead of it.
+        // Not after the 10-minute end, whose line is "Goodnight" (UX §3.5): the hint would queue ahead of it.
         if (timedOut) return;
+        machine.woke(); // D-090: the Listen step ends out of Listen, so the orb step is seen
+        this.sync();
         this.sayStep();
         this.sayDone();
       }),
@@ -201,7 +207,8 @@ export class OnboardingSystem extends createSystem({}) {
     // Whole ms: a fraction kept in a field is boxed by V8 (HandSystem's note, API_SPEC §1.4).
     this.machine.tick(Math.round(time * 1000));
     // D-089: the petal faded unpinched: the undo step is passed
-    if (this.machine.step === 'undo' && clock.now() > this.petalUntilMs) this.machine.undone();
+    if (this.machine.step === 'undo' && clock.now() > this.petalUntilMs)
+      this.machine.petalGone(this.plants > 0);
     if (this.machine.step !== this.said) this.sync();
   }
 
@@ -210,6 +217,7 @@ export class OnboardingSystem extends createSystem({}) {
     const step = this.machine.step;
     if (step === this.said) return;
     this.said = step;
+    guide.lock = this.machine.lock; // D-090: before the step is said, so whatever hears it finds the hands held to it
     this.takeCaption();
     this.sayStep();
     bus.emit('onboarding:step', { step });
@@ -274,6 +282,17 @@ export class OnboardingSystem extends createSystem({}) {
     this.noSeedsAt = now;
     this.takeNoSeeds(); // one live caption per raiser: an entity that still has one would not qualify again
     this.noSeeds.addComponent(Caption, { key: SEEDS_TOMORROW, expiresAt: now + NO_SEEDS_SHOW_MS });
+  }
+
+  /** D-090: in Listen at the guide's Listen step, how to come back out: a pinch, a click, or a look at the orb. */
+  private sayWake(): void {
+    const key: StringKey = this.inWindow
+      ? 'onboardWakeClick'
+      : settings.get().gazeDwell
+        ? 'onboardWakeGaze'
+        : 'onboardWake';
+    this.takeCaption();
+    this.caption.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });
   }
 
   private takeNoSeeds(): void {
