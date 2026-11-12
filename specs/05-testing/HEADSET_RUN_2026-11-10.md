@@ -182,7 +182,9 @@ Should: the line starts "Day 2", then "Seeds left 1" (if C2 planted all three). 
 **F4b. Descriptions and glow (D-086).** Point at Time-lapse: a 1–2 line description shows under the tabs; is it readable, not squeezed? During the guide, does the glow breathe smoothly (no flicker when your hand nears it)? ☐
 **F5. The hum.** Plant a Thrumsprout (Calm). Rating 1–5: ____ (under 3: it is hidden again)
 
-## Part G. The guide's dotted arrows and the petal lesson (D-089, 12 Nov; about 4 minutes)
+## Part G. The strict guide: dotted arrows, grow, move, remove and undo (D-089, D-090, 12 Nov; about 5 minutes)
+
+At every step also try one *other* gesture: it must do nothing. Grow (pull) and move come right after the first plant. In Listen, "Pinch to come back"; then "Raise your wrist, pinch the orb".
 
 Start it: untick **One hand** on the start page; settings orb → Garden → hold **New garden**.
 
