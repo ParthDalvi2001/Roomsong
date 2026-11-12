@@ -24,3 +24,9 @@ Scene, asset and XR-feature configuration is declarative in `iwsdk.config.json`;
 T-111. IWER controls: https://iwsdk.dev/guides/02-testing-experience.html#iwer-controls
 
 Code lives in `src/` and `tests/` (scaffolded in T-101 with `npm create @iwsdk@latest`). All code is written after 2026-09-24.
+
+## Licence and copyright
+
+Copyright (c) 2026 Parth Dalvi and Chinmay Gavde. All rights reserved: the code is public to be viewed, run and
+judged, not to be copied or reused without permission. See [LICENSE](LICENSE). Third-party packages keep their own
+licences: [specs/06-release/THIRD_PARTY_LICENSES.md](specs/06-release/THIRD_PARTY_LICENSES.md) and [LICENSES/](LICENSES/).

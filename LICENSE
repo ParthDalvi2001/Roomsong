@@ -1,0 +1,28 @@
+SonicSpace
+Copyright (c) 2026 Parth Dalvi and Chinmay Gavde. All rights reserved.
+
+This repository is public so that the project can be viewed, run and judged, including in the
+Meta VR Start Developer Competition 2026. That does not make it open source.
+
+You may:
+  - read the source code and run the hosted app (https://parthdalvi2001.github.io/SonicSpace/)
+    for your own personal, non-commercial use;
+  - view and fork this repository on GitHub, as far as the GitHub Terms of Service allow.
+
+You may not, without the written permission of the copyright holders:
+  - copy, modify, publish, distribute, sublicense or sell the code, the designs, the text,
+    the images, the video or any part of them;
+  - use the name "SonicSpace", its look or its sounds for another product.
+
+Third-party components keep their own licences and are not covered by this notice: the packages
+listed in specs/06-release/THIRD_PARTY_LICENSES.md, the licence texts in LICENSES/, and the files
+derived from the Immersive Web SDK project scaffold (MIT, (c) Meta Platforms, Inc. and affiliates;
+see LICENSES/IWSDK-MIT.txt).
+
+Nothing in this notice limits the licence the authors grant to the contest sponsor and its
+partners under the competition's Official Rules.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT
+SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM ITS USE.
+
+Permission requests: open an issue at https://github.com/ParthDalvi2001/SonicSpace/issues
