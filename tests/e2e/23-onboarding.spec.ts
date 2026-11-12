@@ -574,6 +574,12 @@ test('TC-E2E-14 the first minute in the garden window: a click on the glowing ce
   const petalOnPage = await probe.evaluate((p) => p.cellOnPage({ ring: 3, step: 2 }));
   await page.mouse.click(petalOnPage.x, petalOnPage.y);
   const free = await stepAt(probe, 'listen');
+  // One caption at a time: the Listen click waits its turn behind the undo's (CAPTION_MIN_MS)
+  await expect
+    .poll(() => probe.evaluate((p) => p.captionLog.some((c) => c.key === 'onboardListenClick')), {
+      timeout: 10_000,
+    })
+    .toBe(true);
   const timing = await probe.evaluate(
     (p, freeAtMs) => ({
       plantStepMs: p.heard.find((e) => e.name === 'step' && e.step === 'plant')!.atMs - p.enterAtMs,
