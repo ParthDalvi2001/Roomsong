@@ -50,7 +50,7 @@ export class OnboardingSystem extends createSystem({}) {
   /** The notices raised this session: each is said once. */
   private readonly noticed = new Set<StringKey>();
   /** The seeds of the supply at the latest `garden:changed` (-1 before one): none, and a palm up gets "More seeds
-   *  tomorrow", and no guide starts (D-087: its palm step would wait for a seed that cannot come). */
+   *  tomorrow", and at room:tuned no guide goes on (D-087: its palm step would wait for a seed that cannot come). */
   private seeds = -1;
   /** The step last said on the bus. */
   private said: OnboardingStep = 'off';
@@ -79,13 +79,14 @@ export class OnboardingSystem extends createSystem({}) {
       bus.on('room:signature', () => {
         if (this.isSigned) return;
         this.isSigned = true;
-        machine.signature(
-          this.plants === 0 && this.seeds !== 0 && !flags.skipOnboarding && settings.get().hintsEnabled,
-        );
+        machine.signature(this.plants === 0 && !flags.skipOnboarding && settings.get().hintsEnabled);
         this.sync();
       }),
       bus.on('room:tuned', () => {
         this.inWindow = !this.xrManager.isPresenting;
+        // D-087: the palm step would wait for a seed that cannot come: none in the supply (the visit's seeds, given
+        // after the signature, are in by now), no guide
+        if (this.seeds === 0 && machine.step === 'tune') machine.skip();
         machine.tuned(!this.inWindow, settings.get().gazeDwell);
         this.sync();
       }),

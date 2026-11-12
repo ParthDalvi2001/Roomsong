@@ -112,11 +112,13 @@ describe('OnboardingSystem: who gets the tutorial', () => {
     expect(r.steps).toEqual(['tune']);
   });
 
-  it('D-087: not with an empty supply, whose palm step would wait for a seed that cannot come', () => {
+  it('D-087: not with an empty supply at room:tuned, whose palm step would wait for a seed that cannot come', () => {
     const r = rig();
     bus.emit('garden:changed', changed(0, 0, 0));
     bus.emit('room:signature', { signature: {} as never, starterSeeds: false });
-    expect(r.steps).toEqual([]);
+    bus.emit('room:tuned', {});
+    expect(r.steps).toEqual(['tune', 'off']);
+    expect(r.raised()).toEqual([]);
   });
 
   it("only at the session's first signature: a Re-place on an emptied bed starts nothing; the next session does", () => {
