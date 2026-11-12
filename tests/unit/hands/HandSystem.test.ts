@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import manifest from '../../../src/components.js';
 import { BedAnchor, Caption, Interactable } from '../../../src/core/components.js';
-import { bus, clock, DEFAULT_SETTINGS, settings } from '../../../src/core/index.js';
+import { bus, clock, DEFAULT_SETTINGS, guide, settings } from '../../../src/core/index.js';
 import { cellCentre } from '../../../src/garden/index.js';
 import { CONTROLLER_HINT_AFTER_MS, HAND_HINT_MAX_MS, HIT_RADIUS_M } from '../../../src/hands/config.js';
 import { GestureMachine } from '../../../src/hands/GestureMachine.js';
@@ -91,6 +91,7 @@ const FRAME_START_MS = 12_345_678;
 let nowMs = WALL_START_MS;
 let frameMs = FRAME_START_MS;
 afterEach(() => {
+  guide.lock = null; // D-087: a failed test leaves no lock for the next
   vi.restoreAllMocks();
   clock.setSource(() => Date.now());
 });
@@ -280,6 +281,18 @@ describe('HandSystem: one frame', () => {
     r.frame();
     expect(r.handed[2]!.targets[0]).toBe('plant plant-7 @ -0.25,1,-0.25');
     expect(r.handed[2]!.radii[1]).toBeCloseTo(0.06);
+    r.stop();
+  });
+
+  it('D-087: a target the strict guide does not teach is out of reach (radius -1); the Skip button never is', () => {
+    const r = rig();
+    r.targets.add(interactable('panel', 'skipGuide', 0.04, { x: 0, y: 1.2, z: -0.5 }));
+    guide.lock = { kinds: ['seed'], palmUp: true, palmsOut: false, shape: null };
+    r.frame();
+    expect(r.handed[r.handed.length - 1]!.radii).toEqual([0.04, -1, 0.04]); // seed, orb, Skip
+    guide.lock = null;
+    r.frame();
+    expect(r.handed[r.handed.length - 1]!.radii[1]).toBeCloseTo(0.06);
     r.stop();
   });
 
@@ -726,6 +739,17 @@ describe('HandSystem: the Listen poses (T-148, FR-HND-06/07)', () => {
     r.run(200);
     // The hold starts on frame 1; frame 108 is 1498 ms after it, frame 109 the first at 1.5 s or more.
     expect(r.heard).toEqual(['gesture:palmsOut @109']);
+    r.stopAll();
+  });
+
+  it('D-087: palms out enter Listen only at a strict guide step that allows it', () => {
+    const r = listenRig();
+    guide.lock = { kinds: [], palmUp: false, palmsOut: false, shape: null };
+    r.pose('left', OUT);
+    r.pose('right', OUT);
+    r.run(200);
+    expect(r.heard).toEqual([]);
+    guide.lock = null;
     r.stopAll();
   });
 

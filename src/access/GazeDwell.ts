@@ -13,7 +13,7 @@
 import { createSystem, Types, Vector3, type Entity } from '@iwsdk/core';
 
 import { BedAnchor, Interactable } from '../core/components.js';
-import { bus, settings, type EventMap, type Hand, type Mat4, type Vec2 } from '../core/index.js';
+import { bus, guideAllows, settings, type EventMap, type Hand, type Mat4, type Vec2 } from '../core/index.js';
 import { bedZone, nearestFreeCell, type Cell, type GardenState } from '../garden/index.js';
 import { HandState, stickyCell, toBedLocal, type TargetRef } from '../hands/index.js';
 import { gazeTarget, isHeadTurning, PANEL_MAX_FRAME_MS } from '../ui/index.js';
@@ -204,12 +204,16 @@ export class GazeDwellSystem extends createSystem(
       return 'ghost';
     }
     if (kind === 'orb' || (kind === 'undo' && !this.isListening)) {
-      this.id = this.entities[i]!.getValue(Interactable, 'id') ?? '';
+      const id = this.entities[i]!.getValue(Interactable, 'id') ?? '';
+      // D-087: the strict guide holds the look to its step; the wake out of Listen (a look at the orb) never is
+      if (!(kind === 'orb' && this.isListening) && !guideAllows(kind, id)) return 'none';
+      this.id = id;
       return kind;
     }
     this.distance[0] = RETICLE_IDLE_DISTANCE_M;
     // A free cell, while a seed can be given (PRD §3.4: in Listen nothing but the wake is taken).
     if (this.isListening || this.garden === null || bed.object3D === undefined) return 'none';
+    if (!guideAllows('cell', '')) return 'none'; // D-087: a look plants only at the strict guide's plant step
     if (this.outSeedId === null && this.garden.seeds.length === 0) return 'none';
     this.cell = this.cellAt(head, bed.object3D.matrixWorld.elements);
     return this.cell === null ? 'none' : 'cell';

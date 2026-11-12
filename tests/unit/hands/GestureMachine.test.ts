@@ -4,7 +4,7 @@
 // counted clock: no XR, no timers. What the garden does with a release (TC-HND-06) is in shaping.test.ts.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { bus } from '../../../src/core/index.js';
+import { bus, guide } from '../../../src/core/index.js';
 import {
   DRAG_DEAD_ZONE_M,
   HOVER_DEAD_BAND_M,
@@ -329,7 +329,12 @@ describe('GestureMachine: carry, plant and press (TC-HND-04 subset, TC-HND-05)',
 
   it('BUG-055: a seed let go just outside the ring, where the palm was, is planted on the outermost ring', () => {
     carryTo(OFF_BED); // 0.40 m from the centre, 5 cm into the outer zone
-    expect(last()).toMatchObject({ gesture: 'carry', target: SEED, zone: 'outer', cell: { ring: 4, step: 0 } });
+    expect(last()).toMatchObject({
+      gesture: 'carry',
+      target: SEED,
+      zone: 'outer',
+      cell: { ring: 4, step: 0 },
+    });
   });
 
   it('a seed released well off the bed or over a full bed has no cell: it goes back to the supply', () => {
@@ -343,7 +348,12 @@ describe('GestureMachine: carry, plant and press (TC-HND-04 subset, TC-HND-05)',
 
   it('BUG-055: a seed released over the hole takes the innermost ring at that angle, and is planted', () => {
     carryTo(IN_HOLE); // 5 cm to the right of the centre: ring 0, step 0
-    expect(last()).toMatchObject({ gesture: 'carry', target: SEED, zone: 'inner', cell: { ring: 0, step: 0 } });
+    expect(last()).toMatchObject({
+      gesture: 'carry',
+      target: SEED,
+      zone: 'inner',
+      cell: { ring: 0, step: 0 },
+    });
     carryTo({ x: 0, y: 0.76, z: -0.45 }); // the very centre, over the Listen orb: still a cell, never NaN
     expect(last()).toMatchObject({ gesture: 'carry', zone: 'inner', cell: { ring: 0, step: 0 } });
     const full = rig();
@@ -1428,4 +1438,44 @@ describe('GestureMachine: no allocation per frame', () => {
   }, 30_000);
   // The paths of T-146 (the dead zone, a pull, a drag, their previews) are measured in
   // GestureMachine.heap.test.ts: in this file they cannot be, and that file says why.
+});
+
+describe('GestureMachine: the strict guide (D-087)', () => {
+  afterEach(() => void (guide.lock = null));
+  const lock = (shape: 'pull' | 'drag' | null, palmUp = false) =>
+    (guide.lock = { kinds: ['plant', 'seed'], palmUp, palmsOut: false, shape });
+
+  it('a pull-only step never drags: sideways travel keeps the plant pinched, a lift then pulls it', () => {
+    lock('pull');
+    const { step } = rig();
+    step({ at: PLANT_AT });
+    step({ pinch: true });
+    step({ at: moved(PLANT_AT, { x: 0.05 }) });
+    expect(shown).toEqual([]);
+    step({ at: moved(PLANT_AT, { x: 0.05, y: 0.08 }) });
+    expect(shown.map((event) => event.type)).toEqual(['gesture:pull']);
+  });
+
+  it('a drag-only step never pulls: a lift keeps the plant pinched, and its release changes nothing', () => {
+    lock('drag');
+    const { step } = rig();
+    step({ at: PLANT_AT });
+    step({ pinch: true });
+    step({ at: moved(PLANT_AT, { y: 0.08 }) });
+    step({ pinch: false });
+    expect(shown).toEqual([]);
+    expect(last()).toMatchObject({ type: 'gesture:release', gesture: 'none', target: PLANT });
+  });
+
+  it('a palm up asks for a seed only at a step whose lock allows it', () => {
+    lock(null, false);
+    const { step } = rig();
+    step({ at: NOWHERE, palmUp: true });
+    const asks = () => seen.filter((event) => event.type === 'gesture:palmUp').length;
+    for (let i = 0; i < 70; i++) step(); // a second: the hold is timed, the ask held back
+    expect(asks()).toBe(0);
+    lock(null, true);
+    for (let i = 0; i < 70; i++) step();
+    expect(asks()).toBeGreaterThan(0);
+  });
 });
