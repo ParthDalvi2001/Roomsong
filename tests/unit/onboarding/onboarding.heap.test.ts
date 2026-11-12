@@ -9,7 +9,7 @@ import { bus } from '../../../src/core/index.js';
 import { HandState } from '../../../src/hands/index.js';
 import { OnboardingSystem } from '../../../src/onboarding/OnboardingSystem.js';
 import { HintSystem } from '../../../src/ui/Hints.js';
-import { garden, plant, seed } from '../garden/fixtures.js';
+import { garden, plant } from '../garden/fixtures.js';
 import { heapCost, PROBE_BYTES } from '../hands/heapCost.js';
 import { FakeEntity, FakeQuery } from '../render/seedRig.js';
 
@@ -56,10 +56,7 @@ describe('OnboardingSystem and HintSystem per frame (NFR-PERF-08)', () => {
     hints.init();
 
     // A new garden, tuned, a seed out: the plant step. A drag on the way and a lost hand that held a seed.
-    bus.emit('garden:changed', {
-      state: garden([], [seed('s')]),
-      diff: { added: [], removed: [], changed: [] },
-    });
+    bus.emit('garden:changed', { state: garden([]), diff: { added: [], removed: [], changed: [] } });
     bus.emit('room:signature', { signature: {} as never, starterSeeds: true });
     bus.emit('room:tuned', {});
     bus.emit('garden:seedOut', { seed: { id: 's' } as never, hand: 'left' });
@@ -79,8 +76,6 @@ describe('OnboardingSystem and HintSystem per frame (NFR-PERF-08)', () => {
     const xr = world.renderer.xr;
     /** Which atlas frames the icon showed: a typed array, so marking one creates nothing. */
     const seen = new Uint8Array(16);
-    /** D-087: how many ghost hands acted (0, 1 or 2). */
-    const ghosts = new Uint8Array(3);
 
     const total = (MOST_ROUNDS + 3) * FRAMES + 1;
     const TIMES: unknown[] = [null];
@@ -100,7 +95,6 @@ describe('OnboardingSystem and HintSystem per frame (NFR-PERF-08)', () => {
         head.copy(HEADS[k % HEADS.length]!);
         for (let s = 0; s < systems.length; s++) systems[s]!.update(0.0139, TIMES[k] as number);
         if (hints.shows.icon >= 0) seen[hints.shows.icon] = 1;
-        ghosts[hints.shows.ghostHands] = 1;
       }
     };
     const isClean = (cost: { gcs: number; grewBytes: number }): boolean =>
@@ -108,11 +102,10 @@ describe('OnboardingSystem and HintSystem per frame (NFR-PERF-08)', () => {
 
     lose();
     for (let i = 0; i < 3; i++) run(); // warm up: the JIT's own allocations happen here
-    // What was measured: the window's icons (the pointer, its click, the drag), the headset's ghost acts with one hand
-    // and with two (D-087), the ring, the remove arrow and the hand hint.
-    expect([...seen.slice(0, 3)]).toEqual([1, 1, 1]);
-    expect([...ghosts]).toEqual([1, 1, 1]);
-    expect([hints.shows.arrow, hints.shows.hands[0]]).toEqual([3, 4]);
+    // What was measured: every icon (the ghost open and closed, the pointer and its click, the palm, the palms, pull,
+    // drag), the ring, the remove arrow and the hand hint.
+    expect([...seen.slice(0, 8)]).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+    expect([hints.shows.arrow, hints.shows.hands[0]]).toEqual([8, 9]);
     const rounds: { gcs: number; grewBytes: number }[] = [];
     const startedMs = performance.now();
     for (let i = 0; i < MOST_ROUNDS; i++) {

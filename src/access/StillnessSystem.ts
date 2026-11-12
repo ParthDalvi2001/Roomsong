@@ -22,11 +22,7 @@ const POINT: FovElement = { distanceM: 1, halfWidthM: 0, halfHeightM: 0 };
  * the bed's pose).
  */
 export class StillnessSystem extends createSystem(
-  {
-    beds: { required: [BedAnchor] },
-    targets: { required: [Interactable] },
-    hands: { required: [HandState] },
-  },
+  { beds: { required: [BedAnchor] }, targets: { required: [Interactable] }, hands: { required: [HandState] } },
   { bed: { type: Types.Object, default: null } },
 ) {
   /** Time still and facing the bed so far, ms; the garden is open from STILL_OPEN_MS on. */
@@ -72,11 +68,7 @@ export class StillnessSystem extends createSystem(
     const head = this.player.head.matrixWorld.elements;
     const isTurning = isHeadTurning(head, dtMs, this.headTurn); // every frame: its speed is a smoothed memory
     const isStill =
-      this.xrManager.isPresenting &&
-      this.isPlaced &&
-      !isTurning &&
-      !this.isHandBusy() &&
-      this.isFacingBed(head);
+      this.xrManager.isPresenting && this.isPlaced && !isTurning && !this.isHandBusy() && this.isFacingBed(head);
     const ms = this.stillMs;
     const stillMs = isStill ? ms[0]! + Math.min(dtMs, PANEL_MAX_FRAME_MS) : 0;
     ms[0] = stillMs;
@@ -116,8 +108,7 @@ export class StillnessSystem extends createSystem(
   private isHandBusy(): boolean {
     for (let i = 0; i < this.handStates.length; i++) {
       const hand = this.handStates[i]!;
-      if (hand.getValue(HandState, 'pinch') === true || hand.getValue(HandState, 'select') === true)
-        return true;
+      if (hand.getValue(HandState, 'pinch') === true || hand.getValue(HandState, 'select') === true) return true;
     }
     return false;
   }

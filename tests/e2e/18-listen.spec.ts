@@ -4,8 +4,8 @@
 // aurora halo drawn by the app's renderer (its own perf:sample), a pinch → listen:exit and both gone; a press on
 // the Listen orb → listen:enter, the palm to the face → the wake; and the 10-minute end on Playwright's clock.
 // The garden is the app's own GardenSystem (T-128d). Vines (Could C4) are not built, so there is no vines entity
-// to look for. The tutorial is off (D-087: its strict steps hold palms out and the Listen orb until its own Listen
-// step, 23-onboarding); the ripple's caption goes in Listen, so its draws are counted apart, like the tide's.
+// to look for. The first-minute tutorial runs beside it (T-150): its hints and its caption go in Listen, so their
+// draws are counted apart, like the tide's.
 // Emulator result (E): IWER's hands are rigid; whether a real hand's palms out reads as this pose, how the dome
 // looks over real passthrough and how the halo feels are headset questions.
 import { expect, test, type JSHandle, type Page } from '@playwright/test';
@@ -268,7 +268,7 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
   page,
 }) => {
   const errors = watch(page);
-  const offHost = await openApp(page, readRoom('table'), '/');
+  const offHost = await openApp(page, readRoom('table'), '/', { onboarding: true });
   const probe = await inSession(page);
   // The garden's signature starts the tuning ripple (T-142); its quads are drawn for 4 s, so the counts
   // start after room:tuned.
@@ -338,7 +338,7 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
   expect(d.tris - b.tris).toBe((draws / 2) * (80 + 96));
   expect(a).toEqual(b);
   expect(during.maxFlashPerS).toBeLessThanOrEqual(3);
-  expect(during.hints.draws).toBe(0); // the caption goes in Listen
+  expect(during.hints.draws).toBe(0); // the tutorial's hints and caption go in Listen
   // T-165: no program linked after the session's first frame with a pose: not for the bed's placement, the
   // ripple's captions, the tutorial's hints, nor Listen's dome and halo.
   const [firstPrograms, programs] = await probe.evaluate((p) => [p.firstPrograms, p.programs()]);
@@ -359,7 +359,7 @@ test('TC-E2E-05 palms out: listen:enter, the dome and the halo drawn by the app;
 
 test('TC-E2E-05 a pinch on the Listen orb enters; a palm turned to the face wakes', async ({ page }) => {
   const errors = watch(page);
-  const offHost = await openApp(page, readRoom('table'), '/');
+  const offHost = await openApp(page, readRoom('table'), '/', { onboarding: true });
   const probe = await inSession(page);
   const orb = (await probe.evaluate((p) => p.orbAt()))!;
 
@@ -440,7 +440,7 @@ test('TC-E2E-05 the 10-minute end on a fake clock: listen:exit timed out, "Goodn
 }) => {
   const errors = watch(page);
   await page.clock.install(); // time flows as usual until the test moves it on
-  const offHost = await openApp(page, readRoom('table'), '/');
+  const offHost = await openApp(page, readRoom('table'), '/', { onboarding: true });
   const probe = await inSession(page);
   await palmsOut(page);
   await heard(probe, 'listen:enter');

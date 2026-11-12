@@ -1,7 +1,7 @@
 // The settings panel without its drawing (UX §3.6, T-151): what each tab shows, what a press, a hold or a dwell
 // does, and where the panel and its orb go. No Three.js and no canvas here: ui/PanelSystem.ts draws what this file
 // lists and feeds it the events and the frame. Settings are read from and written through core's store.
-import { GUIDE_SKIP_ID, guideAllows, settings, STRINGS, validateSettings } from '../core/index.js';
+import { settings, STRINGS, validateSettings } from '../core/index.js';
 import { gardenDay, HIDDEN_KINDS, SEED_KINDS, setBedHeightOffset, WANDERER } from '../garden/index.js';
 import { HIT_RADIUS_M, HOVER_DEAD_BAND_M, ORB_HIDE_FACING, ORB_SHOW_FACING } from '../hands/index.js';
 
@@ -119,7 +119,7 @@ const TIME_LAPSE_ID = 'timeLapse';
 const EXIT_ID = 'exit';
 export const SEEDS_ID = 'seeds'; // the way to the Seeds page (T-193, 10 Nov): a palm-up no longer opens it
 /** D-084: the "Skip guide" button, drawn by PanelSystem off the board; its press or dwell is `pressed(SKIP_ID)`. */
-export const SKIP_ID = GUIDE_SKIP_ID; // core's: the strict guide's lock always lets it through (D-087)
+export const SKIP_ID = 'skipGuide';
 // The gaze cannot switch itself off: a user with no hand to pinch with could not switch it back on.
 const GAZE_TOGGLE_ID = 'gazeDwell';
 
@@ -377,8 +377,6 @@ export class Panel {
   private heldId = '';
   private heldHand: Hand = 'right';
   private gazeId = '';
-  /** D-087: the setting the guide's walkthrough explains now ('' = none): cued first, lit alone. */
-  private guidedId = '';
   /** The cue the board was last drawn for: the description row follows it. */
   private cuedId = '';
   /** The dwell on `gazeId` has acted: it does not act again until the gaze has left it. */
@@ -409,37 +407,9 @@ export class Panel {
       ...Object.entries(TABS).map(([id, tab], i) => tabAt(id, i, PANEL.tabs[tab], tab === this.shownTab)),
       round('close', CLOSE_X, HEADER_Y, PANEL.close),
     ];
-    const page =
-      this.shownTab === 'sound'
-        ? this.soundControls(s)
-        : this.shownTab === 'access'
-          ? this.accessControls(s)
-          : this.gardenControls();
-    const all = [...header, ...page];
-    // D-087: in the walkthrough every control but the one explained is drawn dim
-    return this.guidedId === '' ? all : all.map((c) => (this.isGuided(c.id) ? c : { ...c, dim: true }));
-  }
-
-  /** D-087: `id` is the walkthrough's setting, or one of its group (a stepper's − and +, a segment of the same row). */
-  private isGuided(id: string): boolean {
-    return this.guidedId !== '' && id.split(':')[0] === this.guidedId.split(':')[0];
-  }
-
-  /**
-   * D-087: the walkthrough's spotlight on the page's labels: lit only on the explained setting's row, and on its
-   * side of a row that holds two settings; the rest dim.
-   */
-  private spotlight(page: PanelText[]): PanelText[] {
-    const controls = this.controls();
-    const guided = controls.find((c) => this.isGuided(c.id));
-    return page.map((t) => {
-      const side = Math.sign(t.x);
-      const isLit =
-        guided !== undefined &&
-        t.y === guided.y &&
-        !controls.some((c) => c.y === t.y && !this.isGuided(c.id) && Math.sign(c.x) === side);
-      return isLit ? t : { ...t, dim: true };
-    });
+    if (this.shownTab === 'sound') return [...header, ...this.soundControls(s)];
+    if (this.shownTab === 'access') return [...header, ...this.accessControls(s)];
+    return [...header, ...this.gardenControls()];
   }
 
   /** The description row, and the labels and read-outs of the open tab. A new array: not per frame. */
@@ -453,7 +423,7 @@ export class Panel {
         : this.shownTab === 'access'
           ? this.accessTexts(s)
           : this.gardenTexts();
-    return [...describeLines(this.describe(s)), ...(this.guidedId === '' ? page : this.spotlight(page))];
+    return [...describeLines(this.describe(s)), ...page];
   }
 
   /** What the cued control does (PANEL.describe), or the page's default when nothing on it is cued. */
@@ -581,21 +551,18 @@ export class Panel {
 
   /** The control or orb to ring: the one a pinch is held on, else the one under the gaze, else a hovered one. */
   cue(): string {
-    return this.guidedId || this.heldId || this.gazeId || this.hovered.right || this.hovered.left;
+    return this.heldId || this.gazeId || this.hovered.right || this.hovered.left;
   }
 
   close(): void {
     this.setOpen(false);
   }
 
-  /** D-087: the walkthrough explains `id` ('' = it is over) on the settings tab `tab`, from any page. */
-  guide(id: string, tab: PanelTab): void {
-    if (id === this.guidedId) return;
-    this.guidedId = id;
-    if (id !== '') {
-      this.shownTab = tab;
-      this.isSeeds = this.opening = false;
-    }
+  /** D-084: the guide's tips point at the Garden tab's Seeds and Move: the open board shows that tab, from any page. */
+  showGarden(): void {
+    if (!this.isOpen || (this.shownTab === 'garden' && !this.isSeeds)) return;
+    this.shownTab = 'garden';
+    this.isSeeds = this.opening = false;
     this.stale = true;
   }
 
@@ -645,7 +612,6 @@ export class Panel {
 
   /** Acts on a control. One that is not on show (another tab's, a closed panel's) or is at its limit does nothing. */
   private select(id: string): void {
-    if (!guideAllows('panel', id)) return; // D-087: the strict guide holds the board to its step (Skip always works)
     if (id === SKIP_ID) {
       this.selected = true;
       this.actions.pressed(id); // PanelSystem ends the guide: the button is not one of the board's controls

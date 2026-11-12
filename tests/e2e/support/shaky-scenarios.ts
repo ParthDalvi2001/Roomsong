@@ -26,6 +26,8 @@ type Scene = (rig: Rig, facts: Facts) => Promise<void>;
 
 const UP = new Vector3(0, 1, 0);
 const DOWN = new Vector3(0, -1, 0);
+/** Hints.ts `Frame`. */
+const PALM_ICON = 4;
 const SEED_MS = 8000;
 /** The longest a press or a release may take to be heard, on a loaded host. */
 const HEARD_MS = 3000;
@@ -545,11 +547,7 @@ const SCENES: Record<number, Scene> = {
       5000,
       `The tutorial stands at "${tutorial.step}", not "palm"`,
     );
-    await rig.until(
-      () => hints.shows.ghostHands === 1,
-      5000,
-      'The palm hint (D-087: the ghost hand) never showed',
-    );
+    await rig.until(() => hints.shows.icon === PALM_ICON, 5000, 'The palm hint never showed');
     rig.dropMode('left', 'burst');
     rig.beat('Nothing planted: the palm hint');
     await rig.wait(800);
@@ -559,8 +557,8 @@ const SCENES: Record<number, Scene> = {
     facts.stepAfter61s = tutorial.step;
     rig.check(rig.plants().length === 0, 'A plant came from nowhere');
     rig.check(
-      tutorial.step === 'palm' && hints.shows.ghostHands === 1,
-      `61 s on, with nothing planted, the tutorial stands at "${tutorial.step}" and shows ${hints.shows.ghostHands} ghost hands`,
+      tutorial.step === 'palm' && hints.shows.icon === PALM_ICON,
+      `61 s on, with nothing planted, the tutorial stands at "${tutorial.step}" and shows icon ${hints.shows.icon}`,
     );
     rig.beat('Still the palm hint; a palm up still brings a seed');
     await askForSeed(rig, facts, 'left');

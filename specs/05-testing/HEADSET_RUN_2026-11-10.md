@@ -182,19 +182,6 @@ Should: the line starts "Day 2", then "Seeds left 1" (if C2 planted all three). 
 **F4b. Descriptions and glow (D-086).** Point at Time-lapse: a 1–2 line description shows under the tabs; is it readable, not squeezed? During the guide, does the glow breathe smoothly (no flicker when your hand nears it)? ☐
 **F5. The hum.** Plant a Thrumsprout (Calm). Rating 1–5: ____ (under 3: it is hidden again)
 
-## Part G. The strict guide (D-087, 12 Nov; about 4 minutes, dev link or after the push)
-
-Start it: settings orb → Garden → hold **New garden** (or a brand-new garden). Do each step slowly; at each one also try one *other* gesture.
-
-**G1. Palm.** A see-through glowing hand in front of you turns palm up. Turn yours up: a seed comes. Before that, a pinch on the settings orb or palms out does nothing. ☐
-**G2. Plant.** A dotted line flows from the seed on your palm to the glowing cell; the ghost pinches, carries and lets go. Plant it there. ☐
-**G3. Grow.** The ghost pinches your plant and lifts it; a line points up. Slide the plant sideways first: nothing happens. Then pull it up. A palm up gives no new seed here. ☐
-**G4. Move.** The ghost slides the plant two cells along; a line along the bed. Pull it up first: nothing. Then slide it. ☐
-**G5. Listen.** Two ghost palms push forward. Show both palms: Listen. In Listen, one ghost hand pinches and "Pinch to come back" shows: pinch. ☐
-**G6. Settings.** The ghost raises its other wrist like looking at a watch (back of the hand to your eyes), then its main hand pinches the orb there; caption "Raise your wrist, pinch the orb". Do the same. Open the orb: every setting lights up one at a time, 2 s each, with its description, the rest dim; the board stays open while you look around. At the end the board works normally. Rating 1–5 for "I understood each setting": ____ (2 s too fast? say so) ☐
-**G7. Skip.** Start again (New garden), press **Skip tutorial** at any step: the guide ends at once. ☐
-**G8. Feel.** Is the ghost hand easy to read, and smooth? Rating 1–5: ____ ; anything confusing: ________
-
 ---
 
 ## Not on this sheet (they need something the live site does not have)

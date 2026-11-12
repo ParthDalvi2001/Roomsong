@@ -58,7 +58,6 @@ describe('core/ dependency direction (API_SPEC §1)', () => {
         'CAPTION_MIN_MS',
         'DEFAULT_SETTINGS',
         'DEFAULT_TEMPO_BPM',
-        'GUIDE_SKIP_ID', // D-087: the strict guide's lock
         'MS_PER_DAY',
         'Pool',
         'STRINGS',
@@ -66,8 +65,6 @@ describe('core/ dependency direction (API_SPEC §1)', () => {
         'clock',
         'createClock',
         'flags',
-        'guide',
-        'guideAllows',
         'log',
         'parseAccessLink',
         'parseFlags',

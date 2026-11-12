@@ -17,5 +17,3 @@ export type { StringKey } from './strings.js';
 export { log } from './log.js';
 export type { ErrorCode, LogEntry } from './log.js';
 export { Pool } from './pool.js';
-export { guide, guideAllows, GUIDE_SKIP_ID } from './guide.js';
-export type { GuideLock } from './guide.js';

@@ -6,7 +6,7 @@
 import { createSystem, Vector3, type Entity } from '@iwsdk/core';
 
 import { BedAnchor, Caption, Interactable } from '../core/components.js';
-import { bus, guideAllows, guide, settings } from '../core/index.js';
+import { bus, settings } from '../core/index.js';
 import { nearestFreeCell } from '../garden/index.js';
 
 import { CONTROLLER_HINT_AFTER_MS, HIT_RADIUS_M, PALMS_OUT_HOLD_MS, WAKE_HOLD_MS } from './config.js';
@@ -57,8 +57,6 @@ export class HandSystem extends createSystem({
    * for the garden window's PointerSource, which reads it live (LLD §11).
    */
   readonly candidates: { target: TargetRef; radius: number; pos: Vec3 }[] = [];
-  /** Each candidate's own hit radius, at the same index: its `radius` is -1 while the strict guide holds it (D-087). */
-  private readonly radii: number[] = [];
   /** The entity of each candidate, at the same index. */
   private readonly targets: Entity[] = [];
   /** The BedAnchor entity: the one added last of those there are. */
@@ -204,9 +202,7 @@ export class HandSystem extends createSystem({
     let out = 0;
     for (let i = 0; i < slots.length; i++) if (isPalmOut(slots[i]!.frame, forward)) out++;
     const isPosed = out > 0 && (settings.get().oneHand || out === slots.length);
-    // D-087: the strict guide lets palms out enter Listen only at its Listen step; the wake is never held
-    if (this.palmsOut.update(isPosed, timeMs) && guide.lock?.palmsOut !== false)
-      bus.emit('gesture:palmsOut', PALMS_OUT);
+    if (this.palmsOut.update(isPosed, timeMs)) bus.emit('gesture:palmsOut', PALMS_OUT);
   }
 
   /** Each Listen pose is timed from the moment it is looked for. */
@@ -218,12 +214,10 @@ export class HandSystem extends createSystem({
 
   private addTarget(entity: Entity): void {
     this.targets.push(entity);
-    // FR-HND-04: nothing is harder to pinch than the hit radius, whatever its attacher wrote.
-    const radius = Math.max(entity.getValue(Interactable, 'radius') ?? 0, HIT_RADIUS_M);
-    this.radii.push(radius);
     this.candidates.push({
       target: { kind: 'plant', id: '' }, // filled in by every frame, before a machine reads it
-      radius,
+      // FR-HND-04: nothing is harder to pinch than the hit radius, whatever its attacher wrote.
+      radius: Math.max(entity.getValue(Interactable, 'radius') ?? 0, HIT_RADIUS_M),
       // A Vector3, not a plain { x, y, z }: every fraction written into the plain object cost a boxed number,
       // 16 bytes each, per frame (measured in HandSystem.test.ts; API_SPEC §1.9 notes the same of clampToFov).
       pos: new Vector3(),
@@ -235,20 +229,16 @@ export class HandSystem extends createSystem({
     if (i < 0) return;
     this.targets.splice(i, 1);
     this.candidates.splice(i, 1);
-    this.radii.splice(i, 1);
   }
 
   /** What the machines read this frame: what and where every Interactable is, and the bed's pose. */
   private fillContext(): void {
     for (let i = 0; i < this.targets.length; i++) {
       const entity = this.targets[i]!;
-      const candidate = this.candidates[i]!;
-      const { target, pos } = candidate;
+      const { target, pos } = this.candidates[i]!;
       // Every frame: an entity that is reused for another plant gets its new id with no qualify to tell of it.
       target.kind = (entity.getValue(Interactable, 'kind') ?? 'plant') as TargetRef['kind'];
       target.id = entity.getValue(Interactable, 'id') ?? '';
-      // D-087: a target the strict guide's step does not teach is out of reach: no hover, no pinch, no carry
-      candidate.radius = guideAllows(target.kind, target.id) ? this.radii[i]! : -1;
       const at = entity.getVectorView(Interactable, 'worldPos');
       pos.x = at[0]!;
       pos.y = at[1]!;

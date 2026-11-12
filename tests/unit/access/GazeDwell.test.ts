@@ -7,7 +7,7 @@ import { RETICLE_IDLE_DISTANCE_M } from '../../../src/access/config.js';
 import { Dwell, GazeDwellSystem } from '../../../src/access/index.js';
 import { Reticle } from '../../../src/access/Reticle.js';
 import { BedAnchor, Interactable } from '../../../src/core/components.js';
-import { bus, DEFAULT_SETTINGS, guide, settings, type EventMap } from '../../../src/core/index.js';
+import { bus, DEFAULT_SETTINGS, settings, type EventMap } from '../../../src/core/index.js';
 import { cellCentre, type Cell } from '../../../src/garden/index.js';
 import { HandState } from '../../../src/hands/index.js';
 import { FlashGuard } from '../../../src/render/index.js';
@@ -114,7 +114,6 @@ const BED_AT = new Vector3(0, 0.74, -0.45); // flat, 0.45 m ahead on a 0.74 m de
 const off: (() => void)[] = [];
 let live: GazeDwellSystem | null = null;
 afterEach(() => {
-  guide.lock = null; // D-087: a failed test leaves no lock for the next
   while (off.length > 0) off.pop()?.();
   live?.destroy();
   live = null;
@@ -273,29 +272,6 @@ describe('GazeDwellSystem (T-160, priority 25)', () => {
     r.frames(28);
     expect(hovers[hovers.length - 1]?.cell).not.toEqual({ ring: 2, step: 4 });
     expect(hovers[hovers.length - 1]?.cell).not.toBeNull();
-  });
-
-  it('D-087: the strict guide holds the look to its step: no cell outside the plant step, no orb outside Listen', () => {
-    settings.set({ gazeDwell: true });
-    const r = rig();
-    r.place();
-    bus.emit('garden:changed', {
-      state: garden([], [seed('s1')]),
-      diff: { added: [], removed: [], changed: [] },
-    });
-    guide.lock = { kinds: ['orb'], palmUp: false, palmsOut: true, shape: null }; // the Listen step
-    r.lookAt(cellAt({ ring: 2, step: 5 }));
-    r.frames(200);
-    expect(r.system.kind).toBe('none');
-    guide.lock = { kinds: ['seed', 'cell'], palmUp: true, palmsOut: false, shape: null }; // the plant step
-    r.frames(200);
-    expect(r.system.kind).toBe('cell');
-    const orb = new Vector3(0, 0.79, -0.45);
-    r.target('orb', 'listen', orb);
-    r.lookAt(orb);
-    r.frames(200);
-    expect(r.system.kind).toBe('none');
-    guide.lock = null;
   });
 
   it('no seed to give, a full bed, or Listen: a cell is no target and the ring stays empty', () => {

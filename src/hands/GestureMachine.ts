@@ -4,7 +4,7 @@
 // (FR-HND-16) and the tracking-loss grace with its revert (FR-HND-15) hold for every one of them.
 import { Vector3 } from '@iwsdk/core';
 
-import { bus, guide } from '../core/index.js';
+import { bus } from '../core/index.js';
 import { bedZone } from '../garden/index.js';
 
 import { DRAG_DEAD_ZONE_M, TRACKING_GRACE_MS } from './config.js';
@@ -238,11 +238,7 @@ export class GestureMachine {
     if (this.state !== 'PINCHED') return;
     const travelSq = dx * dx + dy * dy + dz * dz;
     if (travelSq < DRAG_DEAD_ZONE_M * DRAG_DEAD_ZONE_M) return;
-    const isPull = up * up >= travelSq - up * up; // |dy| >= |dxz|, both squared
-    // D-087: the strict guide's step teaches one shape; the other is not taken, the plant stays pinched until it is
-    const only = guide.lock === null ? null : guide.lock.shape;
-    if (only !== null && isPull !== (only === 'pull')) return;
-    this.state = isPull ? 'PULLING' : 'DRAGGING';
+    this.state = up * up >= travelSq - up * up ? 'PULLING' : 'DRAGGING'; // |dy| >= |dxz|, both squared
   }
 
   /** FR-HND-16: what a pinch, or the release of this one, would act on. */
@@ -257,8 +253,7 @@ export class GestureMachine {
       let picked = isHeldPlant ? this.held : pickTarget(frame.pinchPos, context.candidates, kept);
       if (picked === null) {
         const eye = state === 'IDLE' || state === 'PRESSED' ? context.eye : undefined;
-        const seen =
-          eye === undefined ? null : pickPastHand(eye, frame.pinchPos, context.candidates, kept, this.sight);
+        const seen = eye === undefined ? null : pickPastHand(eye, frame.pinchPos, context.candidates, kept, this.sight);
         // D-062, first device run: nothing at the fingertips: the seed resting on this palm is the hover, for everyone.
         // Players pinch with the hand that holds the seed and carry it down to the bed. BUG-042: a panel control seen
         // past the hand comes first (Exit, in one-hand mode); a plant or petal seen there does not.
@@ -361,9 +356,7 @@ export class GestureMachine {
         return;
       }
     }
-    // D-087: the hold is timed always; the strict guide lets it ask for a seed only at its palm and plant steps
-    if (this.palmUp.update(frame, timeMs) && guide.lock?.palmUp !== false)
-      bus.emit('gesture:palmUp', this.palmUpEvent);
+    if (this.palmUp.update(frame, timeMs)) bus.emit('gesture:palmUp', this.palmUpEvent);
   }
 
   /** The held pinch is still closed, on the signal it started on. */

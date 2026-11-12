@@ -8,7 +8,5 @@ declare module '../core/index.js' {
     'onboarding:step': { step: OnboardingStep };
     /** D-084: the player pressed "Skip guide" (ui/). The guide ends at once, quietly. */
     'onboarding:skip': Record<string, never>;
-    /** D-087: ui/ showed the settings walkthrough's last setting; the guide is done. */
-    'onboarding:toured': Record<string, never>;
   }
 }

@@ -266,7 +266,7 @@ async function emulated(page: Page, probe: JSHandle<Probe>) {
   };
 }
 
-test('D-084/D-087 the strict guide: the orb takes no pinch at the palm step; Skip ends the guide; New garden starts it again', async ({
+test('D-084 the guide shows Skip guide; a pinch on it ends the guide; New garden starts it again from the palm', async ({
   page,
 }) => {
   const errors = watch(page);
@@ -275,17 +275,6 @@ test('D-084/D-087 the strict guide: the orb takes no pinch at the palm step; Ski
   await enterXR(page);
   await heard(probe, 'step', { id: 'palm' });
   const hands = await emulated(page, probe);
-
-  // D-087: the strict guide holds the hands to its step: at the palm step the settings orb takes no pinch.
-  await hands.together([hands.transform('left', LEFT_ROOT, PALM_DOWN)]);
-  await page.waitForFunction((p) => p.panelAt('orb') !== null, probe);
-  const orbAt = (await probe.evaluate((p) => p.panelAt('orb')))!;
-  await hands.together([hands.transform('right', hands.rootFor(orbAt)), hands.select(1)]);
-  await xrFrames(page, 10);
-  await hands.together([hands.select(0)]);
-  await xrFrames(page, 10);
-  expect(await probe.evaluate((p) => p.isOpen())).toBe(false);
-  expect((await named(probe, 'gesture:pinchStart')).every((e) => e.id === null)).toBe(true);
 
   // While the guide runs, "Skip guide" is on show; a pinch ends the guide, and the button goes.
   await page.waitForFunction((p) => p.panelAt('skipGuide') !== null, probe);

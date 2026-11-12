@@ -192,36 +192,11 @@ export const SKIP_REST_OPACITY = 0.45;
  * grows by GLOW_GROW at the peak. Steady at full and at its own size with Reduce motion (UX §8).
  */
 export const GLOW_PERIOD_MS = 2400;
-/**
- * D-087 (Parth, 12 Nov: "a 2 second pause to explain the setting menu fully"): the guide's settings walkthrough, in
- * the board's own order, each setting's tab and the control lit for it, TOUR_ITEM_MS each; Close last.
- */
-export const TOUR: readonly (readonly [tab: 'sound' | 'access' | 'garden', id: string])[] = [
-  ['sound', 'volume:+'],
-  ['sound', 'tempo:+'],
-  ['sound', 'reverb:auto'],
-  ['sound', 'mono'],
-  ['access', 'oneHand'],
-  ['access', 'gazeDwell'],
-  ['access', 'highContrast'],
-  ['access', 'reducedMotion'],
-  ['access', 'beatRing'],
-  ['access', 'hand:left'],
-  ['garden', 'seeds'],
-  ['garden', 'height:+'],
-  ['garden', 'timeLapse'],
-  ['garden', 'replaceBed'],
-  ['garden', 'exit'],
-  ['garden', 'newGarden'],
-  ['garden', 'close'],
-];
-export const TOUR_ITEM_MS = 2000;
 export const GLOW_LOW = 0.65;
 export const GLOW_GROW = 0.05;
 
-// The hints (T-150, UX §3.3, §3.4): the garden window's onboarding icons, the hint ring, the remove arrow and the hand
-// hint, each a quad of one icon atlas drawn on a canvas once (UX §1: an icon, never a paragraph); in a headset the
-// guide's ghost hand (D-087), a guide, not a model of the player's own hand (that is still never drawn, D-027).
+// The hints (T-150, UX §3.3, §3.4): the onboarding icons, the hint ring, the remove arrow and the hand hint. Each is
+// a quad of one icon atlas, drawn on a canvas once (UX §1: an icon, never a paragraph; no hand model, D-027).
 
 /** The icon atlas: ATLAS_GRID by ATLAS_GRID cells of ATLAS_CELL_PX. Powers of two. */
 export const ATLAS_CELL_PX = 128;
@@ -239,30 +214,19 @@ export const GUIDE_CELL: Readonly<Cell> = Object.freeze({ ring: 2, step: 4 });
 /** The ring round a cell (the glowing cell, the hint ring): its quad lies on the bed, a little above the glass. */
 export const RING_SIZE_M = 0.07;
 export const RING_LIFT_M = 0.004;
-/** The garden window's pointer over the glowing cell: its quad, its height, and its click's period. */
+/** The ghost hand: its quad, the top and bottom of its loop over the cell, and the loop's period. */
 export const GHOST_SIZE_M = 0.06;
+export const GHOST_TOP_M = 0.1;
 export const GHOST_BOTTOM_M = 0.045;
 export const GHOST_LOOP_MS = 2000;
-/** Of the loop: the pointer, then its click from this fraction until the next. */
+/** Of the loop: down with the fingers open until this fraction, closed until the next, then up open again. */
 export const GHOST_CLOSE_AT = 0.35;
 export const GHOST_OPEN_AT = 0.7;
-/**
- * D-087: in a headset a 3D ghost hand acts each step out instead of an icon: one act a GHOST_ACT_MS loop, at
- * GHOST_OPACITY; with Reduce motion it holds still GHOST_STILL_AT into its act. The guide line from where to pinch to
- * where to let go: GUIDE_DOTS dots GUIDE_DOT_M across flowing on once a GUIDE_FLOW_MS, an arrowhead GUIDE_HEAD_M long.
- */
-export const GHOST_ACT_MS = 2400;
-/** D-087: the acts in the air (the palm, Listen, the orb) stand this far out along the gaze, inside the FoV box. */
-export const GHOST_AHEAD_M = 0.35;
-export const GHOST_OPACITY = 0.6;
-export const GHOST_STILL_AT = 600; // thousandths of the act
-export const GUIDE_DOTS = 14;
-export const GUIDE_DOT_M = 0.004;
-export const GUIDE_FLOW_MS = 800;
-export const GUIDE_HEAD_M = 0.03;
-/** The garden window's drag icon stands this far over its plant's cell; its Listen click over the bed centre. */
+/** The grow and move icons stand this far over their plant's cell; the palm and Listen icons over the bed centre. */
 export const ICON_SIZE_M = 0.05;
 export const RING_ICON_LIFT_M = 0.12;
+/** Above the seed supply (render SUPPLY_ORB_LIFT_M 0.10 plus its 0.03 radius): where the seeds come from. */
+export const PALM_ICON_LIFT_M = 0.17;
 export const LISTEN_ICON_LIFT_M = 0.14;
 /** UX §3.4: the remove arrow lies on the bed, just past the rim (0.30 m), on the side of the dragging hand. */
 export const REMOVE_ARROW_SIZE_M = 0.06;
