@@ -33,6 +33,8 @@ import {
   CUE_SEGMENTS,
   GLOW_GROW,
   GLOW_PERIOD_MS,
+  TOUR,
+  TOUR_ITEM_MS,
   ORB_CANVAS_PX,
   ORB_DIAMETER_M,
   PANEL_ACCENT,
@@ -76,7 +78,6 @@ import {
   PANEL_ELEMENT,
   placePanel,
   RULE_Y,
-  SEEDS_ID,
   SKIP_AT_X,
   SKIP_AT_Y,
   SKIP_ELEMENT,
@@ -370,8 +371,10 @@ export class PanelSystem extends createSystem(
   private readonly skipAt = new Vector3();
   private skipFor: Hand | null = null;
   private skipHighContrast: boolean | null = null;
-  /** The guide's tip step whose Garden tab the open board was last turned to ('' = none yet). */
-  private tipFor = '';
+  /** D-087: the walkthrough's setting (an index into TOUR) and the whole ms it has been explained; kept while the
+   *  board is closed mid-walkthrough, so it goes on where it stopped. */
+  private tourAt = 0;
+  private tourMs = 0;
   /** Whole ms into the glow's pulse (GLOW_PERIOD_MS): an integer, so it stays off the heap. */
   private glowMs = 0;
   private ring!: Mesh<RingGeometry, MeshBasicMaterial>;
@@ -481,12 +484,11 @@ export class PanelSystem extends createSystem(
     const wholeMs = Math.floor(carry[0]);
     carry[0] -= wholeMs;
     this.glowMs = (this.glowMs + wholeMs) % GLOW_PERIOD_MS;
-    panel.frame(wholeMs, this.gazedId, away, isHeadTurning(head.elements, wholeMs, this.headTurn));
+    // D-087: the board stays while the walkthrough explains it, wherever the head turns
+    const isTour = this.step === 'tour';
+    panel.frame(wholeMs, this.gazedId, away && !isTour, isHeadTurning(head.elements, wholeMs, this.headTurn));
     if (panel.open !== board.visible) this.show(panel.open, head);
-    // D-084: a tip of the guide turns the open board to the Garden tab once, where Seeds and Move glow
-    const tip = panel.open && (this.step === 'seedsTip' || this.step === 'moveTip') ? this.step : '';
-    if (tip !== '' && tip !== this.tipFor) panel.showGarden();
-    this.tipFor = tip;
+    if (isTour && panel.open) this.walk(wholeMs);
     if (panel.stale) this.redraw();
     this.placeCue();
   }
@@ -517,9 +519,28 @@ export class PanelSystem extends createSystem(
         this.homeFor = null; // the orb's place in the view box is worked out again from where the head is now
       }),
       bus.on('xr:sessionEnd', () => panel.close()),
-      bus.on('onboarding:step', ({ step }) => void (this.step = step)),
+      bus.on('onboarding:step', ({ step }) => {
+        this.step = step;
+        if (step !== 'tour' && step !== 'orb') this.tourAt = this.tourMs = 0;
+        if (step !== 'tour') panel.guide('', 'sound');
+        if (step === 'palm') panel.close(); // D-087: the guide begins again (New garden on the board): nothing over it
+      }),
       () => this.dispose(),
     );
+  }
+
+  /** D-087: one more frame of the walkthrough: each setting lit and explained TOUR_ITEM_MS, then the guide's end. */
+  private walk(ms: number): void {
+    if (this.tourAt >= TOUR.length) return; // its end was said: onboarding/ is on to done
+    this.tourMs += ms;
+    if (this.tourMs >= TOUR_ITEM_MS) {
+      this.tourMs = 0;
+      this.tourAt++;
+    }
+    const item = TOUR[this.tourAt];
+    if (item !== undefined) return this.panel.guide(item[1], item[0]);
+    this.panel.guide('', 'sound');
+    bus.emit('onboarding:toured', {}); // onboarding/ goes to done: this step, and the walk, end at once
   }
 
   /** A hand's HandState came or went: its palm is read from the views of that component from now on, or no more. */
@@ -706,8 +727,7 @@ export class PanelSystem extends createSystem(
   private placeCue(): void {
     // D-084: with nothing held, gazed at or hovered, the ring glows round what the guide points at
     const step = this.step;
-    const guided =
-      step === 'orb' ? ORB_ID : step === 'seedsTip' ? SEEDS_ID : step === 'moveTip' ? 'replaceBed' : '';
+    const guided = step === 'orb' ? ORB_ID : step === 'tour' ? (TOUR[this.tourAt]?.[1] ?? '') : '';
     const id = this.panel.cue() || guided;
     const i = id === '' ? -1 : this.ids.indexOf(id);
     // How much of the fill ring is drawn: whole steps of it, from the top round (UX §8: the ring fills).

@@ -65,21 +65,21 @@ describe('core/strings', () => {
       'Pinch the seed, drop it here',
       'Click or tap to plant',
       'Look at a cell to plant', // gaze mode (T-160)
+      'Pinch the plant, pull it up', // D-087
+      'Pinch the plant, slide it along',
       'Show your palms to listen',
       'Click the orb to listen',
       'Turn a hand over: settings', // D-084: the tour after Listen
       'Look at the orb: settings',
-      'Seeds: choose your next seed',
-      'Move: put the garden elsewhere',
+      'Your settings, one at a time',
     ]);
     for (const [key, text] of onboarding) expect(text.split(' ').length, key).toBeLessThanOrEqual(6);
   });
 
-  it('holds the two one-time notices onboarding/ raises (UX re-check 23 Oct), at most six words', () => {
+  it('holds the one-time notices onboarding/ raises (UX re-check 23 Oct), at most six words', () => {
     expect(STRINGS.seedsTomorrow).toBe('No seeds left. More tomorrow.'); // BUG-056
     expect(STRINGS.undoHint).toBe('Pinch the petal to undo');
-    expect(STRINGS.settingsHint).toBe('Turn a hand over for settings');
-    for (const key of ['seedsTomorrow', 'undoHint', 'settingsHint'] as const)
+    for (const key of ['seedsTomorrow', 'undoHint'] as const)
       expect(STRINGS[key].split(' ').length, key).toBeLessThanOrEqual(6);
   });
 
@@ -93,8 +93,6 @@ describe('core/strings', () => {
       'undoHint',
       'undoHintGaze',
       'undoHintClick',
-      'settingsHint',
-      'settingsHintLook',
       'soundResume',
       'soundResumeClick',
       'putControllersDown',

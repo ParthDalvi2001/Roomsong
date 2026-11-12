@@ -40,6 +40,8 @@ import {
   PANEL_SYMBOL_FONT,
   PANEL_WIDE_TARGET_M,
   SKIP_REST_OPACITY,
+  TOUR,
+  TOUR_ITEM_MS,
 } from '../../../src/ui/config.js';
 import { ORB_ID, Panel, SKIP_ID, type PanelTab } from '../../../src/ui/Panel.js';
 import { drawOrb, drawPanel, PanelSystem } from '../../../src/ui/PanelSystem.js';
@@ -941,7 +943,7 @@ describe('PanelSystem: the guide (D-084)', () => {
     expect(skips).toHaveLength(1);
   });
 
-  it('turns the open board to the Garden tab in seedsTip and rings Seeds in a slow accent pulse; Move in moveTip; the orb in orb', () => {
+  it('D-087: the walkthrough lights one setting at a time on its own tab, TOUR_ITEM_MS each, the rest dim; then toured', () => {
     const { watch, frame, press, emit, system, mesh, targets } = rig();
     const ring = mesh('settings-cue') as unknown as Shown;
     const at = (id: string) =>
@@ -950,32 +952,39 @@ describe('PanelSystem: the guide (D-084)', () => {
           .find((e) => e.getValue(Interactable, 'id') === id)!
           .getVectorView(Interactable, 'worldPos'),
       ].map((v) => Math.round(v * 1e4) / 1e4);
+    const toured = vi.fn();
+    const off = bus.on('onboarding:toured', toured);
     watch();
     emit('onboarding:step', { step: 'orb' });
     frame();
     expect(ring.visible).toBe(true);
     expect(where(ring)).toEqual(at(ORB_ID));
-    press(ORB_ID); // the Sound tab
-    emit('onboarding:step', { step: 'seedsTip' });
+    press(ORB_ID);
+    emit('onboarding:step', { step: 'tour' });
     frame();
-    expect(system.panel.tab).toBe('garden');
-    expect(where(ring)).toEqual(at('seeds'));
-    const reds: number[] = [];
-    for (let ms = 0; ms < GLOW_PERIOD_MS; ms += 14) {
-      frame();
-      reds.push(ring.material.color.r);
-    }
-    expect(Math.max(...reds)).toBeCloseTo(new Color(PANEL_ACCENT).r, 2);
-    expect(Math.min(...reds)).toBeCloseTo(GLOW_LOW * Math.max(...reds), 3); // 10 Nov: a slow breath, not a blink
-    press('tab:sound'); // once per step: the player may look round the board
     expect(system.panel.tab).toBe('sound');
-    emit('onboarding:step', { step: 'moveTip' });
-    frame();
+    expect(system.panel.cue()).toBe('volume:+');
+    expect(where(ring)).toEqual(at('volume:+'));
+    expect(
+      system.panel
+        .controls()
+        .filter((c) => !c.dim)
+        .map((c) => c.id),
+    ).toEqual(['volume:-', 'volume:+']);
+    frame(TOUR_ITEM_MS);
+    expect(system.panel.cue()).toBe(TOUR[1]![1]);
+    for (let i = 2; i < TOUR.length; i++) frame(TOUR_ITEM_MS);
     expect(system.panel.tab).toBe('garden');
-    expect(where(ring)).toEqual(at('replaceBed'));
+    expect(system.panel.cue()).toBe('close');
+    expect(toured).not.toHaveBeenCalled();
+    frame(TOUR_ITEM_MS);
+    frame(TOUR_ITEM_MS);
+    expect(toured).toHaveBeenCalledTimes(1);
+    expect(system.panel.cue()).toBe(''); // the walkthrough is over: nothing lit, nothing dim for it
     emit('onboarding:step', { step: 'done' });
     frame();
     expect(ring.visible).toBe(false);
+    off();
   });
 
   it("10 Nov: stays neon round the guide's target while it is hovered, breathing 1 to 1.05 with the glow; another control rings cream", () => {

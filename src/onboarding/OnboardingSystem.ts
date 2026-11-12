@@ -4,7 +4,7 @@
 import { createSystem, type Entity } from '@iwsdk/core';
 
 import { Caption } from '../core/components.js';
-import { bus, clock, flags, log, settings, type StringKey } from '../core/index.js';
+import { bus, clock, flags, guide, settings, type StringKey } from '../core/index.js';
 
 import { NO_SEEDS_GAP_MS, NO_SEEDS_SHOW_MS, ONBOARD_CAPTION_MS } from './config.js';
 import { Onboarding, type OnboardingStep } from './Onboarding.js';
@@ -14,10 +14,12 @@ const CAPTIONS: Partial<Record<OnboardingStep, readonly [xr: StringKey, window: 
   palm: ['onboardPalm', null], // a pointer is always palm up (LLD §11): the window has no such step to say
   plant: ['onboardPlant', 'onboardPlantClick'],
   listen: ['onboardListen', 'onboardListenClick'],
+  // D-087: the steps the ghost hand acts out say what to do too; the window's drag is shown by its icon alone
+  grow: ['onboardGrow', null],
+  move: ['onboardMove', null],
   // D-084: the tour runs in a headset only (the window has no orb)
   orb: ['onboardOrb', null],
-  seedsTip: ['onboardSeedsTip', null],
-  moveTip: ['onboardMoveTip', null],
+  tour: ['onboardTour', null],
 };
 
 /** The plant step's caption in gaze mode (T-160). */
@@ -34,15 +36,9 @@ const UNDO_HINT: readonly [xr: StringKey, window: StringKey, gaze: StringKey] = 
   'undoHintClick',
   'undoHintGaze',
 ];
-/** The tutorial's end: the one thing it never named, the settings orb on the back of a hand (UX re-check item 12);
- *  in one-hand or gaze mode the orb waits in the view box instead (PanelSystem), so the hint says to look for it. */
-const SETTINGS_HINT: StringKey = 'settingsHint';
-const SETTINGS_HINT_LOOK: StringKey = 'settingsHintLook';
 
 export class OnboardingSystem extends createSystem({}) {
-  readonly machine = new Onboarding((from, to) =>
-    log.info('onboarding', `no progress in "${from}" for 60 s: on to "${to}" (D-053)`),
-  );
+  readonly machine = new Onboarding();
   private caption!: Entity;
   private notice!: Entity;
   /** BUG-056: the "no seeds" notice's own entity, so its repeats never take another notice back. */
@@ -53,8 +49,9 @@ export class OnboardingSystem extends createSystem({}) {
   private isPlaced = false;
   /** The notices raised this session: each is said once. */
   private readonly noticed = new Set<StringKey>();
-  /** The seeds of the supply at the latest `garden:changed`: none, and a palm up gets "More seeds tomorrow". */
-  private seeds = 0;
+  /** The seeds of the supply at the latest `garden:changed` (-1 before one): none, and a palm up gets "More seeds
+   *  tomorrow", and no guide starts (D-087: its palm step would wait for a seed that cannot come). */
+  private seeds = -1;
   /** The step last said on the bus. */
   private said: OnboardingStep = 'off';
   /** The steps whose caption was raised this tutorial: each is shown once. */
@@ -82,7 +79,9 @@ export class OnboardingSystem extends createSystem({}) {
       bus.on('room:signature', () => {
         if (this.isSigned) return;
         this.isSigned = true;
-        machine.signature(this.plants === 0 && !flags.skipOnboarding && settings.get().hintsEnabled);
+        machine.signature(
+          this.plants === 0 && this.seeds !== 0 && !flags.skipOnboarding && settings.get().hintsEnabled,
+        );
         this.sync();
       }),
       bus.on('room:tuned', () => {
@@ -136,9 +135,7 @@ export class OnboardingSystem extends createSystem({}) {
         this.isListening = false;
         // A step reached in Listen (listen:enter ends the Listen step: the orb step, or done) says it now; not after
         // the 10-minute end, whose line is "Goodnight" (UX §3.5): the hint would queue ahead of it.
-        if (timedOut) return;
-        this.sayStep();
-        this.sayDone();
+        if (!timedOut) this.sayStep();
       }),
       bus.on('panel:open', ({ open }) => {
         machine.panel(open);
@@ -147,6 +144,10 @@ export class OnboardingSystem extends createSystem({}) {
       // D-084: skipped, the guide ends quietly: `off`, its caption taken back, no settings hint.
       bus.on('onboarding:skip', () => {
         machine.skip();
+        this.sync();
+      }),
+      bus.on('onboarding:toured', () => {
+        machine.toured();
         this.sync();
       }),
       // D-084: a New garden in a headset starts the guide again at once, from the palm step: the room is tuned.
@@ -179,21 +180,18 @@ export class OnboardingSystem extends createSystem({}) {
     );
   }
 
-  override update(_delta: number, time: number): void {
-    // Whole ms: a fraction kept in a field is boxed by V8 (HandSystem's note, API_SPEC §1.4).
-    this.machine.tick(Math.round(time * 1000));
-    if (this.machine.step !== this.said) this.sync();
-  }
-
-  /** Says a new step on the bus, and swaps the caption: the old step's is taken back, the new one's raised once. */
+  /**
+   * Says a new step on the bus, and swaps the caption: the old step's is taken back, the new one's raised once. D-087:
+   * the step's lock first, so whatever hears the step finds the hands already held to it.
+   */
   private sync(): void {
     const step = this.machine.step;
     if (step === this.said) return;
     this.said = step;
+    guide.lock = this.machine.lock;
     this.takeCaption();
     this.sayStep();
     bus.emit('onboarding:step', { step });
-    this.sayDone();
   }
 
   /** Raises the current step's caption, once a tutorial and never in Listen. */
@@ -213,16 +211,6 @@ export class OnboardingSystem extends createSystem({}) {
     this.captioned.add(step);
     this.takeCaption();
     this.caption.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });
-  }
-
-  /**
-   * At `done`, once a session: where settings are. Not in the garden window (no orb there), not with hints off, not
-   * after the tour (D-084), which showed the orb.
-   */
-  private sayDone(): void {
-    const s = settings.get();
-    if (this.machine.step !== 'done' || this.machine.toured || this.inWindow || !s.hintsEnabled) return;
-    this.raiseNotice(s.oneHand || s.gazeDwell ? SETTINGS_HINT_LOOK : SETTINGS_HINT, SETTINGS_HINT);
   }
 
   /**

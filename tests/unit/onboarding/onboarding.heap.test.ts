@@ -9,7 +9,7 @@ import { bus } from '../../../src/core/index.js';
 import { HandState } from '../../../src/hands/index.js';
 import { OnboardingSystem } from '../../../src/onboarding/OnboardingSystem.js';
 import { HintSystem } from '../../../src/ui/Hints.js';
-import { garden, plant } from '../garden/fixtures.js';
+import { garden, plant, seed } from '../garden/fixtures.js';
 import { heapCost, PROBE_BYTES } from '../hands/heapCost.js';
 import { FakeEntity, FakeQuery } from '../render/seedRig.js';
 
@@ -56,7 +56,10 @@ describe('OnboardingSystem and HintSystem per frame (NFR-PERF-08)', () => {
     hints.init();
 
     // A new garden, tuned, a seed out: the plant step. A drag on the way and a lost hand that held a seed.
-    bus.emit('garden:changed', { state: garden([]), diff: { added: [], removed: [], changed: [] } });
+    bus.emit('garden:changed', {
+      state: garden([], [seed('s')]),
+      diff: { added: [], removed: [], changed: [] },
+    });
     bus.emit('room:signature', { signature: {} as never, starterSeeds: true });
     bus.emit('room:tuned', {});
     bus.emit('garden:seedOut', { seed: { id: 's' } as never, hand: 'left' });

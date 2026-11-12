@@ -3,4 +3,4 @@
 export { Onboarding } from './Onboarding.js';
 export type { GateGesture, OnboardingStep } from './Onboarding.js';
 export { OnboardingSystem } from './OnboardingSystem.js';
-export { LISTEN_AFTER_MS, ONBOARD_CAPTION_MS } from './config.js';
+export { ONBOARD_CAPTION_MS } from './config.js';

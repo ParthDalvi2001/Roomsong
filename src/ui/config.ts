@@ -192,6 +192,30 @@ export const SKIP_REST_OPACITY = 0.45;
  * grows by GLOW_GROW at the peak. Steady at full and at its own size with Reduce motion (UX §8).
  */
 export const GLOW_PERIOD_MS = 2400;
+/**
+ * D-087 (Parth, 12 Nov: "a 2 second pause to explain the setting menu fully"): the guide's settings walkthrough, in
+ * the board's own order, each setting's tab and the control lit for it, TOUR_ITEM_MS each; Close last.
+ */
+export const TOUR: readonly (readonly [tab: 'sound' | 'access' | 'garden', id: string])[] = [
+  ['sound', 'volume:+'],
+  ['sound', 'tempo:+'],
+  ['sound', 'reverb:auto'],
+  ['sound', 'mono'],
+  ['access', 'oneHand'],
+  ['access', 'gazeDwell'],
+  ['access', 'highContrast'],
+  ['access', 'reducedMotion'],
+  ['access', 'beatRing'],
+  ['access', 'hand:left'],
+  ['garden', 'seeds'],
+  ['garden', 'height:+'],
+  ['garden', 'timeLapse'],
+  ['garden', 'replaceBed'],
+  ['garden', 'exit'],
+  ['garden', 'newGarden'],
+  ['garden', 'close'],
+];
+export const TOUR_ITEM_MS = 2000;
 export const GLOW_LOW = 0.65;
 export const GLOW_GROW = 0.05;
 

@@ -24,22 +24,20 @@ export const STRINGS = {
   undoHint: 'Pinch the petal to undo',
   undoHintGaze: 'Look at the petal to undo', // gaze mode (Settings.gazeDwell): a dwell on the petal undoes (T-160)
   undoHintClick: 'Click the petal to undo', // the garden window (FR-SYS-07): a click is the pinch
-  // The tutorial's end (UX §3.3 step 6): the settings orb rides the back of the non-dominant hand; once a session.
-  settingsHint: 'Turn a hand over for settings',
-  settingsHintLook: 'Look for the settings orb', // one-hand or gaze mode: the orb waits in the view box (FR-UI-09, FR-HND-12)
   // The onboarding captions (UX §3.3, T-150): onboarding/ raises them, one per step. The `Click` twins are the
   // garden window's (FR-SYS-07), where a click or a tap is the pinch and the Listen orb is the way to Listen.
   onboardPalm: 'Open your hand, palm up', // the seed needs the palm within PALM_UP_MAX_ANGLE_DEG of up
   onboardPlant: 'Pinch the seed, drop it here', // the pinch is on the seed in the palm, the drop on the cell
   onboardPlantClick: 'Click or tap to plant',
   onboardPlantGaze: 'Look at a cell to plant', // gaze mode (Settings.gazeDwell): a dwell on a free cell plants (T-160)
+  onboardGrow: 'Pinch the plant, pull it up', // D-087: the guide's grow and move steps, with the ghost hand
+  onboardMove: 'Pinch the plant, slide it along',
   onboardListen: 'Show your palms to listen', // both palms out towards the garden (hands/ palmsOut)
   onboardListenClick: 'Click the orb to listen',
   // D-084: the guide's tour after Listen, six words at most (FR-UI-01); one-hand and gaze mode say "look" for the orb
   onboardOrb: 'Turn a hand over: settings',
   onboardOrbLook: 'Look at the orb: settings',
-  onboardSeedsTip: 'Seeds: choose your next seed',
-  onboardMoveTip: 'Move: put the garden elsewhere',
+  onboardTour: 'Your settings, one at a time', // D-087: ui/ walks the open board, a setting at a time
   // The message of a user-facing failure has its error code (ErrorCode, API_SPEC §5) as its key (LLD §8).
   E_SAVE_FAILED: 'This garden cannot be saved',
   // A session with no sound (API_SPEC §1.10 rule 2): src/app.ts raises it. The garden still works, silent.

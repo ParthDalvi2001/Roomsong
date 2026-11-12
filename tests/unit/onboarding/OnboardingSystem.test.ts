@@ -1,18 +1,12 @@
 // T-150: OnboardingSystem on the real bus with a fake world: what starts the tutorial and what does not, the caption
 // of each step (once, taken back when the step ends, the garden window's twins), `onboarding:step` once per change,
-// Listen, gaze mode, the hints setting, the 60 s net's log, the two one-time notices, the session's end. Zero
+// Listen, gaze mode, the hints setting, the strict guide's lock (D-087), the one-time notices, the session's end. Zero
 // allocation per frame is onboarding.heap.test.ts.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Caption } from '../../../src/core/components.js';
-import { bus, DEFAULT_SETTINGS, log, settings } from '../../../src/core/index.js';
-import {
-  NO_SEEDS_GAP_MS,
-  NO_SEEDS_SHOW_MS,
-  ONBOARD_CAPTION_MS,
-  ONBOARD_TIP_MS,
-  STEP_STALL_MS,
-} from '../../../src/onboarding/config.js';
+import { bus, DEFAULT_SETTINGS, guide, settings } from '../../../src/core/index.js';
+import { NO_SEEDS_GAP_MS, NO_SEEDS_SHOW_MS, ONBOARD_CAPTION_MS } from '../../../src/onboarding/config.js';
 import { OnboardingSystem } from '../../../src/onboarding/OnboardingSystem.js';
 import { garden, plant, seed as supplySeed } from '../garden/fixtures.js';
 import { FakeEntity } from '../render/seedRig.js';
@@ -85,17 +79,24 @@ const seed = { id: 's1' } as EventMap['garden:seedOut']['seed'];
 const release = (gesture: 'pull' | 'drag' | 'carry', kind = 'plant') =>
   ({ gesture, target: { kind, id: 'p0' } }) as unknown as EventMap['gesture:release'];
 
-/** A new garden's session up to `room:tuned`. */
+/** A new garden's session up to `room:tuned`: an empty bed, three seeds in the supply. */
 function started() {
-  bus.emit('garden:changed', changed(0));
+  bus.emit('garden:changed', changed(0, 0, 3));
   bus.emit('room:signature', { signature: {} as never, starterSeeds: true });
   bus.emit('room:tuned', {});
+}
+
+/** The first plant, its pull and its drag: the Listen step, in a headset, in the garden window and in gaze mode. */
+function toListen() {
+  bus.emit('garden:changed', changed(1));
+  bus.emit('gesture:release', release('pull'));
+  bus.emit('gesture:release', release('drag'));
 }
 
 describe('OnboardingSystem: who gets the tutorial', () => {
   it('a new garden: tune at its signature, the palm step at room:tuned', () => {
     const r = rig();
-    bus.emit('garden:changed', changed(0));
+    bus.emit('garden:changed', changed(0, 0, 3));
     bus.emit('room:signature', { signature: {} as never, starterSeeds: true });
     expect(r.steps).toEqual(['tune']);
     expect(r.shown()).toBeNull(); // the ripple's captions go first (UX §3.3 step 0)
@@ -106,16 +107,23 @@ describe('OnboardingSystem: who gets the tutorial', () => {
 
   it('D-053: any session that begins on an empty bed, starter seeds or not (a player who left before planting)', () => {
     const r = rig();
-    bus.emit('garden:changed', changed(0));
+    bus.emit('garden:changed', changed(0, 0, 1));
     bus.emit('room:signature', { signature: {} as never, starterSeeds: false });
     expect(r.steps).toEqual(['tune']);
+  });
+
+  it('D-087: not with an empty supply, whose palm step would wait for a seed that cannot come', () => {
+    const r = rig();
+    bus.emit('garden:changed', changed(0, 0, 0));
+    bus.emit('room:signature', { signature: {} as never, starterSeeds: false });
+    expect(r.steps).toEqual([]);
   });
 
   it("only at the session's first signature: a Re-place on an emptied bed starts nothing; the next session does", () => {
     const r = rig();
     bus.emit('garden:changed', changed(2, 0));
     bus.emit('room:signature', { signature: {} as never, starterSeeds: false });
-    bus.emit('garden:changed', changed(0, 0)); // both plants removed
+    bus.emit('garden:changed', changed(0, 0, 1)); // both plants removed
     bus.emit('room:signature', { signature: {} as never, starterSeeds: false }); // a Re-place
     expect(r.steps).toEqual([]);
     bus.emit('xr:sessionEnd', { visible: false });
@@ -145,35 +153,36 @@ describe('OnboardingSystem: who gets the tutorial', () => {
     expect(r.raised()).toEqual(['onboardPlantGaze']);
   });
 
-  it('the 60 s net logs the step it moved on from (D-053)', () => {
-    const info = vi.spyOn(log, 'info');
-    const r = rig();
-    r.frame();
+  it("D-087: writes each step's lock to core's guide, the palm step's at once; none when skipped", () => {
+    rig();
     started();
-    r.frame(STEP_STALL_MS / 1000);
-    expect(r.steps.slice(-1)).toEqual(['palm']); // D-061: no net until a first plant
-    expect(info).not.toHaveBeenCalledWith('onboarding', expect.stringContaining('"palm"'));
-    bus.emit('garden:changed', changed(3));
-    expect(r.steps.slice(-1)).toEqual(['grow']);
-    r.frame(STEP_STALL_MS / 1000);
-    expect(r.steps.slice(-1)).toEqual(['move']);
-    expect(info).toHaveBeenCalledWith('onboarding', expect.stringContaining('"grow"'));
+    expect(guide.lock).toEqual({ kinds: [], palmUp: true, palmsOut: false, shape: null });
+    bus.emit('garden:seedOut', { seed, hand: 'left' });
+    expect(guide.lock?.kinds).toEqual(['seed', 'cell']);
+    bus.emit('onboarding:skip', {});
+    expect(guide.lock).toBeNull();
   });
 });
 
 describe('OnboardingSystem: the captions (UX §3.3)', () => {
-  it('one per step, taken back when the step is done; none for more, grow and move', () => {
+  it('one per step, the old one taken back when the next comes', () => {
     const r = rig();
     started();
     bus.emit('garden:seedOut', { seed, hand: 'left' });
     expect(r.shown()).toBe('onboardPlant');
     bus.emit('garden:changed', changed(1));
-    expect(r.shown()).toBeNull();
-    bus.emit('garden:changed', changed(3));
+    expect(r.shown()).toBe('onboardGrow');
     bus.emit('gesture:release', release('pull'));
+    expect(r.shown()).toBe('onboardMove');
     bus.emit('gesture:release', release('drag'));
-    expect(r.steps).toEqual(['tune', 'palm', 'plant', 'more', 'grow', 'move', 'listen']); // free passed at once
-    expect(r.raised()).toEqual(['onboardPalm', 'onboardPlant', 'onboardListen']);
+    expect(r.steps).toEqual(['tune', 'palm', 'plant', 'grow', 'move', 'listen']);
+    expect(r.raised()).toEqual([
+      'onboardPalm',
+      'onboardPlant',
+      'onboardGrow',
+      'onboardMove',
+      'onboardListen',
+    ]);
   });
 
   it('a caption asks for ONBOARD_CAPTION_MS: the line of captions is never held by a slow step', () => {
@@ -210,7 +219,7 @@ describe('OnboardingSystem: the captions (UX §3.3)', () => {
   it('the garden window: no palm step, the click captions, and no grow gate (a pointer cannot pull)', () => {
     const r = rig();
     r.xr.isPresenting = false;
-    bus.emit('garden:changed', changed(0));
+    bus.emit('garden:changed', changed(0, 0, 3));
     bus.emit('room:signature', { signature: {} as never, starterSeeds: true });
     bus.emit('garden:seedOut', { seed, hand: 'right' }); // a pointer is always palm up
     bus.emit('room:tuned', {});
@@ -218,8 +227,7 @@ describe('OnboardingSystem: the captions (UX §3.3)', () => {
     expect(r.shown()).toBe('onboardPlantClick');
     bus.emit('garden:changed', changed(3));
     expect(r.steps.slice(-1)).toEqual(['move']);
-    r.system.machine.tick(Number.MAX_SAFE_INTEGER); // 4 minutes on
-    r.frame();
+    bus.emit('gesture:release', release('drag'));
     expect(r.steps.slice(-1)).toEqual(['listen']);
     expect(r.shown()).toBe('onboardListenClick');
   });
@@ -227,7 +235,7 @@ describe('OnboardingSystem: the captions (UX §3.3)', () => {
   it('the Listen step in a headset says "Show your palms to listen"; listen:enter ends it', () => {
     const r = rig();
     started();
-    bus.emit('garden:changed', changed(6)); // LISTEN_AFTER_PLANTS
+    toListen();
     expect(r.steps.slice(-1)).toEqual(['listen']);
     expect(r.shown()).toBe('onboardListen');
     bus.emit('listen:enter', {});
@@ -237,24 +245,20 @@ describe('OnboardingSystem: the captions (UX §3.3)', () => {
 });
 
 describe('OnboardingSystem: the tour, skip and New garden (D-084)', () => {
-  const TIP_S = ONBOARD_TIP_MS / 1000 + 0.01; // a frame past the tip: the frame time is rounded to whole ms
-
-  it('after Listen the orb caption, then Seeds and Move on the open board, ONBOARD_TIP_MS each; no settings hint', () => {
+  it('after Listen the orb caption; the open board, the walkthrough; its end (onboarding:toured), done', () => {
     const r = rig();
     started();
-    r.frame(); // the frame clock first: the jump from 0 would time the Listen step out
-    bus.emit('garden:changed', changed(6));
+    toListen();
     bus.emit('listen:enter', {});
     expect(r.shown()).toBeNull(); // no instruction over Listen
     bus.emit('listen:exit', { timedOut: false });
     expect(r.shown()).toBe('onboardOrb');
     bus.emit('panel:open', { open: true });
-    expect(r.shown()).toBe('onboardSeedsTip');
-    r.frame(TIP_S);
-    expect(r.shown()).toBe('onboardMoveTip');
-    r.frame(TIP_S);
-    expect(r.steps.slice(-4)).toEqual(['orb', 'seedsTip', 'moveTip', 'done']);
+    expect(r.shown()).toBe('onboardTour');
+    bus.emit('onboarding:toured', {});
+    expect(r.steps.slice(-3)).toEqual(['orb', 'tour', 'done']);
     expect(r.shown()).toBeNull();
+    expect(guide.lock).toBeNull();
     expect(r.notices()).toEqual([]);
   });
 
@@ -263,7 +267,7 @@ describe('OnboardingSystem: the tour, skip and New garden (D-084)', () => {
     for (const mode of [{ oneHand: true }, { gazeDwell: true }]) {
       settings.set({ ...DEFAULT_SETTINGS, ...mode });
       started();
-      bus.emit('garden:changed', changed(6));
+      toListen();
       bus.emit('listen:enter', {});
       bus.emit('listen:exit', { timedOut: false });
       expect(r.shown()).toBe('onboardOrbLook');
@@ -275,7 +279,7 @@ describe('OnboardingSystem: the tour, skip and New garden (D-084)', () => {
     const r = rig();
     r.xr.isPresenting = false;
     started();
-    bus.emit('garden:changed', changed(6));
+    toListen();
     bus.emit('listen:enter', {});
     bus.emit('listen:exit', { timedOut: false });
     expect(r.steps.slice(-2)).toEqual(['listen', 'done']);
@@ -300,7 +304,7 @@ describe('OnboardingSystem: the tour, skip and New garden (D-084)', () => {
     expect(r.notices()).toEqual([]);
     bus.emit('xr:sessionEnd', { visible: false });
     started(); // skipped in the tour: its caption taken back too
-    bus.emit('garden:changed', changed(6));
+    toListen();
     bus.emit('listen:enter', {});
     bus.emit('listen:exit', { timedOut: false });
     expect(r.shown()).toBe('onboardOrb');
@@ -347,7 +351,7 @@ describe('OnboardingSystem: Listen, the hints setting, the session', () => {
     expect(r.shown()).toBeNull();
     bus.emit('listen:exit', { timedOut: false });
     bus.emit('garden:changed', changed(1));
-    expect(r.steps.slice(-1)).toEqual(['more']);
+    expect(r.steps.slice(-1)).toEqual(['grow']);
   });
 
   it('hints turned off in the panel: done at once, the caption taken back', () => {
@@ -367,17 +371,6 @@ describe('OnboardingSystem: Listen, the hints setting, the session', () => {
     const said = r.steps.length;
     r.frame();
     expect(r.steps).toHaveLength(said);
-  });
-
-  it('a frame says a step reached by time alone, once', () => {
-    const r = rig();
-    started();
-    bus.emit('garden:changed', changed(3));
-    bus.emit('gesture:release', release('pull')); // no drag: the move gate waits, and Listen comes by time
-    r.system.machine.tick(Number.MAX_SAFE_INTEGER);
-    r.frame(); // the frame's own tick brings the time back, but the step was taken already
-    r.frame();
-    expect(r.steps.filter((s) => s === 'listen')).toHaveLength(1);
   });
 });
 
@@ -404,7 +397,7 @@ describe('OnboardingSystem: the one-time notices (UX re-check 23 Oct)', () => {
     bus.emit('gesture:palmUp', palmUp);
     expect(r.noSeedsCount()).toBe(2); // 4 s on: again
     expect(r.notices()).toEqual([]); // the once-a-session notices and the step's caption are not touched
-    expect(r.shown()).toBeNull();
+    expect(r.shown()).toBe('onboardGrow');
     vi.useRealTimers();
   });
 
@@ -474,31 +467,5 @@ describe('OnboardingSystem: the one-time notices (UX re-check 23 Oct)', () => {
     bus.emit('garden:changed', changed(3));
     bus.emit('garden:removed', removed);
     expect(r.notices()).toEqual(['undoHintGaze', 'undoHintClick']);
-  });
-
-  it('the settings hint at done only when the tour did not run (hints off, then on): once, after Listen, the twin in one-hand mode', () => {
-    const r = rig();
-    started();
-    settings.set({ ...DEFAULT_SETTINGS, hintsEnabled: false }); // done by stop(): no hint
-    expect(r.steps.slice(-1)).toEqual(['done']);
-    settings.set({ ...DEFAULT_SETTINGS }); // hints on again: done, and no tour ran
-    expect(r.notices()).toEqual([]);
-    bus.emit('listen:enter', {});
-    bus.emit('listen:exit', { timedOut: true }); // the 10-minute end: "Goodnight" has the line, not the hint
-    expect(r.notices()).toEqual([]);
-    bus.emit('listen:enter', {});
-    bus.emit('listen:exit', { timedOut: false });
-    expect(r.notice()).toBe('settingsHint');
-    bus.emit('listen:enter', {});
-    bus.emit('listen:exit', { timedOut: false });
-    expect(r.notices()).toEqual(['settingsHint']);
-    bus.emit('xr:sessionEnd', { visible: false });
-    settings.set({ ...DEFAULT_SETTINGS, oneHand: true });
-    started();
-    settings.set({ ...DEFAULT_SETTINGS, oneHand: true, hintsEnabled: false });
-    settings.set({ ...DEFAULT_SETTINGS, oneHand: true });
-    bus.emit('listen:enter', {});
-    bus.emit('listen:exit', { timedOut: false });
-    expect(r.notices()).toEqual(['settingsHint', 'settingsHintLook']);
   });
 });
