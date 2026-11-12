@@ -1,6 +1,6 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-11-12 20:00 IST. develop: **D-089** on the previous guide (D-087 reverted, D-088): dotted navigation arrows on every step, the remove and undo-petal steps, the 2 small settings tips kept. Unit tests all pass, build checks pass; browser runs: see the stand-up. Live \`main\` is 4b47387 (D-087) until Parth pushes main. Waiting on Parth: the push of main, HEADSET_RUN part G, the strangers, the video.
+**Last updated:** 2026-11-12 20:00 IST. develop: **D-089** on the previous guide (D-087 reverted, D-088): dotted navigation arrows on every step, the remove and undo-petal steps, the 2 small settings tips kept. Unit tests all pass, build checks pass; browser runs: see the stand-up. Live `main` is 4b47387 (D-087) until Parth pushes main. Waiting on Parth: the push of main, HEADSET_RUN part G, the strangers, the video.
 **Phase:** 3 Polish (Nov 4–11) · **Next gate:** code freeze Nov 15 (T-183; G3 passed 9 Nov, D-073) · **Headset:** yes since 7 Nov (Parth's Quest 3S; Chinmay's Quest 3 on 8 Nov); Emergency mode (D-013) no longer applies · **Plan:** v2.1
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 8 on 2026-11-09
 
