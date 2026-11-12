@@ -1,6 +1,6 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-11-12 21:15 IST. develop: **D-090** the strict guide on D-089's dotted arrows (grow and move after the first plant, remove and undo, the Listen exit, the 2 settings tips). Unit 2,091 pass; e2e 23, 33, 18 pass. Live `main` is 4b47387 (D-087) until Parth pushes main. Waiting on Parth: the push of main, HEADSET_RUN part G, the strangers, the video.
+**Last updated:** 2026-11-12 22:45 IST. **Live `main` af014f0** (pushed by Parth; deploy green): **D-090** the strict guide on D-089's dotted arrows. Unit 2,091 pass; full browser run 129 passed + 8 that timed out on a loaded Mac (swap 18 GB, the run took 1.1 h) and all pass on a rerun alone (15 of 15); 6 skipped as before. Waiting on Parth: HEADSET_RUN part G, the strangers, the video, the Devpost form.
 **Phase:** 3 Polish (Nov 4–11) · **Next gate:** code freeze Nov 15 (T-183; G3 passed 9 Nov, D-073) · **Headset:** yes since 7 Nov (Parth's Quest 3S; Chinmay's Quest 3 on 8 Nov); Emergency mode (D-013) no longer applies · **Plan:** v2.1
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 8 on 2026-11-09
 
