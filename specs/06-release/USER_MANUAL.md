@@ -1,9 +1,11 @@
+> Written for the 9 Nov build. For the final build (v1.0.0, 8f5cf62) and what was tested on a headset, see [RELEASE_NOTES.md](RELEASE_NOTES.md) v1.0.0-rc1.
+
 # SonicSpace: Player Guide
 
 **Status:** Living · **Owner:** product-owner · Checked against `develop` at f1c4d52 on 2026-11-09: D-061 to D-071, API_SPEC v1.2.54 to v1.2.63, BUG-021 to BUG-043 and the headset runs of 7–8 Nov (TEST_PLAN §4.6), plus items an earlier pass missed (D-060: the 6 s placing wait, the floating bed's tuning, Bring back the old garden; BUG-007: the seed's glow; the Mono switch). The full pass before was at dca03de on 2026-10-17, with the 23 Oct features added at 36dc6cc.
 The long form of the landing page's Help lines and the source for the "How to test" text of the submission. No task builds a page of its own for it.
 
-*Team note, removed at the feature freeze (12 Nov). Every section and table row carries its state:*
+*Every section and table row carries its state:*
 - *`[app]`: in the app today, tried in the emulator only (and in laptop mode where the text says so).*
 - *`[app, headset]`: in the app and also seen working on a real headset: Parth's Quest 3S (7 Nov) or Chinmay's Quest 3 (8 Nov). Only that it works was seen; first-try rates and most timings are not measured yet.*
 

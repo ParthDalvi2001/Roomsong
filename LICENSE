@@ -5,22 +5,33 @@ This repository is public so that the project can be viewed, run and judged, inc
 Meta VR Start Developer Competition 2026. That does not make it open source.
 
 You may:
-  - read the source code and run the hosted app (https://parthdalvi2001.github.io/SonicSpace/)
-    for your own personal, non-commercial use;
-  - view and fork this repository on GitHub, as far as the GitHub Terms of Service allow.
+  - read the source code, and clone, build and run it on your own devices, only to try or
+    evaluate it, for your own personal, non-commercial use;
+  - run the hosted app (https://parthdalvi2001.github.io/SonicSpace/);
+  - use, view and fork this repository through GitHub, as the GitHub Terms of Service allow.
 
-You may not, without the written permission of the copyright holders:
-  - copy, modify, publish, distribute, sublicense or sell the code, the designs, the text,
-    the images, the video or any part of them;
-  - use the name "SonicSpace", its look or its sounds for another product.
+You may not, without the written permission of the copyright holders, copy, modify, publish,
+distribute, sublicense or sell the code, the designs, the text, the images, the video or any
+part of them, except as allowed above. This notice gives no right to use the name "SonicSpace"
+or the project's look or sounds.
 
-Third-party components keep their own licences and are not covered by this notice: the packages
-listed in specs/06-release/THIRD_PARTY_LICENSES.md, the licence texts in LICENSES/, and the files
-derived from the Immersive Web SDK project scaffold (MIT, (c) Meta Platforms, Inc. and affiliates;
-see LICENSES/IWSDK-MIT.txt).
+Third-party material keeps its own licence and is not covered by this notice:
+  - the packages and code listed in specs/06-release/THIRD_PARTY_LICENSES.md, including the
+    Mulberry32 function in src/audio/ (public domain, CC0 1.0). Licence texts are in LICENSES/
+    and, on the live site, at https://parthdalvi2001.github.io/SonicSpace/LICENSES/<name>.txt;
+  - the Immersive Web SDK project scaffold and its agent guides, under the MIT licence,
+    (c) Meta Platforms, Inc. and affiliates (text: LICENSES/IWSDK-MIT.txt): vite.config.ts,
+    src/assets.ts, src/components.ts and src/index.ts (in full, as their headers say),
+    AGENTS.md, src/AGENTS.md, .claude/rules/, .claude/skills/iwsdk-*/, and the scaffold's
+    lines in index.html, iwsdk.config.json, tsconfig.json, src/vite-env.d.ts and
+    public/scenes/main.iwsdk.scene.json;
+  - text quoted from others, such as the contest rules quoted in specs/00-hackathon/.
 
-Nothing in this notice limits the licence the authors grant to the contest sponsor and its
-partners under the competition's Official Rules.
+Nothing in this notice limits (a) the rights the authors grant under the Official Rules of the
+Meta VR Start Developer Competition 2026 to the Sponsor, Devpost, the judges and the other
+Released Parties named there, including to view, run, test, evaluate, copy, edit and publicise
+the entry; or (b) the licences the authors grant to GitHub, Devpost, YouTube and their users
+under those services' terms.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT
 SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM ITS USE.

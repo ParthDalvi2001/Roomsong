@@ -1,3 +1,5 @@
+> **Superseded** by the Devpost text posted for the entry (v4, 13 Nov 2026); that text is the one that counts.
+
 # Devpost Submission Draft, Judging Scorecard, and Gap List
 
 **The name is SonicSpace** (D-069, Parth and Chinmay, 9 Nov): the title here, every link (the `/SonicSpace/` path, live once Parth renames the repository), the in-app title and the video say it together, so judges see one name. Until the rename the live link is still `/Roomsong/`.

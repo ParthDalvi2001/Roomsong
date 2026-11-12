@@ -23,10 +23,15 @@ Scene, asset and XR-feature configuration is declarative in `iwsdk.config.json`;
 `src/index.ts`. The scene is empty: the IWSDK starter content (robot, plant, banner, welcome panel) was removed in
 T-111. IWER controls: https://iwsdk.dev/guides/02-testing-experience.html#iwer-controls
 
-Code lives in `src/` and `tests/` (scaffolded in T-101 with `npm create @iwsdk@latest`). All code is written after 2026-09-24.
+Code lives in `src/` and `tests/` (scaffolded in T-101 with `npm create @iwsdk@latest`). All of our own code was written after 2026-09-24; the IWSDK project scaffold (Meta, MIT) and the packages in THIRD_PARTY_LICENSES.md are third-party.
 
 ## Licence and copyright
 
 Copyright (c) 2026 Parth Dalvi and Chinmay Gavde. All rights reserved: the code is public to be viewed, run and
-judged, not to be copied or reused without permission. See [LICENSE](LICENSE). Third-party packages keep their own
-licences: [specs/06-release/THIRD_PARTY_LICENSES.md](specs/06-release/THIRD_PARTY_LICENSES.md) and [LICENSES/](LICENSES/).
+judged, not to be copied or reused without permission. See [LICENSE](LICENSE). Third-party code keeps its own licence: see
+[specs/06-release/THIRD_PARTY_LICENSES.md](specs/06-release/THIRD_PARTY_LICENSES.md) and [LICENSES/](LICENSES/). The live site serves each third-party
+licence text at https://parthdalvi2001.github.io/SonicSpace/LICENSES/<name>.txt (for example
+[three.txt](https://parthdalvi2001.github.io/SonicSpace/LICENSES/three.txt)).
+
+Most of the code and documents were written with an AI coding assistant (Claude Code) under our direction, design and
+review; see specs/06-release/THIRD_PARTY_LICENSES.md §5.
