@@ -1,6 +1,6 @@
 # PROGRESS — Single Source of Truth (Claude updates this after every task)
 
-**Last updated:** 2026-11-13 00:00 IST. **Code freeze (T-183, D-082) under way:** develop sets 1.0.0 and the v1.0.0-rc1 notes; its CI then main and the tag (runbook §1). Live `main` af014f0 (D-090). After the freeze only an S1 fix (runbook §1.8). Waiting on Parth: main and the tag once CI is green; the strangers, the video, the gallery, the Devpost form, Start membership.
+**Last updated:** 2026-11-13 02:05 IST. **Code freeze DONE (T-183):** `main` = 8f5cf62 = tag v1.0.0-rc2 (pushed by Parth 13 Nov 01:58 IST); live version.json shows 1.0.0 / 8f5cf62 (deploy re-run once for BUG-061, a heap unit test on GitHub's runner). CI green: 136 e2e passed, 1 flaky (T-125 bed preview, passed on retry). App code unchanged since af014f0 (D-090). After the freeze only an S1 fix (runbook §1.8). Pre-submission audit of the video, gallery and rules running (results in the session scratchpad). Waiting on Parth and Chinmay: the strangers, the video upload, the gallery, the Devpost form, Start membership.
 **Phase:** 3 Polish (Nov 4–11) · **Next gate:** code freeze Nov 15 (T-183; G3 passed 9 Nov, D-073) · **Headset:** yes since 7 Nov (Parth's Quest 3S; Chinmay's Quest 3 on 8 Nov); Emergency mode (D-013) no longer applies · **Plan:** v2.1
 **Deadline:** 2026-11-18 12:00 PT · **Submit target:** 2026-11-17 18:00 IST · **Days left:** 8 on 2026-11-09
 
