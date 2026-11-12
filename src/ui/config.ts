@@ -238,19 +238,28 @@ export const GUIDE_CELL: Readonly<Cell> = Object.freeze({ ring: 2, step: 4 });
 /** The ring round a cell (the glowing cell, the hint ring): its quad lies on the bed, a little above the glass. */
 export const RING_SIZE_M = 0.07;
 export const RING_LIFT_M = 0.004;
-/** The ghost hand: its quad, the top and bottom of its loop over the cell, and the loop's period. */
+/** The garden window's pointer over the glowing cell: its quad, its height, and its click's period. */
 export const GHOST_SIZE_M = 0.06;
-export const GHOST_TOP_M = 0.1;
 export const GHOST_BOTTOM_M = 0.045;
 export const GHOST_LOOP_MS = 2000;
-/** Of the loop: down with the fingers open until this fraction, closed until the next, then up open again. */
+/** Of the loop: the pointer, then its click from this fraction until the next. */
 export const GHOST_CLOSE_AT = 0.35;
 export const GHOST_OPEN_AT = 0.7;
-/** The grow and move icons stand this far over their plant's cell; the palm and Listen icons over the bed centre. */
+/**
+ * D-087: in a headset a 3D ghost hand acts each step out instead of an icon: one act a GHOST_ACT_MS loop, at
+ * GHOST_OPACITY; with Reduce motion it holds still GHOST_STILL_AT into its act. The guide line from where to pinch to
+ * where to let go: GUIDE_DOTS dots GUIDE_DOT_M across flowing on once a GUIDE_FLOW_MS, an arrowhead GUIDE_HEAD_M long.
+ */
+export const GHOST_ACT_MS = 2400;
+export const GHOST_OPACITY = 0.6;
+export const GHOST_STILL_AT = 600; // thousandths of the act
+export const GUIDE_DOTS = 14;
+export const GUIDE_DOT_M = 0.004;
+export const GUIDE_FLOW_MS = 800;
+export const GUIDE_HEAD_M = 0.03;
+/** The garden window's drag icon stands this far over its plant's cell; its Listen click over the bed centre. */
 export const ICON_SIZE_M = 0.05;
 export const RING_ICON_LIFT_M = 0.12;
-/** Above the seed supply (render SUPPLY_ORB_LIFT_M 0.10 plus its 0.03 radius): where the seeds come from. */
-export const PALM_ICON_LIFT_M = 0.17;
 export const LISTEN_ICON_LIFT_M = 0.14;
 /** UX §3.4: the remove arrow lies on the bed, just past the rim (0.30 m), on the side of the dragging hand. */
 export const REMOVE_ARROW_SIZE_M = 0.06;

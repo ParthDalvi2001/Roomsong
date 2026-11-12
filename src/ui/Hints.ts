@@ -1,6 +1,7 @@
 // The hints (LLD §3, priority 61; T-150): what the player is shown instead of words (UX §1, D-027). From
-// `onboarding:step`: the palm icon over the seed supply, the looping ghost pinch (a click in the garden window) over
-// one glowing cell, the hint ring with the pull or the drag icon round the newest plant, the Listen icon. From
+// `onboarding:step`: in a headset the 3D ghost hand acting each step out, with a guide line from where to pinch to
+// where to let go (D-087, GhostHand.ts); in the garden window a pointer's click over one glowing cell, the drag icon
+// and the Listen click. The hint ring glows round the guide's cell, then round the newest plant. From
 // hands: the remove arrow on the bed rim during a drag until the first removal (UX §3.4), and the hand hint, an open
 // palm in a dashed ring where a hand that held something was lost (FR-HND-15). Every element is a level that fades
 // in or out once, never a blink (FR-UI-11); every icon is outlined (UX §8), and in high contrast the remove arrow
@@ -10,6 +11,7 @@ import {
   Color,
   createSystem,
   Float32BufferAttribute,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   PlaneGeometry,
@@ -19,7 +21,6 @@ import {
   Vector2,
   Vector3,
   type Entity,
-  type Matrix4,
   type Object3D,
 } from '@iwsdk/core';
 
@@ -30,15 +31,18 @@ import { HAND_HINT_MAX_MS, HandState } from '../hands/index.js';
 import {
   ATLAS_CELL_PX,
   ATLAS_GRID,
+  GHOST_ACT_MS,
   GHOST_BOTTOM_M,
   GHOST_CLOSE_AT,
   GHOST_LOOP_MS,
+  GHOST_OPACITY,
   GHOST_OPEN_AT,
   GHOST_SIZE_M,
-  GHOST_TOP_M,
+  GHOST_STILL_AT,
   GLOW_LOW,
   GLOW_PERIOD_MS,
   GUIDE_CELL,
+  GUIDE_FLOW_MS,
   HAND_HINT_DISTANCE_M,
   HAND_HINT_FADE_IN_MS,
   HAND_HINT_LIFT_M,
@@ -51,7 +55,6 @@ import {
   LISTEN_ICON_LIFT_M,
   PANEL_ACCENT,
   PANEL_ACCENT_HIGH_CONTRAST,
-  PALM_ICON_LIFT_M,
   PANEL_MAX_FRAME_MS,
   REMOVE_ARROW_AT_M,
   REMOVE_ARROW_SIZE_M,
@@ -60,25 +63,21 @@ import {
   RING_SIZE_M,
 } from './config.js';
 import { clampToFov, type FovElement } from './FovGuard.js';
+import { GhostHands, GuideLine } from './GhostHand.js';
 
 type Step = EventMap['onboarding:step']['step'];
 
 /** The atlas cells, in drawing order (drawAtlas). */
 const Frame = {
-  PinchOpen: 0,
-  PinchClosed: 1,
-  Pointer: 2,
-  PointerClick: 3,
-  Palm: 4,
-  PalmsOut: 5,
-  Pull: 6,
-  Drag: 7,
-  Remove: 8,
-  HandLost: 9,
-  Ring: 10,
-  RemoveOutlined: 11,
+  Pointer: 0,
+  PointerClick: 1,
+  Drag: 2,
+  Remove: 3,
+  HandLost: 4,
+  Ring: 5,
+  RemoveOutlined: 6,
 } as const;
-const FRAMES = 12;
+const FRAMES = 7;
 
 const HAND_HINT: Readonly<FovElement> = {
   distanceM: HAND_HINT_DISTANCE_M,
@@ -100,7 +99,13 @@ export function neon(out: Color, s: Readonly<Settings>, ms: number): void {
   out.g = base.g * k;
   out.b = base.b * k;
 }
-const GHOST_TRAVEL_M = GHOST_BOTTOM_M - GHOST_TOP_M; // negative: the loop goes down first
+const ORIGIN = new Vector3();
+const UP = new Vector3(0, 1, 0);
+/** Eased, in whole thousandths (clamped to 0..1000): slow at both ends. Integers in and out: a call boxes nothing. */
+const ease = (permille: number): number => {
+  const x = Math.min(1000, Math.max(0, permille)) / 1000;
+  return Math.round(1000 * x * x * (3 - 2 * x));
+};
 const handIndex = (hand: Hand): number => (hand === 'left' ? 0 : 1);
 
 export class HintSystem extends createSystem(
@@ -108,7 +113,7 @@ export class HintSystem extends createSystem(
   { bed: { type: Types.Object, default: null } },
 ) {
   /** What each element shows now, for tests: the atlas frame, or -1 while it is hidden or fading out. */
-  readonly shows = { icon: -1, ring: -1, arrow: -1, hands: [-1, -1] };
+  readonly shows = { icon: -1, ring: -1, arrow: -1, hands: [-1, -1], ghostHands: 0, line: false };
 
   private step: Step = 'off';
   private isListening = false;
@@ -134,6 +139,22 @@ export class HintSystem extends createSystem(
   private readonly bedTurn = new Quaternion();
   /** The glowing cell's centre, bed-local: it never moves. */
   private readonly guide = cellCentre(GUIDE_CELL, new Vector2());
+  /** D-087: the ghost hands and the guide line, in world space; how many hands were drawn last, and the line. */
+  private ghostHands!: GhostHands;
+  private line!: GuideLine;
+  private ghosts = 0;
+  private isLined = false;
+  /** The hand a seed rests on (`garden:seedOut`), as handIndex; -1 for none. */
+  private seedHand = -1;
+  private readonly from = new Vector3();
+  private readonly to = new Vector3();
+  private readonly point = new Vector3();
+  private readonly wrist = new Vector3();
+  private readonly forward = new Vector3();
+  private readonly right = new Vector3();
+  private readonly turn = new Quaternion();
+  private readonly basis = new Matrix4();
+  private readonly nextCell: Cell = { ring: 0, step: 0 };
 
   override init(): void {
     const canvas = document.createElement('canvas');
@@ -147,7 +168,7 @@ export class HintSystem extends createSystem(
     for (let i = 0; i < FRAMES; i++) this.frames.push(frameGeometry(i));
 
     const bed = this.config.bed.value as Object3D;
-    this.icon = this.makeMesh('hint-icon', Frame.Palm, bed);
+    this.icon = this.makeMesh('hint-icon', Frame.Pointer, bed);
     this.ring = this.makeMesh('hint-ring', Frame.Ring, bed);
     this.ring.rotation.x = -Math.PI / 2; // flat on the bed
     this.ring.scale.setScalar(RING_SIZE_M);
@@ -158,6 +179,8 @@ export class HintSystem extends createSystem(
       mesh.scale.setScalar(HAND_HINT_SIZE_M);
       this.handMeshes.push(mesh);
     }
+    this.ghostHands = new GhostHands(this.scene);
+    this.line = new GuideLine(this.scene);
 
     const { hands } = this.queries;
     this.cleanupFuncs.push(
@@ -174,6 +197,8 @@ export class HintSystem extends createSystem(
       bus.on('garden:changed', ({ state }) => {
         this.newest = state.plants[state.plants.length - 1]?.cell ?? null;
       }),
+      bus.on('garden:seedOut', ({ hand }) => void (this.seedHand = handIndex(hand))),
+      bus.on('garden:seedBack', () => void (this.seedHand = -1)),
       bus.on('garden:removed', () => {
         this.hasRemoved = true; // UX §3.4: shown until the first removal
         this.dragHand = null;
@@ -203,6 +228,8 @@ export class HintSystem extends createSystem(
         }
         for (const geometry of this.frames) geometry.dispose();
         this.texture.dispose();
+        this.ghostHands.dispose();
+        this.line.dispose();
       },
     );
   }
@@ -215,66 +242,46 @@ export class HintSystem extends createSystem(
     const head = isXr ? this.player.head.matrixWorld : this.camera.matrixWorld;
     const now = settings.get();
     const isShown = now.hintsEnabled && !this.isListening;
-    const mirror = now.dominantHand === 'left' ? -1 : 1; // FR-HND-13: the icons mirror for the dominant hand
 
-    // The step's icon and ring. Bed-local: the icon is turned to face the head.
+    // The step's ring, and in the garden window its icon, a pointer's (bed-local, turned to face the head). In a
+    // headset the ghost hand acts the step out instead (D-087).
     const step = this.step;
     let icon = -1;
     let ring: Cell | null = null;
     let iconSize = ICON_SIZE_M;
-    let iconMirror = mirror;
-    if (step === 'palm' && isXr) {
-      // A pointer is always palm up (LLD §11): the garden window has no hand to open.
-      icon = Frame.Palm;
-      const at = this.icon.position;
-      at.x = at.z = 0;
-      at.y = PALM_ICON_LIFT_M;
-    } else if (step === 'plant') {
+    if (step === 'plant') {
       ring = GUIDE_CELL;
       const phase = (this.frameMs % GHOST_LOOP_MS) / GHOST_LOOP_MS;
-      const isClosed = phase >= GHOST_CLOSE_AT && phase < GHOST_OPEN_AT;
-      // The garden window shows a click (FR-SYS-07); reduced motion keeps the hand still (UX §8).
-      const still = !isXr || now.reducedMotion;
-      icon = isXr
-        ? isClosed
-          ? Frame.PinchClosed
-          : Frame.PinchOpen
-        : isClosed
-          ? Frame.PointerClick
-          : Frame.Pointer;
+      icon = phase >= GHOST_CLOSE_AT && phase < GHOST_OPEN_AT ? Frame.PointerClick : Frame.Pointer;
       iconSize = GHOST_SIZE_M;
-      if (!isXr) iconMirror = 1; // a pointer is not a hand
       // Positions are written field by field here and below, never through set(): a fraction handed to a call
       // that V8 does not inline is boxed, and this update is long enough to run out of inlining budget (48 bytes a
-      // frame in the full suite). The height is written in each branch: a fraction merged from branches into one
-      // local was boxed too (16 bytes a frame). Both measured by onboarding.heap.test.ts.
+      // frame in the full suite). Measured by onboarding.heap.test.ts.
       const at = this.icon.position;
       at.x = this.guide.x;
+      at.y = GHOST_BOTTOM_M;
       at.z = this.guide.y;
-      if (still || isClosed) at.y = GHOST_BOTTOM_M;
-      else if (phase < GHOST_CLOSE_AT) at.y = GHOST_TOP_M + GHOST_TRAVEL_M * (phase / GHOST_CLOSE_AT);
-      else at.y = GHOST_TOP_M + GHOST_TRAVEL_M * ((1 - phase) / (1 - GHOST_OPEN_AT));
     } else if ((step === 'grow' || step === 'move') && this.newest !== null) {
       ring = this.newest;
       cellCentre(this.newest, this.at);
-      icon = step === 'grow' ? Frame.Pull : Frame.Drag;
+      icon = Frame.Drag; // the garden window has the move step only: a pointer cannot pull (LLD §11)
       const at = this.icon.position;
       at.x = this.at.x;
       at.y = RING_ICON_LIFT_M;
       at.z = this.at.y;
     } else if (step === 'listen') {
-      icon = isXr ? Frame.PalmsOut : Frame.PointerClick;
-      if (!isXr) iconMirror = 1;
+      icon = Frame.PointerClick;
       const at = this.icon.position;
       at.x = at.z = 0;
       at.y = LISTEN_ICON_LIFT_M;
     }
-    if (!isShown) icon = -1;
+    // D-087: in a headset the ghost hand acts the step out, with its guide line, instead of the icon
+    const acts = isXr && isShown ? this.actOut(step, head, now) : 0;
+    if (!isShown || isXr) icon = -1;
+    this.drawGhost(acts, dtMs, now);
     if (icon >= 0) {
       if (this.icon.geometry !== this.frames[icon]) this.icon.geometry = this.frames[icon]!;
-      const scale = this.icon.scale;
-      scale.x = iconSize * iconMirror;
-      scale.y = scale.z = iconSize;
+      this.icon.scale.setScalar(iconSize);
       // Local turn = the bed's turn undone, then the head's: the quad faces the eyes wherever the bed points.
       const bed = this.icon.parent;
       if (bed !== null) this.bedTurn.setFromRotationMatrix(bed.matrixWorld).invert();
@@ -314,6 +321,200 @@ export class HintSystem extends createSystem(
     fade(this.arrow, isArrow, dtMs, HINT_FADE_MS);
 
     for (let i = 0; i < 2; i++) this.updateHand(i, head, dtMs);
+  }
+
+  /**
+   * D-087: poses the ghost hands for `step` (and the guide line, `isLined`) and says how many it drew: 0 for a step
+   * with no act. Each act loops once a GHOST_ACT_MS; with Reduce motion it holds still. Creates nothing: whole
+   * thousandths of the act are handed on, never a fraction (a fraction handed to a call is boxed, see update()), and
+   * each act is its own small method, which V8 optimises soon (one long one stayed slow and boxed, 12 Nov).
+   */
+  private actOut(step: Step, head: Matrix4, s: Readonly<Settings>): number {
+    const bed = this.icon.parent;
+    this.isLined = false;
+    if (bed === null) return 0;
+    const isLeft = s.dominantHand === 'left';
+    const act = s.reducedMotion
+      ? GHOST_STILL_AT
+      : Math.floor((1000 * (this.frameMs % GHOST_ACT_MS)) / GHOST_ACT_MS);
+    // The head's forward on the level, its right, and the eyes: `wrist` holds them until an act places a wrist
+    const e = head.elements;
+    const forward = this.forward;
+    forward.x = -e[8];
+    forward.y = 0;
+    forward.z = -e[10];
+    forward.normalize();
+    this.right.crossVectors(forward, UP);
+    const eyes = this.wrist;
+    eyes.x = e[12];
+    eyes.y = e[13];
+    eyes.z = e[14];
+    if (step === 'palm') return this.actPalm(act, isLeft);
+    if (step === 'plant') return this.actPlant(act, isLeft, bed, s);
+    if ((step === 'grow' || step === 'move') && this.newest !== null)
+      return this.actShape(act, isLeft, step === 'grow', bed, s);
+    if (step === 'listen') return this.actListen(act, s);
+    if (step === 'orb' && !s.oneHand && !s.gazeDwell) return this.actOrb(act, isLeft, s);
+    return 0;
+  }
+
+  /** In front, on the main hand's side: a hand turning palm up, then held there. Positions field by field. */
+  private actPalm(act: number, isLeft: boolean): number {
+    const { from, forward, right, wrist: eyes } = this;
+    const side = isLeft ? -1 : 1;
+    from.x = eyes.x + 0.3 * forward.x + 0.06 * side * right.x;
+    from.y = eyes.y - 0.3;
+    from.z = eyes.z + 0.3 * forward.z + 0.06 * side * right.z;
+    const turned = ease(Math.round((act * 20) / 9)); // over the first 45 % of the act
+    this.aim(0.26, isLeft ? 0 - turned : turned); // the back turns out, the thumb up (0 - x: never a boxed -0)
+    this.ghostHands.pose(0, 0, isLeft, from, this.turn);
+    return 1;
+  }
+
+  /** From the seed on the hand that holds it (or above the cell) to the glowing cell: pinch, carry, let go. */
+  private actPlant(act: number, isLeft: boolean, bed: Object3D, s: Readonly<Settings>): number {
+    const state = this.seedHand >= 0 ? this.handStates[this.seedHand] : null;
+    if (state && state.getValue(HandState, 'tracked') === true) {
+      const palm = state.getVectorView(HandState, 'palmPos');
+      this.from.x = palm[0]!;
+      this.from.y = palm[1]! + 0.035; // the seed rests on the palm
+      this.from.z = palm[2]!;
+    } else this.cellAt(GUIDE_CELL, 0.15, bed, this.from);
+    this.cellAt(GUIDE_CELL, 0.02, bed, this.to);
+    return this.carry(act, isLeft, 60, s);
+  }
+
+  /** The newest plant: pinched and lifted (grow), or slid two cells along its ring (move). */
+  private actShape(
+    act: number,
+    isLeft: boolean,
+    isGrow: boolean,
+    bed: Object3D,
+    s: Readonly<Settings>,
+  ): number {
+    const newest = this.newest!;
+    this.cellAt(newest, 0.05, bed, this.from);
+    if (isGrow) {
+      this.to.copy(this.from);
+      this.to.y += 0.1;
+      return this.carry(act, isLeft, 0, s);
+    }
+    // shortcut: the act slides to two cells on whether that cell is free or not; it shows the gesture, not a spot
+    this.nextCell.ring = newest.ring;
+    this.nextCell.step = (newest.step + 2) % 16;
+    this.cellAt(this.nextCell, 0.05, bed, this.to);
+    return this.carry(act, isLeft, 30, s);
+  }
+
+  /** Both palms out towards the garden, a little push forward. */
+  private actListen(act: number, s: Readonly<Settings>): number {
+    const { from, forward, right, wrist: eyes } = this;
+    const push = s.reducedMotion ? 0 : 0.025 * (0.5 - 0.5 * Math.cos((2 * Math.PI * act) / 1000));
+    this.basis.lookAt(ORIGIN, UP, this.point.copy(forward).negate()); // fingers up, the palms facing ahead
+    this.turn.setFromRotationMatrix(this.basis);
+    for (let h = 0; h < 2; h++) {
+      const out = h === 0 ? -0.12 : 0.12;
+      from.x = eyes.x + (0.3 + push) * forward.x + out * right.x;
+      from.y = eyes.y - 0.12;
+      from.z = eyes.z + (0.3 + push) * forward.z + out * right.z;
+      this.ghostHands.pose(h, 0, h === 0, from, this.turn);
+    }
+    return 2;
+  }
+
+  /** The other hand turns palm down, where the orb rides its back; the main hand comes and pinches it there. */
+  private actOrb(act: number, isLeft: boolean, s: Readonly<Settings>): number {
+    const { from, forward, right, wrist: eyes } = this;
+    const side = isLeft ? -1 : 1;
+    from.x = eyes.x + 0.32 * forward.x - 0.08 * side * right.x;
+    from.y = eyes.y - 0.28;
+    from.z = eyes.z + 0.32 * forward.z - 0.08 * side * right.z;
+    const turned = ease(Math.round(act * 2.5)); // palm up to palm down over the first 40 %, that hand's own way
+    this.aim(0.26, isLeft ? 1000 - turned : turned - 1000);
+    this.ghostHands.pose(1, 0, !isLeft, from, this.turn);
+    this.to.set(0, 0.03, -0.05).applyQuaternion(this.turn).add(from); // over the back of that hand
+    from.x = this.to.x + 0.1 * side * right.x;
+    from.y = this.to.y + 0.05;
+    from.z = this.to.z + 0.1 * side * right.z;
+    this.line.set(from, this.to, 20);
+    this.isLined = true;
+    this.line.draw(this.flow(s));
+    this.line.at(act < 400 ? 0 : ease(Math.round((act - 400) / 0.35)), this.point);
+    this.place(this.point, isLeft);
+    this.ghostHands.pose(0, act < 750 ? 0 : Math.min(1000, 10 * (act - 750)), isLeft, this.wrist, this.turn);
+    return 2;
+  }
+
+  /**
+   * The main ghost hand pinches at `from`, carries along the guide line to `to`, lets go there; `act` thousandths
+   * into its act. Creates nothing.
+   */
+  private carry(act: number, isLeft: boolean, liftMm: number, s: Readonly<Settings>): number {
+    const line = this.line;
+    line.set(this.from, this.to, liftMm);
+    line.draw(this.flow(s));
+    this.isLined = true;
+    line.at(act < 200 ? 0 : ease(2 * (act - 200)), this.point);
+    const pinch =
+      act < 200 ? 5 * act : act < 750 ? 1000 : act < 900 ? Math.round((1000 * (900 - act)) / 150) : 0;
+    this.place(this.point, isLeft);
+    this.ghostHands.pose(0, pinch, isLeft, this.wrist, this.turn);
+    return 1;
+  }
+
+  /**
+   * `turn`: fingers ahead and `down` (sine of the tilt) below the level, the back of the hand up, rolled `roll`
+   * thousandths of a half turn about the fingers (+ towards the right; 1000 or -1000: palm up). Creates nothing.
+   */
+  private aim(down: number, roll = 0): void {
+    const level = Math.sqrt(1 - down * down);
+    const ahead = this.point;
+    ahead.x = this.forward.x * level;
+    ahead.y = -down;
+    ahead.z = this.forward.z * level;
+    // The back of the hand, rolled: up turned towards the right about the fingers (lookAt keeps it square to them)
+    const angle = (Math.PI * roll) / 1000;
+    const c = Math.cos(angle);
+    const k = Math.sin(angle);
+    const back = this.to;
+    back.x = this.right.x * k;
+    back.y = c;
+    back.z = this.right.z * k;
+    this.turn.setFromRotationMatrix(this.basis.lookAt(ORIGIN, ahead, back));
+  }
+
+  /** `wrist`: where a main ghost hand, aimed down at the bed, has its wrist to pinch at `at`. */
+  private place(at: Vector3, isLeft: boolean): void {
+    this.wrist.copy(at); // aim() writes `point` and `to`; `at` is one of them
+    this.aim(0.57);
+    this.wrist.sub(this.from.copy(this.ghostHands.pinchAt[isLeft ? 1 : 0]).applyQuaternion(this.turn));
+  }
+
+  /** The guide line's dots, thousandths of a gap on: still with Reduce motion. */
+  private flow(s: Readonly<Settings>): number {
+    return s.reducedMotion ? 0 : Math.floor((1000 * (this.frameMs % GUIDE_FLOW_MS)) / GUIDE_FLOW_MS);
+  }
+
+  /** A cell's centre `lift` above the bed, in world space, into `out`. */
+  private cellAt(cell: Cell, lift: number, bed: Object3D, out: Vector3): Vector3 {
+    cellCentre(cell, this.at);
+    out.x = this.at.x;
+    out.y = lift;
+    out.z = this.at.y;
+    return out.applyMatrix4(bed.matrixWorld);
+  }
+
+  /** The ghost and its line in the guide's neon, fading in and out like the icons (HINT_FADE_MS). */
+  private drawGhost(hands: number, dtMs: number, s: Readonly<Settings>): void {
+    if (hands > 0) this.ghosts = hands;
+    const ghost = this.ghostHands.material;
+    neon(ghost.color, s, this.frameMs);
+    this.line.material.color.copy(ghost.color);
+    const isGhost = fadeTo(ghost, hands > 0, dtMs, GHOST_OPACITY);
+    this.ghostHands.show(isGhost ? this.ghosts : 0);
+    this.line.show(fadeTo(this.line.material, hands > 0 && this.isLined, dtMs, 1));
+    this.shows.ghostHands = hands;
+    this.shows.line = hands > 0 && this.isLined;
   }
 
   private updateHand(i: number, head: Matrix4, dtMs: number): void {
@@ -372,6 +573,13 @@ function fade(mesh: Mesh<PlaneGeometry, MeshBasicMaterial>, on: boolean, dtMs: n
   mesh.visible = material.opacity > 0;
 }
 
+/** A material's opacity towards `max` or 0 over HINT_FADE_MS; whether it shows at all. */
+function fadeTo(material: MeshBasicMaterial, on: boolean, dtMs: number, max: number): boolean {
+  const step = (dtMs / HINT_FADE_MS) * max;
+  material.opacity = on ? Math.min(max, material.opacity + step) : Math.max(0, material.opacity - step);
+  return material.opacity > 0;
+}
+
 /** A unit quad showing atlas cell `frame` (row by row from the top; the texture is flipped, so v = 1 is the top). */
 function frameGeometry(frame: number): PlaneGeometry {
   const geometry = new PlaneGeometry(1, 1);
@@ -392,20 +600,8 @@ function drawAtlas(ctx: CanvasRenderingContext2D): void {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   const draw: ((ctx: CanvasRenderingContext2D) => void)[] = [
-    (c) => pinch(c, false),
-    (c) => pinch(c, true),
     (c) => pointer(c, false),
     (c) => pointer(c, true),
-    (c) => palm(c, 64, 66, 1),
-    (c) => {
-      palm(c, 34, 66, 0.55);
-      palm(c, 94, 66, 0.55);
-    },
-    (c) =>
-      arrows(c, [
-        [0, -1],
-        [0, 1],
-      ]),
     (c) =>
       arrows(c, [
         [0, -1],
@@ -462,20 +658,6 @@ function ink(
   ctx.lineWidth = width;
   ctx.strokeStyle = HINT_INK;
   ctx.stroke();
-}
-
-/** A thumb and an index finger, seen from the side: apart, or tip to tip with the pinch point. */
-function pinch(ctx: CanvasRenderingContext2D, isClosed: boolean): void {
-  const tipY = isClosed ? 68 : 56;
-  ink(ctx, 12, () => {
-    ctx.moveTo(24, 22);
-    ctx.quadraticCurveTo(72, 22, 90, tipY);
-  });
-  ink(ctx, 12, () => {
-    ctx.moveTo(22, 106);
-    ctx.quadraticCurveTo(64, 104, 90, isClosed ? 72 : 84);
-  });
-  if (isClosed) ink(ctx, 10, () => ctx.arc(96, 70, 5, 0, 2 * Math.PI));
 }
 
 /** A mouse pointer; with a ring round its tip for the click. */
