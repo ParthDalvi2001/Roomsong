@@ -34,8 +34,12 @@ export const STRINGS = {
   onboardMove: 'Pinch the plant, slide it along',
   onboardListen: 'Show your palms to listen', // both palms out towards the garden (hands/ palmsOut)
   onboardListenClick: 'Click the orb to listen',
+  // D-087: in Listen at the guide's Listen step, the way back out (a pinch or a palm to the face; a click; a look)
+  onboardWake: 'Pinch to come back',
+  onboardWakeClick: 'Click to come back',
+  onboardWakeGaze: 'Look at the orb: come back',
   // D-084: the guide's tour after Listen, six words at most (FR-UI-01); one-hand and gaze mode say "look" for the orb
-  onboardOrb: 'Turn a hand over: settings',
+  onboardOrb: 'Raise your wrist, pinch the orb', // D-087: like looking at a watch; the orb rides its back
   onboardOrbLook: 'Look at the orb: settings',
   onboardTour: 'Your settings, one at a time', // D-087: ui/ walks the open board, a setting at a time
   // The message of a user-facing failure has its error code (ErrorCode, API_SPEC §5) as its key (LLD §8).

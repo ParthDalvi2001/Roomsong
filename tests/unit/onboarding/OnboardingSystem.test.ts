@@ -234,15 +234,34 @@ describe('OnboardingSystem: the captions (UX §3.3)', () => {
     expect(r.shown()).toBe('onboardListenClick');
   });
 
-  it('the Listen step in a headset says "Show your palms to listen"; listen:enter ends it', () => {
+  it('the Listen step says "Show your palms to listen"; in Listen "Pinch to come back"; out of it, the orb step', () => {
     const r = rig();
     started();
     toListen();
     expect(r.steps.slice(-1)).toEqual(['listen']);
     expect(r.shown()).toBe('onboardListen');
     bus.emit('listen:enter', {});
+    expect(r.steps.slice(-1)).toEqual(['listen']); // D-087: the step ends out of Listen
+    expect(r.shown()).toBe('onboardWake');
+    bus.emit('listen:exit', { timedOut: false });
     expect(r.steps.slice(-1)).toEqual(['orb']); // D-084: the tour comes next
-    expect(r.shown()).toBeNull();
+    expect(r.shown()).toBe('onboardOrb');
+  });
+
+  it('the way out of Listen has its twins: a click in the garden window, a look in gaze mode', () => {
+    const r = rig();
+    settings.set({ ...DEFAULT_SETTINGS, gazeDwell: true });
+    started();
+    toListen();
+    bus.emit('listen:enter', {});
+    expect(r.shown()).toBe('onboardWakeGaze');
+    bus.emit('xr:sessionEnd', { visible: false });
+    settings.set({ ...DEFAULT_SETTINGS });
+    r.xr.isPresenting = false;
+    started();
+    toListen();
+    bus.emit('listen:enter', {});
+    expect(r.shown()).toBe('onboardWakeClick');
   });
 });
 
@@ -252,7 +271,7 @@ describe('OnboardingSystem: the tour, skip and New garden (D-084)', () => {
     started();
     toListen();
     bus.emit('listen:enter', {});
-    expect(r.shown()).toBeNull(); // no instruction over Listen
+    expect(r.shown()).toBe('onboardWake'); // the one instruction over Listen: the way back out
     bus.emit('listen:exit', { timedOut: false });
     expect(r.shown()).toBe('onboardOrb');
     bus.emit('panel:open', { open: true });

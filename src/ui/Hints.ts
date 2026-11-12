@@ -243,7 +243,8 @@ export class HintSystem extends createSystem(
     const isXr = this.xrManager.isPresenting;
     const head = isXr ? this.player.head.matrixWorld : this.camera.matrixWorld;
     const now = settings.get();
-    const isShown = now.hintsEnabled && !this.isListening;
+    // Hidden in Listen, but for the guide's Listen step, which shows the way back out (D-087)
+    const isShown = now.hintsEnabled && (!this.isListening || this.step === 'listen');
 
     // The step's ring, and in the garden window its icon, a pointer's (bed-local, turned to face the head). In a
     // headset the ghost hand acts the step out instead (D-087).
@@ -359,7 +360,7 @@ export class HintSystem extends createSystem(
     if (step === 'plant') return this.actPlant(act, isLeft, bed, s);
     if ((step === 'grow' || step === 'move') && this.newest !== null)
       return this.actShape(act, isLeft, step === 'grow', bed, s);
-    if (step === 'listen') return this.actListen(act, s);
+    if (step === 'listen') return this.isListening ? this.actWake(act, isLeft) : this.actListen(act, s);
     if (step === 'orb' && !s.oneHand && !s.gazeDwell) return this.actOrb(act, isLeft, s);
     return 0;
   }
@@ -428,26 +429,62 @@ export class HintSystem extends createSystem(
     return 2;
   }
 
-  /** The other hand turns palm down, where the orb rides its back; the main hand comes and pinches it there. */
-  private actOrb(act: number, isLeft: boolean, s: Readonly<Settings>): number {
+  /** In Listen at its step: the main hand before the eyes, pinching, the way back out (the wake, D-087). */
+  private actWake(act: number, isLeft: boolean): number {
     const { from, gaze, right, wrist: eyes } = this;
     const side = isLeft ? -1 : 1;
-    from.x = eyes.x + GHOST_AHEAD_M * gaze.x - 0.08 * side * right.x;
-    from.y = eyes.y + GHOST_AHEAD_M * gaze.y - 0.05;
-    from.z = eyes.z + GHOST_AHEAD_M * gaze.z - 0.08 * side * right.z;
-    const turned = ease(Math.round(act * 2.5)); // palm up to palm down over the first 40 %, that hand's own way
-    this.aim(0.26, isLeft ? 1000 - turned : turned - 1000);
+    from.x = eyes.x + GHOST_AHEAD_M * gaze.x + 0.05 * side * right.x;
+    from.y = eyes.y + GHOST_AHEAD_M * gaze.y - 0.08;
+    from.z = eyes.z + GHOST_AHEAD_M * gaze.z + 0.05 * side * right.z;
+    this.aim(0.26);
+    const pinch =
+      act < 300
+        ? 0
+        : act < 450
+          ? Math.round((1000 * (act - 300)) / 150)
+          : act < 750
+            ? 1000
+            : act < 900
+              ? Math.round((1000 * (900 - act)) / 150)
+              : 0;
+    this.ghostHands.pose(0, pinch, isLeft, from, this.turn);
+    return 1;
+  }
+
+  /**
+   * Parth, 12 Nov: "a watch like a gesture, then click". The other hand rises into a watch check, its back to the
+   * eyes, where the orb rides (it shows on a hand whose back faces the head, UX §2); then the main hand comes along
+   * the guide line and pinches it there.
+   */
+  private actOrb(act: number, isLeft: boolean, s: Readonly<Settings>): number {
+    const { from, gaze, right, wrist: eyes } = this;
+    const side = isLeft ? -1 : 1; // the main hand's side: the other hand rises on the opposite one
+    const rise = ease(Math.round(act * 2.5)); // up into the watch pose over the first 40 %
+    from.x = eyes.x + GHOST_AHEAD_M * gaze.x - 0.06 * side * right.x;
+    from.y = eyes.y + GHOST_AHEAD_M * gaze.y - 0.06 - (0.12 * (1000 - rise)) / 1000;
+    from.z = eyes.z + GHOST_AHEAD_M * gaze.z - 0.06 * side * right.z;
+    // The watch pose: the fingers across the body, towards the main hand; the back of the hand to the eyes
+    const across = this.point;
+    across.x = side * right.x;
+    across.y = 0;
+    across.z = side * right.z;
+    const back = this.to;
+    back.x = -gaze.x;
+    back.y = -gaze.y;
+    back.z = -gaze.z;
+    this.turn.setFromRotationMatrix(this.basis.lookAt(ORIGIN, across, back));
     this.ghostHands.pose(1, 0, !isLeft, from, this.turn);
-    this.to.set(0, 0.03, -0.05).applyQuaternion(this.turn).add(from); // over the back of that hand
-    from.x = this.to.x + 0.1 * side * right.x;
-    from.y = this.to.y + 0.05;
-    from.z = this.to.z + 0.1 * side * right.z;
-    this.line.set(from, this.to, 20);
+    this.to.set(0, 0.03, -0.05).applyQuaternion(this.turn).add(from); // the orb's place, over the back of that hand
+    from.x = this.to.x + 0.12 * side * right.x;
+    from.y = this.to.y + 0.02;
+    from.z = this.to.z + 0.12 * side * right.z;
+    this.line.set(from, this.to, 30);
     this.isLined = true;
     this.line.draw(this.flow(s));
-    this.line.at(act < 400 ? 0 : ease(Math.round((act - 400) / 0.35)), this.point);
+    // The main hand waits for the watch pose, comes along the line, and pinches the orb
+    this.line.at(act < 450 ? 0 : ease(Math.round((act - 450) / 0.35)), this.point);
     this.place(this.point, isLeft);
-    this.ghostHands.pose(0, act < 750 ? 0 : Math.min(1000, 10 * (act - 750)), isLeft, this.wrist, this.turn);
+    this.ghostHands.pose(0, act < 800 ? 0 : Math.min(1000, 10 * (act - 800)), isLeft, this.wrist, this.turn);
     return 2;
   }
 

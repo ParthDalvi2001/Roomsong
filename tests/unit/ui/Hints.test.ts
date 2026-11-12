@@ -267,6 +267,33 @@ describe('HintSystem: the onboarding steps (UX §3.3)', () => {
     expect(r.system.shows.icon).toBe(POINTER_CLICK);
   });
 
+  it('listen, D-087: in Listen at its step one ghost hand pinches before the eyes, the way back out', () => {
+    const r = rig();
+    step('listen');
+    bus.emit('listen:enter', {});
+    r.settle();
+    expect(r.system.shows).toMatchObject({ ghostHands: 1, line: false });
+    let closest = Infinity;
+    for (let ms = 0; ms < GHOST_ACT_MS; ms += 20) {
+      r.frame(20);
+      closest = Math.min(closest, r.joint(0, 4).distanceTo(r.joint(0, 9)));
+    }
+    expect(closest).toBeLessThan(0.005);
+  });
+
+  it('orb, D-087: the other hand rises into a watch check, fingers across the body; the main hand pinches the orb on it', () => {
+    const r = rig();
+    step('orb');
+    r.settle();
+    const actAt = () => r.system['frameMs'] % GHOST_ACT_MS;
+    do r.frame(20);
+    while (actAt() < 0.92 * GHOST_ACT_MS || actAt() > 0.97 * GHOST_ACT_MS); // the act's pinch, from 90 %
+    const otherWrist = r.joint(1, 0);
+    expect(otherWrist.x).toBeLessThan(0); // a right-handed player: the left hand rises, on the left
+    expect(r.joint(1, 14).x).toBeGreaterThan(otherWrist.x + 0.1); // its fingers point across the body
+    expect(r.joint(0, 9).distanceTo(r.line().head.position)).toBeLessThan(0.01); // the pinch on the orb's place
+  });
+
   it('orb: both ghost hands and a line to the back of the other hand; none in one-hand or gaze mode', () => {
     const r = rig();
     step('orb');

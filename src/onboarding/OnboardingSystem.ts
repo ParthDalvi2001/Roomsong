@@ -127,16 +127,20 @@ export class OnboardingSystem extends createSystem({}) {
       }),
       bus.on('listen:enter', () => {
         this.isListening = true;
-        this.takeCaption(); // Listen dims the room: no instruction over it
+        this.takeCaption(); // Listen dims the room: no instruction over it but the guide's way back out (D-087)
         this.takeNoSeeds();
         machine.listened();
         this.sync();
+        if (machine.step === 'listen') this.sayWake();
       }),
       bus.on('listen:exit', ({ timedOut }) => {
         this.isListening = false;
         // A step reached in Listen (listen:enter ends the Listen step: the orb step, or done) says it now; not after
         // the 10-minute end, whose line is "Goodnight" (UX §3.5): the hint would queue ahead of it.
-        if (!timedOut) this.sayStep();
+        if (timedOut) return;
+        machine.woke(); // D-087: the Listen step ends out of Listen, so the orb step is seen
+        this.sync();
+        this.sayStep();
       }),
       bus.on('panel:open', ({ open }) => {
         machine.panel(open);
@@ -243,6 +247,17 @@ export class OnboardingSystem extends createSystem({}) {
     this.noSeedsAt = now;
     this.takeNoSeeds(); // one live caption per raiser: an entity that still has one would not qualify again
     this.noSeeds.addComponent(Caption, { key: SEEDS_TOMORROW, expiresAt: now + NO_SEEDS_SHOW_MS });
+  }
+
+  /** D-087: in Listen at the guide's Listen step, how to come back out: a pinch, a click, or a look at the orb. */
+  private sayWake(): void {
+    const key: StringKey = this.inWindow
+      ? 'onboardWakeClick'
+      : settings.get().gazeDwell
+        ? 'onboardWakeGaze'
+        : 'onboardWake';
+    this.takeCaption();
+    this.caption.addComponent(Caption, { key, expiresAt: clock.now() + ONBOARD_CAPTION_MS });
   }
 
   private takeNoSeeds(): void {

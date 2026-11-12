@@ -69,7 +69,10 @@ describe('core/strings', () => {
       'Pinch the plant, slide it along',
       'Show your palms to listen',
       'Click the orb to listen',
-      'Turn a hand over: settings', // D-084: the tour after Listen
+      'Pinch to come back', // D-087: out of Listen
+      'Click to come back',
+      'Look at the orb: come back',
+      'Raise your wrist, pinch the orb', // D-084, D-087: the tour after Listen
       'Look at the orb: settings',
       'Your settings, one at a time',
     ]);

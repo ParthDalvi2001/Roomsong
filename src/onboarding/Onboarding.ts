@@ -7,7 +7,7 @@ import type { GuideLock } from '../core/index.js';
 /**
  * `off`: no guide (before a session's signature, a bed with plants, after the session, skipped: D-084). `tune`: the
  * ripple plays (UX §3.3 step 0). `palm`: open a hand for the seed. `plant`: a seed is out, plant it. `grow`: pull the
- * plant up. `move`: drag it. `listen`: palms out. `orb`: open the settings orb. `tour`: ui/ walks the open board, a
+ * plant up. `move`: drag it. `listen`: palms out, then back out of Listen (the wake). `orb`: the settings orb. `tour`: ui/ walks the open board, a
  * setting at a time, and says `onboarding:toured` at its end. `done`: nothing more to teach.
  */
 export type OnboardingStep =
@@ -52,6 +52,8 @@ export class Onboarding {
   private hasPulled = false;
   private hasDragged = false;
   private hasListened = false;
+  /** Back out of a Listen entered at the Listen step: the step ends there, so the next one is not met inside Listen. */
+  private hasWoken = false;
   /** The settings board is open (`panel:open`): the orb step waits for it; closed in the tour, the orb step again. */
   private isPanelOpen = false;
   private hasToured = false;
@@ -111,6 +113,12 @@ export class Onboarding {
     this.advance();
   }
 
+  /** `listen:exit` (not a timed-out one): out of the Listen the step asked for, the step is done. */
+  woke(): void {
+    if (this.step === 'listen' && this.hasListened) this.hasWoken = true;
+    this.advance();
+  }
+
   /** `panel:open`: the settings board opened or closed. */
   panel(isOpen: boolean): void {
     this.isPanelOpen = isOpen;
@@ -153,6 +161,7 @@ export class Onboarding {
     this.hasPulled = false;
     this.hasDragged = false;
     this.hasListened = false;
+    this.hasWoken = false;
     this.isPanelOpen = false;
     this.hasToured = false;
   }
@@ -172,7 +181,7 @@ export class Onboarding {
     if (step === 'grow') return this.isGazeOnly ? 'listen' : this.hasPulled ? 'move' : 'grow';
     if (step === 'move') return this.isGazeOnly || this.hasDragged ? 'listen' : 'move';
     // The garden window has no settings orb: its guide ends at Listen.
-    if (step === 'listen') return this.hasListened ? (this.canPull ? 'orb' : 'done') : 'listen';
+    if (step === 'listen') return this.hasWoken ? (this.canPull ? 'orb' : 'done') : 'listen';
     if (step === 'orb') return this.isPanelOpen ? 'tour' : 'orb';
     if (step === 'tour') return this.hasToured ? 'done' : this.isPanelOpen ? 'tour' : 'orb';
     return step;

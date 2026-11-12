@@ -20,6 +20,7 @@ function at(step: OnboardingStep, canPull = true): Onboarding {
   m.released('drag');
   if (step === 'listen') return m;
   m.listened();
+  m.woke();
   if (step === 'orb' || step === 'done') return m;
   m.panel(true);
   return m;
@@ -80,6 +81,8 @@ describe('Onboarding: strict, one step at a time (D-087)', () => {
     m.released('drag');
     expect(m.step).toBe('listen');
     m.listened();
+    expect(m.step).toBe('listen'); // D-087: in Listen still; the step ends out of it, so the orb step is seen
+    m.woke();
     expect(m.step).toBe('orb');
     m.panel(true);
     expect(m.step).toBe('tour');
@@ -122,8 +125,10 @@ describe('Onboarding: strict, one step at a time (D-087)', () => {
   it('a board already open at the orb step passes it at once', () => {
     const m = at('listen');
     m.panel(true);
+    m.woke(); // no Listen yet: a wake passes nothing
     expect(m.step).toBe('listen');
     m.listened();
+    m.woke();
     expect(m.step).toBe('tour');
   });
 });
@@ -134,6 +139,7 @@ describe('Onboarding: the garden window and gaze mode', () => {
     expect(m.step).toBe('move');
     m.released('drag');
     m.listened();
+    m.woke();
     expect(m.step).toBe('done');
   });
 
