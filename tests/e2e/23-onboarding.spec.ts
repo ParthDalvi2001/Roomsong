@@ -30,9 +30,10 @@ type Vec3 = { x: number; y: number; z: number };
 type Cell = { ring: number; step: number };
 
 /** Hints.ts `Frame`: the atlas cell each element shows. */
-const ICON = { pinchOpen: 0, pinchClosed: 1, pointer: 2, pointerClick: 3, palm: 4, pull: 6, drag: 7 };
-const RING = 10;
-const ARROW = 8;
+// The garden window's icons (Hints' atlas); in a headset the ghost hand acts each step out instead (D-087).
+const ICON = { pointer: 0, pointerClick: 1, drag: 2 };
+const RING = 5;
+const ARROW = 3;
 const FIRST_SOUND_MS = 20_000; // FR-UI-02
 const FIRST_LOOP_MS = 90_000; // Golden Rule 4
 /**
@@ -64,7 +65,7 @@ interface Probe {
   maxFlashPerS: number;
   maxDraws: number;
   step(): string;
-  shows(): { icon: number; ring: number; arrow: number; hands: number[] };
+  shows(): { icon: number; ring: number; arrow: number; hands: number[]; ghostHands: number; line: boolean };
   /** The caption on screen and its edges in degrees from the gaze (CaptionSystem's own read-out). */
   caption(): {
     key: string | null;
@@ -323,10 +324,7 @@ async function carry(page: Page, probe: JSHandle<Probe>, hands: EmulatedHands, t
   await heard(probe, 'planted', { count });
 }
 
-/** Three cells of the middle ring nearest the user: the guide cell first, then its two neighbours. */
-const nearCells: Cell[] = [GUIDE_CELL, { ring: 2, step: 3 }, { ring: 2, step: 5 }];
-
-test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, move; first sound and first loop timed', async ({
+test('TC-E2E-03 the strict guided first minute (D-087): palm, plant on the glowing cell, grow, move, each alone; timed', async ({
   page,
 }) => {
   const errors = watch(page);
@@ -337,7 +335,7 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   await hands.lookDown(55); // the table is 55 to 65 degrees below the emulated head
   await hands.putLeft(PALM_DOWN);
 
-  // Step 0 then 1: nothing of the tutorial before room:tuned; then "Open your hand, palm up" and the palm icon.
+  // Step 0 then 1: nothing of the guide before room:tuned; then "Open your hand, palm up" and the ghost hand.
   const tuned = await heard(probe, 'room:tuned');
   await stepAt(probe, 'palm');
   // Said inside room:tuned's own dispatch: OnboardingSystem's handler runs before the probe's, which notes the event.
@@ -346,60 +344,58 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   expect((await heard(probe, 'step', { step: 'tune' })).atMs).toBeLessThan(tuned.atMs);
   await page.waitForFunction((p) => p.caption().key === 'onboardPalm', probe);
   const atPalm = await probe.evaluate((p) => ({ shows: p.shows(), caption: p.caption() }));
-  expect(atPalm.shows.icon).toBe(ICON.palm);
+  expect([atPalm.shows.icon, atPalm.shows.ghostHands]).toEqual([-1, 1]); // D-087: the ghost turns its palm up
   // FR-UI-03: the caption inside the FoV box (it may ride an edge: the guard holds it there, to 1e-6 degrees).
   const EDGE = 1e-6;
   expect(atPalm.caption.fov.leftDeg).toBeGreaterThanOrEqual(-25 - EDGE);
   expect(atPalm.caption.fov.rightDeg).toBeLessThanOrEqual(25 + EDGE);
   expect(atPalm.caption.fov.downDeg).toBeGreaterThanOrEqual(-20 - EDGE);
   expect(atPalm.caption.fov.upDeg).toBeLessThanOrEqual(20 + EDGE);
-  await xrFrames(page, 4); // the icon's 200 ms fade
+  await xrFrames(page, 4); // the ghost's 200 ms fade
   await page.screenshot({ path: '.tmp/t150-1-palm.png' });
 
-  // Step 2: the palm turned up brings a seed; "Pinch the seed, drop it here", the glowing cell and the looping ghost pinch.
+  // Step 2: the palm turned up brings a seed; "Pinch the seed, drop it here", the glowing cell, the ghost and its line.
   await hands.putLeft(PALM_UP);
   await stepAt(probe, 'plant');
   await page.waitForFunction((p) => p.caption().key === 'onboardPlant', probe);
   const guideAt = await probe.evaluate((p, c) => p.cellAt(c), GUIDE_CELL);
   const ringAt = await probe.evaluate((p) => p.ringAt());
   expect(distance(ringAt, guideAt)).toBeLessThan(0.01); // the ring lies on the guide cell, 4 mm over the glass
-  // One look, as a player gives it: the clock to the first sound is running (the loop itself: Hints.test.ts).
-  expect([ICON.pinchOpen, ICON.pinchClosed]).toContain(await probe.evaluate((p) => p.shows().icon));
-  expect(await probe.evaluate((p) => p.shows().ring)).toBe(RING);
+  expect(await probe.evaluate((p) => p.shows())).toMatchObject({ ring: RING, ghostHands: 1, line: true });
   await page.screenshot({ path: '.tmp/t150-2-plant.png' });
 
-  // The pinch gate: the seed planted on the glowing cell. The tide plays it: the first sound.
+  // The plant step: the seed planted on the glowing cell. The tide plays it: the first sound. Straight to grow.
   await carry(page, probe, hands, guideAt, 1);
-  await stepAt(probe, 'more');
-  await expect.poll(() => probe.evaluate((p) => p.firstNoteAtMs), { timeout: 10_000 }).toBeGreaterThan(0);
-  expect(await probe.evaluate((p) => [p.shows().icon, p.shows().ring])).toEqual([-1, -1]); // step 3: nothing
-
-  // Two more seeds, each straight to the palm as it is (D-080), no caption of the tutorial; at three plants the
-  // hint ring with the pull icon round the newest.
-  await carry(page, probe, hands, await probe.evaluate((p, c) => p.cellAt(c), nearCells[1]!), 2);
-  await carry(page, probe, hands, await probe.evaluate((p, c) => p.cellAt(c), nearCells[2]!), 3);
   await stepAt(probe, 'grow');
-  expect((await probe.evaluate((p) => p.plants())).map((p) => p.family)).toEqual([null, null, null]);
-  const newest = (await probe.evaluate((p) => p.plants())).slice(-1)[0]!;
-  expect(newest.cell).toEqual(nearCells[2]);
-  const newestAt = await probe.evaluate((p, c) => p.cellAt(c), newest.cell);
+  await expect.poll(() => probe.evaluate((p) => p.firstNoteAtMs), { timeout: 10_000 }).toBeGreaterThan(0);
+  const newest = (await probe.evaluate((p) => p.plants()))[0]!;
+  expect(newest.cell).toEqual(GUIDE_CELL);
   await xrFrames(page, 20);
-  expect(await probe.evaluate((p) => [p.shows().icon, p.shows().ring])).toEqual([ICON.pull, RING]);
-  expect(distance(await probe.evaluate((p) => p.ringAt()), newestAt)).toBeLessThan(0.01);
+  expect(await probe.evaluate((p) => p.shows())).toMatchObject({ ring: RING, ghostHands: 1, line: true });
+  expect(distance(await probe.evaluate((p) => p.ringAt()), guideAt)).toBeLessThan(0.01);
+  // D-087 strict: the left palm, still up, asks for no seed at the grow step: one seed out, ever, so far.
+  expect((await probe.evaluate((p) => p.heard.filter((e) => e.name === 'garden:seedOut'))).length).toBe(1);
   await page.screenshot({ path: '.tmp/t150-3-grow.png' });
 
-  // The grow gate: the newest plant pulled up 8 cm. Then the drag icon.
+  // D-087 strict: a sideways move is not the pull this step teaches: the plant stays pinched, its release changes
+  // nothing, the step stays. Then the pull: the plant lifted 8 cm.
   const foot = (await probe.evaluate((p) => p.plantTargets())).find((t) => t.id === newest.id)!.at;
+  expect(await hands.pinchAt(foot)).toBeLessThan(HIT_RADIUS_M / 4);
+  await hands.carryTo({ ...foot, x: foot.x + 0.06 });
+  await hands.releaseAt({ ...foot, x: foot.x + 0.06 });
+  await heard(probe, 'gesture:release', { gesture: 'none' });
+  expect((await probe.evaluate((p) => p.plants()))[0]!.cell).toEqual(GUIDE_CELL);
+  expect(await probe.evaluate((p) => p.step())).toBe('grow');
   expect(await hands.pinchAt(foot)).toBeLessThan(HIT_RADIUS_M / 4);
   await hands.carryTo({ ...foot, y: foot.y + 0.08 });
   await hands.releaseAt({ ...foot, y: foot.y + 0.08 });
   await heard(probe, 'gesture:release', { gesture: 'pull' });
   await stepAt(probe, 'move');
   await xrFrames(page, 20);
-  expect(await probe.evaluate((p) => [p.shows().icon, p.shows().ring])).toEqual([ICON.drag, RING]);
+  expect(await probe.evaluate((p) => p.shows())).toMatchObject({ ring: RING, ghostHands: 1, line: true });
   await page.screenshot({ path: '.tmp/t150-4-move.png' });
 
-  // The move gate: the newest plant dragged along the bed to a free cell; the remove arrow shows during it.
+  // The move step: the plant dragged along the bed to a free cell; the remove arrow shows during it.
   const to = await probe.evaluate((p) => p.cellAt({ ring: 3, step: 6 }));
   const head = (await probe.evaluate((p) => p.plantTargets())).find((t) => t.id === newest.id)!.at; // grown: higher (D-063)
   expect(await hands.pinchAt(head)).toBeLessThan(HIT_RADIUS_M / 4);
@@ -410,18 +406,16 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
   await page.screenshot({ path: '.tmp/t150-5-drag.png' });
   await hands.releaseAt(across);
   await heard(probe, 'gesture:release', { gesture: 'drag' });
-  // Both gates earned: the Listen step at once, "Show your palms to listen" (free is passed, not said).
-  const free = await stepAt(probe, 'listen');
-  await xrFrames(page, 5);
-  // The left palm, still up with the supply empty, raises "No seeds left" every 4 s (BUG-056): captions show one at
-  // a time, so the Listen caption can wait its turn behind one (D-080 made the seeds come faster).
+  // The Listen step at once, "Show your palms to listen", two ghost palms.
+  const listen = await stepAt(probe, 'listen');
   await expect
     .poll(() => probe.evaluate((p) => p.captionLog.some((c) => c.key === 'onboardListen')), {
       timeout: 10_000,
     })
     .toBe(true);
+  expect(await probe.evaluate((p) => p.shows().ghostHands)).toBe(2);
 
-  const timing = await probe.evaluate((p, freeAtMs) => {
+  const timing = await probe.evaluate((p, listenAtMs) => {
     const plant = p.heard.find((e) => e.name === 'step' && e.step === 'plant')!.atMs;
     return {
       tunedMs: p.heard.find((e) => e.name === 'room:tuned')!.atMs - p.enterAtMs,
@@ -429,26 +423,28 @@ test('TC-E2E-03 the guided first minute: palm, plant on the glowing cell, grow, 
       pinchedMs: p.heard.find((e) => e.name === 'gesture:pinchStart' && e.id !== null)!.atMs - p.enterAtMs,
       plantedMs: p.heard.find((e) => e.name === 'planted')!.atMs - p.enterAtMs,
       firstSoundMs: p.firstNoteAtMs - p.enterAtMs,
-      firstLoopMs: freeAtMs - p.enterAtMs,
+      firstLoopMs: listenAtMs - p.enterAtMs,
       captions: p.captionLog.map((c) => c.key),
       maxFlashPerS: p.maxFlashPerS,
       maxDraws: p.maxDraws,
     };
-  }, free.atMs);
+  }, listen.atMs);
   console.log(
-    `T-150 first minute (emulator, table room, hands at test speed): Enter to room:tuned ${Math.round(timing.tunedMs)} ms, ` +
+    `T-150/D-087 first minute (emulator, table room, hands at test speed): Enter to room:tuned ${Math.round(timing.tunedMs)} ms, ` +
       `to the plant step ${Math.round(timing.plantStepMs)} ms, to the seed pinched ${Math.round(timing.pinchedMs)} ms, ` +
       `planted ${Math.round(timing.plantedMs)} ms, to the first sound ${Math.round(timing.firstSoundMs)} ms, ` +
-      `to the gates done ${Math.round(timing.firstLoopMs)} ms; captions ${JSON.stringify(timing.captions)}; ` +
+      `to the Listen step ${Math.round(timing.firstLoopMs)} ms; captions ${JSON.stringify(timing.captions)}; ` +
       `max draws ${timing.maxDraws}, max flashes ${timing.maxFlashPerS}/s; the app's share of the first sound ` +
       `${Math.round(appShareMs(timing))} ms`,
   );
   expect(appShareMs(timing)).toBeLessThanOrEqual(FIRST_SOUND_MS);
   expect(timing.firstLoopMs).toBeLessThanOrEqual(FIRST_LOOP_MS);
-  // One caption at a time, each one of the tutorial's own after the ripple's, at most six words (FR-UI-01).
+  // One caption at a time, each step's own after the ripple's, at most six words (FR-UI-01).
   expect(timing.captions.filter((key) => key?.startsWith('onboard'))).toEqual([
     'onboardPalm',
     'onboardPlant',
+    'onboardGrow',
+    'onboardMove',
     'onboardListen',
   ]);
   expect(timing.maxFlashPerS).toBeLessThanOrEqual(3); // FR-UI-11
@@ -474,7 +470,7 @@ async function openPlain(page: Page): Promise<string[]> {
   return offHost;
 }
 
-test('TC-E2E-14 the first minute in the garden window: a click on the glowing cell, then the move gate; timed', async ({
+test('TC-E2E-14 the first minute in the garden window: a click on the glowing cell, then the move step; timed', async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -495,7 +491,7 @@ test('TC-E2E-14 the first minute in the garden window: a click on the glowing ce
   expect(await probe.evaluate((p) => p.shows().ring)).toBe(RING);
   await page.screenshot({ path: '.tmp/t150-6-window-plant.png' });
 
-  // Three clicks on three cells plant the three seeds; the first one is on the glowing cell.
+  // A click on the glowing cell plants the seed; D-087: the next seed waits for the guide's end.
   const click = async (cell: Cell, count: number) => {
     await heard(probe, 'garden:seedOut', { count }); // the seed is on the pointer before the click (20-window)
     const at = await probe.evaluate((p, c) => p.cellOnPage(c), cell);
@@ -504,25 +500,23 @@ test('TC-E2E-14 the first minute in the garden window: a click on the glowing ce
     await heard(probe, 'planted', { count });
     return at;
   };
-  await click(GUIDE_CELL, 1);
+  const newestAt = await click(GUIDE_CELL, 1);
   await expect.poll(() => probe.evaluate((p) => p.firstNoteAtMs), { timeout: 10_000 }).toBeGreaterThan(0);
-  await click(nearCells[1]!, 2); // each next seed comes to the pointer by itself
-  const newestAt = await click(nearCells[2]!, 3);
-  // No grow gate here (a pointer cannot pull): from three plants straight to move.
+  // No grow step here (a pointer cannot pull): from the first plant straight to move.
   await stepAt(probe, 'move');
   expect(await probe.evaluate((p) => p.heard.some((e) => e.step === 'grow'))).toBe(false);
   await page.waitForTimeout(400);
   expect(await probe.evaluate((p) => [p.shows().icon, p.shows().ring])).toEqual([ICON.drag, RING]);
   await page.screenshot({ path: '.tmp/t150-7-window-move.png' });
 
-  // The move gate: the newest plant dragged with the mouse to a free cell.
+  // The move step: the plant dragged with the mouse to a free cell.
   const to = await probe.evaluate((p) => p.cellOnPage({ ring: 3, step: 2 }));
   await page.mouse.move(newestAt.x, newestAt.y);
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: 12 });
   await page.mouse.up();
   await heard(probe, 'gesture:release', { gesture: 'drag' });
-  const free = await stepAt(probe, 'free');
+  const free = await stepAt(probe, 'listen');
   const timing = await probe.evaluate(
     (p, freeAtMs) => ({
       plantStepMs: p.heard.find((e) => e.name === 'step' && e.step === 'plant')!.atMs - p.enterAtMs,
@@ -540,7 +534,10 @@ test('TC-E2E-14 the first minute in the garden window: a click on the glowing ce
   );
   expect(appShareMs(timing)).toBeLessThanOrEqual(FIRST_SOUND_MS);
   expect(timing.firstLoopMs).toBeLessThanOrEqual(FIRST_LOOP_MS);
-  expect(timing.captions.filter((key) => key.startsWith('onboard'))).toEqual(['onboardPlantClick']);
+  expect(timing.captions.filter((key) => key.startsWith('onboard'))).toEqual([
+    'onboardPlantClick',
+    'onboardListenClick',
+  ]);
   expect(errors).toEqual([]);
   expect(offHost).toEqual([]);
 });
@@ -588,7 +585,14 @@ test('a returning player (the skipOnboarding flag, as openApp adds it): no tutor
     'off',
     0,
   ]);
-  expect(await probe.evaluate((p) => p.shows())).toEqual({ icon: -1, ring: -1, arrow: -1, hands: [-1, -1] });
+  expect(await probe.evaluate((p) => p.shows())).toEqual({
+    icon: -1,
+    ring: -1,
+    arrow: -1,
+    hands: [-1, -1],
+    ghostHands: 0,
+    line: false,
+  });
   expect(await probe.evaluate((p) => p.captionLog.map((c) => c.key))).not.toContain('onboardPalm');
   expect(errors).toEqual([]);
 });
