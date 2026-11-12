@@ -219,8 +219,9 @@ export const TOUR_ITEM_MS = 2000;
 export const GLOW_LOW = 0.65;
 export const GLOW_GROW = 0.05;
 
-// The hints (T-150, UX §3.3, §3.4): the onboarding icons, the hint ring, the remove arrow and the hand hint. Each is
-// a quad of one icon atlas, drawn on a canvas once (UX §1: an icon, never a paragraph; no hand model, D-027).
+// The hints (T-150, UX §3.3, §3.4): the garden window's onboarding icons, the hint ring, the remove arrow and the hand
+// hint, each a quad of one icon atlas drawn on a canvas once (UX §1: an icon, never a paragraph); in a headset the
+// guide's ghost hand (D-087), a guide, not a model of the player's own hand (that is still never drawn, D-027).
 
 /** The icon atlas: ATLAS_GRID by ATLAS_GRID cells of ATLAS_CELL_PX. Powers of two. */
 export const ATLAS_CELL_PX = 128;
