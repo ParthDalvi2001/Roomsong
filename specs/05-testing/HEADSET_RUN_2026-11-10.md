@@ -190,8 +190,8 @@ Start it: settings orb → Garden → hold **New garden** (or a brand-new garden
 **G2. Plant.** A dotted line flows from the seed on your palm to the glowing cell; the ghost pinches, carries and lets go. Plant it there. ☐
 **G3. Grow.** The ghost pinches your plant and lifts it; a line points up. Slide the plant sideways first: nothing happens. Then pull it up. A palm up gives no new seed here. ☐
 **G4. Move.** The ghost slides the plant two cells along; a line along the bed. Pull it up first: nothing. Then slide it. ☐
-**G5. Listen.** Two ghost palms push forward. Show both palms: Listen. Then wake (palm to face, or a pinch). ☐
-**G6. Settings.** The ghost turns the other hand over and pinches its back. Open the orb: every setting lights up one at a time, 2 s each, with its description, the rest dim; the board stays open while you look around. At the end the board works normally. Rating 1–5 for "I understood each setting": ____ (2 s too fast? say so) ☐
+**G5. Listen.** Two ghost palms push forward. Show both palms: Listen. In Listen, one ghost hand pinches and "Pinch to come back" shows: pinch. ☐
+**G6. Settings.** The ghost raises its other wrist like looking at a watch (back of the hand to your eyes), then its main hand pinches the orb there; caption "Raise your wrist, pinch the orb". Do the same. Open the orb: every setting lights up one at a time, 2 s each, with its description, the rest dim; the board stays open while you look around. At the end the board works normally. Rating 1–5 for "I understood each setting": ____ (2 s too fast? say so) ☐
 **G7. Skip.** Start again (New garden), press **Skip tutorial** at any step: the guide ends at once. ☐
 **G8. Feel.** Is the ghost hand easy to read, and smooth? Rating 1–5: ____ ; anything confusing: ________
 
