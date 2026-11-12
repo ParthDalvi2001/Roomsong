@@ -148,6 +148,10 @@ describe('HintSystem: the onboarding steps (UX §3.3)', () => {
     expect(r.icon.visible).toBe(false);
     const wrist = r.joint(0, 0);
     expect(wrist.z).toBeLessThan(-0.2); // ahead of the eyes
+    // FR-UI-03: inside the FoV box of a head looking 50 degrees down at the table
+    const gaze = new Vector3(0, 0, -1).applyMatrix4(new Matrix4().extractRotation(r.head));
+    const toWrist = wrist.clone().sub(new Vector3().setFromMatrixPosition(r.head));
+    expect((gaze.angleTo(toWrist) * 180) / Math.PI).toBeLessThan(FOV_HALF_V_DEG);
     expect(wrist.x).toBeGreaterThan(0); // on the main hand's side
     settings.set({ ...DEFAULT_SETTINGS, dominantHand: 'left' });
     r.frame();

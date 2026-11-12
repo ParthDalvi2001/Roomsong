@@ -32,6 +32,7 @@ import {
   ATLAS_CELL_PX,
   ATLAS_GRID,
   GHOST_ACT_MS,
+  GHOST_AHEAD_M,
   GHOST_BOTTOM_M,
   GHOST_CLOSE_AT,
   GHOST_LOOP_MS,
@@ -151,6 +152,7 @@ export class HintSystem extends createSystem(
   private readonly point = new Vector3();
   private readonly wrist = new Vector3();
   private readonly forward = new Vector3();
+  private readonly gaze = new Vector3();
   private readonly right = new Vector3();
   private readonly turn = new Quaternion();
   private readonly basis = new Matrix4();
@@ -345,6 +347,10 @@ export class HintSystem extends createSystem(
     forward.z = -e[10];
     forward.normalize();
     this.right.crossVectors(forward, UP);
+    const gaze = this.gaze; // the head's own forward: the acts in the air stand on it, inside the FoV box (FR-UI-03)
+    gaze.x = -e[8];
+    gaze.y = -e[9];
+    gaze.z = -e[10];
     const eyes = this.wrist;
     eyes.x = e[12];
     eyes.y = e[13];
@@ -358,13 +364,13 @@ export class HintSystem extends createSystem(
     return 0;
   }
 
-  /** In front, on the main hand's side: a hand turning palm up, then held there. Positions field by field. */
+  /** Where the gaze looks, a little low, on the main hand's side: a hand turning palm up. Positions field by field. */
   private actPalm(act: number, isLeft: boolean): number {
-    const { from, forward, right, wrist: eyes } = this;
+    const { from, gaze, right, wrist: eyes } = this;
     const side = isLeft ? -1 : 1;
-    from.x = eyes.x + 0.3 * forward.x + 0.06 * side * right.x;
-    from.y = eyes.y - 0.3;
-    from.z = eyes.z + 0.3 * forward.z + 0.06 * side * right.z;
+    from.x = eyes.x + GHOST_AHEAD_M * gaze.x + 0.06 * side * right.x;
+    from.y = eyes.y + GHOST_AHEAD_M * gaze.y - 0.05;
+    from.z = eyes.z + GHOST_AHEAD_M * gaze.z + 0.06 * side * right.z;
     const turned = ease(Math.round((act * 20) / 9)); // over the first 45 % of the act
     this.aim(0.26, isLeft ? 0 - turned : turned); // the back turns out, the thumb up (0 - x: never a boxed -0)
     this.ghostHands.pose(0, 0, isLeft, from, this.turn);
@@ -406,17 +412,17 @@ export class HintSystem extends createSystem(
     return this.carry(act, isLeft, 30, s);
   }
 
-  /** Both palms out towards the garden, a little push forward. */
+  /** Both palms out towards the garden where the gaze looks, a little push forward. */
   private actListen(act: number, s: Readonly<Settings>): number {
-    const { from, forward, right, wrist: eyes } = this;
+    const { from, forward, gaze, right, wrist: eyes } = this;
     const push = s.reducedMotion ? 0 : 0.025 * (0.5 - 0.5 * Math.cos((2 * Math.PI * act) / 1000));
     this.basis.lookAt(ORIGIN, UP, this.point.copy(forward).negate()); // fingers up, the palms facing ahead
     this.turn.setFromRotationMatrix(this.basis);
     for (let h = 0; h < 2; h++) {
-      const out = h === 0 ? -0.12 : 0.12;
-      from.x = eyes.x + (0.3 + push) * forward.x + out * right.x;
-      from.y = eyes.y - 0.12;
-      from.z = eyes.z + (0.3 + push) * forward.z + out * right.z;
+      const out = h === 0 ? -0.1 : 0.1;
+      from.x = eyes.x + GHOST_AHEAD_M * gaze.x + push * forward.x + out * right.x;
+      from.y = eyes.y + GHOST_AHEAD_M * gaze.y - 0.08; // the wrists low: the open hands stand up into the view
+      from.z = eyes.z + GHOST_AHEAD_M * gaze.z + push * forward.z + out * right.z;
       this.ghostHands.pose(h, 0, h === 0, from, this.turn);
     }
     return 2;
@@ -424,11 +430,11 @@ export class HintSystem extends createSystem(
 
   /** The other hand turns palm down, where the orb rides its back; the main hand comes and pinches it there. */
   private actOrb(act: number, isLeft: boolean, s: Readonly<Settings>): number {
-    const { from, forward, right, wrist: eyes } = this;
+    const { from, gaze, right, wrist: eyes } = this;
     const side = isLeft ? -1 : 1;
-    from.x = eyes.x + 0.32 * forward.x - 0.08 * side * right.x;
-    from.y = eyes.y - 0.28;
-    from.z = eyes.z + 0.32 * forward.z - 0.08 * side * right.z;
+    from.x = eyes.x + GHOST_AHEAD_M * gaze.x - 0.08 * side * right.x;
+    from.y = eyes.y + GHOST_AHEAD_M * gaze.y - 0.05;
+    from.z = eyes.z + GHOST_AHEAD_M * gaze.z - 0.08 * side * right.z;
     const turned = ease(Math.round(act * 2.5)); // palm up to palm down over the first 40 %, that hand's own way
     this.aim(0.26, isLeft ? 1000 - turned : turned - 1000);
     this.ghostHands.pose(1, 0, !isLeft, from, this.turn);

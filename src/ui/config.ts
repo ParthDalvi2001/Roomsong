@@ -251,6 +251,8 @@ export const GHOST_OPEN_AT = 0.7;
  * where to let go: GUIDE_DOTS dots GUIDE_DOT_M across flowing on once a GUIDE_FLOW_MS, an arrowhead GUIDE_HEAD_M long.
  */
 export const GHOST_ACT_MS = 2400;
+/** D-087: the acts in the air (the palm, Listen, the orb) stand this far out along the gaze, inside the FoV box. */
+export const GHOST_AHEAD_M = 0.35;
 export const GHOST_OPACITY = 0.6;
 export const GHOST_STILL_AT = 600; // thousandths of the act
 export const GUIDE_DOTS = 14;
