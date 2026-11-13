@@ -27,7 +27,7 @@ Code lives in `src/` and `tests/` (scaffolded in T-101 with `npm create @iwsdk@l
 
 ## Licence and copyright
 
-Copyright (c) 2026 Parth Dalvi and Chinmay Gavde. All rights reserved: the code is public to be viewed, run and
+Copyright (c) 2026 Parth Dalvi and Chinmay Gavade. All rights reserved: the code is public to be viewed, run and
 judged, not to be copied or reused without permission. See [LICENSE](LICENSE). Third-party code keeps its own licence: see
 [specs/06-release/THIRD_PARTY_LICENSES.md](specs/06-release/THIRD_PARTY_LICENSES.md) and [LICENSES/](LICENSES/). The live site serves each third-party
 licence text at https://parthdalvi2001.github.io/SonicSpace/LICENSES/<name>.txt (for example
